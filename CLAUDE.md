@@ -46,11 +46,11 @@ The only allowed exception is the deliberate recovery path to Android Settings (
 
 ## Code rules
 
-- The hub serves browser code only from paths matching `WEB_FILE` in `hub/src/core/server/index.ts`: `src/main.web.ts`, `src/core/web/**`, and per app `web/**`, `view.html`, `app.css`, `manifest.ts`, `api.ts`. Any module the page imports must live there. A web import from anywhere else 404s and the whole tablet page fails to boot. Shared code used by both server and web goes in the app's `web/` folder (the server may import from it).
+- The hub serves browser code only from paths matching `WEB_FILE` in `src/core/server/index.ts`: `src/main.web.ts`, `src/core/web/**`, and per app `web/**`, `view.html`, `app.css`, `manifest.ts`, `api.ts`. Any module the page imports must live there. A web import from anywhere else 404s and the whole tablet page fails to boot. Shared code used by both server and web goes in the app's `web/` folder (the server may import from it).
 - After web edits, run `npm run check` (it includes `check:web`, which catches imports the hub won't serve). Don't use the built-in browser pane to verify: every action there prompts the user. Check routes with `Invoke-WebRequest`, and the tablet with read-only adb (screencap, dumpsys).
 - Check hit areas: `.hit` controls get their tap area from a `::before` that needs `position: relative`; in mock mode `__dev.hitAreas()` (core/web/hit-guard.ts) warns about any that are wrong. An absolutely positioned control takes class `hit-abs`.
 
 ## Facts to keep
 
 - ClaudeOS is the tablet's **device owner** (`hub.kiosk/.AdminReceiver`) and runs in lock task mode. Don't change the Android package id `hub.kiosk`: device owner is tied to it.
-- The project folder is still `Claude Home` and the hub server runs from `hub/` under `hub/host/ClaudeHubHost.exe`. Restart the server with `hub/host/hubctl.ps1 restart`.
+- The project folder is still `Claude Home` and the hub server runs from `` under `host/ClaudeHubHost.exe`. Restart the server with `host/hubctl.ps1 restart`.

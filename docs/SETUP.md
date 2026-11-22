@@ -17,7 +17,7 @@ npm install
 npm run setup
 ```
 
-`npm run setup` asks for three things and writes `hub/config.json`:
+`npm run setup` asks for three things and writes `config.json`:
 
 - **Address**: this PC's address on your home network, such as `192.168.1.20`. `0.0.0.0` listens on every address.
 - **Port**: 8000 unless something else uses it.
@@ -33,7 +33,7 @@ npm start
 
 The hub prints the address it serves. Open `http://<your PC's address>:8000` in a browser on your home network.
 
-On Windows, `hub/host/ClaudeHubHost.exe` can run the hub from the tray and restart it if it stops. See `hub/host/README.md`.
+On Windows, `host/ClaudeHubHost.exe` can run the hub from the tray and restart it if it stops. See `host/README.md`.
 
 ## 4. Set a PIN
 
@@ -41,7 +41,7 @@ Open Settings → Security and set the ClaudeOS PIN. Anyone on your home network
 
 ## Config
 
-`hub/config.json` keys:
+`config.json` keys:
 
 | Key | Default | Meaning |
 |---|---|---|

@@ -32,4 +32,4 @@ The hub serves a web page. Any browser on your home network can open it. An Andr
 
 See [docs/SETUP.md](docs/SETUP.md). Read [docs/SECURITY.md](docs/SECURITY.md) before you put the tablet somewhere shared.
 
-The hub code is in `hub/`. The Windows tray app that keeps it running is in `hub/host/` (see its README).
+The hub code is in ``. The Windows tray app that keeps it running is in `host/` (see its README).

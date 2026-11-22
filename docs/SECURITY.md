@@ -18,10 +18,10 @@ A web page from another site must not reach the hub, even one open on the tablet
 
 ## The two PINs
 
-- **ClaudeOS PIN.** Set in Settings → Security. 4 to 6 digits. The tablet asks for it when it wakes. Stored on the PC in `hub/claudeos-pin.json` as a salted PBKDF2 hash. Five wrong tries give a 30-second wait. Delete the file to clear a forgotten PIN.
-- **Claude app PIN.** Optional. 4 to 8 digits, set on the PC in `hub/.hub-pin` or the `HUB_PIN` environment variable, never from the page. It guards replies and approvals in the Claude app. An unlock lasts 10 minutes past the last action. Five wrong tries in 5 minutes lock it for 5 minutes. With no PIN set, anyone at the screen can reply and approve.
+- **ClaudeOS PIN.** Set in Settings → Security. 4 to 6 digits. The tablet asks for it when it wakes. Stored on the PC in `claudeos-pin.json` as a salted PBKDF2 hash. Five wrong tries give a 30-second wait. Delete the file to clear a forgotten PIN.
+- **Claude app PIN.** Optional. 4 to 8 digits, set on the PC in `.hub-pin` or the `HUB_PIN` environment variable, never from the page. It guards replies and approvals in the Claude app. An unlock lasts 10 minutes past the last action. Five wrong tries in 5 minutes lock it for 5 minutes. With no PIN set, anyone at the screen can reply and approve.
 
-Every reply and approval from the page goes in `hub/logs/hub-actions.log`.
+Every reply and approval from the page goes in `logs/hub-actions.log`.
 
 ## The tablet app
 
@@ -31,6 +31,6 @@ The hub serves the tablet's Android app at `/apk/claude-hub.apk` to anyone on yo
 
 These hold tokens, the PIN hashes or your own data. They are in `.gitignore`; never share them:
 
-`hub/config.json`, `hub/claudeos-pin.json`, `hub/.hub-pin`, `hub/.ha-config.json`, `hub/.calendar-config.json`, `hub/profile.json`, `hub/profile-photo.jpg`, `hub/instructions.txt`, `hub/hub-sessions.json`, `hub/photos/`, `hub/logs/`, and any keystore.
+`config.json`, `claudeos-pin.json`, `.hub-pin`, `.ha-config.json`, `.calendar-config.json`, `profile.json`, `profile-photo.jpg`, `instructions.txt`, `hub-sessions.json`, `photos/`, `logs/`, and any keystore.
 
-The hub never serves them: it serves only `hub/public/` and the browser code under `hub/src/`.
+The hub never serves them: it serves only `public/` and the browser code under `src/`.

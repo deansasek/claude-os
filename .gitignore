@@ -1,43 +1,43 @@
-# Secrets and personal data: never in the repository.
+﻿# Secrets and personal data: never in the repository.
 # These hold tokens, addresses, the PIN, or your own household data.
-hub/.ha-config.json
-hub/.calendar-config.json
-hub/.hub-pin
-hub/.hub-pin.*
-hub/.ha-layout.json
-hub/.launcher-layout.json
-hub/.lists.json
-hub/.routines.json
-hub/.limits-cache.json
-hub/claude-state.json
-hub/hub-sessions.json
-hub/profile.json
-hub/plugins-state.json
-hub/meter-config.json
+.ha-config.json
+.calendar-config.json
+.hub-pin
+.hub-pin.*
+.ha-layout.json
+.launcher-layout.json
+.lists.json
+.routines.json
+.limits-cache.json
+claude-state.json
+hub-sessions.json
+profile.json
+plugins-state.json
 meter-config.json
-hub/photos/
-hub/workspace/
-hub/logs/
-hub/host/logs/
-hub/host/*.pid
-hub/config.json
-hub/claudeos-pin.json
-hub/claudeos-pin.json.tmp
-hub/instructions.txt
-hub/profile-photo.jpg
-hub/host/host.config.json
-hub/host/*.exe
-hub/android/hub.keystore
-hub/android/*.keystore
+meter-config.json
+/photos/
+/workspace/
+/logs/
+host/logs/
+host/*.pid
+/config.json
+claudeos-pin.json
+claudeos-pin.json.tmp
+instructions.txt
+profile-photo.jpg
+host/host.config.json
+host/*.exe
+android/hub.keystore
+android/*.keystore
 *.keystore
 *.jks
 
 # Build output and large downloaded tools (rebuilt or re-downloaded on setup).
 node_modules/
-hub/node_modules/
-hub/tools/
-hub/android/build/
-hub/android/assets/model-en-us/
+node_modules/
+/tools/
+android/build/
+android/assets/model-en-us/
 *.apk
 *.aab
 *.log
@@ -58,8 +58,7 @@ hub/android/assets/model-en-us/
 
 # Empty stray files (candidates for removal).
 /main.web.ts
-hub/main.web.ts
-hub/tools.ts
+/tools.ts
 
 # Recorded voice warm-up audio (may be a personal recording). Decide before publishing.
-hub/android/assets/voice-warmup.raw
+android/assets/voice-warmup.raw
