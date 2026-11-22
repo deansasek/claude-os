@@ -2,97 +2,84 @@
 //   tools/jdk          Eclipse Temurin JDK 21
 //   tools/android-sdk  Android command-line tools, platform 35, build-tools 35.0.0
 //   tools/android-user sdkmanager's own settings (instead of ~/.android)
-// Re-running is safe: finished parts are skipped.
+// Works on Windows, macOS (Intel and Apple Silicon) and Linux. Re-running is safe: finished parts are skipped.
 // Usage: node android/setup-tools.ts
 
-import { createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import {
+  archName, binPath, buildTools, cmdlineLatest, extract, fail, jdkHome, osName, platformTools, run, runStatus, sdkRoot, tools,
+} from './toolchain.ts';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const tools = join(here, '..', 'tools');
 const dl = join(tools, 'download');
 mkdirSync(dl, { recursive: true });
 
-function fail(message: string): never {
-  console.error(message);
-  process.exit(1);
-}
-
-// Windows ships tar.exe, which unpacks zip files. Expand-Archive trips over long paths here.
-function unzip(zip: string, into: string): void {
-  rmSync(into, { recursive: true, force: true });
-  mkdirSync(into, { recursive: true });
-  const result = spawnSync('tar', ['-xf', zip, '-C', into, '--strip-components=1'], { stdio: 'inherit' });
-  if (result.status !== 0) fail(`unpacking ${zip} failed`);
-}
-
-async function getZip(url: string, name: string): Promise<string> {
-  const zip = join(dl, name);
-  if (!existsSync(zip)) {
+async function getArchive(url: string, name: string): Promise<string> {
+  const archive = join(dl, name);
+  if (!existsSync(archive)) {
     console.log(`downloading ${name}`);
     const response = await fetch(url);
     if (!response.ok || !response.body) throw new Error(`download failed (${response.status}): ${url}`);
-    await pipeline(Readable.fromWeb(response.body as any), createWriteStream(zip));
+    await pipeline(Readable.fromWeb(response.body as any), createWriteStream(archive));
   }
-  return zip;
+  return archive;
 }
 
 async function main(): Promise<void> {
   // ---- JDK ----
+  // Windows gets a zip; macOS and Linux get a tar.gz. The mac build is under Contents/Home (see jdkHome).
   const jdk = join(tools, 'jdk');
-  if (!existsSync(join(jdk, 'bin', 'javac.exe'))) {
-    const zip = await getZip('https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse', 'jdk21.zip');
-    unzip(zip, jdk);
+  if (!existsSync(join(jdkHome(), 'bin', osName === 'windows' ? 'javac.exe' : 'javac'))) {
+    const ext = osName === 'windows' ? 'zip' : 'tar.gz';
+    const jdkArch = osName === 'mac' && archName === 'aarch64' ? 'aarch64' : 'x64';
+    const url = `https://api.adoptium.net/v3/binary/latest/21/ga/${osName}/${jdkArch}/jdk/hotspot/normal/eclipse`;
+    const archive = await getArchive(url, `jdk21.${ext}`);
+    rmSync(jdk, { recursive: true, force: true });
+    await extract(archive, jdk, true);
   }
   console.log('jdk ok');
 
   // ---- Android command-line tools ----
-  const sdk = join(tools, 'android-sdk');
-  const latest = join(sdk, 'cmdline-tools', 'latest');
-  if (!existsSync(join(latest, 'bin', 'sdkmanager.bat'))) {
-    let zip: string | null = null;
+  // Google names the packages win, mac and linux. Try the newest build first, then the older one.
+  const platformName = osName === 'windows' ? 'win' : osName === 'mac' ? 'mac' : 'linux';
+  const sdkmanagerName = binPath(join(cmdlineLatest, 'bin'), 'sdkmanager');
+  if (!existsSync(sdkmanagerName)) {
+    let archive: string | null = null;
     for (const v of ['13114758', '11076708']) {
       try {
-        zip = await getZip(`https://dl.google.com/android/repository/commandlinetools-win-${v}_latest.zip`, `cmdline-tools-${v}.zip`);
+        archive = await getArchive(`https://dl.google.com/android/repository/commandlinetools-${platformName}-${v}_latest.zip`, `cmdline-tools-${platformName}-${v}.zip`);
         break;
       } catch {
         console.log(`cmdline-tools ${v} not available`);
       }
     }
-    if (!zip) fail('no command-line tools package could be downloaded');
-    unzip(zip, latest);
+    if (!archive) fail('no command-line tools package could be downloaded');
+    rmSync(cmdlineLatest, { recursive: true, force: true });
+    await extract(archive, cmdlineLatest, true);
   }
   console.log('cmdline-tools ok');
 
+  // ---- platform-tools (adb, used to install the APK on the tablet) ----
+  if (!existsSync(binPath(platformTools, 'adb'))) {
+    const archive = await getArchive(`https://dl.google.com/android/repository/platform-tools-latest-${platformName === 'win' ? 'windows' : platformName === 'mac' ? 'darwin' : 'linux'}.zip`, `platform-tools-${platformName}.zip`);
+    rmSync(platformTools, { recursive: true, force: true });
+    await extract(archive, platformTools, true);
+  }
+  console.log('platform-tools ok');
+
   // ---- SDK packages (the user accepts the Android SDK License Agreement) ----
-  const env = {
-    ...process.env,
-    JAVA_HOME: jdk,
-    ANDROID_USER_HOME: join(tools, 'android-user'),
-    ANDROID_HOME: sdk,
-  };
-  const sm = join(latest, 'bin', 'sdkmanager.bat');
-  const needsAapt2 = !existsSync(join(sdk, 'build-tools', '35.0.0', 'aapt2.exe'));
-  const needsJar = !existsSync(join(sdk, 'platforms', 'android-35', 'android.jar'));
+  const sm = binPath(join(cmdlineLatest, 'bin'), 'sdkmanager');
+  const needsAapt2 = !existsSync(binPath(buildTools, 'aapt2'));
+  const needsJar = !existsSync(join(sdkRoot, 'platforms', 'android-35', 'android.jar'));
   if (needsAapt2 || needsJar) {
-    // sdkmanager ignores piped input in some hosts; feed the answers from a file instead.
-    const yes = join(dl, 'yes.txt');
-    writeFileSync(yes, 'y\r\n'.repeat(30));
-    const licences = spawnSync('cmd', ['/c', sm, `--sdk_root=${sdk}`, '--licenses'], {
-      env,
-      input: readFileSync(yes),
-      encoding: 'utf8',
-    });
-    writeFileSync(join(dl, 'licenses-out.txt'), (licences.stdout ?? '') + (licences.stderr ?? ''));
-    const install = spawnSync('cmd', ['/c', sm, `--sdk_root=${sdk}`, 'platforms;android-35', 'build-tools;35.0.0'], {
-      env,
-      stdio: 'inherit',
-    });
-    if (install.status !== 0) fail('sdkmanager failed to install the SDK packages');
+    // Feed "yes" to the license prompts on stdin. The licence step may exit non-zero when nothing is new,
+    // so its status is not checked; the install below is what must succeed.
+    const answers = 'y\n'.repeat(30);
+    const licences = runStatus(sm, [`--sdk_root=${sdkRoot}`, '--licenses'], { input: answers, quiet: true });
+    writeFileSync(join(dl, 'licenses-status.txt'), `sdkmanager --licenses exit ${licences}\n`);
+    run(sm, [`--sdk_root=${sdkRoot}`, 'platforms;android-35', 'build-tools;35.0.0'], 'sdkmanager install');
   }
   console.log('sdk ok');
   console.log(readdirSync(tools).join('\n'));

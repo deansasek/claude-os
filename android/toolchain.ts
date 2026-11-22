@@ -1,0 +1,170 @@
+// Shared helpers for the Android build scripts. Works on Windows, macOS and Linux.
+// The tools go into tools/ (see setup-tools.ts). Nothing is installed system-wide.
+
+import { spawnSync } from 'node:child_process';
+import { chmodSync, createWriteStream, existsSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
+import { dirname, join, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import yauzl from 'yauzl';
+
+export const here = dirname(fileURLToPath(import.meta.url));
+export const tools = join(here, '..', 'tools');
+
+export const isWindows = process.platform === 'win32';
+export const osName: 'windows' | 'mac' | 'linux' =
+  isWindows ? 'windows' : process.platform === 'darwin' ? 'mac' : 'linux';
+export const archName: 'x64' | 'aarch64' = process.arch === 'arm64' ? 'aarch64' : 'x64';
+
+export function fail(message: string): never {
+  console.error(message);
+  process.exit(1);
+}
+
+// ---- tool locations ----
+
+/**
+ * Finds a tool in a folder. Windows tools end in .exe, .bat or .cmd; macOS and Linux tools have no
+ * extension. Returns the first match, or the first candidate name when none exists yet.
+ */
+export function binPath(dir: string, name: string): string {
+  const candidates = isWindows ? [`${name}.exe`, `${name}.bat`, `${name}.cmd`, name] : [name];
+  for (const c of candidates) {
+    const p = join(dir, c);
+    if (existsSync(p)) return p;
+  }
+  return join(dir, candidates[0]);
+}
+
+export const sdkRoot = join(tools, 'android-sdk');
+export const buildTools = join(sdkRoot, 'build-tools', '35.0.0');
+export const androidJar = join(sdkRoot, 'platforms', 'android-35', 'android.jar');
+export const platformTools = join(tools, 'platform-tools');
+export const cmdlineLatest = join(sdkRoot, 'cmdline-tools', 'latest');
+
+/** The JDK home. macOS archives keep the home under Contents/Home. */
+export function jdkHome(): string {
+  const base = join(tools, 'jdk');
+  const mac = join(base, 'Contents', 'Home');
+  return existsSync(join(mac, 'bin')) ? mac : base;
+}
+
+export function jdkTool(name: string): string {
+  return binPath(join(jdkHome(), 'bin'), name);
+}
+
+export function toolEnv(): NodeJS.ProcessEnv {
+  return {
+    ...process.env,
+    JAVA_HOME: jdkHome(),
+    ANDROID_HOME: sdkRoot,
+    ANDROID_USER_HOME: join(tools, 'android-user'),
+  };
+}
+
+// ---- running tools ----
+
+/** Runs a .bat or .cmd file through cmd.exe. Its path can contain spaces, so it is one verbatim line. */
+function runThroughCmd(file: string, argv: string[], opts: RunOptions) {
+  const line = [file, ...argv].map((a) => (/[\s"]/.test(a) ? `"${a}"` : a)).join(' ');
+  return spawnSync('cmd.exe', ['/d', '/s', '/c', `"${line}"`], {
+    env: toolEnv(),
+    stdio: opts.quiet ? 'pipe' : 'inherit',
+    windowsVerbatimArguments: true,
+    input: opts.input,
+    encoding: opts.input !== undefined ? 'utf8' : undefined,
+  });
+}
+
+export interface RunOptions {
+  quiet?: boolean;
+  input?: string | Buffer;
+}
+
+/** Runs a tool and returns its exit code. Batch files go through cmd.exe on Windows. */
+export function runStatus(exe: string, argv: string[], opts: RunOptions = {}): number | null {
+  const batch = isWindows && /\.(bat|cmd)$/i.test(exe);
+  const result = batch
+    ? runThroughCmd(exe, argv, opts)
+    : spawnSync(exe, argv, {
+      env: toolEnv(),
+      stdio: opts.quiet ? 'pipe' : 'inherit',
+      input: opts.input,
+      encoding: opts.input !== undefined ? 'utf8' : undefined,
+    });
+  return result.status;
+}
+
+/** Runs a tool. Fails the build on a non-zero exit. */
+export function run(exe: string, argv: string[], what: string, opts: RunOptions = {}): void {
+  const status = runStatus(exe, argv, opts);
+  if (status !== 0) fail(`${what} failed (exit ${status})`);
+}
+
+// ---- unpacking ----
+
+/**
+ * Unpacks a .zip, .tar.gz or .tgz. When stripTop is true, the archive's single top folder is removed,
+ * as the Adoptium and Android archives have one. Zip files use a Node library, so no system zip tool is needed.
+ */
+export function extract(archive: string, dest: string, stripTop: boolean): Promise<void> {
+  mkdirSync(dest, { recursive: true });
+  if (/\.(tar\.gz|tgz)$/i.test(archive)) {
+    // tar is built into macOS, Linux and Windows 10+.
+    const args = ['-xzf', archive, '-C', dest];
+    if (stripTop) args.push('--strip-components=1');
+    const result = spawnSync('tar', args, { stdio: 'inherit' });
+    if (result.status !== 0) return Promise.reject(new Error(`unpacking ${archive} failed`));
+    return Promise.resolve();
+  }
+  const root = resolve(dest);
+  return new Promise((resolveP, reject) => {
+    yauzl.open(archive, { lazyEntries: true }, (err, zip) => {
+      if (err || !zip) return reject(err ?? new Error(`cannot open ${archive}`));
+      zip.on('error', reject);
+      zip.on('end', resolveP);
+      zip.on('entry', (entry: yauzl.Entry) => {
+        const parts = entry.fileName.split('/').filter(Boolean);
+        const rel = stripTop ? parts.slice(1) : parts;
+        if (rel.length === 0) { zip.readEntry(); return; }
+        const target = resolve(root, ...rel);
+        if (target !== root && !target.startsWith(root + sep)) return reject(new Error(`unsafe path in ${archive}: ${entry.fileName}`));
+
+        if (entry.fileName.endsWith('/')) {
+          mkdirSync(target, { recursive: true });
+          zip.readEntry();
+          return;
+        }
+        mkdirSync(dirname(target), { recursive: true });
+        const attrs = entry.externalFileAttributes;
+        const mode = (attrs >>> 16) & 0o7777;          // unix permissions, when the archive stores them
+        const isLink = ((attrs >>> 16) & 0o170000) === 0o120000;
+
+        zip.openReadStream(entry, (openErr, stream) => {
+          if (openErr || !stream) return reject(openErr ?? new Error(`cannot read ${entry.fileName}`));
+          if (isLink) {
+            // a symbolic link stores its target as the file body
+            const chunks: Buffer[] = [];
+            stream.on('data', (c: Buffer) => chunks.push(c));
+            stream.on('end', () => {
+              rmSync(target, { force: true });
+              symlinkSync(Buffer.concat(chunks).toString('utf8'), target);
+              zip.readEntry();
+            });
+            stream.on('error', reject);
+            return;
+          }
+          rmSync(target, { force: true });
+          const out = createWriteStream(target);
+          stream.on('error', reject);
+          out.on('error', reject);
+          out.on('finish', () => {
+            if (mode) chmodSync(target, mode);
+            zip.readEntry();
+          });
+          stream.pipe(out);
+        });
+      });
+      zip.readEntry();
+    });
+  });
+}

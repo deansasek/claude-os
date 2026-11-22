@@ -15,7 +15,9 @@
   "type": "module",
   "devDependencies": {
     "@types/node": "^26.6.6",
-    "typescript": "^7.0.2"
+    "@types/yauzl": "^3.4.0",
+    "typescript": "^7.0.2",
+    "yauzl": "^3.4.0"
   },
   "private": "true",
   "dependencies": {

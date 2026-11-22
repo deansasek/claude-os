@@ -36,7 +36,9 @@ function parseArgs(argv: string[]): { command: Command; lines: number } {
 
 function readApiFile(): { url: string; tokenPath: string } {
   const appData = process.env.APPDATA;
-  if (!appData) fail('APPDATA is not set. Run this on Windows.');
+  if (process.platform !== 'win32' || !appData) {
+    fail('hubctl controls the Windows tray host, so it runs on Windows only. On macOS or Linux, start the hub with npm start.');
+  }
   const apiFile = join(appData, 'ClaudeHubHost', 'api.json');
   if (!existsSync(apiFile)) fail(`No api.json at ${apiFile}. Is ClaudeHubHost running?`);
   const api = JSON.parse(readFileSync(apiFile, 'utf8')) as { url?: string; tokenPath?: string };
