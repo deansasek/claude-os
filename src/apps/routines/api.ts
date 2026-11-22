@@ -23,9 +23,10 @@ export type Step =
   | { kind: 'calendar' }                         // read the calendar's next events today
   | { kind: 'scene'; entity_id: string }         // activate a Home Assistant scene on the dashboard or the Home screen
   | { kind: 'timer'; minutes: number }           // start the Clock's timer
-  | { kind: 'pause'; seconds: number };          // wait 1 to 10 seconds
+  | { kind: 'pause'; seconds: number }           // wait 1 to 10 seconds
+  | { kind: 'lists'; list: 'shopping' | 'todo' }; // say the open items of Shopping or To-do
 export type StepKind = Step['kind'];
-export const STEP_KINDS: StepKind[] = ['weather', 'calendar', 'say', 'scene', 'timer', 'pause'];
+export const STEP_KINDS: StepKind[] = ['weather', 'calendar', 'say', 'scene', 'timer', 'pause', 'lists'];
 
 export interface Routine {
   id: string;
@@ -85,6 +86,11 @@ export function cleanStep(raw: unknown): Step | { error: string } {
       const s = r.seconds;
       if (typeof s !== 'number' || !Number.isInteger(s) || s < 1 || s > MAX_PAUSE_S) return { error: `A pause can be from 1 to ${MAX_PAUSE_S} seconds.` };
       return { kind: 'pause', seconds: s };
+    }
+    case 'lists': {
+      const l = r.list;
+      if (l !== 'shopping' && l !== 'todo') return { error: 'A lists step needs Shopping or To-do.' };
+      return { kind: 'lists', list: l };
     }
     default: return { error: 'That isn’t a step a routine can do.' };
   }
@@ -167,5 +173,6 @@ export function stepLabel(s: Step, sceneName?: string): string {
     case 'scene': return `Set the scene ${sceneName || s.entity_id}`;
     case 'timer': return `Start a ${s.minutes}-minute timer`;
     case 'pause': return `Pause ${s.seconds} second${s.seconds === 1 ? '' : 's'}`;
+    case 'lists': return `Read the ${s.list === 'todo' ? 'to-do' : 'shopping'} list`;
   }
 }

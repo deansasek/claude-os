@@ -92,6 +92,17 @@ async function doStep(s: Step, deadline: number): Promise<string> {
       return `Timer set for ${s.minutes} minute${s.minutes === 1 ? '' : 's'}.`;
     }
     case 'pause': await sleep(Math.min(s.seconds * 1000, deadline - Date.now())); return '';
+    case 'lists': {
+      // the open items of one list, read aloud (the same lists the Lists app and voice use)
+      type Lists = { lists: { id: string; name: string; items: { text: string; done: boolean }[] }[] };
+      const r = await until(getJson<Lists>('/api/lists/lists'), deadline, null);
+      if (!r) return 'The lists didn’t answer in time.';
+      const l = r.lists.find(x => x.id === s.list);
+      if (!l) return 'That list isn’t there.';
+      const open = l.items.filter(i => !i.done).map(i => i.text);
+      if (!open.length) return `Nothing left on ${l.name}.`;
+      return `${l.name}: ${open.slice(0, 12).join(', ')}${open.length > 12 ? `, and ${open.length - 12} more` : ''}.`;
+    }
   }
 }
 
