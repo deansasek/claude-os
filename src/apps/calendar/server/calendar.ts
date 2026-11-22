@@ -7,7 +7,7 @@
 // last good copy (up to 12 hours old) is shown, marked stale.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB } from '../../../core/server/paths.ts';
+import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts';
 import { occurrences, parseIcs, type RawEvent } from './ics.ts';
 
@@ -33,7 +33,7 @@ let cfg = load();
 function save(): boolean {
   try {
     if (!cfg.address) { fs.rmSync(FILE, { force: true }); return true; }
-    fs.writeFileSync(FILE, JSON.stringify(cfg, null, 2), { encoding: 'utf8', mode: 0o600 });
+    writeJsonFile(FILE, cfg, { indent: 2, mode: 0o600 });
     return true;
   } catch (e) {
     console.log('calendar: could not save the settings:', (e as NodeJS.ErrnoException).code ?? 'error');

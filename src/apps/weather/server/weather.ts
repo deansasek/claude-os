@@ -2,7 +2,7 @@
 // which the Hub's city picker writes through POST /api/location.
 import fs from 'node:fs';
 import type { LocationUpdate, Place, Units, Weather, WeatherOk } from '../api.ts';
-import { CONFIG_FILE, readJson } from '../../../core/server/paths.ts';
+import { CONFIG_FILE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 
 interface Config { lat?: number; lon?: number; place?: string; city?: string; units?: Units }
 
@@ -98,7 +98,7 @@ export async function saveLocation(body: LocationUpdate): Promise<Weather> {
     delete cfg.city;
   }
   if (body.units === 'fahrenheit' || body.units === 'celsius') cfg.units = body.units;
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2));
+  writeJsonFile(CONFIG_FILE, cfg, { indent: 2 });
   wxCache = null;
   return weather();
 }

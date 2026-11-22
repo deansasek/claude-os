@@ -16,7 +16,7 @@
 //     real scene may include locks or covers); Claude's calls also go through the approval card.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB } from '../../../core/server/paths.ts';
+import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import {
   ENTITY_ID, isControlDomain, isDeniedDomain, isOn, isReadOnlyDomain, isSceneDomain, isShownDomain, isVoiceDomain, type ControlDomain, type HaConfigUpdate,
   type HaDashboard, type HaDevice, type HaDevices, type HaEntities, type HaEntity, type HaHomeScenesResult, type HaLayoutResult, type HaResult,
@@ -52,7 +52,7 @@ function load(): Config {
 let cfg = load();
 
 function save(): void {
-  try { fs.writeFileSync(FILE, JSON.stringify(cfg, null, 2), { encoding: 'utf8', mode: 0o600 }); }
+  try { writeJsonFile(FILE, cfg, { indent: 2, mode: 0o600 }); }
   catch (e) { console.log('home-assistant: could not save the config:', (e as NodeJS.ErrnoException).code ?? 'error'); }
 }
 

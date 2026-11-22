@@ -2,7 +2,7 @@
 // Kept in claude-state.json (next to hub-sessions.json) and written whole whenever it changes.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, readJson } from '../../../core/server/paths.ts';
+import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 
 const FILE = path.join(HUB, 'claude-state.json');
 
@@ -21,7 +21,7 @@ function load(): State {
 }
 
 let state: State = load();
-const save = (): void => fs.writeFileSync(FILE, JSON.stringify(state, null, 2));
+const save = (): void => writeJsonFile(FILE, state, { indent: 2 });
 
 export const archivedIds = (): Set<string> => new Set(state.archived);
 
