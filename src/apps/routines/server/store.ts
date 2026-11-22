@@ -16,7 +16,8 @@ import {
   MAX_ROUTINES, ROUTINE_ID, cleanRoutine, findRoutine, phraseKey, type Routine, type RoutinesResult, type Step,
 } from '../api.ts';
 
-export const FILE = path.join(HUB, '.routines.json');
+// CLAUDEOS_ROUTINES_FILE is for the tests only: a scratch file instead of the family's routines.
+export const FILE = process.env.CLAUDEOS_ROUTINES_FILE || path.join(HUB, '.routines.json');
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
