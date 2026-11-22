@@ -72,7 +72,7 @@ node host/hubctl.ts health
 
 Settings → Security → "PIN to unlock" sets a 4 to 6 digit PIN that the tablet asks for when it wakes from the ambient screen. The PIN is kept on this PC in `claudeos-pin.json` as a salted hash, never as the PIN itself. The file is read on every check, so no restart is needed to clear it. Five wrong tries give a 30-second wait.
 
-This is separate from the older Claude app PIN in `.hub-pin` (read by `src\apps\claude\server\guard.ts`), which only guards replies and approvals in the Claude app.
+The same ClaudeOS PIN also guards replies and approvals in the Claude app. Until it is set, the older `.hub-pin` file still does (read by `src\apps\claude\server\guard.ts`).
 
 ### If you forget the ClaudeOS PIN
 
