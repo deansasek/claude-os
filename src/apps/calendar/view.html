@@ -4,22 +4,22 @@
   </div>
 </header>
 
+<!-- move through the calendar, pick the view, and see what it covers -->
+<div class="cal-bar">
+  <div class="cal-nav">
+    <button class="cal-ic hit" id="calPrev" aria-label="Previous">‹</button>
+    <button class="cal-ic hit" id="calNext" aria-label="Next">›</button>
+    <button class="cal-hbtn" id="calToday">Today</button>
+  </div>
+  <h2 class="cal-title" id="calTitle"></h2>
+  <div class="cal-views" role="tablist" aria-label="View">
+    <button class="cal-seg hit" id="calV-day" role="tab">Day</button>
+    <button class="cal-seg hit" id="calV-week" role="tab">Week</button>
+    <button class="cal-seg hit" id="calV-month" role="tab">Month</button>
+    <button class="cal-seg hit" id="calV-year" role="tab">Year</button>
+  </div>
+</div>
+
 <p class="cal-note" id="calNote" hidden></p>
 
-<div class="cal-days" id="calDays">
-  <section class="cal-day">
-    <h2 class="cal-dh"><span>Today</span><small id="calTodayDate"></small></h2>
-    <ul class="cal-list" id="calToday"></ul>
-  </section>
-  <section class="cal-day">
-    <h2 class="cal-dh"><span>Tomorrow</span><small id="calTmrDate"></small></h2>
-    <ul class="cal-list" id="calTmr"></ul>
-  </section>
-</div>
-
-<!-- no calendar yet: say how to add one (the address is typed on ClaudeOS's own keyboard) -->
-<div class="cal-empty" id="calSetup" hidden>
-  <b>Add your calendar</b>
-  <span>Paste or type your calendar’s secret address in iCal format (Google: Settings › your calendar › Integrate calendar; Outlook: Shared calendars › Publish). ClaudeOS only reads it.</span>
-  <button class="cal-btn" id="calSetupGo">Add address</button>
-</div>
+<div class="cal-body" id="calBody"></div>
