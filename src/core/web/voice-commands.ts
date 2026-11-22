@@ -33,6 +33,7 @@ import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmWord } from './voice-alarm.ts';
+import { pickItem } from '../../apps/lists/web/voice-match.ts';
 import { setThemeMode } from './theme.ts';
 
 export interface ClockApi {
@@ -439,15 +440,22 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>): Promis
       const lists = await getJson<ListsResult>('/api/lists/lists');
       const l = lists?.lists?.find(x => x.id === c.list);
       if (!l) return { say: `I can’t reach ${name} right now.` };
-      const want = c.text.toLowerCase();
-      const open = l.items.filter(i => !i.done);
-      const exact = open.find(i => i.text.toLowerCase() === want);
-      const partial = open.filter(i => i.text.toLowerCase().includes(want));
-      const hit = exact ?? (partial.length === 1 ? partial[0] : undefined);
-      if (!hit) return { say: partial.length > 1 ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
+      const { hit, ambiguous } = pickItem(l.items, c.text, true);
+      if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
       const r = await postJson<ListsResult>('/api/lists/tick', { list: c.list, id: hit.id, done: true });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
       return { say: `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`, react: 'hop' };
+    }
+    if (c.op === 'remove') {
+      // same rule as tick off: one item by its words, never a guess between several (open or ticked)
+      const lists = await getJson<ListsResult>('/api/lists/lists');
+      const l = lists?.lists?.find(x => x.id === c.list);
+      if (!l) return { say: `I can’t reach ${name} right now.` };
+      const { hit, ambiguous } = pickItem(l.items, c.text, false);
+      if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
+      const r = await postJson<ListsResult>('/api/lists/remove', { list: c.list, id: hit.id });
+      if (!r?.ok) return { say: r?.error ?? `I couldn’t remove that from ${name}.` };
+      return { say: `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`, react: 'hop' };
     }
     const r = await getJson<ListsResult>('/api/lists/lists');
     const l = r?.lists?.find(x => x.id === c.list);
