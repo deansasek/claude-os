@@ -85,8 +85,14 @@ function resolveStatic(urlPath: string): string | null {
   return file.startsWith(PUBLIC) ? file : null;
 }
 
-/** Newest modification time of anything the page is built from; open pages reload when it changes. */
+/**
+ * Newest modification time of anything the page is built from; open pages reload when it changes.
+ * Every screen polls this, so the walk is reused for PAGE_VERSION_TTL_MS (a reload is at most that late).
+ */
+const PAGE_VERSION_TTL_MS = 3000;
+let versionMemo: { at: number; v: number } | null = null;
 function pageVersion(): number {
+  if (versionMemo && Date.now() - versionMemo.at < PAGE_VERSION_TTL_MS) return versionMemo.v;
   let v = 0;
   const walk = (dir: string) => {
     for (const f of fs.readdirSync(dir, { recursive: true }) as string[]) {
@@ -95,6 +101,7 @@ function pageVersion(): number {
     }
   };
   walk(PUBLIC); walk(SRC);
+  versionMemo = { at: Date.now(), v };
   return v;
 }
 
