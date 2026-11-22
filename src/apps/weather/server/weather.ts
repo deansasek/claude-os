@@ -8,6 +8,7 @@ interface Config { lat?: number; lon?: number; place?: string; city?: string; un
 
 const geoCache = new Map<string, any>();
 let wxCache: { key: string; at: number; data: WeatherOk } | null = null;
+let inflight: { key: string; promise: Promise<any> } | null = null;   // the forecast request now on its way
 
 export const readConfig = (): Config => readJson<Config>(CONFIG_FILE) || {};
 
@@ -54,7 +55,15 @@ export async function weather(override?: Config): Promise<Weather> {
   });
   let body: any;
   try {
-    body = await getJson('https://api.open-meteo.com/v1/forecast?' + q);
+    // screens that miss the cache together share one request for the same place and units
+    let pending = inflight && inflight.key === key ? inflight.promise : null;
+    if (!pending) {
+      pending = getJson('https://api.open-meteo.com/v1/forecast?' + q).finally(() => {
+        if (inflight?.promise === pending) inflight = null;
+      });
+      inflight = { key, promise: pending };
+    }
+    body = await pending;
   } catch (e) {
     // offline: keep serving the last forecast for this place for a few hours; the page sees its
     // old `updated` time and says so
