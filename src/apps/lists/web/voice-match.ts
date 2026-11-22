@@ -4,7 +4,7 @@
 // goes to Claude as before.
 
 export type VoiceList = 'shopping' | 'todo';
-export type ListCommand = { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList };
+export type ListCommand = { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string };
 
 const POLITE = /^(?:(?:can|could|would|will) you |please |hey |ok |okay |claude )+|(?: please| thanks| thank you)+$/g;
 const LIST = '(?:the |my |our )?(shopping|grocery|groceries|to ?do|to-do|todo) list';
@@ -20,6 +20,13 @@ export function matchList(raw: string): ListCommand | null {
     const text = m[1].replace(/^(?:a|an|some|more) (?=\S)/, '').trim();
     if (!text || text.length > 80 || /^(it|that|this|them)$/.test(text)) return null;
     return { op: 'add', list: which(m[2]), text: text.charAt(0).toUpperCase() + text.slice(1) };
+  }
+  // "tick off milk on the shopping list": the item is looked up by its words on the tablet, not guessed here
+  m = t.match(new RegExp(`^(?:tick off|cross off|check off|mark) (.+?) (?:from|on|in) ${LIST}$`));
+  if (m) {
+    const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
+    if (!text || /^(it|that|this|them)$/.test(text)) return null;
+    return { op: 'tick', list: which(m[2]), text: text.charAt(0).toUpperCase() + text.slice(1) };
   }
   m = t.match(new RegExp(`^(?:what(?:'s| is) on|read(?: me)?|what do we have on|what do i have on|what(?:'s| is) in) ${LIST}$`));
   if (m) return { op: 'read', list: which(m[1]) };
