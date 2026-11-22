@@ -5,6 +5,10 @@ ClaudeOS (formerly "Claude Home") is a full frontend running on an Android table
 # Repository link
 The GitHub repository for ClaudeOS exists at https://github.com/deansasek/claude-os.
 
+# Rule: branches and pull requests
+
+Every change goes through a branch and a pull request into `main`. Do not push commits directly to `main`, unless the repository owner explicitly asks for a direct push.
+
 # Rule: PR bodies and commits
 
 Commits must follow Conventional Commits (https://www.conventionalcommits.org/en/v1.0.0/).
