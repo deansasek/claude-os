@@ -80,5 +80,19 @@
 #app-calendar .cal-dd.has { color: var(--text); box-shadow: inset 0 -3px 0 var(--clay); }
 #app-calendar .cal-dd.today { background: var(--text); color: var(--bg); }
 
+/* Add event: a card over the view; Review then Yes writes it */
+#app-calendar .cal-add { position: absolute; inset: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent);
+  display: flex; align-items: center; justify-content: center; padding: 24px; }
+#app-calendar .cal-add-card { width: min(560px, 100%); background: var(--card); border-radius: 18px; box-shadow: 0 0 0 1px var(--line);
+  padding: 22px 22px 18px; display: flex; flex-direction: column; gap: 10px; }
+#app-calendar .cal-add-card h2 { margin: 0 0 4px; font: 400 26px/1.2 var(--serif); color: var(--text); }
+#app-calendar .cal-field { all: unset; box-sizing: border-box; cursor: pointer; min-height: 48px; padding: 10px 14px; border-radius: 12px;
+  background: var(--card-2); font: 400 16px var(--sans); color: var(--t2); display: flex; justify-content: space-between; gap: 12px; }
+#app-calendar .cal-field b { font-weight: 500; color: var(--text); text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#app-calendar .cal-add-msg { margin: 0; font: 400 15px/1.4 var(--sans); color: var(--t2); }
+#app-calendar .cal-add-note { margin: 0; font: 400 13px var(--sans); color: var(--t4); }
+#app-calendar .cal-add-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+#app-calendar .cal-btn-primary { background: var(--text); color: var(--bg); box-shadow: none; }
+
 /* the Settings-side address hint and the no-address lists */
 #app-calendar .cal-empty { padding: 24px 0; font: italic 400 18px var(--serif); color: var(--t3); }

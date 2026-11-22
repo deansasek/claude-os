@@ -1,5 +1,6 @@
 <header class="app-hd">   <!-- the shell draws the icon and "Calendar" (core/web/app-header.ts) -->
   <div class="app-hd-right">
+    <button class="cal-hbtn" id="calAddBtn">Add event</button>
     <button class="cal-hbtn" id="calRefresh">Refresh</button>
   </div>
 </header>
@@ -23,3 +24,30 @@
 <p class="cal-note" id="calNote" hidden></p>
 
 <div class="cal-body" id="calBody"></div>
+
+<!-- Add event: filled in here, checked, and written to the Google calendar only after Yes -->
+<div class="cal-add" id="calAdd" hidden>
+  <div class="cal-add-card" id="calAddForm">
+    <h2>Add an event</h2>
+    <button class="cal-field hit" id="calAddTitle">Name: <b id="calAddTitleV">Tap to type</b></button>
+    <button class="cal-field hit" id="calAddDate">Day: <b id="calAddDateV"></b></button>
+    <button class="cal-field hit" id="calAddAllDay">All day: <b id="calAddAllDayV">No</b></button>
+    <button class="cal-field hit" id="calAddStart">Starts: <b id="calAddStartV">09:00</b></button>
+    <button class="cal-field hit" id="calAddEnd">Ends: <b id="calAddEndV">09:30</b></button>
+    <button class="cal-field hit" id="calAddWhere">Where: <b id="calAddWhereV">Optional</b></button>
+    <p class="cal-add-msg" id="calAddMsg" hidden></p>
+    <div class="cal-add-row">
+      <button class="cal-btn" id="calAddCancel">Cancel</button>
+      <button class="cal-btn cal-btn-primary" id="calAddReview">Review</button>
+    </div>
+  </div>
+  <div class="cal-add-card" id="calAddConfirm" hidden>
+    <h2>Add to your calendar?</h2>
+    <p class="cal-add-msg" id="calAddSummary"></p>
+    <p class="cal-add-note">It is added to your Google calendar through the claude.ai connector.</p>
+    <div class="cal-add-row">
+      <button class="cal-btn" id="calAddNo">Back</button>
+      <button class="cal-btn cal-btn-primary" id="calAddYes">Yes, add it</button>
+    </div>
+  </div>
+</div>
