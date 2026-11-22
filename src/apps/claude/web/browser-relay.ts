@@ -39,7 +39,8 @@ async function loop(): Promise<void> {
     let r: NextReply;
     try { r = await call<NextReply>('browser/next', { active: getClock()?.active() ?? null }); }
     catch { await sleep(RETRY_MS); continue; }   // locked (the PIN is needed) or no connection: try later
-    if (!r.ok || !r.job) continue;               // nothing yet: poll again
+    if (!r.ok) { await sleep(RETRY_MS); continue; }   // the Hub refused (not the PIN): wait, do not spin
+    if (!r.job) continue;                        // nothing yet: poll again (the Hub held the request already)
     lastJobAt = Date.now();
     const answer = await run(r.job);
     lastJobAt = Date.now();
