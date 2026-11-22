@@ -4,7 +4,7 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { MAX_TEXT, findList, type FamilyList, type ListsResult } from '../api.ts';
-import { addItem, readLists, tickItem } from './store.ts';
+import { addItem, findItem, newList, readLists, removeItem, tickItem } from './store.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -52,6 +52,31 @@ export const listsServer = createSdkMcpServer({
         const r = tickItem(list, id ? { id } : { text: t }, done !== false);
         if (!r.ok) return text(r.error ?? 'That didn’t work.', true);
         return text(`Done. “${r.item?.text}” is ${r.item?.done ? 'ticked off' : 'back on the list'}.`);
+      }),
+    tool('lists_remove',
+      'Remove one item from a family list on the ClaudeOS tablet, for good. list: its name or id. Give the item’s id (from lists_read) '
+        + 'or its text. Ticked items can be removed too. Use lists_tick to just tick it off.',
+      { list: z.string().max(40), id: z.string().max(40).optional(), text: z.string().max(400).optional() },
+      async ({ list, id, text: t }) => {
+        if (!id && !t) return text('Say which item: its id or its text.', true);
+        const r = readLists();
+        if (!r.ok) return text(r.error ?? 'Couldn’t read the lists.', true);
+        const l = findList(r.lists, list);
+        if (!l) return text(`There’s no list called “${list}”. The lists are: ${names(r)}.`, true);
+        const hit = findItem(l, id ? { id } : { text: t });
+        if (hit === 'many') return text('More than one item matches. Give its id from lists_read.', true);
+        if (!hit) return text(`That item isn’t on ${l.name}.`, true);
+        const out = removeItem(l.id, hit.id);
+        if (!out.ok) return text(out.error ?? 'That didn’t work.', true);
+        return text(`Removed “${hit.text}” from ${l.name}.`);
+      }),
+    tool('lists_new',
+      'Make a new family list on the ClaudeOS tablet, e.g. Garden jobs. name: its name, up to 40 characters. It starts empty.',
+      { name: z.string().max(40) },
+      async ({ name }) => {
+        const r = newList(name);
+        if (!r.ok) return text(r.error ?? 'That didn’t work.', true);
+        return text(`Made the list “${name.trim()}”. It is empty.`);
       }),
   ],
 });
