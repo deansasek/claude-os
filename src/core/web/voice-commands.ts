@@ -32,7 +32,7 @@ import type { ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
-import { alarmWord, timerWord } from './voice-alarm.ts';
+import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { pickItem } from '../../apps/lists/web/voice-match.ts';
 import { parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
@@ -56,6 +56,8 @@ export interface ClockApi {
   /** Timers and alarms switched on (a running or paused timer counts as one). */
   active(): number;
   alarmsOff(): number;
+  /** Switch off the alarm at one time (it stays in the list). Returns how many were on. */
+  switchOffAlarm(h: number, m: number): number;
   /** The ring now: 'alarm' or 'timer', null when nothing rings. */
   ringing(): 'alarm' | 'timer' | null;
   /** Silence and dismiss the ring. False when nothing rings. */
@@ -227,6 +229,14 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (word === 'stop-ring') { clock.stopRinging(); return { say: 'Stopped.', react: 'look' }; }
     if (word === 'snooze') return clock.snoozeRinging() ? { say: 'Okay. Nine more minutes.', react: 'hop' } : { say: 'Snooze is for alarms. Say stop for the timer.' };
     if (word === 'all-off') { const n = clock.alarmsOff(); return { say: n ? `Okay, ${n === 1 ? 'your alarm is' : `all ${n} alarms are`} off.` : 'You don’t have any alarms on.', react: 'look' }; }
+    // "turn off my 7 am alarm": that one alarm (it stays in the list); the time is read the same way as when setting one
+    const phrase = word === null ? alarmTimePhrase(t) : null;
+    const tod = phrase ? parseTime(phrase) : null;
+    if (tod) {
+      const { h, m } = resolveHour(tod, false);
+      const n = clock.switchOffAlarm(h, m);
+      return { say: n ? `Okay, your ${clockText(h, m)} alarm is off.` : `You don’t have an alarm at ${clockText(h, m)}.` };
+    }
     if (word === 'one-alarm') return { say: 'Nothing is ringing. To switch them all off, say turn off all my alarms.' };
   }
   // timer: pause, resume, add or take off minutes (core/web/voice-alarm.ts)
