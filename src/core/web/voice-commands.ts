@@ -28,7 +28,7 @@ import { getJson, postJson } from './dom.ts';
 import type { HaDashboard, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
 import { matchHome, matchScene, parseOnOff, parseScene, sayName, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
 import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
-import type { ListsResult } from '../../apps/lists/api.ts';
+import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
@@ -210,8 +210,10 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (/^(?:what(?:'s|s| is) on (?:for )?tomorrow|what(?:'s|s| is) on (?:my|the) calendar (?:for )?tomorrow|what do i have (?:on )?tomorrow)$/.test(t)) return calendarCommand('tomorrow');
 
   // lists: "add milk to the shopping list" (the words as said, not normalised: "two" stays "two")
-  const list = matchList(raw);
-  if (list) return listCommand(list);
+  // the family's own lists are heard by name too; the lists are read only when the words mention a list
+  const customs = /\blist\b/.test(t) ? await voiceCustomLists() : [];
+  const list = matchList(raw, customs);
+  if (list) return listCommand(list, customs.find(c => c.id === list.list)?.name);
 
   // timers: the first of these shapes whose duration parses wins
   for (const re of [/^(?:set|start|make|put on|give me)(?: me)?(?: a| an| the)? timer (?:for |of )?(.+)$/, /^timer (?:for )?(.+)$/,
@@ -378,8 +380,16 @@ export async function calendarCommand(day: 'today' | 'tomorrow' = 'today'): Prom
 
 // ---------- Lists: "add milk to the shopping list", "what's on the to-do list" ----------
 /** The same routes as the Lists app's own taps (POST /api/lists/add, GET /api/lists/lists); the PC checks it all. */
-async function listCommand(c: NonNullable<ReturnType<typeof matchList>>): Promise<CommandResult> {
-  const name = c.list === 'shopping' ? 'the shopping list' : 'the to-do list';
+/** The family's own tick-off lists (id and name), for voice. Shopping, To-do and Notes are not among them. */
+async function voiceCustomLists(): Promise<{ id: string; name: string }[]> {
+  try {
+    const r = await getJson<ListsResult>('/api/lists/lists');
+    return (r?.lists ?? []).filter(l => !isBuiltIn(l.id)).map(l => ({ id: l.id, name: l.name }));
+  } catch { return []; }
+}
+
+async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customName?: string): Promise<CommandResult> {
+  const name = c.list === 'shopping' ? 'the shopping list' : c.list === 'todo' ? 'the to-do list' : `the ${(customName ?? 'list').toLowerCase()} list`;
   try {
     if (c.op === 'add') {
       const r = await postJson<ListsResult>('/api/lists/add', { list: c.list, text: c.text });
