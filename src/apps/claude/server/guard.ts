@@ -57,11 +57,17 @@ export function checkToken(token: unknown): boolean {
   return true;
 }
 
+/** The action log is kept to one backup: past LOG_MAX_BYTES it moves to <file>.1 and a new log starts. */
+const LOG_MAX_BYTES = 5 * 1024 * 1024;
+
 export function logAction(from: string, action: string, details: Record<string, unknown>): void {
   const line = JSON.stringify({ at: new Date().toISOString(), from, action, ...details });
   console.log(`claude: ${action} from ${from}${details.session ? ` (session ${String(details.session).slice(0, 8)})` : ''}`);
   try {
     fs.mkdirSync(path.dirname(LOG_FILE), { recursive: true });
+    try {
+      if (fs.statSync(LOG_FILE).size > LOG_MAX_BYTES) fs.renameSync(LOG_FILE, LOG_FILE + '.1');
+    } catch { /* no log yet */ }
     fs.appendFileSync(LOG_FILE, line + '\n');
   } catch (e) { console.log('could not write action log:', e); }
 }
