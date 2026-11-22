@@ -296,12 +296,31 @@ function paintClock(): void {
 const CAL_EVERY_MS = 2 * 60e3;
 let cal: CalEvents | null = null, calAt = 0, calFailed = false;
 
+// With no calendar address, Home reads the claude.ai connector's cached copy only (cached=1): Home never starts a Claude read.
+// Nothing cached yet means the tile says to open the Calendar app.
+let calMiss = false;
 async function loadCalendar(force = false): Promise<void> {
   if (!force && Date.now() - calAt < CAL_EVERY_MS) return;
   calAt = Date.now();
-  try { cal = await getJson<CalEvents>('/api/calendar/events'); calFailed = false; }
+  try {
+    const r = await getJson<CalEvents>('/api/calendar/events');
+    if (r.status === 'not_set') { const c = await cachedConnectorCal(); cal = c.cal; calMiss = c.miss; }
+    else { cal = r; calMiss = false; }
+    calFailed = false;
+  }
   catch { calFailed = true; }
   paintCalendar();
+}
+
+async function cachedConnectorCal(): Promise<{ cal: CalEvents | null; miss: boolean }> {
+  type CE = { status?: string; events?: { title: string; start: number; end: number; allDay: boolean }[] };
+  const [t, m] = await Promise.all([getJson<CE>('/api/calendar/connector?day=today&cached=1'), getJson<CE>('/api/calendar/connector?day=tomorrow&cached=1')]);
+  if (t.status === 'miss' || m.status === 'miss') return { cal: null, miss: true };
+  if (t.status !== 'ok' || m.status !== 'ok' || !t.events || !m.events) return { cal: null, miss: false };
+  const toEv = (day: 'today' | 'tomorrow') => (e: { title: string; start: number; end: number; allDay: boolean }): CalEvent =>
+    ({ title: e.title, start: new Date(e.start).toISOString(), end: new Date(e.end).toISOString(), allDay: e.allDay, day });
+  const events = [...t.events.map(toEv('today')), ...m.events.map(toEv('tomorrow'))];
+  return { cal: { status: 'ok', events, today: '' }, miss: false };
 }
 
 // The Shopping tile: how many items are still to get, and the first two of them.
@@ -329,6 +348,7 @@ function paintCalendar(): void {
   const val = $('hmCalVal'), sub = $('hmCalSub'), c = cal;
   $('hmCalKick').textContent = 'Today';
   if (!c || c.status !== 'ok') {
+    if (calMiss) { val.className = 'quiet'; val.textContent = 'Not read yet'; sub.textContent = 'Open Calendar to read it'; return; }
     val.className = 'quiet';
     val.textContent = c?.status === 'not_set' ? 'No calendar' : calFailed || c?.status === 'error' ? 'Can’t read it' : '–';
     sub.textContent = c?.status === 'not_set' ? 'Tap to add yours' : calFailed ? 'Can’t reach the PC' : c?.status === 'error' ? 'Tap to see why' : 'Reading the calendar…';
