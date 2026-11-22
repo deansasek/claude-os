@@ -113,7 +113,18 @@ export function startServer(apps: ServerApp[]): void {
   const taps: { at: string; from: string; target: string }[] = [];
   const routes = new Map<string, Route>();
   const add = (id: string, r: Route) => routes.set(`${r.method} /api/${id}/${r.path}`, r);
+  const startedAt = Date.now();
+  const pageErrors: { at: string; kind: string; msg: string }[] = [];   // the last few, for the Settings About screen
   add('core', { method: 'GET', path: 'version', handle: () => ({ version: pageVersion() }) });
+  // read-only: how long the Hub has run, its Node version, the apps it loaded, and the last page errors (no paths, no tokens)
+  add('core', {
+    method: 'GET', path: 'status', handle: () => ({
+      uptimeSeconds: Math.round((Date.now() - startedAt) / 1000),
+      node: process.version,
+      apps: apps.map(a => a.id),
+      pageErrors: pageErrors.slice().reverse(),
+    }),
+  });
   add('core', { method: 'GET', path: 'taps', handle: () => taps });
   add('core', {
     method: 'POST', path: 'tap', handle: ({ body, from }) => {
@@ -127,6 +138,8 @@ export function startServer(apps: ServerApp[]): void {
   add('core', {   // errors reported by a screen's browser (see the plain script in index.html)
     method: 'POST', path: 'log', handle: ({ body, from }) => {
       console.log(`page ${String(body.kind).slice(0, 20)} from ${from}: ${String(body.msg).slice(0, 500)}\n  browser: ${String(body.ua).slice(0, 200)}`);
+      pageErrors.push({ at: new Date().toISOString(), kind: String(body.kind).slice(0, 20), msg: String(body.msg).slice(0, 300) });
+      pageErrors.splice(0, Math.max(0, pageErrors.length - 20));
       return { ok: true };
     },
   });

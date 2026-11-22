@@ -1121,6 +1121,11 @@ function paintAbout(): void {
   $('stScreen').textContent = `${Math.round(screen.width * devicePixelRatio)} × ${Math.round(screen.height * devicePixelRatio)}`;
   $('stConn').textContent = !navigator.onLine ? 'Offline' : hubReachable() ? `Connected to ${location.host}` : 'Wi-Fi is on, but the PC can’t be reached';
   $('stServer').textContent = `Your PC · ${location.host}`;
+  // the Hub's own status: how long it has run (a page that can't reach it keeps the address line alone)
+  getJson<{ uptimeSeconds: number }>('/api/core/status').then(s => {
+    const h = Math.floor(s.uptimeSeconds / 3600), m = Math.floor((s.uptimeSeconds % 3600) / 60);
+    $('stServer').textContent = `Your PC · ${location.host} · running ${h ? `${h} h ${m} min` : `${m} min`}`;
+  }).catch(() => { /* not reachable now: keep the address line */ });
   try {
     const w = device.wifi();
     $('stNet').textContent = w.ssid || (w.enabled ? 'Not connected' : 'Wi-Fi off');
