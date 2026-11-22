@@ -60,16 +60,20 @@ export const JSON_BODY_MAX = 8 * 1024 * 1024;
  */
 export function readBody(req: http.IncomingMessage, max = JSON_BODY_MAX): Promise<any | null> {
   return new Promise(resolve => {
-    let s = '';
+    // Collect the bytes and decode once: a multi-byte character can be split across two chunks, and decoding each
+    // chunk on its own would turn it into the replacement character. The limit counts bytes.
+    const parts: Buffer[] = [];
+    let size = 0;
     let big = false;
-    req.on('data', (c: Buffer | string) => {
+    req.on('data', (c: Buffer) => {
       if (big) return;
-      s += c;
-      if (s.length > max) { big = true; s = ''; }
+      size += c.length;
+      if (size > max) { big = true; parts.length = 0; return; }
+      parts.push(c);
     });
     req.on('end', () => {
       if (big) return resolve(null);
-      try { resolve(JSON.parse(s || '{}')); } catch { resolve({}); }
+      try { resolve(JSON.parse(Buffer.concat(parts).toString('utf8') || '{}')); } catch { resolve({}); }
     });
     req.on('error', () => resolve(big ? null : {}));
   });

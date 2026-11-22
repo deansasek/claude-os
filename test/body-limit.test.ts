@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { Buffer } from 'node:buffer';
 import { test } from 'node:test';
 import { JSON_BODY_MAX, readBody } from '../src/core/server/index.ts';
 
@@ -38,6 +39,34 @@ test('a body over the limit is refused with 413 (it does not hang)', async () =>
     const r = await post(base, huge);
     assert.equal(r.status, 413);
   });
+});
+
+test('a multi-byte character split across two network chunks is read whole', async () => {
+  // "é" is two bytes (C3 A9). Send the first byte, pause, then the rest, so the two chunks split the character.
+  const echo = http.createServer(async (req, res) => {
+    const body = await readBody(req, JSON_BODY_MAX);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ text: body?.text ?? null }));
+  });
+  await new Promise<void>(r => echo.listen(0, '127.0.0.1', r));
+  const port = (echo.address() as AddressInfo).port;
+  try {
+    const bytes = Buffer.from(JSON.stringify({ text: 'café ☕' }), 'utf8');
+    const split = bytes.indexOf(0xc3) + 1;   // between the two bytes of "é"
+    const got = await new Promise<string>((resolve, reject) => {
+      const req = http.request({ host: '127.0.0.1', port, method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': bytes.length } }, res => {
+        let out = '';
+        res.on('data', c => { out += c; });
+        res.on('end', () => resolve(out));
+      });
+      req.on('error', reject);
+      req.write(bytes.subarray(0, split));
+      setTimeout(() => req.end(bytes.subarray(split)), 30);
+    });
+    assert.equal(JSON.parse(got).text, 'café ☕');
+  } finally {
+    echo.close();
+  }
 });
 
 test('a body that is not JSON reads as an empty object', async () => {

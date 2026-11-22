@@ -31,6 +31,6 @@ The hub serves the tablet's Android app at `/apk/claude-hub.apk` to anyone on yo
 
 These hold tokens, the PIN hashes or your own data. They are in `.gitignore`; never share them:
 
-`config.json`, `claudeos-pin.json`, `.hub-pin`, `.ha-config.json`, `.calendar-config.json`, `profile.json`, `profile-photo.jpg`, `instructions.txt`, `hub-sessions.json`, `photos/`, `logs/`, and any keystore.
+`config.json`, `claudeos-pin.json`, `.hub-pin`, `.ha-config.json`, `.calendar-config.json`, `profile.json`, `profile-photo.jpg`, `instructions.txt`, `hub-sessions.json`, `meter-config.json` (your weather location), `.lists.json`, `.routines.json`, `.ha-layout.json`, `.launcher-layout.json`, `plugins-state.json`, `claude-state.json`, `photos/`, `logs/`, and any keystore.
 
 The hub never serves them: it serves only `public/` and the browser code under `src/`.
