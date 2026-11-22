@@ -60,4 +60,25 @@ export function parseDays(phrase: string): number[] | null {
   return null;
 }
 
+export function sayDuration(ms: number): string {
+  const s = Math.round(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
+  const part = (n: number, w: string) => (n ? `${n} ${w}${n === 1 ? '' : 's'}` : '');
+  if (!h && m === 1 && sec === 30) return 'a minute and a half';
+  return [part(h, 'hour'), part(m, 'minute'), part(sec, 'second')].filter(Boolean).join(' and ') || 'no time';
+}
 
+/** Turn a spoken time into 24-hour h:m: with no am/pm, a wake-up or a repeating alarm is in the morning,
+ *  otherwise it's the next time that comes round. The answer always says which ("6:30 AM"). */
+export function resolveHour(t: TimeOfDay, wakeUp: boolean): { h: number; m: number } {
+  if (t.meridiem === 'am') return { h: t.h % 12, m: t.m };
+  if (t.meridiem === 'pm') return { h: (t.h % 12) + 12, m: t.m };
+  if (t.h > 12 || t.h === 0) return { h: t.h, m: t.m };
+  if (wakeUp) return { h: t.h % 12, m: t.m };
+  const now = new Date(), mins = now.getHours() * 60 + now.getMinutes();
+  const am = (t.h % 12) * 60 + t.m, pm = am + 720;
+  const next = [am, pm].map(x => (x - mins + 1440) % 1440 || 1440);
+  return next[0] <= next[1] ? { h: t.h % 12, m: t.m } : { h: (t.h % 12) + 12, m: t.m };
+}
+
+export const daysText = (d: number[]) => d.length === 7 ? ' every day' : d.join() === '1,2,3,4,5' ? ' on weekdays' : d.join() === '0,6' ? ' at weekends'
+  : d.length ? ` on ${d.map(x => Object.keys(DAY_WORDS)[x].replace(/^./, c => c.toUpperCase()) + 's').join(' and ')}` : '';

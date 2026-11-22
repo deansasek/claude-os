@@ -34,7 +34,7 @@ import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmWord, timerWord } from './voice-alarm.ts';
 import { pickItem } from '../../apps/lists/web/voice-match.ts';
-import { parseDuration, parseTime, parseDays, DAY_WORDS, type TimeOfDay } from './voice-parse.ts';
+import { parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 
 export interface ClockApi {
@@ -106,31 +106,11 @@ function normalise(s: string): string {
 
 // ---------- durations ----------
 /** "10 minutes", "1 hour and 30 minutes", "a minute and a half", "half an hour", "90 seconds" → ms; null if not exactly that. */
-function sayDuration(ms: number): string {
-  const s = Math.round(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
-  const part = (n: number, w: string) => (n ? `${n} ${w}${n === 1 ? '' : 's'}` : '');
-  if (!h && m === 1 && sec === 30) return 'a minute and a half';
-  return [part(h, 'hour'), part(m, 'minute'), part(sec, 'second')].filter(Boolean).join(' and ') || 'no time';
-}
 
 // ---------- times of day ----------
 
-/** Turn a spoken time into 24-hour h:m: with no am/pm, a wake-up or a repeating alarm is in the morning,
- *  otherwise it's the next time that comes round. The answer always says which ("6:30 AM"). */
-function resolveHour(t: TimeOfDay, wakeUp: boolean): { h: number; m: number } {
-  if (t.meridiem === 'am') return { h: t.h % 12, m: t.m };
-  if (t.meridiem === 'pm') return { h: (t.h % 12) + 12, m: t.m };
-  if (t.h > 12 || t.h === 0) return { h: t.h, m: t.m };
-  if (wakeUp) return { h: t.h % 12, m: t.m };
-  const now = new Date(), mins = now.getHours() * 60 + now.getMinutes();
-  const am = (t.h % 12) * 60 + t.m, pm = am + 720;
-  const next = [am, pm].map(x => (x - mins + 1440) % 1440 || 1440);
-  return next[0] <= next[1] ? { h: t.h % 12, m: t.m } : { h: (t.h % 12) + 12, m: t.m };
-}
 
 const clockText = (h: number, m: number) => new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/^0/, '');
-const daysText = (d: number[]) => d.length === 7 ? ' every day' : d.join() === '1,2,3,4,5' ? ' on weekdays' : d.join() === '0,6' ? ' at weekends'
-  : d.length ? ` on ${d.map(x => Object.keys(DAY_WORDS)[x].replace(/^./, c => c.toUpperCase()) + 's').join(' and ')}` : '';
 
 // ---------- weather ----------
 interface Wx {
