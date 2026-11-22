@@ -7,6 +7,7 @@
 import type { ServerApp } from '../../../core/server/app.ts';
 import { manifest } from '../manifest.ts';
 import { events, saveConfig, status } from './calendar.ts';
+import { connectorEvents } from './connector.ts';
 
 const app: ServerApp = {
   id: manifest.id,
@@ -14,6 +15,8 @@ const app: ServerApp = {
     { method: 'GET', path: 'status', handle: () => status() },
     { method: 'POST', path: 'config', handle: ({ body }) => saveConfig((body as Record<string, unknown> | null)?.address) },
     { method: 'GET', path: 'events', handle: ({ query }) => events(query.get('refresh') === '1') },
+    // the claude.ai Google Calendar connector (connector.ts): one read per day, cached 15 minutes on the PC
+    { method: 'GET', path: 'connector', handle: ({ query }) => connectorEvents(query.get('day') === 'tomorrow' ? 'tomorrow' : 'today') },
   ],
 };
 export default app;
