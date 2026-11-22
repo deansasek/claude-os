@@ -116,7 +116,7 @@
 
 /* ---- bottom: the apps at a glance, then a few quick things ---- */
 #app-home .hm-bottom { height: calc(184px + 8px * var(--tall)); display: flex; flex-direction: column; gap: 16px; }   /* core's .bottom: --app-strip-b from the bottom */
-#app-home .hm-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+#app-home .hm-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
 #app-home .hm-tile { all: unset; box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; height: calc(100px + 4px * var(--tall)); cursor: pointer;
   padding: 0 18px; border-left: 1px solid var(--line); border-radius: 0; transition: background-color .2s, transform .12s; }
 #app-home .hm-tile:first-child { padding-left: 0; border-left: 0; }
