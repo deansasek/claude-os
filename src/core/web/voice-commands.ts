@@ -424,6 +424,11 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
       return { say: `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`, react: 'hop' };
     }
+    if (c.op === 'clear') {
+      const r = await postJson<ListsResult>('/api/lists/clear-done', { list: c.list });
+      if (!r?.ok) return { say: r?.error ?? `I couldn’t clear ${name}.` };
+      return { say: `Cleared the ticked items on ${name}.`, react: 'hop' };
+    }
     if (c.op === 'remove') {
       // same rule as tick off: one item by its words, never a guess between several (open or ticked)
       const lists = await getJson<ListsResult>('/api/lists/lists');
