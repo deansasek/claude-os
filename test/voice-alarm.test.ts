@@ -2,7 +2,7 @@
 // Pure matching (src/core/web/voice-alarm.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { alarmWord } from '../src/core/web/voice-alarm.ts';
+import { alarmWord, timerWord } from '../src/core/web/voice-alarm.ts';
 
 test('stop silences the ring while an alarm or timer sounds', () => {
   assert.equal(alarmWord('stop', true), 'stop-ring');
@@ -37,4 +37,15 @@ test('a singular alarm with nothing ringing is not an all-off', () => {
 test('unrelated text is not an alarm word', () => {
   assert.equal(alarmWord('what time is it', true), null);
   assert.equal(alarmWord('set an alarm for 7', false), null);
+});
+
+test('timer words: pause, resume, and minutes added or taken off', () => {
+  assert.deepEqual(timerWord('pause the timer'), { op: 'pause' });
+  assert.deepEqual(timerWord('resume my timer'), { op: 'resume' });
+  assert.deepEqual(timerWord('add five minutes to the timer'), { op: 'nudge', minutes: 5 });
+  assert.deepEqual(timerWord('add 2 minutes to my timer'), { op: 'nudge', minutes: 2 });
+  assert.deepEqual(timerWord('take two minutes off the timer'), { op: 'nudge', minutes: -2 });
+  assert.equal(timerWord('add banana minutes to the timer'), null);
+  assert.equal(timerWord('add 500 minutes to the timer'), null);
+  assert.equal(timerWord('pause'), null);
 });

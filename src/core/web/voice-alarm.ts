@@ -14,3 +14,19 @@ export function alarmWord(t: string, ringing: boolean): AlarmWord {
   if (/^(?:stop|turn off|cancel|disable|switch off|delete)(?: the| my)? alarm$/.test(t)) return 'one-alarm';
   return null;
 }
+
+export type TimerWord = { op: 'pause' } | { op: 'resume' } | { op: 'nudge'; minutes: number };
+const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, fifteen: 15, twenty: 20, thirty: 30 };
+
+/** Timer voice words: "pause the timer", "resume the timer", "add five minutes to the timer", "take 2 minutes off the timer". */
+export function timerWord(t: string): TimerWord | null {
+  if (/^(?:pause|hold|freeze)(?: the| my)? timer$/.test(t)) return { op: 'pause' };
+  if (/^(?:resume|continue|restart|unpause)(?: the| my)? timer$/.test(t)) return { op: 'resume' };
+  const add = t.match(/^(?:add|give me) (\w+) (?:minutes?|mins?) (?:to|on) (?:the|my) timer$/);
+  const take = t.match(/^(?:take|remove) (\w+) (?:minutes?|mins?) (?:off|from) (?:the|my) timer$/);
+  const m = add ?? take;
+  if (!m) return null;
+  const n = /^\d+$/.test(m[1]) ? +m[1] : (NUMBER_WORDS[m[1]] ?? 0);
+  if (n < 1 || n > 60) return null;
+  return { op: 'nudge', minutes: add ? n : -n };
+}
