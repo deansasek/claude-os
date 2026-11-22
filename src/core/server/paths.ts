@@ -43,3 +43,15 @@ export function readJson<T>(file: string): T | null {
     return null;
   }
 }
+
+/** Write JSON through a .tmp file, so a crash never leaves a half-written file. Throws on failure, after removing the .tmp. */
+export function writeJsonFile(file: string, data: unknown, opts: { indent: number; mode?: number }): void {
+  const tmp = `${file}.tmp`;
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(data, null, opts.indent), { encoding: 'utf8', mode: opts.mode });
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    try { fs.rmSync(tmp, { force: true }); } catch { /* nothing more to do */ }
+    throw e;
+  }
+}

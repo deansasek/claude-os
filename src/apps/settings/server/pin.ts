@@ -5,7 +5,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, readJson } from '../../../core/server/paths.ts';
+import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import type { PinResult, PinStatus } from '../api.ts';
 
 const FILE = path.join(HUB, 'claudeos-pin.json');
@@ -33,9 +33,7 @@ function load(): Stored | null {
 
 function save(s: Stored): boolean {
   try {
-    const tmp = `${FILE}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(s, null, 2));
-    fs.renameSync(tmp, FILE);
+    writeJsonFile(FILE, s, { indent: 2 });
     return true;
   } catch (e) {
     console.log('settings: could not save the ClaudeOS PIN file:', e);

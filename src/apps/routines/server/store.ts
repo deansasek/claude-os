@@ -10,7 +10,7 @@
 // scene "Movie night" if it is on the Home screen). A scene that isn't there is simply left out.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB } from '../../../core/server/paths.ts';
+import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import { scenes, sceneOnHome } from '../../home-assistant/server/ha.ts';
 import {
   MAX_ROUTINES, ROUTINE_ID, cleanRoutine, findRoutine, phraseKey, type Routine, type RoutinesResult, type Step,
@@ -48,9 +48,7 @@ async function defaults(): Promise<Routine[]> {
 
 function persist(routines: Routine[]): boolean {
   try {
-    const tmp = `${FILE}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify({ routines }, null, 1), { encoding: 'utf8', mode: 0o600 });
-    fs.renameSync(tmp, FILE);
+    writeJsonFile(FILE, { routines }, { indent: 1, mode: 0o600 });
     return true;
   } catch (e) {
     console.log('routines: could not save:', (e as NodeJS.ErrnoException).code ?? 'error');
