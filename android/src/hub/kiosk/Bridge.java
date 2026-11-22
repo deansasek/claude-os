@@ -273,6 +273,27 @@ public class Bridge {
     } catch (Exception e) { return err(e.toString()); }
   }
 
+  /** Checks that the tablet can get a read-only Google token for "calendar" or "gmail". The token itself never
+   *  leaves the tablet: the answer is ok, consent (Google must be approved once), or an error. */
+  @JavascriptInterface public String googleCheck(String which) {
+    if (!allowed) return DENIED;
+    String scope;
+    if ("calendar".equals(which)) scope = "https://www.googleapis.com/auth/calendar.readonly";
+    else if ("gmail".equals(which)) scope = "https://www.googleapis.com/auth/gmail.readonly";
+    else return err("unknown scope");
+    try {
+      android.accounts.AccountManager am = android.accounts.AccountManager.get(act);
+      android.accounts.Account[] list = am.getAccountsByType("com.google");
+      if (list.length == 0) return err("no Google account on this tablet");
+      android.os.Bundle b = am.getAuthToken(list[0], "oauth2:" + scope, null, false, null, null)
+          .getResult(20, java.util.concurrent.TimeUnit.SECONDS);
+      if (b == null) return err("no answer from Google");
+      if (b.getString(android.accounts.AccountManager.KEY_AUTHTOKEN) != null) return OK;
+      if (b.get(android.accounts.AccountManager.KEY_INTENT) != null) return "{\"consent\":true}";
+      return err(b.getString(android.accounts.AccountManager.KEY_ERROR_MESSAGE, "no token"));
+    } catch (Exception e) { return err(e.toString()); }
+  }
+
   @JavascriptInterface public String keepAwake(boolean on) {
     if (!allowed) return DENIED;
     act.runOnUiThread(() -> {

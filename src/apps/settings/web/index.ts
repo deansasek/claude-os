@@ -733,6 +733,19 @@ function paintGoogle(): void {
 }
 
 /** Starts Google's sign-in. Google's own screen takes over the tablet until the user finishes it. */
+/** Asks the tablet for a read-only Google token for calendar and for email, and says what it found. No token is shown. */
+function checkGoogleAccess(): void {
+  const parts: string[] = [];
+  for (const which of ['calendar', 'gmail'] as const) {
+    const name = which === 'calendar' ? 'Calendar' : 'Email';
+    try {
+      const r = device.googleCheck(which);
+      parts.push(`${name}: ${r.ok ? 'works' : r.consent ? 'needs a one-time approval' : 'not yet'}`);
+    } catch (e) { parts.push(`${name}: ${(e as Error).message}`); }
+  }
+  $('stGoogleNote').textContent = parts.join('. ') + '.';
+}
+
 function openGoogleSignIn(): void {
   try { device.addGoogleAccount(); $('stGoogleNote').textContent = 'Finish signing in, then come back to this page.'; }
   catch (e) { $('stGoogleNote').textContent = `Couldn’t open sign-in: ${(e as Error).message}`; }
@@ -1231,6 +1244,7 @@ function mount(context: AppContext): void {
     'The photo is deleted from the PC. Your initials show instead, until you pick another.', 'Remove', () => void removePhoto()));
   $('stGoogleAdd').addEventListener('click', () => confirmSheet('Add a Google account?',
     'Google’s own sign-in screen opens next, and it covers ClaudeOS until you finish. Sign in, then come back to this page.', 'Continue', () => openGoogleSignIn()));
+  $('stGoogleCheck').addEventListener('click', () => checkGoogleAccess());
   $('stPhotoGrid').addEventListener('click', e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-photo]');
     if (b) void usePhoto(b.dataset.photo!);

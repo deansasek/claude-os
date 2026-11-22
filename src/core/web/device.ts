@@ -7,7 +7,7 @@ interface HubDeviceApi {
   info(): string; battery(): string;
   wifi(): string; wifiScan(): string; wifiNetworks(): string;
   wifiConnect(ssid: string, password: string): string; wifiForget(ssid: string): string; wifiEnable(on: boolean): string;
-  googleAccounts(): string; addGoogleAccount(): string;
+  googleAccounts(): string; addGoogleAccount(): string; googleCheck(which: string): string;
   brightness(): string; setBrightness(v: number): string; keepAwake(on: boolean): string;
   volume(): string; setVolume(which: 'media' | 'alarm' | 'notification', v: number): string;
   apps(): string; setAppHidden(pkg: string, hidden: boolean): string;
@@ -81,6 +81,7 @@ export const device = {
   wifiEnable: (on: boolean) => call<{ ok: boolean }>(a => a.wifiEnable(on)),
   googleAccounts: () => call<{ accounts: { name: string }[] }>(a => a.googleAccounts()),
   addGoogleAccount: () => call<{ ok: boolean }>(a => a.addGoogleAccount()),
+  googleCheck: (which: 'calendar' | 'gmail') => call<{ ok?: boolean; consent?: boolean }>(a => a.googleCheck(which)),
   brightness: () => call<{ value: number }>(a => a.brightness()).value,
   setBrightness: (v: number) => call<{ ok: boolean }>(a => a.setBrightness(v)),
   keepAwake: (on: boolean) => call<{ ok: boolean }>(a => a.keepAwake(on)),
