@@ -90,9 +90,10 @@ function readRaw(req: http.IncomingMessage, max: number): Promise<Buffer | null>
 const LITERAL_HOST = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-fA-F:.]+\]|localhost)(:\d{1,5})?$/;
 
 // Only browser-side code is served from src/: never anything in a server/ folder.
-const WEB_FILE = /^\/src\/(main\.web\.ts|core\/web\/[\w./-]+\.(ts|html)|apps\/[\w-]+\/(web\/[\w./-]+\.ts|view\.html|app\.css|manifest\.ts|api\.ts))$/;
+export const WEB_FILE = /^\/src\/(main\.web\.ts|core\/web\/[\w./-]+\.(ts|html)|apps\/[\w-]+\/(web\/[\w./-]+\.ts|view\.html|app\.css|manifest\.ts|api\.ts))$/;
 
-function resolveStatic(urlPath: string): string | null {
+/** The file a URL path serves, or null when the path may not be served (server code, traversal, anything outside the web set). */
+export function resolveStatic(urlPath: string): string | null {
   const p = decodeURIComponent(urlPath === '/' ? '/index.html' : urlPath);
   if (p.includes('..') || p.includes('\0')) return null;
   if (p.startsWith('/src/')) return WEB_FILE.test(p) ? path.join(SRC, p.slice(5)) : null;
