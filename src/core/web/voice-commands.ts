@@ -35,7 +35,7 @@ import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay } from './voice-weather.ts';
 import { pickItem } from '../../apps/lists/web/voice-match.ts';
-import { parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
+import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 
 export interface ClockApi {
@@ -223,8 +223,10 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const ms = m ? parseDuration(m[1].replace(/^(a|an) (?=\d)/, '')) : null;
     if (ms == null) continue;
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
+    // a running timer is replaced, and the reply says so (it is not replaced silently)
+    const replacing = clock.timerLeft() != null;
     clock.startTimer(ms);
-    return { say: `Timer set for ${sayDuration(ms)}.`, react: 'hop' };
+    return { say: `${replacing ? 'Replaced the timer that was running. ' : ''}Timer set for ${sayDuration(ms)}.`, react: 'hop' };
   }
   // alarms: "stop" silences a ringing one; only "all my alarms" switches every alarm off (core/web/voice-alarm.ts)
   if (clock) {
@@ -241,6 +243,15 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
       return { say: n ? `Okay, your ${clockText(h, m)} alarm is off.` : `You don’t have an alarm at ${clockText(h, m)}.` };
     }
     if (word === 'one-alarm') return { say: 'Nothing is ringing. To switch them all off, say turn off all my alarms.' };
+  }
+  // a named timer: "set a 10 minute pasta timer" starts 10 minutes, labelled pasta (shown when it rings)
+  const named = t.match(/^(?:set |start )?(?:a |an )?(.+?) timer$/);
+  const dl = named ? durationAndLabel(named[1].replace(/^(a|an) (?=\d)/, '')) : null;
+  if (dl) {
+    if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
+    const replacing = clock.timerLeft() != null;
+    clock.startTimer(dl.ms, dl.label);
+    return { say: `${replacing ? 'Replaced the timer that was running. ' : ''}${dl.label} timer set for ${sayDuration(dl.ms)}.`, react: 'hop' };
   }
   // timer: pause, resume, add or take off minutes (core/web/voice-alarm.ts)
   const tw = timerWord(t);
