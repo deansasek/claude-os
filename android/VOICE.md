@@ -107,10 +107,10 @@ tablet speaker ◀── VoiceSpeaker (Android TextToSpeech) ◀─┘  answer, 
 
 ## Building
 
-`setup-voice.ps1` fetches Vosk for Android and JNA (Maven Central) and the model (alphacephei.com)
+`node android/setup-voice.ts` fetches Vosk for Android and JNA (Maven Central) and the model (alphacephei.com)
 into `tools/voice` once; `build.ps1` then adds the jars, the arm64 `.so` files and the model
 (as assets) to the APK (~44 MB). For better accuracy at ~4x the size and memory:
-`.\android\setup-voice.ps1 -Model vosk-model-en-us-0.22-lgraph`, then rebuild.
+`node android/setup-voice.ts --model vosk-model-en-us-0.22-lgraph`, then rebuild.
 
 ## Testing without talking (adb only; the sender needs the shell's DUMP permission)
 
