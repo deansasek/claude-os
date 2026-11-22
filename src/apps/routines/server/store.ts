@@ -21,7 +21,7 @@ export const FILE = path.join(HUB, '.routines.json');
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
 /** One stored routine, cleaned; null when it isn't one. Scenes aren't checked against Home here (Home may change). */
-function cleanStored(raw: unknown): Routine | null {
+export function cleanStored(raw: unknown): Routine | null {
   if (!raw || typeof raw !== 'object') return null;
   const id = (raw as Record<string, unknown>).id;
   if (typeof id !== 'string' || !ROUTINE_ID.test(id)) return null;
@@ -86,7 +86,7 @@ export async function readRoutines(): Promise<RoutinesResult> {
 }
 
 /** An id from a name: "Good morning" → "good-morning"; a different one if that is taken. */
-function idFor(name: string, list: Routine[]): string {
+export function idFor(name: string, list: Routine[]): string {
   let base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   if (!/^[a-z]/.test(base)) base = `r-${base}`.replace(/-+$/, '');
   base = base.slice(0, 24).replace(/-+$/, '') || 'routine';
