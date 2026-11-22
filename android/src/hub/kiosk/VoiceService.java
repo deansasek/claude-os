@@ -199,14 +199,29 @@ public class VoiceService extends Service {
   // recorded phrase list, and are reset between uses: one for listening to you, one for barge-in while speaking.
   private Recognizer listenRec, speakRec;
 
-  private void warm(Recognizer r) {
+  // the recorded phrase, decoded once for both recognisers (empty if the asset can't be read)
+  private short[] warmSamples;
+
+  private short[] warmSamples() {
+    if (warmSamples != null) return warmSamples;
     try (InputStream in = getAssets().open("voice-warmup.raw")) {
       byte[] b = in.readAllBytes();
       short[] s = new short[b.length / 2];
       for (int k = 0; k < s.length; k++) s[k] = (short) ((b[2 * k] & 0xff) | (b[2 * k + 1] << 8));
+      warmSamples = s;
+    } catch (Exception e) {
+      Log.w(TAG, "warm-up", e);
+      warmSamples = new short[0];
+    }
+    return warmSamples;
+  }
+
+  private void warm(Recognizer r) {
+    short[] s = warmSamples();
+    short[] c = new short[RATE / 10];   // one 100 ms buffer, reused for every chunk
+    try {
       for (int at = 0; at < s.length; at += RATE / 10) {
         int n = Math.min(RATE / 10, s.length - at);
-        short[] c = new short[n];
         System.arraycopy(s, at, c, 0, n);
         r.acceptWaveForm(c, n);
       }
