@@ -15,7 +15,7 @@ const errors: string[] = [];
 
 // The regex must be the one the server uses, byte for byte.
 const serverSource = fs.readFileSync(SERVER, 'utf8');
-const serverLine = /^const WEB_FILE = (\/.*\/);$/m.exec(serverSource)?.[1];
+const serverLine = /^(?:export )?const WEB_FILE = (\/.*\/);$/m.exec(serverSource)?.[1];
 if (serverLine !== WEB_FILE.toString()) {
   errors.push(`WEB_FILE in src/core/server/index.ts is not the same as scripts/check-web-imports.ts; keep them in sync:\n  server: ${serverLine}\n  here:   ${WEB_FILE}`);
 }
