@@ -14,7 +14,6 @@ hub-sessions.json
 profile.json
 plugins-state.json
 meter-config.json
-meter-config.json
 /photos/
 /workspace/
 /logs/
@@ -33,7 +32,6 @@ android/*.keystore
 *.jks
 
 # Build output and large downloaded tools (rebuilt or re-downloaded on setup).
-node_modules/
 node_modules/
 /tools/
 android/build/
@@ -57,7 +55,6 @@ android/assets/model-en-us/
 /mocks2.html
 
 # Empty stray files (candidates for removal).
-/main.web.ts
 /tools.ts
 
 # Recorded voice warm-up audio (may be a personal recording). Decide before publishing.
