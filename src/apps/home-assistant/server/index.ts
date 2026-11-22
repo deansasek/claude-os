@@ -46,7 +46,7 @@ const app: ServerApp = {
     },
     { method: 'GET', path: 'layout', handle: () => dashboard() },
     {
-      // a layout can be bigger than the core's 8 KB JSON body, so it is read raw and parsed here
+      // a layout is read raw, with this route's own size limit, and parsed here (the core reads JSON bodies up to 8 MB)
       method: 'POST', path: 'layout', rawMax: LAYOUT_MAX_BYTES, handle: ({ raw }) => {
         let b: unknown = null;
         try { b = JSON.parse((raw ?? Buffer.alloc(0)).toString('utf8') || 'null'); } catch { b = null; }

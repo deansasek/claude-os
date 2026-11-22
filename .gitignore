@@ -22,6 +22,9 @@ host/*.pid
 /config.json
 claudeos-pin.json
 claudeos-pin.json.tmp
+# Temporary copies and set-aside files: they can hold the same secrets as the files they came from.
+*.tmp
+*.corrupt
 instructions.txt
 profile-photo.jpg
 host/host.config.json

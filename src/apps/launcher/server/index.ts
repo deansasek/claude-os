@@ -13,7 +13,7 @@ const app: ServerApp = {
   routes: [
     { method: 'GET', path: 'layout', handle: ({ query }) => getLayout(query.get('screen')) },
     {
-      // read raw so an oversized body gets a clear 413 (the core's JSON body stops at 8 KB without an answer)
+      // read raw so an oversized body gets a clear 413 with this route's own size limit
       method: 'POST', path: 'layout', rawMax: LAYOUT_MAX_BYTES, handle: ({ raw, headers }) => {
         if (!String(headers['content-type'] || '').startsWith('application/json')) return { ok: false, screen: 'tablet', layout: null, error: 'Send JSON.' };
         let b: Record<string, unknown> | null = null;
