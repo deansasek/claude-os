@@ -16,6 +16,7 @@ import { projectFolder, rememberHubSession, SCRATCH } from './hubsessions.ts';
 import { logAction } from './guard.ts';
 import { askFor, describeTool } from './describe.ts';
 import { lookupSession, transcriptFor, transcriptVersion } from './sessions.ts';
+import { Lru } from './lru.ts';
 import { pinnedIn } from './state.ts';
 import { MAX_PER_ASK, readPhoto } from '../../photos/server/store.ts';
 import { profileForPrompt } from '../../settings/server/profile.ts';
@@ -140,7 +141,7 @@ const windowFor = (model: string | null): number => {
 
 /** What a session's log says it runs with, and how full its context is (from the last reply's usage). */
 interface LogState { model: string | null; effort: HubEffort | null; mode: string | null; used: number | null }
-const logCache = new Map<string, { key: string; state: LogState }>();
+const logCache = new Lru<string, { key: string; state: LogState }>(200);
 function logState(file: string): LogState {
   const none: LogState = { model: null, effort: null, mode: null, used: null };
   let st: fs.Stats;

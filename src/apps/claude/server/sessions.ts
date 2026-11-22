@@ -7,6 +7,7 @@ import { PROJECTS } from '../../../core/server/paths.ts';
 import { openSessions } from './registry.ts';
 import { folderOf, hubSession, hubSessionIds } from './hubsessions.ts';
 import { archivedIds } from './state.ts';
+import { Lru } from './lru.ts';
 
 const LIVE_WINDOW_MS = 30 * 60e3;   // quieter sessions are not listed
 const TAIL = 400_000;
@@ -170,7 +171,7 @@ let lastTokens = new Map<string, number>();
 
 // ---------- the conversation itself, for the Hub's session view ----------
 const TRANSCRIPT_SPANS = [1_500_000, 5_000_000, 12_000_000], MAX_ENTRIES = 80;
-const transcripts = new Map<string, { key: string; entries: TranscriptEntry[] }>();
+const transcripts = new Lru<string, { key: string; entries: TranscriptEntry[] }>(40);   // the sessions recently viewed
 
 /** Text the user typed, without Claude Code's own wrappers (system reminders, command echoes…). */
 export function userText(content: any): string {
@@ -210,7 +211,7 @@ export function transcriptFor(id: string): TranscriptEntry[] {
  * Where the photos of a message sit in its log line, so they can be read back when the page asks for them.
  * Keyed by session, message id and photo number. Photos are never copied out of the log.
  */
-const imageSpots = new Map<string, { file: string; off: number; len: number; n: number }>();
+const imageSpots = new Lru<string, { file: string; off: number; len: number; n: number }>(500);
 const spotKey = (sessionId: string, uuid: string, n: number) => `${sessionId}|${uuid}|${n}`;
 const MSG_ID = /^[\w-]{8,64}$/;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
