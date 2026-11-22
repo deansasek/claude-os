@@ -1,7 +1,7 @@
 // Fetches what voice needs into tools/voice (nothing is installed on the PC):
 //   - Vosk for Android (offline speech recognition, Apache 2.0) and JNA, which it uses, from Maven Central
 //   - a small English Vosk model (~40 MB), from alphacephei.com
-// build.ts (android/build.ps1) picks these up when they are there: the jars go on the classpath, the arm64 .so files
+// android/build.ts picks these up when they are there: the jars go on the classpath, the arm64 .so files
 // into the APK's lib/, and the model into the APK's assets (unpacked on the tablet on first use).
 //
 // --model picks another Vosk model, e.g. the larger, more accurate (and ~4x bigger) one:
