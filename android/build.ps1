@@ -1,4 +1,4 @@
-# Builds the tablet app without Gradle, using only the tools in tools (see setup-tools.ps1):
+# Builds the tablet app without Gradle, using only the tools in tools (see setup-tools.ts):
 #   aapt2 (resources + manifest) -> javac -> d8 (dex) -> zipalign -> apksigner
 # Output: android/build/claude-hub.apk
 # Install / update it:   .\android\build.ps1 -Install
