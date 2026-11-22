@@ -7,7 +7,7 @@
 // last good copy (up to 12 hours old) is shown, marked stale.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
+import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts';
 import { occurrences, parseIcs, type RawEvent } from './ics.ts';
 
@@ -23,10 +23,8 @@ const MAX_SHOWN = 200;
 interface Config { address: string }
 
 function load(): Config {
-  try {
-    const c = JSON.parse(fs.readFileSync(FILE, 'utf8').replace(/^﻿/, '')) as Partial<Config>;
-    return { address: typeof c.address === 'string' ? c.address : '' };
-  } catch { return { address: '' }; }
+  const c = readJson<Partial<Config>>(FILE);   // null for a missing or bad file: no address
+  return { address: typeof c?.address === 'string' ? c.address : '' };
 }
 let cfg = load();
 
