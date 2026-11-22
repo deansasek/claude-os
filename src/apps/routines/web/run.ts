@@ -17,6 +17,7 @@ import { getJson, postJson } from '../../../core/web/dom.ts';
 import { voice } from '../../../core/web/device.ts';
 import { calendarCommand, getClock, provideRoutines, weatherToday } from '../../../core/web/voice-commands.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
+import { prefs, sleep as showScreenSaver } from '../../../core/web/system.ts';
 import type { HaResult } from '../../home-assistant/api.ts';
 import { AT_WINDOW_MIN, STEP_MAX_MS, dayKey, dueRoutines, type Routine, type RoutinesResult, type Step } from '../api.ts';
 
@@ -92,6 +93,8 @@ async function doStep(s: Step, deadline: number): Promise<string> {
       return `Timer set for ${s.minutes} minute${s.minutes === 1 ? '' : 's'}.`;
     }
     case 'pause': await sleep(Math.min(s.seconds * 1000, deadline - Date.now())); return '';
+    case 'quiet': prefs.dnd = s.on; return '';   // the same switch as the Control Center tile
+    case 'ambient': showScreenSaver(); return '';
     case 'lists': {
       // the open items of one list, read aloud (the same lists the Lists app and voice use)
       type Lists = { lists: { id: string; name: string; items: { text: string; done: boolean }[] }[] };

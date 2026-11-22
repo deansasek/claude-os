@@ -24,9 +24,11 @@ export type Step =
   | { kind: 'scene'; entity_id: string }         // activate a Home Assistant scene on the dashboard or the Home screen
   | { kind: 'timer'; minutes: number }           // start the Clock's timer
   | { kind: 'pause'; seconds: number }           // wait 1 to 10 seconds
-  | { kind: 'lists'; list: 'shopping' | 'todo' }; // say the open items of Shopping or To-do
+  | { kind: 'lists'; list: 'shopping' | 'todo' }  // say the open items of Shopping or To-do
+  | { kind: 'quiet'; on: boolean }               // turn Do Not Disturb on or off
+  | { kind: 'ambient' };                         // show the screen saver now
 export type StepKind = Step['kind'];
-export const STEP_KINDS: StepKind[] = ['weather', 'calendar', 'say', 'scene', 'timer', 'pause', 'lists'];
+export const STEP_KINDS: StepKind[] = ['weather', 'calendar', 'say', 'scene', 'timer', 'pause', 'lists', 'quiet', 'ambient'];
 
 export interface Routine {
   id: string;
@@ -87,6 +89,11 @@ export function cleanStep(raw: unknown): Step | { error: string } {
       if (typeof s !== 'number' || !Number.isInteger(s) || s < 1 || s > MAX_PAUSE_S) return { error: `A pause can be from 1 to ${MAX_PAUSE_S} seconds.` };
       return { kind: 'pause', seconds: s };
     }
+    case 'quiet': {
+      if (typeof r.on !== 'boolean') return { error: 'A Do Not Disturb step needs on or off.' };
+      return { kind: 'quiet', on: r.on };
+    }
+    case 'ambient': return { kind: 'ambient' };
     case 'lists': {
       const l = r.list;
       if (l !== 'shopping' && l !== 'todo') return { error: 'A lists step needs Shopping or To-do.' };
@@ -174,5 +181,7 @@ export function stepLabel(s: Step, sceneName?: string): string {
     case 'timer': return `Start a ${s.minutes}-minute timer`;
     case 'pause': return `Pause ${s.seconds} second${s.seconds === 1 ? '' : 's'}`;
     case 'lists': return `Read the ${s.list === 'todo' ? 'to-do' : 'shopping'} list`;
+    case 'quiet': return s.on ? 'Turn Do Not Disturb on' : 'Turn Do Not Disturb off';
+    case 'ambient': return 'Show the screen saver';
   }
 }
