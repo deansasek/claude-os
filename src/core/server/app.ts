@@ -16,6 +16,7 @@ export interface Binary {
   contentType: string;
   body: Buffer;
   status?: number;
+  cache?: string;   // Cache-Control for the response; the default is no-cache
 }
 
 export interface Route {
