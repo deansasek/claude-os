@@ -10,7 +10,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import { markdown } from '../../../core/web/markdown.ts';
 import { alertFor, notify, onBack, openApp } from '../../../core/web/system.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
-import type { HubPermission, HubTurn, LiveSession, NewSessionResult, Project, ReplyBlock, SessionSettings, SessionView, Usage } from '../api.ts';
+import type { HubPermission, HubTurn, LiveSession, NewSessionResult, Project, ReplyBlock, SessionSettings, SessionView, TranscriptEntry, Usage } from '../api.ts';
 import { closeMenu, initControls, loadModels, newDefaults, newFolderPref, paintControls, remember, settingsFor, voiceDefaults, wantFor, type ControlsView } from './sessions/controls.ts';
 import { micAvailable, micTap, onMicChange } from './sessions/mic.ts';
 import { call, hidePin, initPin, withPin } from './sessions/pin.ts';
@@ -285,6 +285,8 @@ function render(): void {
     $('svBlockedTitle').textContent = title;
     $('svBlockedText').innerHTML = body;   // fixed copy above, not user text
   }
+  // a quiet session can still be continued: a copy from its last reply is a session the Hub keeps replying to
+  $('svBlockedFork').hidden = !(view.reason === 'too_old' && lastReply());
   const progress = active ? (active.status === 'approval' ? 'Waiting for your OK…' : `${active.progress[active.progress.length - 1] || 'Working'}…`) : '';
   const ready = !active && view.canReply;
   paintComposer({
@@ -624,6 +626,9 @@ function togglePin(e: { id?: string; pinned?: boolean }): void {
   });
 }
 
+/** The latest reply of Claude's in the open session that can be forked (null if there is none yet). */
+const lastReply = (): TranscriptEntry | null => [...(view?.transcript || [])].reverse().find(e => e.kind === 'assistant' && !!e.id) || null;
+
 /** A new session that carries on from this reply (only Claude's replies can be forked: see server/manage.ts). */
 function forkMsg(e: { id?: string; kind: string }): void {
   const id = openId;
@@ -768,6 +773,7 @@ export function initReply(context: AppContext): void {
   new ResizeObserver(() => { const l = $('svLog'); if (stick) l.scrollTop = l.scrollHeight; }).observe($('svLog'));
   $('svJump').addEventListener('click', () => { const log = $('svLog'); log.scrollTop = log.scrollHeight; updateJump(); });
   $('svNudge').addEventListener('click', () => { const id = $('svNudge').dataset.id; if (id) openSession(id); });
+  $('svBlockedFork').addEventListener('click', () => { const e = lastReply(); if (e) forkMsg(e); });
 
   // new session
   $('nsFolders').addEventListener('click', e => {
