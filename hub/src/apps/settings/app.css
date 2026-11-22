@@ -1,0 +1,362 @@
+/* Settings, after the Claude desktop app's Settings: a section list on the left, and rows of
+   "title + description … control" on the right, divided by hairlines. */
+/* still 600 tall on the ~640 tablet stage, the one page that doesn't fill it (core's .app is height: 100%) */
+#app-settings .app-hd .live { cursor: pointer; }
+
+/* the page itself, no frame: sections on the left, the chosen section filling the rest */
+#app-settings .st-panel { position: absolute; left: 22px; right: 0; top: calc(var(--app-body) - 8px);   /* the section title lands on --app-body */ bottom: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr); }
+
+/* left: sections */
+/* the bottom padding clears Android's bottom gesture band (--grab-bottom, from the tablet) and the switcher's handle,
+   which is an 18 px strip just above that band (core.css .sw-handle; a tap on it opens the switcher). Its swipe zone is
+   48 px above the band (switcher.ts GRAB), so the last item (Developer) scrolls up past both. */
+#app-settings .st-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 14px calc(60px + var(--grab-bottom, 0px)); border-right: 1px solid var(--line); }
+#app-settings .st-nav button { all: unset; box-sizing: border-box; width: 100%; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px; height: 44px; border-radius: 10px; cursor: pointer;
+  font: 500 15px var(--sans); color: var(--t2); transition: background-color .15s; }
+#app-settings .st-nav button[hidden] { display: none; }
+#app-settings .st-nav button.on { background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+#app-settings .st-nav button:active { background: var(--card); }
+#app-settings .st-nav .ic { display: inline-flex; width: 20px; height: 20px; color: currentColor; }
+#app-settings .st-nav .ic svg { width: 20px; height: 20px; }
+#app-settings .st-nav em { margin-left: auto; font-style: normal; font-size: 11px; font-weight: 600; color: #fff; background: var(--clay-deep);
+  border-radius: 99px; padding: 1px 7px; }
+#app-settings .st-nav em:empty { display: none; }
+/* right: one section at a time */
+#app-settings .st-content { overflow-y: auto; padding: 8px 36px calc(40px + var(--grab-bottom, 0px)) 32px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+#app-settings .st-sec { display: none; }
+#app-settings .st-sec.on { display: block; animation: st-in .25s ease-out; }
+@keyframes st-in { from { opacity: 0; transform: translateY(3px); } }
+#app-settings h2 { margin: 0 0 6px; font: 500 26px var(--serif); letter-spacing: -.01em; color: var(--text); }
+#app-settings .st-lede { margin: 0 0 6px; font-size: 14px; color: var(--t3); line-height: 1.45; max-width: 560px; }
+#app-settings h3 { display: flex; align-items: center; gap: 10px; min-height: 28px; margin: 24px 0 2px; }   /* section headings: core's .label */
+#app-settings h2 + h3 { margin-top: 10px; }
+#app-settings .st-note { display: inline-flex; align-items: center; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--t4); font-size: 13px; }
+#app-settings h3 .st-btn.small { margin-left: auto; }
+
+#app-settings .st-row { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--line); min-height: 64px; box-sizing: border-box; }
+#app-settings .st-row:last-child { border-bottom: 0; }
+#app-settings .st-row[hidden] { display: none; }
+#app-settings .st-txt { min-width: 0; flex: 1; }
+#app-settings .st-txt b { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 15px; color: var(--text); }
+#app-settings .st-txt span { display: block; margin-top: 3px; font-size: 13px; color: var(--t3); line-height: 1.4; max-width: 520px; }
+#app-settings .st-txt .st-err, #app-settings .st-err { color: var(--hot); }
+#app-settings .st-val { font-size: 14px; color: var(--t2); white-space: nowrap; }
+#app-settings .st-tag { font-size: 11px; font-weight: 500; color: var(--t3); background: var(--card-2); border-radius: 6px; padding: 1px 7px; }
+#app-settings .st-done { font-size: 13px; color: var(--t4); white-space: nowrap; }
+#app-settings .st-empty { padding: 16px 0; font: italic 400 17px/1.4 var(--serif); color: var(--t4); }
+#app-settings .st-rowbtns { display: flex; gap: 8px; flex: none; }
+
+/* switches: blue, as in the desktop app */
+#app-settings .st-switch { all: unset; position: relative;   /* .hit (core): finger-sized */ flex: none; width: 48px; height: 28px; border-radius: 99px; background: var(--track);
+  box-shadow: inset 0 0 0 1px var(--track-edge); cursor: pointer; transition: background .2s; }
+:root[data-theme="light"] #app-settings .st-switch:not([aria-checked="true"]) { background: var(--line); }
+#app-settings .st-switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+#app-settings .st-switch[aria-checked="true"] { background: var(--blue); box-shadow: none; }
+#app-settings .st-switch[aria-checked="true"] i { transform: translateX(20px); }
+
+/* buttons: quiet filled, like "Open Appearance" (the controls below are .hit: `all: unset` drops its position, so it's set again) */
+#app-settings .st-btn { all: unset; position: relative; flex: none; cursor: pointer; padding: 9px 16px; border-radius: 9px; font: 500 14px var(--sans); color: var(--text);
+  background: var(--card-2); border: 1px solid var(--line); text-align: center; white-space: nowrap; }
+#app-settings .st-btn:active { transform: scale(.96); }
+#app-settings .st-btn[hidden] { display: none; }
+#app-settings .st-btn.ghost { background: transparent; color: var(--t2); }
+#app-settings .st-btn.small { padding: 4px 11px; font-size: 12px; text-transform: none; letter-spacing: 0; }
+#app-settings .st-btn.primary { background: var(--text); border-color: var(--text); color: var(--bg); }   /* ink, like the other apps' primary buttons: clay is kept for what needs attention */
+
+/* segmented control, like "Normal / Thinking / Verbose" */
+#app-settings .st-seg { display: inline-flex; flex: none; padding: 3px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
+#app-settings .st-seg button { all: unset; position: relative; cursor: pointer; padding: 7px 14px; border-radius: 7px; font: 500 14px var(--sans); color: var(--t3); }
+#app-settings .st-seg button.on { background: var(--card-2); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+
+/* sliders */
+#app-settings .st-slide { display: flex; align-items: center; gap: 12px; width: 300px; flex: none; }
+#app-settings .st-slide em { width: 44px; font-style: normal; text-align: right; font-size: 13px; color: var(--t3); font-variant-numeric: tabular-nums; }
+#app-settings input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 32px; background: transparent; margin: 0; }
+#app-settings input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 99px;
+  background: linear-gradient(90deg, var(--blue) var(--p, 50%), var(--track) var(--p, 50%)); box-shadow: inset 0 0 0 1px var(--track-edge); }
+:root[data-theme="light"] #app-settings input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(90deg, var(--blue) var(--p, 50%), var(--line) var(--p, 50%)); }
+#app-settings input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -9px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,19,.08); }
+
+/* a picker button: current value and a chevron, opens a sheet */
+#app-settings .st-pickbtn { all: unset; position: relative; flex: none; cursor: pointer; display: inline-flex; align-items: center; gap: 10px; max-width: 280px; padding: 9px 12px 9px 15px;
+  border-radius: 9px; border: 1px solid var(--line); background: var(--bg); font: 500 14px var(--sans); color: var(--text); }
+#app-settings .st-pickbtn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-settings .st-pickbtn i { width: 7px; height: 7px; border-right: 1.6px solid var(--t3); border-bottom: 1.6px solid var(--t3); transform: rotate(45deg) translate(-2px, -2px); flex: none; }
+#app-settings .st-pickbtn:active { background: var(--card); }
+
+/* Desk mode */
+#app-settings .st-allset { display: flex; align-items: center; gap: 16px; margin-top: 18px; padding: 16px 18px; border-radius: 14px;
+  background: color-mix(in srgb, var(--olive) 10%, var(--bg)); border: 1px solid color-mix(in srgb, var(--olive) 30%, var(--line)); }
+#app-settings .st-allset[hidden] { display: none; }
+#app-settings .st-allset-ic { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--olive); color: #fff; }
+#app-settings .st-allset-ic svg { width: 20px; height: 20px; stroke-width: 2.6; }
+#app-settings .st-allset .st-txt b { font-weight: 600; }
+#app-settings #stSetup[hidden] { display: none; }
+#app-settings .st-progress { height: 4px; border-radius: 99px; background: var(--card-2); margin: 6px 0 4px; overflow: hidden; }
+#app-settings .st-progress[hidden] { display: none; }
+#app-settings .st-progress i { display: block; height: 100%; border-radius: 99px; background: var(--olive); transition: width .6s; }
+#app-settings .st-step { justify-content: flex-start; gap: 16px; }
+#app-settings .st-check { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;
+  border: 1.6px solid var(--t5); box-sizing: border-box; }
+#app-settings .st-step.done .st-check { background: var(--olive); border-color: var(--olive); color: #fff; }
+#app-settings .st-check svg { width: 14px; height: 14px; stroke-width: 3; }
+#app-settings .st-step.done .st-txt b { color: var(--t2); }
+
+/* Wi-Fi */
+#app-settings .st-current { display: flex; align-items: center; gap: 16px; margin-top: 16px; padding: 14px 14px 14px 16px; border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line); }
+#app-settings .st-current-ic { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--blue); color: #fff; }
+#app-settings .st-current-ic svg { width: 22px; height: 22px; }
+#app-settings .st-current-ic svg path { stroke: currentColor !important; }
+#app-settings .st-current .st-txt b { font-weight: 600; }
+#app-settings #stWifiOthers[hidden] { display: none; }
+#app-settings button.st-row { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 16px; width: 100%; padding: 12px 6px 12px 2px;
+  min-height: 60px; border-bottom: 1px solid var(--line); cursor: pointer; }
+#app-settings button.st-row:last-child { border-bottom: 0; }
+#app-settings button.st-row:active { background: var(--card); }
+#app-settings .st-net > svg { width: 22px; height: 22px; flex: none; color: var(--t2); }
+#app-settings .st-net.dim .st-txt b { color: var(--t3); }
+#app-settings .st-net.busy .st-txt span { color: var(--blue); }
+#app-settings .st-spin { display: inline-block; flex: none; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--t3);
+  animation: spin .8s linear infinite; }
+
+/* Notifications */
+#app-settings button.st-nrow { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 4px; cursor: pointer;
+  border-bottom: 1px solid var(--line); }
+#app-settings button.st-nrow:last-child { border-bottom: 0; }
+#app-settings button.st-nrow:active { background: var(--card); }
+#app-settings button.st-nrow em { align-self: flex-start; margin-top: 3px; font-style: normal; font-size: 12px; color: var(--t4); white-space: nowrap; }
+#app-settings button.st-nrow .cc-note-txt b { font-size: 15px; font-weight: 500; }
+#app-settings button.st-nrow .cc-note-txt span { white-space: normal; }
+
+/* battery */
+#app-settings .st-battrow { justify-content: flex-start; gap: 18px; padding: 18px 0; }
+#app-settings .st-battglyph { display: inline-flex; width: 64px; height: 64px; color: var(--t2); --batt-knock: var(--bg); }
+#app-settings .st-battglyph svg { width: 64px; height: 64px; stroke-width: 1.4; }
+#app-settings .st-battrow .st-big { font: 500 46px var(--serif); letter-spacing: -.03em; line-height: 1; }
+#app-settings .st-bar { position: relative; width: 260px; height: 8px; flex: none; border-radius: 99px; background: var(--card-2); }
+#app-settings .st-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--t3); transition: width .8s; min-width: 8px; }
+#app-settings .st-battrow.charging .st-bar i { background: var(--olive); }
+#app-settings .st-battrow.charging .st-txt span { color: var(--olive); }
+:root[data-theme="dark"] #app-settings .st-battrow.charging .st-txt span { color: #9fb382; }
+#app-settings .st-battrow.low .st-bar i { background: var(--hot); }
+#app-settings .st-battrow.low .st-big, #app-settings .st-battrow.low .st-battglyph { color: var(--hot); }
+#app-settings .st-val.hot { color: var(--hot); font-weight: 600; }
+
+/* About: a device "about" page */
+#app-settings .st-hero { display: flex; align-items: center; gap: 18px; padding: 10px 0 22px; border-bottom: 1px solid var(--line); }
+#app-settings .st-spark { width: 64px; height: 64px; flex: none; }
+#app-settings .st-hero-name { font: 500 34px var(--serif); letter-spacing: -.02em; line-height: 1.05; }
+#app-settings .st-hero-sub { margin-top: 4px; font-size: 14px; color: var(--t3); }
+#app-settings .st-card { margin-top: 20px; padding: 0 18px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+#app-settings .st-card .st-row { min-height: 50px; padding: 11px 0; }
+#app-settings .st-card .st-val { color: var(--t3); }
+#app-settings .st-hero { border-bottom: 0; padding-bottom: 0; }
+#app-settings .st-tips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 8px; }
+#app-settings .st-tips div { padding: 13px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+#app-settings .st-tips b { display: block; font-weight: 600; font-size: 14px; }
+#app-settings .st-tips span { display: block; margin-top: 4px; font-size: 13px; line-height: 1.4; color: var(--t3); }
+
+/* Desk mode pill in the header */
+#app-settings #stKiosk.todo { background: var(--clay-deep); border-color: var(--clay-deep); color: #fff; }
+#app-settings #stKiosk.todo i { background: #fff; }
+#app-settings #stKiosk.ok i { background: var(--olive); }
+
+/* sheets: confirm, and the voice picker */
+#app-settings .st-sheet { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 20, 19, .22); animation: st-fade .2s ease-out; }
+:root[data-theme="dark"] #app-settings .st-sheet { background: rgba(0, 0, 0, .45); }
+@keyframes st-fade { from { opacity: 0; } }
+#app-settings .st-sheet[hidden] { display: none; }
+#app-settings .st-sheet-card { width: 440px; padding: 22px 24px 18px; border-radius: 18px; background: var(--bg); border: 1px solid var(--line);
+  box-shadow: 0 16px 48px rgba(20,20,19,.2); animation: st-pop .25s cubic-bezier(.2, .8, .2, 1); }
+@keyframes st-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+:root[data-theme="dark"] #app-settings .st-sheet-card { background: var(--card); box-shadow: 0 16px 48px rgba(0,0,0,.5); }
+#app-settings .st-sheet-card h3 { margin: 0 0 8px; font: 600 18px var(--sans); color: var(--text); display: block; min-height: 0; }
+#app-settings .st-sheet-card p { margin: 0; font-size: 14px; color: var(--t2); line-height: 1.45; }
+#app-settings .st-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+#app-settings .st-pick-card { width: 480px; }
+#app-settings .st-pick { max-height: 320px; overflow-y: auto; margin: 0 -8px; }
+#app-settings .st-pick-row { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 14px; width: 100%; padding: 11px 8px; border-radius: 10px; cursor: pointer; }
+#app-settings .st-pick-row:active { background: var(--card-2); }
+#app-settings .st-radio { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.6px solid var(--t5); box-sizing: border-box; }
+#app-settings .st-pick-row.on .st-radio { border: 6px solid var(--blue); }
+/* Voice → Last heard: what the wake word recogniser made of the room, and a live mic level */
+#app-settings .st-heard-row .st-txt span { font: italic 400 15px/1.4 var(--serif); color: var(--t2); }
+#app-settings .st-heard-row .st-txt span b { font: inherit; font-style: italic; color: var(--clay-deep); }
+#app-settings .st-heard-row .st-txt em { display: block; margin-top: 2px; font: 400 12px var(--sans); font-style: normal; color: var(--t4); }
+#app-settings .st-meter { flex: none; display: flex; align-items: flex-end; gap: 2px; width: 156px; height: 34px; }
+#app-settings .st-meter i { flex: 1; min-height: 2px; border-radius: 1.5px; background: var(--t5); transition: height .12s; }
+#app-settings .st-meter i.hot { background: var(--clay); }
+/* the voice picker's groups: natural (Google, online) and on this tablet */
+#app-settings .st-pick-intro { margin: -2px 0 10px !important; font-size: 13px !important; color: var(--t3) !important; }
+#app-settings .st-pick-group { margin: 14px 8px 2px; letter-spacing: .04em; }   /* core's .label, spaced a little tighter */
+#app-settings .st-pick-group:first-child { margin-top: 2px; }
+#app-settings .st-pick-group span { display: block; margin-top: 3px; font: 400 12.5px/1.4 var(--sans); letter-spacing: 0; text-transform: none; color: var(--t3); }
+#app-settings .st-pick-row .st-txt { flex: 1; min-width: 0; }
+#app-settings .st-pick-row .st-play { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--t3); box-shadow: inset 0 0 0 1px var(--line); }
+#app-settings .st-pick-row .st-play svg { width: 12px; height: 12px; }
+#app-settings .st-pick-row.playing .st-play { color: var(--clay); box-shadow: inset 0 0 0 1.5px var(--clay); }
+#app-settings .st-pick-more { all: unset; position: relative; cursor: pointer; display: block; margin: 8px 8px 0; font-size: 13px; color: var(--blue); }
+
+/* ---- Apps: a list of apps, then one app's own settings (like iOS) ---- */
+#app-settings .st-app { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 0; cursor: pointer;
+  border-bottom: 1px solid var(--line); }
+#app-settings .st-app:active { opacity: .7; }
+#app-settings .st-app-ic { display: inline-flex; flex: none; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 11px;
+  background: var(--card); border: 1px solid var(--line); color: var(--clay); }
+#app-settings .st-app-ic svg { width: 22px; height: 22px; }
+
+/* Plugins: the list, its tabs, the detail sheet and the add form */
+#app-settings .st-plug-bar { flex-wrap: wrap; gap: 12px; }
+#app-settings .st-plug-tabs button { padding: 7px 12px; font-size: 13px; }
+#app-settings .st-plug { padding: 10px 0; gap: 14px; min-height: 60px; }
+#app-settings .st-plug-open { all: unset; box-sizing: border-box; position: relative; flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; cursor: pointer; }
+#app-settings .st-plug-open:active { opacity: .7; }
+#app-settings .st-plug-open .st-txt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#app-settings .st-plug-off .st-app-ic { opacity: .45; }
+#app-settings .st-plug-off .st-txt b { color: var(--t3); }
+#app-settings .st-plug-add { justify-content: flex-start; flex-wrap: wrap; gap: 10px; border-bottom: 0; }
+/* Discover (web/market.ts): the Anthropic marketplace shows in place of the list while its tab is on */
+#app-settings #stMarket { display: none; }
+#app-settings .st-sec.mk-on #stMarket { display: block; }
+#app-settings .st-sec.mk-on #stPlugFind, #app-settings .st-sec.mk-on #stPlugAttn,
+#app-settings .st-sec.mk-on #stPlugList, #app-settings .st-sec.mk-on #stPlugAddRow { display: none; }
+#app-settings .st-mk-bar { flex-wrap: wrap; gap: 12px; border-bottom: 0; }
+#app-settings button.st-mk-search { all: unset; box-sizing: border-box; position: relative; flex: 1 1 260px; min-width: 0; display: flex; align-items: center; gap: 10px;
+  min-height: 44px; padding: 0 14px; border-radius: 12px; background: var(--card-2); border: 1px solid var(--line); cursor: pointer;
+  font: 400 15px var(--sans); color: var(--t3); }
+#app-settings button.st-mk-search:active { opacity: .7; }
+#app-settings .st-mk-search svg { width: 20px; height: 20px; flex: none; }
+#app-settings .st-mk-banner { margin: 4px 0 10px; padding: 10px 14px; border-radius: 10px; font-size: 14px; line-height: 1.4; background: var(--card-2); color: var(--t2); }
+#app-settings .st-mk-banner.ok { color: var(--text); }
+#app-settings .st-mk-banner.err { color: var(--hot); }
+#app-settings .st-mk-badge { flex: none; font-style: normal; font: 600 12px var(--sans); padding: 3px 10px; border-radius: 999px; color: var(--t2); background: var(--card-2); box-shadow: 0 0 0 1px var(--line); }
+#app-settings .st-mk-row .st-plug-open .st-txt { min-width: 0; }
+#app-settings .st-plug-ic { display: inline-flex; flex: none; width: 44px; height: 44px; align-items: center; justify-content: center; border-radius: 12px; background: var(--card-2); color: var(--t2); }
+#app-settings .st-plug-ic svg { width: 24px; height: 24px; }
+#app-settings .st-plug-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+#app-settings .st-plug-head .st-txt h3 { margin: 0; font: 600 18px var(--sans); color: var(--text); min-height: 0; }
+#app-settings .st-plug-sub { margin: 2px 0 0; font-size: 13px; color: var(--t3); }
+#app-settings .st-plug-desc { margin: 0 0 12px; font-size: 14px; color: var(--t2); line-height: 1.45; }
+#app-settings .st-plug-facts { margin: 0 0 12px; padding: 0 0 0 18px; font-size: 13px; color: var(--t3); line-height: 1.5; }
+#app-settings .st-plug-facts li { word-break: break-word; }
+#app-settings .st-plug-status { margin: 0 0 10px; font-size: 14px; color: var(--t2); line-height: 1.45; }
+#app-settings .st-plug-status.st-err { color: var(--hot); }
+#app-settings .st-plug-switchrow { border-bottom: 0; padding: 6px 0; min-height: 0; }
+#app-settings .st-plug-card .st-actions { flex-wrap: wrap; }
+#app-settings .st-plug-form { display: flex; flex-direction: column; max-height: 52vh; overflow-y: auto; }
+#app-settings .st-plug-typerow { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; color: var(--text); }
+#app-settings .st-app .st-txt b { font-size: 16px; }
+#app-settings .st-chev { display: inline-flex; width: 18px; height: 18px; color: var(--t4); }
+#app-settings .st-chev svg { width: 18px; height: 18px; }
+#app-settings .st-back { all: unset; position: relative; display: inline-flex; align-items: center; gap: 4px; margin: 0 0 6px -6px; padding: 6px 10px 6px 4px; border-radius: 9px;
+  cursor: pointer; font: 500 14px var(--sans); color: var(--blue); }
+#app-settings .st-back svg { width: 18px; height: 18px; }
+#app-settings .st-back:active { background: var(--card); }
+#app-settings .st-apph { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+#app-settings .st-apph .st-app-ic { width: 34px; height: 34px; border-radius: 9px; }
+
+/* ---- Profile: the photo, the fields you tap to edit, the work picker, the Photos library sheet ---- */
+#app-settings .st-avatar { all: unset; position: relative; flex: none; display: inline-grid; place-items: center; width: 72px; height: 72px; border-radius: 50%;
+  overflow: hidden; cursor: pointer; background: var(--clay); color: #fff; font: 500 26px var(--serif); letter-spacing: .01em; }
+#app-settings .st-avatar span { line-height: 1; }
+#app-settings .st-avatar svg { width: 36px; height: 36px; color: var(--t3); }
+#app-settings .st-avatar.bare { background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); }
+#app-settings .st-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#app-settings .st-avatar:active { opacity: .8; }
+#app-settings .st-photo-row { gap: 18px; }
+#app-settings button.st-field { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 16px; width: 100%; min-height: 64px; padding: 12px 6px 12px 2px;
+  border-bottom: 1px solid var(--line); cursor: pointer; }
+#app-settings button.st-field:active { background: var(--card); }
+#app-settings button.st-field .st-val { max-width: 300px; overflow: hidden; text-overflow: ellipsis; font-size: 15px; color: var(--t2); }
+#app-settings .st-val.st-unset { color: var(--t4); }
+#app-settings button.st-field .st-chev { margin-left: 4px; }
+#app-settings .st-photo-card { width: 560px; }
+#app-settings .st-photo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; max-height: 300px; overflow-y: auto; margin: 0 -8px; padding: 0 8px; }
+#app-settings .st-photo-grid > .st-empty { grid-column: 1 / -1; }
+#app-settings .st-photo-thumb { all: unset; position: relative; aspect-ratio: 1; border-radius: 50%; overflow: hidden; cursor: pointer; background: var(--card-2); }
+#app-settings .st-photo-thumb:active { opacity: .7; }
+#app-settings .st-photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#app-settings .st-pick-more { min-height: 44px; display: flex; align-items: center; }
+
+/* ---- polish ---- */
+/* an app's longer choices (Apps → Claude: five models, four modes) sit on their own line under the text,
+   instead of squeezing the description into a narrow column */
+#app-settings .st-row.st-choice { flex-wrap: wrap; row-gap: 10px; }
+#app-settings .st-row.st-choice .st-txt { flex: 1 1 100%; }
+/* long network names end in an ellipsis instead of running under the chevron or the Forget button */
+#app-settings :is(.st-net, .st-current) .st-txt b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-settings .st-card .st-val { min-width: 0; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- the nav: groups, search, and jumping to a row ---- */
+#app-settings .st-nav { overflow-y: auto; min-height: 0; overscroll-behavior: contain; scrollbar-width: thin; }
+#app-settings .st-group { padding: 14px 12px 4px; font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t4); }
+#app-settings .st-group:first-child { padding-top: 2px; }
+#app-settings .st-nav .st-search { all: unset; box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 9px; flex: none; width: 100%;
+  height: 40px; margin: 0 0 6px; padding: 0 12px; border-radius: 10px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line);
+  font: 400 15px var(--sans); color: var(--text); cursor: pointer; }
+#app-settings .st-nav .st-search:active { background: var(--card-2); }
+#app-settings .st-search-ic { display: inline-flex; flex: none; color: var(--t3); }
+#app-settings .st-search-ic svg { width: 18px; height: 18px; }
+#app-settings #stSearchText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#app-settings #stSearchText.st-unset { color: var(--t4); }
+#app-settings #stGroups[hidden], #app-settings #stHits[hidden] { display: none; }
+#app-settings .st-nav .st-hit { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; gap: 2px; width: 100%; height: auto; min-height: 50px;
+  padding: 9px 12px; border-radius: 10px; cursor: pointer; }
+#app-settings .st-nav .st-hit:active { background: var(--card); }
+#app-settings .st-nav .st-hit b { font: 500 15px var(--sans); color: var(--text); }
+#app-settings .st-nav .st-hit span { font-size: 12px; color: var(--t4); }
+#app-settings .st-nav .st-hits > .st-empty { padding: 12px; font-size: 16px; }
+#app-settings .st-row.st-flash, #app-settings .st-tabapp.st-flash { animation: st-flash 1.4s ease-out; }
+@keyframes st-flash { 0%, 35% { background: color-mix(in srgb, var(--clay) 16%, transparent); } 100% { background: transparent; } }
+
+/* ---- "Coming soon": a muted tag on a row we can't do yet (the row is dimmed, its control isn't there) ---- */
+#app-settings .st-soon { flex: none; font: 500 12px var(--sans); color: var(--t3); background: var(--card-2); border-radius: 99px; padding: 4px 10px; white-space: nowrap; }
+#app-settings .st-row.st-off { opacity: .6; }
+#app-settings .st-row.st-off .st-txt b { color: var(--t2); }
+#app-settings .st-row.st-off .hit:disabled { pointer-events: none; }   /* a gated control: no press, no pointer */
+
+/* ---- Usage: the plan's limits as bars ---- */
+#app-settings .st-usage { padding: 16px 0; border-bottom: 1px solid var(--line); }
+#app-settings .st-usage:last-child { border-bottom: 0; }
+#app-settings .st-usage-top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+#app-settings .st-usage-top b { font: 500 16px var(--sans); color: var(--text); }
+#app-settings .st-usage-top span { font-size: 14px; color: var(--t2); }
+#app-settings .st-bar-usage { position: relative; width: 100%; height: 10px; margin-top: 12px; }
+#app-settings .st-bar-usage i { background: var(--blue); min-width: 10px; }
+#app-settings .st-usage.hot .st-bar-usage i { background: var(--hot); }
+#app-settings .st-usage-sub { margin-top: 8px; font-size: 13px; color: var(--t3); }
+#app-settings .st-note-line { margin: 12px 0 0; font-size: 13px; line-height: 1.45; color: var(--t3); max-width: 560px; }
+
+/* ---- Your Claude: a box you tap to write in (the tablet's keyboard) ---- */
+#app-settings .st-area { all: unset; box-sizing: border-box; position: relative; display: block; width: 100%; min-height: 120px; margin-top: 14px; padding: 14px 16px;
+  border-radius: 12px; background: var(--card); border: 1px solid var(--line); cursor: pointer; }
+#app-settings .st-area:active { background: var(--card-2); }
+#app-settings .st-area-val { display: block; font: 400 16px/1.5 var(--sans); color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+#app-settings .st-area-val.st-unset { color: var(--t4); }
+
+/* ---- Storage ---- */
+#app-settings .st-storrow { justify-content: flex-start; gap: 18px; padding: 18px 0; }
+#app-settings .st-storrow .st-big { font: 500 36px var(--serif); letter-spacing: -.02em; line-height: 1.05; }
+#app-settings .st-storrow .st-bar { width: 300px; }
+
+/* ---- Wellbeing: quiet hours sheet ---- */
+#app-settings .st-qrow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+#app-settings .st-qrow > span { font-size: 15px; color: var(--t2); width: 64px; flex: none; }
+#app-settings .st-qrow .st-seg { flex-wrap: wrap; justify-content: flex-end; }
+#app-settings .st-days { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+#app-settings .st-days button { all: unset; box-sizing: border-box; position: relative; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  font: 500 15px var(--sans); color: var(--t3); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer; }
+#app-settings .st-days button.on { background: var(--text); color: var(--bg); box-shadow: none; }
+#app-settings .st-qwake { margin-top: 10px; border-bottom: 0; }
+
+/* ---- Device pages: the disabled range and a few small bits ---- */
+#app-settings input[type=range]:disabled { opacity: .4; }
+#app-settings .st-tabapp .st-app-ic img { width: 26px; height: 26px; border-radius: 6px; object-fit: cover; }
+#app-settings .st-tabapp { padding: 10px 0; }
+#app-settings .st-tabapp .st-txt b { font-size: 15px; }

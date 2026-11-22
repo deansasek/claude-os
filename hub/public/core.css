@@ -1,0 +1,653 @@
+  :root {
+    --bg: #faf9f5; --card: #f0eee6; --card-2: #e8e6dc; --line: #dedcd1;
+    --text: #141413; --t2: #3d3d3a; --t3: #5e5d59; --t4: #67665f; --t5: #8a887f;
+    --clay: #bf5d3c; --clay-deep: #a34a2b; --olive: #788c5d; --sky: #6a9bcc; --heart: #c9473d; --blush: #f2a68b;
+    --eye: #141413; --hot: #bf4d43;
+    /* --danger: red text and outlines for destructive actions (5.7:1 on card, 5.3:1 on card-2). --hot is the same
+       red for warnings, but at 4.2:1 on card it is too light for small text, so it is not used for that.
+       --danger-fill: the red fill of a destructive button, with --paper text on it (6.2:1), in both themes. */
+    --danger: #a33a25; --danger-fill: #a33a25; --paper: #faf9f5;
+    --lid: #3d3d3a; --base: #262624; --hatch: #b0aea5;
+    --blue: #2468c4; --track: #e6e7ea; --track-edge: rgba(47,123,224,.10); --pillbg: #f5f4ed;
+    --rail: #f0eee6; --cloud: #e3e1d7; --storm: #a9a79e; --bubble: #fffdf7;
+    --serif: "Source Serif 4", Georgia, serif; --sans: Inter, "Segoe UI", system-ui, sans-serif;
+
+    /* motion (core/web/motion.ts reads these too). Calm and unhurried: things arrive on a soft
+       ease-out and leave a little faster than they came. Animate transform and opacity only.
+         fast    presses, small state changes, things leaving
+         base    fades, cross-fades, small surfaces
+         slow    big surfaces arriving: control center, banners, keyboard, sheets, the rail's pill
+         slower  waking from the ambient screen
+         calm    falling asleep to the ambient screen */
+    --dur-fast: 120ms; --dur-base: 220ms; --dur-slow: 380ms; --dur-slower: 600ms; --dur-calm: 1200ms;
+    --ease-out: cubic-bezier(.2, .8, .2, 1);      /* standard: arriving, state changes */
+    --ease-emph: cubic-bezier(.16, 1, .3, 1);     /* emphasized: big surfaces settling in (no overshoot) */
+    --ease-in: cubic-bezier(.4, 0, 1, 1);         /* leaving */
+    --ease-std: cubic-bezier(.4, 0, .2, 1);       /* moving from one place to another on screen */
+    --rise: 7px;                                  /* how far an incoming page or sheet rises */
+    --press-filter: brightness(.94);              /* pressed: a touch darker (motion.ts) */
+  }
+  :root[data-theme="dark"] { --press-filter: brightness(1.14); }
+  @media (prefers-reduced-motion: reduce) { :root { --rise: 0px; } }
+  :root[data-theme="dark"] {
+    --clay: #d97757;
+    --bg: #141413; --card: #1f1e1d; --card-2: #2b2a27; --line: #30302e;
+    --text: #faf9f5; --t2: #dedcd1; --t3: #a6a49b; --t4: #87867f; --t5: #5e5d59;
+    --clay-deep: #b0573a; --hot: #e5675c; --danger: #ef7a6e;
+    --lid: #4a4945; --base: #5e5d59; --hatch: #4a4945;
+    --blue: #3b8ced; --track: #24282e; --track-edge: rgba(59,140,237,.18); --pillbg: #1f1e1d;
+    --rail: #1b1a19; --cloud: #3a3936; --storm: #5e5d59; --bubble: #f5f0e6;
+  }
+  /* Settings → Appearance: contrast, text size, reply width (set on <html> by core/web/system.ts applyAppearance) */
+  :root.contrast { --line: #8a887f; --t3: #3d3d3a; --t4: #4a4945; --t5: #56554f; }
+  :root.contrast[data-theme="dark"] { --line: #5e5d59; --t3: #dedcd1; --t4: #c2c0b6; --t5: #b0aea5; }
+  :root.text-large { --text-k: 1.12; }
+  :root.reply-wide { --reply-w: 900px; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* no double-tap zoom anywhere, so taps land at once (touch-action intersects down the tree:
+     elements that ask for none or pan-y still get exactly that) */
+  html { touch-action: manipulation; }
+  :where(button, [role="button"], a, label, [data-press]) { touch-action: manipulation; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; transition: background-color .5s;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  :focus { outline: none; }
+  body { font-family: var(--sans); color: var(--text); -webkit-font-smoothing: antialiased; }
+  .stage { position: absolute; left: 50%; top: 50%; width: 1024px; height: 600px; transform-origin: 0 0; overflow: hidden; }
+
+  /* app rail */
+  .rail { position: absolute; left: 0; top: 0; bottom: 0; width: 84px; background: var(--rail); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 0 18px; transition: background-color .5s; }
+  .ri { all: unset; position: relative; width: 66px; height: 66px; border-radius: 14px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 6px; color: var(--t3); font: 500 11px var(--sans); cursor: pointer;
+    transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), box-shadow var(--dur-base); }
+  .ri-icon { display: flex; width: 26px; height: 26px; }
+  .ri-icon svg { width: 26px; height: 26px; overflow: visible; }
+  .ri.busy .ri-icon svg { animation: think 2.4s cubic-bezier(.6, 0, .3, 1) infinite; }   /* an app says it's working */
+  .ri.on { background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+  /* the active pill (shell.ts) slides between rail items instead of jumping; the item itself stays clear */
+  .rail-pill { position: absolute; left: 0; top: 0; width: 66px; height: 66px; border-radius: 14px; background: var(--bg);
+    box-shadow: 0 0 0 1px var(--line); pointer-events: none; opacity: 0;
+    transition: transform var(--dur-slow) var(--ease-emph), opacity var(--dur-base), background-color .5s; }
+  .rail-pill.on { opacity: 1; }
+  .rail.has-pill .ri.on { background: transparent; box-shadow: none; }
+  .ri .badge { position: absolute; top: 9px; right: 12px; width: 9px; height: 9px; border-radius: 50%; background: var(--blue);
+    box-shadow: 0 0 0 2px var(--rail); display: none; }
+  .ri.has-badge .badge { display: block; }
+  /* Home + Apps, pinned apps, then open apps (shell.ts renderRail); it scrolls if there are more than fit */
+  .rail-apps { position: relative; width: 100%; min-height: 0; flex: 0 1 auto; display: flex; flex-direction: column; align-items: center;
+    gap: 8px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; overscroll-behavior: contain; }
+  .rail-apps::-webkit-scrollbar { display: none; }
+  .rail-apps > .ri { flex: none; }
+  .ri[hidden] { display: none; }
+  .ri-android .ri-icon img { width: 26px; height: 26px; border-radius: 7px; display: block; }
+  .ri-letter { width: 26px; height: 26px; border-radius: 7px; background: var(--card-2); color: var(--t2); display: flex;
+    align-items: center; justify-content: center; font: 600 13px var(--sans); }
+  .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }
+
+  /* apps */
+  /* every app's page grid: the header sits at --app-top, content starts at --app-body, and both
+     are inset --app-l / --app-r from the app's edges (content blocks use left: var(--app-l) etc.).
+     Every page's first label sits on --app-label-y ("Current session", "Right now", the greeting), and its
+     bottom strip ends --app-strip-b above the bottom of the stage.
+     Pages fill the stage: 600 tall on the Nest Hub, ~640 on the 1280×800 tablet (dom.ts, up to 700). */
+  .app { --app-top: 28px; --app-l: 32px; --app-r: 36px; --app-hd-h: 32px; --app-body: 80px;
+    --app-label-y: 114px; --app-strip-b: 26px;
+    /* --tall: 0 on the 600-tall stage, 1 on a taller one (below). Apps spend the extra room with
+       calc(… + … * var(--tall)) instead of repeating the media query. */
+    --tall: 0;
+    position: absolute; left: 84px; top: 0; width: 940px; height: 100%; padding: var(--app-top) var(--app-r) 0 var(--app-l);
+    /* switching (shell.ts toggles .on): the page you leave fades out quickly where it is; the one you open
+       follows a beat later (so the two barely overlap), fading in and rising --rise into place.
+       Input is never held: the new page takes taps at once and the old one stops at once. */
+    --app-in-delay: calc(var(--dur-fast) / 2);
+    opacity: 0; visibility: hidden; transform: translateY(var(--rise));
+    transition: opacity var(--dur-fast) var(--ease-out), visibility 0s var(--dur-fast), transform 0s var(--dur-fast); }
+  .app.on { opacity: 1; visibility: visible; transform: none;
+    transition: opacity var(--dur-base) var(--ease-out) var(--app-in-delay), transform var(--dur-slow) var(--ease-out) var(--app-in-delay); }
+  .app:not(.on), .app:not(.on) * { pointer-events: none !important; }
+  /* the tall stage: the tablet (1280×800 is 1.6:1) and anything squarer; the Nest Hub (1024×600) is wider */
+  @media (max-aspect-ratio: 163/100) { .app { --tall: 1; } }
+
+  /* nothing animates where nobody can see it: pages that aren't on, everything under the ambient screen,
+     the ambient screen itself while it's away, the keyboard while it's down, the voice spark while it's hidden */
+  /* (switcher cards stay paused too: un-pausing restyles every element of every app, ~100 ms on the tablet) */
+  .app:not(.on) *, .app:not(.on) *::before, .app:not(.on) *::after,
+  .stage.amb-on .app *, .stage.amb-on .app *::before, .stage.amb-on .app *::after,
+  .stage.amb-on .rail *, .stage.amb-on .vx *, .stage.amb-on .vx *::before,
+  .amb:not(.on) *, .kb:not(.on) *, .vx:not(.pill-on) .vx-pill * { animation-play-state: paused !important; }
+  .num { font-variant-numeric: tabular-nums lining-nums; }
+  .serif { font-family: var(--serif); }
+
+  /* app header (core/web/app-header.ts): the shell draws the icon + name; apps add .app-hd-after / .app-hd-right.
+     Fixed for every page: top 28, left inset 32, 32 tall, a 26px icon box centred on the wordmark's cap height,
+     10px to the wordmark (27px Source Serif 4, 500). Clear of the top 22px that sendTop() mirrors. */
+  .app-hd { display: flex; align-items: center; height: var(--app-hd-h); min-width: 0; }
+  .app-hd-brand { flex: none; display: flex; align-items: center; gap: 10px; height: var(--app-hd-h); }
+  .app-hd-tap { cursor: pointer; }
+  .app-hd-icon { flex: none; display: flex; width: 26px; height: 26px; color: var(--clay); }
+  .app-hd-icon svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .app-hd-title { font: 500 27px/var(--app-hd-h) var(--serif); letter-spacing: -.015em; white-space: nowrap; }
+  .app-hd-after { display: flex; align-items: center; min-width: 0; margin-left: 9px; }
+  .app-hd-right { margin-left: auto; padding-left: 18px; display: flex; align-items: center; gap: 18px; font-size: 14px; color: var(--t3); white-space: nowrap; }
+  .live { display: inline-flex; align-items: center; gap: 7px; padding: 5px 13px 5px 11px; border-radius: 99px;
+    border: 1px solid var(--line); background: var(--pillbg); color: var(--t2); font-size: 13px; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--t5); }
+  .live.ok i { background: var(--olive); }
+  .live.bad i { background: var(--hot); }
+  .live.wait i { background: var(--blue); }                                        /* your turn */
+  .live.work i { background: var(--clay); animation: pulse 1.4s ease-in-out infinite; }   /* Claude is working */
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* the status cluster (core/web/status.ts): the time, Wi-Fi and battery, then what's active, on the right of every
+     header. 44px tall for an easy tap; the header is 32, so it reaches 6px above and below without moving anything.
+     Its margin-left is auto (it takes the right edge), or 18px after an app's own right-hand pills. */
+  .hd-status { flex: none; display: flex; align-items: center; gap: 11px; height: 44px; margin: -6px -8px -6px auto; padding: 0 8px;
+    color: var(--t3); font-size: 14px; white-space: nowrap; cursor: pointer; border-radius: 12px; -webkit-tap-highlight-color: transparent; }
+  .app-hd-right + .hd-status, .app-hd-after + .hd-status { margin-left: 18px; }
+  .hd-status:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+  .hd-status [hidden] { display: none !important; }
+  .hd-ic { display: flex; flex: none; width: 18px; height: 18px; }
+  .hd-ic svg, .hd-batt svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .hd-batt { display: flex; align-items: center; gap: 5px; }
+  .hd-batt .hd-ic { width: 22px; height: 22px; }
+  .hd-batt.low, .hd-batt.low .hd-ic { color: var(--hot); }
+  .hd-time { color: var(--t2); font-variant-numeric: tabular-nums lining-nums; }
+  .hd-mic, .hd-speak, .hd-ringing, .hd-dl { color: var(--clay); }
+  .hd-mic, .hd-ringing { animation: pulse 1.4s ease-in-out infinite; }
+  .hd-timer { display: flex; align-items: center; gap: 5px; color: var(--t2); }
+  .hd-timer > svg { width: 18px; height: 18px; flex: none; color: var(--t3); }
+  .hd-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--clay); }
+  .hd-arc { transition: stroke-dashoffset 1s linear; }
+  .hd-dl.spin svg { animation: hdSpin 1.1s linear infinite; }
+  @keyframes hdSpin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+  :root.reduce-motion .hd-status * { animation: none !important; }
+  .hd-status.cond-only .hd-base, .hd-status.cond-only:not(.has-cond) { display: none; }   /* Home: only what's active */
+  .stage.amb-on .hd-status, .stage.inset .hd-status { visibility: hidden; }                /* ambient; the sign-in sheet's inset */
+
+  /* three columns */
+  .main { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); height: 334px; display: grid; grid-template-columns: 1fr 330px 1fr; gap: 18px; }
+  .lim { position: relative; cursor: pointer; padding-top: calc(var(--app-label-y) - var(--app-body)); }   /* the label lands on --app-label-y */
+  .lim.right { text-align: right; }
+  .lhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; color: var(--t3); }
+  .lhead b { font-weight: 600; color: var(--text); font-size: 15px; }
+  .lim.right .lhead { flex-direction: row-reverse; }
+  .big { font: 500 92px var(--serif); letter-spacing: -.035em; line-height: 1; margin: 16px 0 10px; white-space: nowrap; }
+  .big small { font-size: 38px; letter-spacing: -.01em; color: var(--t3); }
+  .big.empty { color: var(--t5); }
+  .sub { font-size: 14px; color: var(--t2); }
+  .good { color: var(--t3); } .warn { color: var(--clay-deep); } .hot-t { color: var(--hot); }
+  :root[data-theme="dark"] .warn { color: var(--clay); }
+  .face, .detail { transition: opacity var(--dur-slow) var(--ease-out); }
+  .detail { position: absolute; left: 0; right: 0; top: 196px; opacity: 0; pointer-events: none; text-align: left; }
+  .lim.flipped .face { opacity: 0; }
+  .lim.flipped .detail { opacity: 1; }
+  .rows > div { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; color: var(--t3); }
+  .rows > div b { font-weight: 500; color: var(--text); }
+
+  /* bars, as in the Claude desktop app's usage panel */
+  .barrow { display: flex; align-items: center; gap: 12px; margin-top: 22px; }
+  .lim.right .barrow { flex-direction: row-reverse; }
+  .bar { position: relative; flex: 1; height: 7px; border-radius: 99px; background: var(--track); box-shadow: inset 0 0 0 1px var(--track-edge); }
+  .bar i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--blue); transition: width .8s; min-width: 7px; }
+  .bar .now { position: absolute; top: -5px; bottom: -5px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--t4); transition: left .8s; }
+  .used { font-size: 14px; color: var(--t3); white-space: nowrap; }
+  .pacenote { margin-top: 12px; font-size: 13px; }
+
+  /* centre */
+  .centre { position: relative; text-align: center; cursor: pointer; }
+  .status { font: 400 32px var(--serif); letter-spacing: -.01em; height: 40px; }
+  .status { display: flex; align-items: center; justify-content: center; gap: 12px; }
+  .status > span { display: inline-block; transition: opacity .3s; }
+  @keyframes think { 0% { transform: rotate(0) scale(1); } 50% { transform: rotate(120deg) scale(.78); } 100% { transform: rotate(240deg) scale(1); } }
+  @keyframes twinkle { 50% { opacity: .2; } }
+  .today { color: var(--t4); }
+  .statussub { font-size: 14px; color: var(--t3); margin-top: 2px; }
+  /* the critter's speech bubble: a clay blob with a loose ink outline (drawn by ink.ts) */
+  .say { position: absolute; left: 4px; top: 88px; z-index: 3; isolation: isolate; max-width: 210px; padding: 11px 20px 22px;
+    font: italic 400 19px/1.25 var(--serif); color: #141413; text-align: center; opacity: 0; pointer-events: none;
+    transform-origin: 80% 100%; }
+  .say .ink-bg { position: absolute; left: 0; top: 0; overflow: visible; z-index: -1; }
+  .say span { position: relative; }
+  .say.go { animation: say 2.6s cubic-bezier(.2, .8, .2, 1); }
+  @keyframes say { 0% { opacity: 0; transform: translateY(8px) scale(.85) rotate(-3deg); } 12% { opacity: 1; transform: rotate(-1.5deg); }
+                   80% { opacity: 1; transform: rotate(-1.5deg); } 100% { opacity: 0; transform: translateY(-6px) rotate(-1.5deg); } }
+
+  /* bottom: live sessions + the usage sentence */
+  .bottom { position: absolute; left: var(--app-l); right: var(--app-r); bottom: var(--app-strip-b); height: 150px; border-top: 1px solid var(--line); padding-top: 14px;
+    display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; }
+  /* labels: .kicker is the sentence-case one over a block ("Sessions", "Next 24 hours"); .label the small
+     uppercase one for section and group headings (Settings, the Sessions folders, menus). Note `all: unset`
+     on a button undoes .label: put it on a span inside. */
+  .kicker { font-size: 13px; color: var(--t4); margin-bottom: 6px; display: flex; gap: 6px; }
+  .label { font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t4); }
+  /* PIN pad: shared by the lock screen (core/web/lock.ts), Settings' PIN sheet and the Claude app's PIN (its overlay is in claude/app.css) */
+  .pin-card { width: 320px; padding: 20px 22px 22px; text-align: center; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+  .pin-card .kicker { justify-content: center; }
+  .pin-dots { display: flex; justify-content: center; gap: 12px; height: 18px; margin: 8px 0 2px; }
+  .pin-dots i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--text); }
+  .pin-dots i.on { background: var(--text); }
+  .pin-msg { font-size: 13px; color: var(--clay-deep); min-height: 20px; margin: 6px 0 4px; }   /* 6:1 on paper; --hot was 4.1 */
+  :root[data-theme="dark"] .pin-msg { color: var(--hot); }
+  /* the lock's heading: serif title, one quiet line under it */
+  .lock-title { font: 500 26px/1.2 var(--serif); letter-spacing: -.015em; color: var(--text); }
+  .lock-sub { margin-top: 4px; font-size: 14px; color: var(--t3); }
+  .pin-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pin-keys button { all: unset; cursor: pointer; height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    font: 500 21px var(--sans); display: grid; place-items: center; transition: transform calc(var(--dur-fast) / 2) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+  .pin-keys button:active { transform: scale(.95); background: var(--card-2); }
+  .pin-keys button.small { font-size: 14px; color: var(--t3); }
+  .pin-keys button:disabled { opacity: .4; pointer-events: none; }
+  .pin-keys svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .pin-blank { display: block; }
+  .pin-done { all: unset; box-sizing: border-box; display: block; width: 100%; margin-top: 12px; height: 48px; border-radius: 12px; text-align: center; cursor: pointer;
+    background: var(--text); color: var(--bg); font: 600 16px/48px var(--sans); }
+  .pin-done:active { transform: scale(.98); }
+  .pin-done:disabled { opacity: .35; pointer-events: none; }
+  /* the lock screen: the whole tablet, above every app, banner and sheet */
+  .lock { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; background: var(--bg); touch-action: none; }
+  .lock[hidden] { display: none; }
+  /* the first-run welcome (core/web/welcome.ts): one calm sheet over the stage, a few short steps, all skippable.
+     Under the keyboard (20) and the controls (50) and banners (60), over the apps and the rail. */
+  .wel { position: absolute; inset: 0; z-index: 19; display: flex; flex-direction: column; align-items: center; box-sizing: border-box;
+    padding: 14px 40px 22px; background: var(--bg); color: var(--text); font-family: var(--sans); animation: wel-fade var(--dur-base) var(--ease-out); }
+  .wel[hidden] { display: none; }
+  .wel-top { align-self: stretch; display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+  .wel-top > span { display: block; width: 1px; }
+  .wel-link { all: unset; box-sizing: border-box; position: relative; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center;
+    padding: 0 12px; border-radius: 10px; font: 500 15px var(--sans); color: var(--t3); }
+  .wel-link:active { color: var(--text); }
+  .wel-body { flex: 1; min-height: 0; width: 100%; max-width: 640px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .wel-in { animation: wel-rise var(--dur-slow) var(--ease-emph) both; }
+  .wel-kicker { font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t4); }
+  .wel-h1 { margin: 10px 0 0; font: 400 40px/1.1 var(--serif); letter-spacing: -.02em; color: var(--text); }
+  .wel-h2 { margin: 10px 0 0; font: 400 34px/1.15 var(--serif); letter-spacing: -.015em; color: var(--text); }
+  .wel-lede { margin: 12px 0 0; max-width: 480px; font: 400 16px/1.5 var(--sans); color: var(--t3); }
+  .wel-hero { display: flex; flex-direction: column; align-items: center; }
+  .wel-say { margin: 0 0 4px; min-height: 1.3em; font: 400 18px var(--serif); color: var(--t3); }
+  .wel-critter { width: 140px; height: 110px; animation: wel-bob 2.6s ease-in-out infinite; }
+  .wel-field { all: unset; box-sizing: border-box; position: relative; cursor: pointer; margin-top: 24px; width: 100%; max-width: 440px; min-height: 60px;
+    padding: 0 20px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center;
+    font: 500 22px var(--serif); color: var(--text); }
+  .wel-field:active { background: var(--card-2); }
+  .wel-field .ph { font: 400 17px var(--sans); color: var(--t4); }
+  .wel-looks { margin-top: 24px; display: flex; gap: 16px; justify-content: center; }
+  .wel-look { all: unset; box-sizing: border-box; position: relative; cursor: pointer; width: 186px; padding: 12px 12px 14px; border-radius: 18px;
+    border: 1px solid var(--line); background: var(--card); display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center;
+    transition: border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out); }
+  .wel-look.on { border-color: var(--text); }
+  .wel-look b { margin-top: 8px; font: 500 16px var(--sans); color: var(--text); }
+  .wel-look small { font: 400 13px/1.35 var(--sans); color: var(--t3); }
+  .wel-swatch { position: relative; display: block; width: 100%; height: 84px; border-radius: 12px; overflow: hidden; background: #faf9f5; box-shadow: inset 0 0 0 1px #dedcd1; }
+  .wel-swatch.dark { background: #141413; box-shadow: inset 0 0 0 1px #30302e; }
+  .wel-swatch.time { background: linear-gradient(90deg, #faf9f5 50%, #141413 50%); }
+  .wel-swatch i { position: absolute; left: 16px; top: 18px; width: 56%; height: 8px; border-radius: 4px; background: #d97757; }
+  .wel-swatch i + i { top: 36px; width: 36%; background: #5e5d59; }
+  .wel-swatch.dark i + i { background: #a6a49b; }
+  .wel-swatch.time i { background: #d97757; }
+  .wel-swatch.time i + i { background: #5e5d59; }
+  .wel-swatch.time i:first-child { left: 8px; width: 28%; }
+  .wel-swatch.time i + i { left: 52%; width: 30%; background: #a6a49b; top: 36px; }
+  .wel-conn { margin: 18px 0 0; font-size: 15px; color: var(--t3); }
+  .wel-conn b { color: var(--text); font-weight: 500; }
+  .wel-nets { margin-top: 14px; width: 100%; max-width: 480px; max-height: 210px; overflow: hidden auto; text-align: left; border-radius: 16px;
+    border: 1px solid var(--line); background: var(--card); box-sizing: border-box; }
+  .wel-net { all: unset; box-sizing: border-box; position: relative; cursor: pointer; width: 100%; min-height: 56px; padding: 10px 18px;
+    display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+  .wel-net:last-child { border-bottom: 0; }
+  .wel-net:active { background: var(--card-2); }
+  .wel-net b { display: block; font: 500 16px var(--sans); color: var(--text); }
+  .wel-net span { display: block; margin-top: 2px; font: 400 13px var(--sans); color: var(--t3); }
+  .wel-note { margin: 14px 0 0; font-size: 14px; color: var(--t3); }
+  .wel-err { color: var(--clay-deep); }
+  .wel-row { margin-top: 24px; width: 100%; max-width: 480px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    padding: 16px 20px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); text-align: left; }
+  .wel-row b { display: block; font: 500 17px var(--sans); color: var(--text); }
+  .wel-row span { display: block; margin-top: 2px; font-size: 13px; color: var(--t3); }
+  .wel-switch { all: unset; box-sizing: border-box; position: relative; flex: none; width: 52px; height: 30px; border-radius: 99px; background: var(--track);
+    cursor: pointer; transition: background-color var(--dur-base) var(--ease-out); }
+  .wel-switch i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform var(--dur-base) var(--ease-out); }
+  .wel-switch[aria-checked="true"] { background: var(--text); }
+  .wel-switch[aria-checked="true"] i { transform: translateX(22px); }
+  .wel-tips { list-style: none; margin: 22px 0 0; padding: 0; width: 100%; max-width: 540px; text-align: left; }
+  .wel-tips li { display: flex; flex-direction: column; gap: 2px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .wel-tips li:last-child { border-bottom: 0; }
+  .wel-tips b { font: 500 16px var(--sans); color: var(--text); }
+  .wel-tips span { font-size: 14px; color: var(--t3); }
+  .wel-foot { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 124px; justify-content: flex-end; }
+  .wel-btn { all: unset; box-sizing: border-box; position: relative; cursor: pointer; min-width: 300px; height: 52px; padding: 0 28px; border-radius: 14px;
+    display: inline-flex; align-items: center; justify-content: center; background: var(--text); color: var(--bg); font: 600 17px var(--sans); }
+  .wel-btn:active { transform: scale(.98); }
+  .wel-foot .wel-link { min-height: 44px; }
+  .wel-dots { display: flex; gap: 8px; margin-top: 10px; height: 6px; }
+  .wel-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--t5); transition: background-color var(--dur-base) var(--ease-out); }
+  .wel-dots i.on { background: var(--clay); }
+  @keyframes wel-fade { from { opacity: 0; } }
+  @keyframes wel-rise { from { opacity: 0; transform: translateY(var(--rise)); } }
+  @keyframes wel-bob { 50% { transform: translateY(-5px); } }
+  @media (prefers-reduced-motion: reduce) { .wel-critter { animation: none; } }
+  .summary { font-size: 18px; font-weight: 600; line-height: 1.32; letter-spacing: -.01em; }
+  .summary em { font: 400 19px var(--serif); font-style: normal; color: var(--t3); letter-spacing: 0; }
+  .todayline { margin-top: 12px; font-size: 13px; color: var(--t4); line-height: 1.5; }
+  .todayline b { font: 400 17px var(--serif); color: var(--text); }
+  @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes hop { 0% { transform: none; } 15% { transform: scale(1.08, .88); } 45% { transform: translateY(-3.2px) scale(.94, 1.07); }
+                   75% { transform: scale(1.06, .92); } 100% { transform: none; } }
+  .backnow { all: unset; position: relative; cursor: pointer; font-size: 12px; color: var(--t2); padding: 3px 11px; border-radius: 99px;
+    border: 1px solid var(--line); background: var(--pillbg); }
+  .backnow[hidden] { display: none; }
+  .ic { color: var(--t2); }
+  .ic-spot { color: var(--text); }
+  /* buttons */
+  .placebtn { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding: 3px 10px 3px 8px;
+    border-radius: 10px; font: 400 27px var(--serif); letter-spacing: -.015em; color: var(--t4); transition: background-color var(--dur-base) var(--ease-out); }
+  .placebtn:active { background: var(--card); }
+  .placebtn svg { width: 16px; height: 16px; margin-top: 4px; }
+  .pbtn { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; margin-top: 26px; padding: 13px 22px;
+    border-radius: 12px; background: var(--text); color: var(--bg); font: 500 16px var(--sans); }
+  .seg { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--card); border: 1px solid var(--line); }
+  .seg button { all: unset; position: relative; cursor: pointer; padding: 6px 14px; border-radius: 8px; font: 500 14px var(--sans); color: var(--t3); }
+  .seg button { transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), box-shadow var(--dur-base); }
+  .seg button.on { background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+  /* touch: .hit grows a small control's target to at least 44×44 under a finger without changing how it looks
+     (an invisible ::before, centred, never smaller than the control). The ::before is positioned against the
+     element, so the element must be position: relative. It is !important on purpose: an app rule that resets the
+     control with `all: unset` (higher specificity, any later) would otherwise drop it to static, and the ::before
+     would then cover a far ancestor and steal taps. A control that must be absolutely or fixed positioned keeps its
+     own position: give it the class hit-abs (it is then its own containing block, so the ::before still works).
+     The .seg buttons and .backnow get the same guarantee. Dev check: checkHitAreas() (core/web/hit-guard.ts). */
+  .hit:not(.hit-abs), .seg button:not(.hit-abs), .backnow:not(.hit-abs) { position: relative !important; }
+  .hit::before, .seg button::before, .backnow::before { content: ''; position: absolute; inset: min(0px, calc(50% - 22px)); }
+  /* ================= on-screen keyboard (shared) ================= */
+  .kb { position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--rail); border-top: 1px solid var(--line);
+    box-shadow: 0 -12px 32px rgba(20,20,19,.08); padding: 12px 20px 16px; transform: translateY(105%); visibility: hidden;
+    transition: transform var(--dur-base) var(--ease-in), visibility 0s var(--dur-base), background-color .5s; }
+  .kb.on { transform: none; visibility: visible; transition: transform var(--dur-slow) var(--ease-emph), background-color .5s; }
+  .kb-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .kb-field { flex: 1; height: 46px; display: flex; align-items: center; padding: 0 16px; border-radius: 12px; background: var(--bg);
+    border: 1px solid var(--line); font-size: 19px; overflow: hidden; white-space: pre; }
+  .kb-field > span { flex: none; }   /* a long entry keeps its width and scrolls inside the field (keyboard.ts paint) */
+  .kb-ph { color: var(--t5); }
+  .kb-caret { width: 2px; height: 24px; background: var(--clay); margin-left: 1px; animation: caret 1s steps(1) infinite; }
+  @keyframes caret { 50% { opacity: 0; } }
+  .kb-bar button { all: unset; cursor: pointer; height: 46px; padding: 0 20px; border-radius: 12px; font: 500 15px var(--sans);
+    display: inline-flex; align-items: center;
+    transition: transform calc(var(--dur-fast) / 2) var(--ease-out), background-color calc(var(--dur-fast) / 2), filter calc(var(--dur-fast) / 2); }
+  .kb-cancel { color: var(--t3); }
+  .kb-cancel:active { transform: scale(.94); background: var(--card-2); }   /* pressed like a key */
+  .kb-done { background: var(--text); color: var(--bg); }
+  .kb-done:active { transform: scale(.94); filter: var(--press-filter); }   /* the ink a touch lighter or darker */
+  .kb-keys { display: flex; flex-direction: column; gap: 8px; }
+  .kb-row { display: flex; gap: 8px; justify-content: center; }
+  .kb-row button { all: unset; cursor: pointer; flex: 0 0 86px; height: 48px; border-radius: 10px; background: var(--bg); color: var(--text);
+    box-shadow: 0 1px 0 var(--line), 0 0 0 1px var(--line); display: grid; place-items: center; font: 500 20px var(--sans);
+    transition: transform calc(var(--dur-fast) / 2) var(--ease-out), background-color calc(var(--dur-fast) / 2); }
+  .kb-row button.wide { flex-basis: 132px; font-size: 14px; color: var(--t3); }
+  .kb-row button.space { flex-basis: 420px; font-size: 14px; color: var(--t4); }
+  .kb-row button.on { background: var(--text); color: var(--bg); }
+  .kb-row button:active, .kb-row button.down { transform: scale(.94); background: var(--card-2); }
+  .kb-ico { display: block; width: 12px; height: 12px; overflow: visible; pointer-events: none; fill: none; stroke: currentColor;
+    stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+  .kb-row button.on .kb-ico-shift { fill: currentColor; stroke: none; }
+
+  /* ===== Claude Home system layer (core/web/system.ts) ===== */
+  /* the control center's slider look (blue fill, white knob) */
+  .cc input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; height: 34px; background: transparent; margin: 0; }
+  .cc input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 99px;
+    background: linear-gradient(90deg, var(--blue) var(--p, 50%), var(--track) var(--p, 50%)); box-shadow: inset 0 0 0 1px var(--track-edge); }
+  .cc input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -8px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3), 0 0 0 1px rgba(20,20,19,.08); }
+  .batt-glyph .batt-bolt { stroke: var(--batt-knock, var(--bg)); }
+
+  /* app switcher (core/web/switcher.ts): the apps' own sections become cards, scaled with transform only.
+     Layers: shade 45 (dim + blur over the rail), cards 46, labels / hit layer / Close all 47; the pull-down,
+     banners and ambient screen stay above. */
+  /* sits just above Android's own bottom gesture band (--grab-bottom, from the tablet: a swipe up that starts in that
+     band is taken by Android, see switcher.ts); touch-action none keeps the browser from starting a scroll on it */
+  .sw-handle { position: absolute; left: 84px; right: 0; bottom: var(--grab-bottom, 0px); height: 18px; z-index: 40; cursor: pointer; touch-action: none; }
+  .sw-handle::after { content: ''; position: absolute; bottom: 6px; left: 50%; width: 112px; height: 4px; margin-left: -56px;
+    border-radius: 4px; background: var(--t5); opacity: .55; transition: opacity var(--dur-base) var(--ease-out); }
+  .stage:not(.on-tablet) .sw-handle::after { opacity: .3; }
+  .kb.on ~ .sw-handle, .stage.sw-on .sw-handle { display: none; }
+  .sw-shade { position: absolute; inset: 0; z-index: 45; background: rgba(20, 20, 19, .6); opacity: 0; visibility: hidden;   /* .6: the white card labels on it reach 4.5:1 in light */
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); pointer-events: none;
+    transition: opacity var(--dur-base) var(--ease-out), visibility 0s var(--dur-base); }
+  .sw-shade.on { opacity: 1; visibility: visible; transition: opacity var(--dur-slow) var(--ease-out); }
+  :root[data-theme="dark"] .sw-shade { background: rgba(0, 0, 0, .55); }
+  .app.sw-card { z-index: 46; background: var(--bg); border-radius: 30px; overflow: hidden; transform-origin: 50% 50%;
+    will-change: transform, opacity; box-shadow: 0 14px 36px rgba(20, 20, 19, .3), 0 0 0 2px rgba(20, 20, 19, .06); }
+  :root[data-theme="dark"] .app.sw-card { box-shadow: 0 14px 36px rgba(0, 0, 0, .5), 0 0 0 2px rgba(255, 255, 255, .06); }
+  .sw-top { position: absolute; inset: 0; z-index: 47; display: none; touch-action: none; }
+  .stage.sw-on .sw-top { display: block; }
+  .sw-label, .sw-acard, .sw-all { position: absolute; left: 0; top: 0; will-change: transform, opacity; }
+  /* a card's title: serif, as the app's own title; one line, cut with an ellipsis, never wider than its card (432px) */
+  .sw-label { display: flex; align-items: center; gap: 9px; width: 432px; height: 28px; color: #faf9f5; font: 500 18px/1 var(--serif);
+    letter-spacing: -.01em; pointer-events: none; }
+  .sw-label .sw-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sw-label .sw-ic { display: flex; flex: none; width: 22px; height: 22px; color: #faf9f5; }
+  .sw-label .sw-ic svg, .sw-label .sw-ic img { width: 22px; height: 22px; border-radius: 6px; }
+  .sw-label .ri-letter { width: 22px; height: 22px; }
+  .sw-acard { left: 84px; width: 940px; height: 600px; transform-origin: 50% 50%; border-radius: 30px; background: var(--card);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; pointer-events: none;
+    box-shadow: 0 14px 36px rgba(20, 20, 19, .3); }
+  .sw-acard-ic, .sw-acard-ic img { width: 170px; height: 170px; border-radius: 40px; display: flex; }
+  .sw-acard-ic .ri-letter { width: 170px; height: 170px; border-radius: 40px; font-size: 72px; }
+  .sw-acard-name { font: 500 52px var(--serif); letter-spacing: -.015em; color: var(--text); }
+  .sw-all { all: unset; position: absolute; left: 0; top: 0; width: 76px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    color: #faf9f5; font: 500 13px var(--sans); cursor: pointer; }
+  .sw-all-x { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: rgba(250, 249, 245, .16); box-shadow: inset 0 0 0 1px rgba(250, 249, 245, .25); font: 300 30px/1 var(--sans); }
+  .sw-all:active .sw-all-x { background: rgba(250, 249, 245, .26); }
+
+  /* control center: our own pull-down */
+  /* sits just below Android's own top gesture band (--grab-top, from the tablet: a quick swipe starting in that band is
+     taken by Android, or in Desk mode by the helper's strip), a 44px hit area; touch-action none keeps the browser from
+     starting a scroll on it (the rest of the grab zone stops that in script, system.ts bindCC) */
+  .cc-handle { position: absolute; top: var(--grab-top, var(--sys-top, 0px)); left: 50%; width: 160px; height: 44px; margin-left: -80px; z-index: 40; cursor: pointer; touch-action: none; }
+  .cc-handle::after { content: ''; position: absolute; top: 18px; left: 60px; width: 40px; height: 4px; border-radius: 4px; background: var(--t5); opacity: .6; }
+  .stage:not(.on-tablet) .cc-handle::after { opacity: .3; }
+  /* header controls (the tabs, the count, the "+") sit in the handle's top band: they take taps above the handle's
+     hit area (z 40), so a tap on them is a tap on the button; the grab zone is stage-level and is unaffected */
+  .app-hd-after > *, .app-hd-right > * { position: relative; z-index: 41; }
+  /* the stage is fitted beside Chrome's sign-in sheet (dom.ts setStageInset): no pull-down or switcher handle meanwhile
+     (the pull-down handle sat right at the sheet's edge, and neither should open over a sign-in in progress) */
+  .stage.inset .cc-handle, .stage.inset .sw-handle { display: none; }
+  .cc { position: absolute; inset: 0; z-index: 50; pointer-events: none; }
+  .cc-shade { position: absolute; inset: 0; background: rgba(20, 20, 19, .28); opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
+  .cc.on .cc-shade { transition-duration: var(--dur-slow); }
+  :root[data-theme="dark"] .cc-shade { background: rgba(0, 0, 0, .45); }
+  .cc.on { pointer-events: auto; }
+  .cc.on .cc-shade { opacity: 1; }
+  .cc-panel { position: absolute; left: 50%; top: 0; width: 620px; margin-left: -310px; padding: calc(22px + var(--sys-top, 0px)) 24px 24px; box-sizing: border-box;
+    background: var(--bg); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 24px 24px; box-shadow: 0 18px 50px rgba(20,20,19,.18);
+    transform: translateY(calc(-100% - 60px)); visibility: hidden;
+    transition: transform var(--dur-base) var(--ease-in), visibility 0s var(--dur-base); }
+  :root[data-theme="dark"] .cc-panel { box-shadow: 0 18px 50px rgba(0,0,0,.5); }
+  .cc.on .cc-panel { transform: none; visibility: visible; transition: transform var(--dur-slow) var(--ease-emph); }
+  .cc-top { display: flex; align-items: flex-start; justify-content: space-between; padding: 0 2px; }
+  .cc-time { font: 500 44px var(--serif); letter-spacing: -.03em; line-height: 1; }
+  .cc-date { margin-top: 6px; font-size: 14px; color: var(--t3); }
+  .cc-status { display: flex; align-items: center; gap: 14px; font-size: 14px; color: var(--t2); padding-top: 4px; }
+  .cc-stat { display: inline-flex; align-items: center; gap: 4px; }
+  .cc-stat svg { width: 24px; height: 24px; }
+  .cc-batt svg { width: 28px; height: 28px; }
+  .cc-batt.low { color: var(--hot); }
+  .cc-ic { display: inline-flex; flex: none; font-style: normal; }
+  /* the tablet's 2×4 grid (eight tiles); a tile is an icon over its name and its state line, 80px tall, a whole tap target */
+  .cc-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 16px; }
+  .cc-tiles.two { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; }
+  .cc-tile { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 0; padding: 10px 12px 9px;
+    border-radius: 16px; cursor: pointer; background: var(--card); border: 1px solid var(--line); min-width: 0; min-height: 80px;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    transition: background-color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out); }
+  .cc-tile .cc-ic { width: 22px; height: 22px; margin-bottom: 6px; color: var(--t2); }
+  .cc-tile .cc-ic svg { width: 22px; height: 22px; }
+  .cc-tile b { font-weight: 600; font-size: 14px; line-height: 18px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-tile span { max-width: 100%; font-size: 12px; line-height: 16px; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* a tile that's on is ink (like the primary buttons), not clay: clay is kept for the one thing needing attention */
+  .cc-tile.on { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .cc-tile.on .cc-ic { color: var(--bg); }
+  .cc-tile.on span { color: var(--bg); opacity: .72; }
+  /* not there on this tablet (Hey Claude without the voice app): shown, not tappable */
+  .cc-tile:disabled { color: var(--t4); cursor: default; }
+  .cc-tile:disabled .cc-ic, .cc-tile:disabled span { color: var(--t4); }
+  .cc-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .cc-slide { display: flex; align-items: center; gap: 14px; padding: 6px 16px 6px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+  .cc-slide .cc-ic, .cc-slide .cc-ic svg { width: 22px; height: 22px; color: var(--t2); }
+  .cc-slide input[type=range] { height: 44px; }   /* a 44px touch target for the slider (was 34) */
+  .cc-notes { margin-top: 14px; }
+  .cc-kick { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--t4); margin: 0 2px 2px; }
+  .cc-kick-btns { display: flex; gap: 4px; }
+  .cc-clear { all: unset; position: relative; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--t2); padding: 6px 10px; margin: -6px -2px -6px 0; border-radius: 8px; }
+  .cc-clear:active { background: var(--card); }
+  .cc-clear[hidden] { display: none; }
+  .cc-note, .banner { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 4px; cursor: pointer; }
+  .cc-note + .cc-note { border-top: 1px solid var(--line); }
+  .cc-note:active { background: var(--card); border-radius: 10px; }
+  .cc-note-ic { display: inline-flex; width: 36px; height: 36px; flex: none; align-items: center; justify-content: center; border-radius: 10px;
+    background: var(--card); border: 1px solid var(--line); color: var(--t2); }
+  .cc-note-ic svg { width: 20px; height: 20px; }
+  /* a row that opens its app says so with a quiet chevron (system.ts noteRow, notify) */
+  .cc-go { display: flex; flex: none; align-self: center; width: 16px; height: 16px; color: var(--t5); }
+  .cc-go svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .cc-note-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .cc-note-txt b { font-weight: 600; font-size: 14px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-note-txt span { font-size: 13px; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-note em, .banner em { align-self: flex-start; margin-top: 2px; font-style: normal; font-size: 12px; color: var(--t4); white-space: nowrap; }
+  .cc-none { padding: 10px 2px 2px; font: italic 400 16px var(--serif); color: var(--t4); }
+  .cc-grab { width: 40px; height: 4px; border-radius: 4px; background: var(--t5); opacity: .7; margin: 16px auto -10px; }
+
+  /* banners: drop from the top, like a system notification; swipe up to dismiss */
+  .banner { position: absolute; z-index: 60; top: calc(12px + var(--sys-top, 0px)); left: 50%; width: 480px; margin-left: -240px; padding: 12px 16px 12px 12px;
+    border-radius: 20px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 12px 36px rgba(20,20,19,.16); touch-action: none;
+    transform: translateY(calc(-100% - 60px)); visibility: hidden;
+    transition: transform var(--dur-base) var(--ease-in), visibility 0s var(--dur-base); }
+  :root[data-theme="dark"] .banner { background: var(--card); box-shadow: 0 12px 36px rgba(0,0,0,.5); }
+  :root[data-theme="dark"] .banner .cc-note-ic { background: var(--card-2); }
+  .banner.on { transform: none; visibility: visible; transition: transform var(--dur-slow) var(--ease-emph); }
+  /* a banner's body may run to two lines, so the reason it came is readable before it goes */
+  .banner .cc-note-txt b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }   /* a long title wraps, not cut to one line */
+  .banner .cc-note-txt span { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.35; }
+  .banner.dragging { transition: none; }   /* follows the finger while it's swiped (system.ts) */
+
+  /* volume HUD: a pill over the bottom middle when the volume changes (system.ts showVolume), fades out by itself */
+  .vol-hud { position: absolute; z-index: 64; left: 50%; bottom: 30px; width: 260px; margin-left: -130px; height: 52px; box-sizing: border-box;
+    display: flex; align-items: center; gap: 14px; padding: 0 22px 0 18px; border-radius: 99px; color: var(--t2);
+    background: var(--bg); border: 1px solid var(--line); box-shadow: 0 12px 36px rgba(20,20,19,.16); pointer-events: none;
+    opacity: 0; visibility: hidden; transform: translateY(10px);
+    transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), visibility 0s var(--dur-base); }
+  :root[data-theme="dark"] .vol-hud { background: var(--card); box-shadow: 0 12px 36px rgba(0,0,0,.5); }
+  .vol-hud.on { opacity: 1; visibility: visible; transform: none; transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-base) var(--ease-out); }
+  .vol-ic, .vol-ic svg { display: flex; flex: none; width: 24px; height: 24px; }
+  .vol-track { position: relative; flex: 1; height: 8px; border-radius: 99px; background: var(--track); box-shadow: inset 0 0 0 1px var(--track-edge); overflow: hidden; }
+  .vol-track i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 99px; background: var(--blue); transition: width var(--dur-fast) var(--ease-out); }
+
+  /* ambient screen: a calm clock while nobody's around (always dark, whatever the theme) */
+  .amb { position: absolute; inset: 0; z-index: 70; background: #0d0d0c; color: #e8e3d8; display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden; transition: opacity var(--dur-calm) var(--ease-std), visibility 0s var(--dur-calm); }
+  .amb.on { opacity: 1; visibility: visible; transition: opacity var(--dur-calm) var(--ease-std); }
+  .amb.waking { transition: opacity var(--dur-slow) var(--ease-out), visibility 0s var(--dur-slow); }
+  .amb-in { text-align: center; transition: transform 2s ease; }
+  .amb-face { transition: transform calc(var(--dur-calm) * 1.3) var(--ease-out), opacity var(--dur-calm); }
+  .amb:not(.on) .amb-face { transform: scale(.97); }
+  .amb.waking .amb-face { transform: scale(1.03); opacity: 0; transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-base) var(--ease-out); }
+  /* no opacity drop at night: the backlight already dims, and a faded face fell below 4.5:1 (notice, chips) */
+  /* negative letter-spacing also trims after the last digit, which pushes the digits ~4px right; the margin cancels that */
+  .amb-time { font: 400 168px var(--serif); letter-spacing: -.045em; margin-right: .045em; line-height: 1; color: #efe9dc; }
+  /* 12-hour AM/PM: small, beside the digits, top-aligned to the cap height; its own spacing (the digits' is negative) */
+  .amb-ap { font: 400 40px/1 var(--serif); letter-spacing: 0; margin-left: .16em; vertical-align: top; margin-top: .3em; color: #a8a296; }
+  .amb-date { margin-top: 8px; font: 400 26px var(--serif); color: #a8a296; }
+  .amb-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 22px; min-height: 40px; }
+  .amb-chip { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 13px; border-radius: 99px;
+    background: #1a1918; border: 1px solid #2a2927; font-size: 17px; color: #b5afa3; }
+  .amb-chip svg { width: 22px; height: 22px; color: #d9d3c6; }
+  .amb-chip b { font-weight: 500; color: #efe9dc; }
+  .amb-chip em { font-style: normal; color: #958f85; }
+  .amb-chip.low, .amb-chip.low svg { color: #e5675c; }
+  .amb-chip .batt-glyph { width: 24px; height: 24px; --batt-knock: #1a1918; }
+  .amb-note { display: inline-flex; align-items: center; gap: 9px; margin-top: 18px; font-size: 20px; color: #a8a296; max-width: 620px; }
+  .amb-note[hidden] { display: none; }
+  .amb-note i { width: 8px; height: 8px; border-radius: 50%; background: #d97757; flex: none; }
+  .amb-note span { color: #a8a296; }
+  /* "needs you" is the one clay thing on this screen (text and dot; 6:1 on the background) */
+  .amb-need { font-weight: 500; color: #d97757; display: inline-flex; align-items: center; gap: 9px; }
+  /* the hint for the first few seconds after the screen dims, then it fades out by itself (no timer in the page) */
+  .amb-hint { position: absolute; left: 0; right: 0; bottom: 8vh; text-align: center; font: 400 16px/1 var(--sans); letter-spacing: .02em;
+    color: #8c887e; opacity: 0; pointer-events: none; }
+  .amb.on .amb-hint { animation: amb-hint 6s var(--ease-std) both; }
+  @keyframes amb-hint { 0% { opacity: 0; } 12%, 60% { opacity: .9; } 100% { opacity: 0; } }
+  .amb-critter { position: relative; width: 70px; margin: 26px auto 0; }
+  .amb-crit { display: block; width: 70px; height: 45px; opacity: .75; animation: amb-breathe 4s ease-in-out infinite; transform-origin: 50% 100%; }
+  @keyframes amb-breathe { 50% { transform: scaleY(1.05); } }
+  .amb-z { position: absolute; left: 62px; top: 0; font: italic 400 16px var(--serif); color: #8c887e; opacity: 0; animation: amb-z 6s ease-out infinite; }
+  .amb-z + .amb-z { animation-delay: 3s; font-size: 12px; }
+  @keyframes amb-z { 0% { opacity: 0; transform: translate(0, 6px); } 20% { opacity: .8; } 100% { opacity: 0; transform: translate(14px, -26px); } }
+  /* night: warmer and dimmer, the same layout (the backlight is already low). Every text stays at 4.5:1 or better on #0d0d0c */
+  .amb.night .amb-time { color: #e3d3b4; }
+  .amb.night .amb-ap, .amb.night .amb-date, .amb.night .amb-note, .amb.night .amb-note span { color: #a39a88; }
+  .amb.night .amb-chip { background: #161411; border-color: #25221c; color: #a39a88; }
+  .amb.night .amb-chip b { color: #e3d3b4; }
+  .amb.night .amb-chip svg { color: #c9bb9b; }
+  .amb.night .amb-chip.low, .amb.night .amb-chip.low svg { color: #e5675c; }
+  .amb.night .amb-need { color: #d97757; }
+  .amb.night .amb-critter { width: 56px; margin-top: 20px; }
+  .amb.night .amb-crit { width: 56px; height: 36px; }
+  .amb.night .amb-z { left: 50px; }
+  /* photo frame (core/web/amb-photos.ts): a photo full screen behind the clock, two layers crossfading over ~2 s.
+     A soft dark veil, deepest where the clock sits, and a shadow under the text keep it readable on any picture.
+     Without .photo (frame off, empty library, the PC away) none of this shows and the screen is as before. */
+  .amb-photo { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .amb-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 2s var(--ease-std); }
+  .amb-photo img.show { opacity: 1; }
+  .amb-photo::after { content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity 2s var(--ease-std);
+    background: radial-gradient(ellipse 62% 58% at 50% 50%, rgba(13,13,12,.66), rgba(13,13,12,.34) 100%), rgba(13,13,12,.12); }
+  .amb.photo .amb-photo::after { opacity: 1; }
+  .amb.night .amb-photo::after { background: radial-gradient(ellipse 62% 58% at 50% 50%, rgba(13,13,12,.76), rgba(13,13,12,.5) 100%), rgba(13,13,12,.2); }
+  .amb-in, .amb-hint { z-index: 1; }
+  .amb-in { position: relative; }
+  .amb.photo .amb-time, .amb.photo .amb-date, .amb.photo .amb-note, .amb.photo .amb-hint { text-shadow: 0 1px 3px rgba(0,0,0,.6), 0 2px 18px rgba(0,0,0,.55); }
+  .amb.photo .amb-time { color: #f3eee4; }
+  .amb.night.photo .amb-time { color: #eadcbf; }
+  .amb.photo .amb-ap, .amb.photo .amb-date, .amb.photo .amb-note span { color: #ddd7cb; }
+  .amb.photo .amb-chip { background: rgba(20,19,18,.72); border-color: rgba(255,255,255,.1); color: #ddd7cb; }
+  .amb.night.photo .amb-chip { background: rgba(16,15,13,.8); }
+
+  /* waking: the page comes back with a soft rise, as if the screen turned on */
+  .stage.waking .app.on, .stage.waking .rail { animation: sys-wake var(--dur-slower) var(--ease-out); }
+  @keyframes sys-wake { from { opacity: 0; transform: scale(.985); } }
+
+  /* ===== reduced motion: nothing slides, rises or scales; surfaces fade, decoration holds still ===== */
+  @media (prefers-reduced-motion: reduce) {
+    .app, .app.on { transform: none; }
+    .rail-pill { transition: opacity var(--dur-base), background-color .5s; }
+    .cc-panel, .banner, .kb { transform: none; opacity: 0; }
+    .cc-panel, .banner { transition: opacity var(--dur-base) var(--ease-out), visibility 0s var(--dur-base); }
+    .kb { transition: opacity var(--dur-base) var(--ease-out), visibility 0s var(--dur-base), background-color .5s; }
+    .cc.on .cc-panel, .banner.on { opacity: 1; transition: opacity var(--dur-base) var(--ease-out); }
+    .vol-hud, .vol-hud.on { transform: none; }
+    .kb.on { opacity: 1; transition: opacity var(--dur-base) var(--ease-out), background-color .5s; }
+    .amb-face, .amb:not(.on) .amb-face, .amb.waking .amb-face { transform: none; }
+    .amb-in { transition: none; }
+    .amb-photo img, .amb-photo::after { transition: none; }
+    .stage.waking .app.on, .stage.waking .rail { animation-name: sys-wake-fade; }
+    @keyframes sys-wake-fade { from { opacity: 0; } }
+    .kb-row button:active, .kb-row button.down, .kb-bar button:active { transform: none; }
+    /* looping decoration plays once and rests; status that only motion can show (a busy app, the caret) keeps going */
+    .stage *, .stage *::before, .stage *::after { animation-iteration-count: 1 !important; }
+    .stage .rail .ri.busy .ri-icon svg, .stage .kb .kb-caret { animation-iteration-count: infinite !important; }
+  }
+
+  /* ===== Settings → Appearance and low power: reduce motion beyond the system's own setting (the same as the block above) ===== */
+  :root.reduce-motion .app, :root.reduce-motion .app.on { transform: none; }
+  :root.reduce-motion .stage *, :root.reduce-motion .stage *::before, :root.reduce-motion .stage *::after { animation-iteration-count: 1 !important; }
+  :root.reduce-motion .stage .rail .ri.busy .ri-icon svg, :root.reduce-motion .stage .kb .kb-caret, :root.reduce-motion .st-spin { animation-iteration-count: infinite !important; }
+  :root.reduce-motion .cc-panel, :root.reduce-motion .banner, :root.reduce-motion .kb, :root.reduce-motion .vol-hud { transform: none; }
+  :root.reduce-motion .stage *, :root.reduce-motion .stage *::before, :root.reduce-motion .stage *::after { transition-duration: 1ms !important; }
+  :root.reduce-motion .stage.waking .app.on, :root.reduce-motion .stage.waking .rail { animation-name: sys-wake-fade; }
+
+  /* an app that couldn't start (shell.ts): the rest of Claude Home carries on */
+  .app-failed { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    background: var(--bg); text-align: center; padding: 0 80px; }
+  .app-failed b { font: 500 28px var(--serif); letter-spacing: -.01em; color: var(--text); }
+  .app-failed span { font-size: 15px; color: var(--t3); max-width: 420px; line-height: 1.45; }

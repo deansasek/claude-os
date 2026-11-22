@@ -1,0 +1,99 @@
+/* ===== Photos ===== */
+#app-photos .ph-scroll { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+#app-photos .ph-scroll::-webkit-scrollbar { display: none; }
+#app-photos .ph-days { display: flex; flex-direction: column; gap: 22px; padding-bottom: 12px; }
+#app-photos .ph-dayhd { margin: 0 0 10px; font: 500 20px var(--serif); letter-spacing: -.01em; color: var(--text);
+  display: flex; align-items: baseline; gap: 10px; }
+#app-photos .ph-dayhd span { font: 400 13px var(--sans); color: var(--t4); }
+#app-photos .ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+#app-photos .ph-cell { all: unset; cursor: pointer; position: relative; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden;
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); transition: transform var(--dur-fast) var(--ease-out); }
+#app-photos .ph-cell:active { transform: scale(.97); }
+/* a picture fades in once it has loaded; the card behind it is the placeholder until then */
+#app-photos .ph-cell img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity var(--dur-base) var(--ease-out); }
+#app-photos .ph-cell img.in { opacity: 1; }
+#app-photos .ph-empty { margin-top: 90px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; color: var(--t3); }
+#app-photos .ph-empty-go { all: unset; box-sizing: border-box; cursor: pointer; margin-top: 14px; min-height: 44px; display: inline-flex; align-items: center;
+  padding: 10px 22px; border-radius: 12px; background: var(--text); color: var(--bg); font: 500 15px var(--sans); }
+#app-photos .ph-empty b { font: 400 24px var(--serif); color: var(--text); }
+#app-photos .ph-note { margin-top: 24px; font-size: 14px; color: var(--t3); }
+#app-photos .ph-note[hidden], #app-photos .ph-empty[hidden] { display: none; }
+
+/* the viewer covers the page */
+#app-photos .ph-viewer { position: absolute; inset: 0; z-index: 5; background: var(--bg); display: flex; flex-direction: column;
+  padding: var(--app-top) var(--app-r) 18px var(--app-l); box-sizing: border-box; }
+#app-photos .ph-viewer[hidden] { display: none; }
+#app-photos .ph-vbar { display: flex; align-items: center; gap: 14px; height: var(--app-hd-h); }
+#app-photos .ph-back, #app-photos .ph-del { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center;
+  min-height: 44px; padding: 7px 16px; border-radius: 99px; font: 500 14px var(--sans);
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
+#app-photos .ph-del { margin-left: auto; color: var(--hot); }
+#app-photos .ph-when { font-size: 14px; color: var(--t3); }
+#app-photos .ph-pos { font-size: 13px; color: var(--t4); }   /* "3 of 12": quiet, after the date */
+#app-photos .ph-pos:empty { display: none; }
+#app-photos .ph-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px 0;
+  overflow: hidden; touch-action: none; }   /* pinch, drag and swipe are read by index.ts */
+#app-photos .ph-stage img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; box-shadow: 0 0 0 1px var(--line);
+  transform-origin: 50% 50%; transition: transform var(--dur-base) var(--ease-out); }
+#app-photos .ph-stage img.instant { transition: none; }   /* while a finger moves it: no glide behind the finger */
+#app-photos .ph-stage img.swap { animation: ph-swap var(--dur-base) var(--ease-out); }
+@keyframes ph-swap { from { opacity: 0; transform: translateX(var(--from, 0)); } }
+/* previous / next: quiet round buttons at the picture's sides; faded (not hidden) at either end */
+#app-photos .ph-nav { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; top: 50%; margin-top: -24px; z-index: 1;
+  width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--t2);
+  background: var(--bg); box-shadow: 0 0 0 1px var(--line); transition: opacity var(--dur-base) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
+#app-photos .ph-nav:active { background: var(--card-2); }
+#app-photos .ph-nav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#app-photos .ph-nav:disabled { opacity: .3; pointer-events: none; }
+#app-photos .ph-prev { left: 0; }
+#app-photos .ph-next { right: 0; }
+#app-photos .ph-selectbtn { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; margin-left: 8px;
+  min-height: 44px; padding: 7px 16px; border-radius: 99px; font: 500 14px var(--sans); background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
+#app-photos .ph-selectbtn[hidden] { display: none; }
+#app-photos .ph-foot { display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 52px; }
+#app-photos .ph-ask { all: unset; cursor: pointer; padding: 12px 24px; border-radius: 12px; background: var(--text); color: var(--bg); font: 500 16px var(--sans); }
+/* a photo whose file is gone (deleted on the PC, or the picture cannot load): a quiet card, not a broken image */
+#app-photos .ph-cell.gone img { display: none; }
+#app-photos .ph-cell.gone::after { content: 'Photo removed'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 400 14px var(--sans); color: var(--t4); }
+
+/* select mode: a tick on each photo, and the bar over the header */
+#app-photos .ph-tick { display: none; position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; box-sizing: border-box;
+  background: var(--card); box-shadow: 0 0 0 1.5px var(--t4); }
+#app-photos.selecting .ph-tick { display: block; }
+#app-photos .ph-cell.sel .ph-tick { background: var(--text); box-shadow: 0 0 0 1.5px var(--text); }
+#app-photos .ph-cell.sel .ph-tick::after { content: ''; position: absolute; left: 8px; top: 4px; width: 6px; height: 11px; border: solid var(--bg);
+  border-width: 0 2px 2px 0; transform: rotate(45deg); }
+#app-photos .ph-cell.sel img { opacity: .72; }
+#app-photos .ph-selbar { position: absolute; top: var(--app-top); right: var(--app-r); height: var(--app-hd-h); display: none; align-items: center; gap: 10px; z-index: 4; }
+#app-photos.selecting .ph-selbar { display: flex; }
+#app-photos.selecting .app-hd-right, #app-photos.selecting .hd-status { visibility: hidden; }
+#app-photos .ph-selcount { margin-right: 6px; font: 400 14px var(--sans); color: var(--t3); }
+#app-photos .ph-selbar button { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-flex; align-items: center;
+  min-height: 44px; padding: 7px 16px; border-radius: 99px; font: 500 14px var(--sans);
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
+#app-photos .ph-selbar .ph-selask { background: var(--text); color: var(--bg); box-shadow: none; }   /* the primary action: ink */
+#app-photos .ph-selbar .ph-selgo { background: var(--hot); color: #fff; box-shadow: none; }   /* delete: clay, as the warning */
+#app-photos .ph-selbar button:disabled { opacity: .45; cursor: default; }
+
+/* the ClaudeOS sheet: asks before a delete (the same look as Settings' sheets) */
+#app-photos .ph-sheet { position: absolute; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 20, 19, .22); animation: ph-fade .2s ease-out; }
+:root[data-theme="dark"] #app-photos .ph-sheet { background: rgba(0, 0, 0, .45); }
+@keyframes ph-fade { from { opacity: 0; } }
+#app-photos .ph-sheet[hidden] { display: none; }
+#app-photos .ph-sheet-card { width: 440px; max-width: calc(100% - 32px); padding: 22px 24px 18px; border-radius: 18px; background: var(--bg);
+  border: 1px solid var(--line); box-shadow: 0 16px 48px rgba(20, 20, 19, .2); animation: ph-pop .25s cubic-bezier(.2, .8, .2, 1); box-sizing: border-box; }
+:root[data-theme="dark"] #app-photos .ph-sheet-card { background: var(--card); box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
+@keyframes ph-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+#app-photos .ph-sheet-card h3 { margin: 0 0 8px; font: 500 20px var(--serif); color: var(--text); }
+#app-photos .ph-sheet-card p { margin: 0; font-size: 15px; color: var(--t2); line-height: 1.45; }
+#app-photos .ph-sheet-err { margin-top: 10px !important; color: var(--hot) !important; }
+#app-photos .ph-sheet-err[hidden] { display: none; }
+#app-photos .ph-sheet-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+#app-photos .ph-keep, #app-photos .ph-gone { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-flex; align-items: center;
+  min-height: 44px; padding: 10px 20px; border-radius: 10px; font: 500 15px var(--sans); }
+#app-photos .ph-keep { background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
+#app-photos .ph-gone { background: var(--hot); color: #fff; }
+#app-photos .ph-gone:disabled, #app-photos .ph-keep:disabled { opacity: .5; cursor: default; }

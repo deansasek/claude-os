@@ -1,0 +1,177 @@
+<!-- the shell draws the icon and "Clock" (core/web/app-header.ts); the icon shows the time -->
+<header class="app-hd">
+  <div class="app-hd-after">
+    <div class="seg ck-tabs" id="ckTabs">
+      <button data-mode="clock">Clock</button><button data-mode="timer">Timer</button><button data-mode="stopwatch">Stopwatch</button><button data-mode="alarm">Alarm</button>
+    </div>
+  </div>
+  <div class="app-hd-right">
+    <span class="live ck-npill" id="ckNext" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.6 1.8H4.4z"/><path d="M10 21a2.1 2.1 0 0 0 4 0"/></svg><span id="ckNextText"></span></span>
+    <span class="live ok ck-zone"><i></i><span id="ckZoneText"></span></span>
+  </div>
+</header>
+
+<div class="ck-main">
+  <!-- left: the big number for whichever view is open, and its controls -->
+  <section class="ck-left">
+    <div class="ck-pane" data-pane="clock">
+      <div class="lhead"><b id="ckGreeting">Good evening</b></div>
+      <div class="ck-big num ck-time" id="ckTime">–</div>
+      <div class="ck-date" id="ckDate"></div>
+      <div class="ck-sub" id="ckSub"></div>
+      <div class="ck-sub ck-tap" id="ckSecHint" hidden>tap to show seconds</div>
+    </div>
+
+    <div class="ck-pane" data-pane="timer">
+      <div class="lhead"><b>Timer</b><span class="ck-pill" id="ckTimerState"></span><em class="ck-hint" id="ckTimerHint"></em></div>
+      <div class="ck-set" id="ckTimerSet"></div>
+      <div class="ck-run">
+        <div class="ck-big num" id="ckTimer">5:00</div>
+        <div class="ck-prog"><i id="ckTimerProg"></i></div>
+        <div class="ck-sub" id="ckTimerSub"></div>
+      </div>
+      <div class="ck-btns">
+        <button class="ck-btn primary" id="ckTimerGo">Start</button>
+        <button class="ck-btn ck-runonly" id="ckTimerMinus">− 1 min</button>
+        <button class="ck-btn ck-runonly" id="ckTimerPlus">+ 1 min</button>
+        <button class="ck-btn ghost ck-runonly" id="ckTimerReset">Reset</button>
+      </div>
+    </div>
+
+    <div class="ck-pane" data-pane="stopwatch">
+      <div class="lhead"><b>Stopwatch</b><span class="ck-pill" id="ckSwState"></span></div>
+      <div class="ck-big num" id="ckSw">0:00<small>.0</small></div>
+      <div class="ck-sub" id="ckSwSub">Tap Start. Laps show up below.</div>
+      <div class="ck-btns">
+        <button class="ck-btn primary" id="ckSwGo">Start</button>
+        <button class="ck-btn" id="ckSwLap">Lap</button>
+        <button class="ck-btn ghost" id="ckSwReset">Reset</button>
+      </div>
+    </div>
+
+    <div class="ck-pane ck-alarms" data-pane="alarm">
+      <div class="lhead"><b>Alarms</b><span class="ck-pill" id="ckAlarmState"></span><em class="ck-hint" id="ckAlHint"></em><button class="ck-undo" id="ckAlUndo" hidden>Undo delete</button><button class="ck-add hit" id="ckAlAdd">+ New alarm</button></div>
+      <div class="ck-alist" id="ckAlList"></div>
+    </div>
+
+    <div class="ck-pane" data-pane="edit">
+      <div class="lhead"><b id="ckEdTitle">New alarm</b><em class="ck-hint" id="ckEdHint"></em></div>
+      <div class="ck-set" id="ckEdSet"></div>
+      <button class="ck-label" id="ckEdLabel"><span class="ck-unit">Label</span><b id="ckEdLabelText">None</b></button>
+      <div class="ck-btns">
+        <button class="ck-btn primary" id="ckEdSave">Save</button>
+        <button class="ck-btn" id="ckEdCancel">Cancel</button>
+        <button class="ck-btn ghost" id="ckEdDelete">Delete</button>
+      </div>
+    </div>
+
+    <!-- ringing: a timer finished or an alarm went off -->
+    <div class="ck-pane ck-ring" data-pane="ring">
+      <div class="lhead"><b id="ckRingTitle">Time’s up</b><span class="ck-pill" id="ckRingFor"></span></div>
+      <div class="ck-big num" id="ckRingBig">0:00</div>
+      <div class="ck-sub" id="ckRingSub"></div>
+      <div class="ck-btns">
+        <button class="ck-btn primary huge" id="ckRingStop">Stop</button>
+        <button class="ck-btn huge" id="ckRingSnooze">Snooze 9 min</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- right: the critter, living by the clock -->
+  <div class="centre ck-centre" id="ckScene">
+    <div class="status"><span id="ckStatus">–</span></div>
+    <div class="statussub" id="ckStatusSub">&nbsp;</div>
+    <svg class="ck-svg" viewBox="0 0 30 22" shape-rendering="crispEdges">
+      <defs>
+        <pattern id="ckHatch" width=".42" height=".42" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width=".1" height=".42" fill="var(--hatch)"/></pattern>
+      </defs>
+      <g id="ckCloud" class="ck-cloud" shape-rendering="auto"></g>
+      <g id="ckSun" class="ck-sun" shape-rendering="auto"></g>
+      <g class="ck-night" shape-rendering="auto">
+        <path d="M24.6 1.6A2.6 2.6 0 1 0 26.3 6.2 2 2 0 1 1 24.6 1.6Z" fill="var(--cloud)" stroke="var(--text)" stroke-width=".13" stroke-linejoin="round"/>
+        <g class="ck-stars" stroke="var(--t3)" stroke-width=".12" stroke-linecap="round">
+          <path d="M5 2.65v.7M4.65 3h.7"/><path d="M9 1.05v.7M8.65 1.4h.7"/><path d="M18.5 1.85v.7M18.15 2.2h.7"/><path d="M3 6.65v.7M2.65 7h.7"/><path d="M28 7.65v.7M27.65 8h.7"/>
+        </g>
+      </g>
+      <g shape-rendering="auto" stroke-linecap="round">
+        <path d="M2 19H28" stroke="var(--line)" stroke-width=".1"/>
+        <path class="ck-tufts" d="M3.6 19l-.25-.7M3.9 19v-.95M4.2 19l.3-.6M26 19l-.2-.6M26.3 19v-.85M26.6 19l.25-.5" stroke="var(--t4)" stroke-width=".11" fill="none"/>
+      </g>
+      <ellipse class="ck-shadow" cx="15" cy="19.15" rx="5.8" ry=".62" fill="url(#ckHatch)" shape-rendering="auto"/>
+      <!-- speed lines while the stopwatch runs -->
+      <g class="ck-speed" fill="var(--t4)"><rect x="4.2" y="12.6" width="1.6" height=".22"/><rect x="3.4" y="14.6" width="2.2" height=".22"/><rect x="4.6" y="16.6" width="1.2" height=".22"/></g>
+      <g transform="translate(8 9.4)">
+        <g class="ck-crit">
+          <g class="ck-legA" fill="var(--clay-deep)"><rect x="3" y="7" width="1" height="2.6"/><rect x="8" y="7" width="1" height="2.6"/></g>
+          <g class="ck-legB" fill="var(--clay-deep)"><rect x="5" y="7" width="1" height="2.6"/><rect x="10" y="7" width="1" height="2.6"/></g>
+          <g class="ck-upper">
+            <rect class="ck-armL" x="1" y="4" width="1.2" height="2" fill="var(--clay)"/>
+            <rect class="ck-armR" x="11.8" y="4" width="1.2" height="2" fill="var(--clay)"/>
+            <rect x="2" y="1.5" width="10" height="6" fill="var(--clay)"/>
+            <g class="ck-eyes" fill="var(--eye)"><rect x="4" y="3" width="1" height="2"/><rect x="9" y="3" width="1" height="2"/></g>
+            <g class="ck-shut" fill="var(--eye)"><rect x="3.6" y="4.4" width="1.8" height=".5"/><rect x="8.6" y="4.4" width="1.8" height=".5"/></g>
+            <g class="ck-cheeks" fill="var(--blush)"><rect x="3" y="5.3" width="1.2" height=".6"/><rect x="9.8" y="5.3" width="1.2" height=".6"/></g>
+          </g>
+        </g>
+      </g>
+      <!-- the evening mug -->
+      <g class="ck-mug">
+        <g class="ck-steam" fill="var(--t4)"><rect x="22.6" y="15.4" width=".35" height=".6"/><rect x="23.3" y="15" width=".35" height=".6"/><rect x="22.9" y="15.2" width=".35" height=".6"/></g>
+        <rect x="22.1" y="16.7" width="1.9" height="2.3" fill="var(--bg)" stroke="var(--t2)" stroke-width=".2"/>
+        <rect x="24" y="17.2" width=".7" height="1.1" fill="none" stroke="var(--t2)" stroke-width=".2"/>
+        <rect x="22.4" y="17.7" width="1.3" height=".3" fill="var(--clay)"/>
+      </g>
+      <!-- an hourglass while a timer runs -->
+      <g class="ck-glass" shape-rendering="auto">
+        <path d="M22.2 12.6h3.2M22.2 18.9h3.2M22.6 12.6c0 2.2 2.4 2.6 2.4 3.15S22.6 16.7 22.6 18.9M25 12.6c0 2.2-2.4 2.6-2.4 3.15S25 16.7 25 18.9"
+              fill="none" stroke="var(--text)" stroke-width=".14" stroke-linecap="round"/>
+        <path class="ck-sand-top" d="M23 13.4h1.6c-.2.9-.8 1.5-.8 2.2-.0-.7-.6-1.3-.8-2.2z" fill="var(--clay)"/>
+        <path class="ck-sand-bot" d="M22.9 18.6h1.8c-.3-.9-.6-1.4-.9-1.6-.3.2-.6.7-.9 1.6z" fill="var(--clay)"/>
+        <rect class="ck-trickle" x="23.74" y="15.8" width=".12" height="2.4" fill="var(--clay)" shape-rendering="crispEdges"/>
+      </g>
+      <!-- notes while ringing -->
+      <g class="ck-notes"><text x="5" y="10">♪</text><text x="23" y="9">♫</text><text x="4" y="13">♪</text></g>
+      <g class="ck-zzz"><text x="20.5" y="9.5">z</text><text x="21" y="9">z</text><text x="20.7" y="9.3">Z</text></g>
+    </svg>
+    <div class="say" id="ckSay"></div>
+  </div>
+</div>
+
+<!-- bottom: extras for whichever view is open -->
+<div class="bottom ck-bottom">
+  <div class="ck-pane" data-pane="clock">
+    <div class="kicker"><span>Today</span><span id="ckDayNote"></span></div>
+    <div class="ck-track"><i id="ckDayFill"></i><span class="ck-now" id="ckDayNow"></span></div>
+    <div class="ck-scale"><span>Midnight</span><span>6 AM</span><span>Noon</span><span>6 PM</span><span>Midnight</span></div>
+  </div>
+  <div class="ck-pane" data-pane="clock">
+    <div class="kicker"><span>This week</span><span id="ckWeekNum"></span></div>
+    <div class="ck-week" id="ckWeekDots"></div>
+  </div>
+
+  <div class="ck-pane ck-wide" data-pane="timer">
+    <div class="kicker"><span>Quick timers</span><span>· tap one to start it, or dial your own above</span></div>
+    <div class="ck-chips" id="ckPresets"></div>
+  </div>
+
+  <div class="ck-pane ck-wide" data-pane="stopwatch">
+    <div class="kicker"><span>Laps</span><span id="ckLapCount"></span></div>
+    <div class="ck-laps" id="ckLaps"></div>
+  </div>
+
+  <div class="ck-pane ck-wide" data-pane="alarm">
+    <div class="kicker"><span>Quick add</span><span>· adds an alarm that rings every day</span></div>
+    <div class="ck-chips" id="ckAlarmPresets"></div>
+  </div>
+
+  <div class="ck-pane ck-wide" data-pane="edit">
+    <div class="kicker"><span>Repeat</span><span id="ckRepeatNote"></span></div>
+    <div class="ck-days" id="ckDays"></div>
+    <div class="ck-chips ck-sm" id="ckRepeatQuick"></div>
+  </div>
+
+  <div class="ck-pane ck-wide" data-pane="ring">
+    <div class="kicker"><span>Ringing</span><span id="ckRingKick"></span></div>
+    <div class="ck-ringnote" id="ckRingNote">Tap Stop when you’re ready.</div>
+  </div>
+</div>

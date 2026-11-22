@@ -1,0 +1,232 @@
+<header class="app-hd">   <!-- the shell draws the spark and "Claude" (core/web/app-header.ts) -->
+    <div class="app-hd-right"><span class="live" id="pill"><i></i><span id="pillText">Connecting</span></span></div>
+  </header>
+
+  <div class="main">
+    <section class="lim" data-tap="session">
+      <div class="lhead"><b>Current session</b><span class="lhint">Tap for details</span></div>
+      <div class="big num" id="sPct">–</div>
+      <div class="sub" id="sSub">–</div>
+      <div class="face">
+        <div class="barrow"><div class="bar" id="sBar"><i></i><span class="now"></span></div><span class="used num" id="sUsed"></span></div>
+        <div class="pacenote" id="sPace"></div>
+      </div>
+      <div class="detail rows" id="sDetail"></div>
+    </section>
+
+    <div class="centre" id="centre">
+      <div class="status"><span id="think" class="think-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span id="status">Resting</span></div>
+      <div class="statussub" id="statusSub">&nbsp;</div>
+      <svg id="scene" viewBox="0 0 30 22" shape-rendering="crispEdges">
+        <defs>
+          <pattern id="hatch" width=".42" height=".42" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width=".1" height=".42" fill="var(--hatch)"/>
+          </pattern>
+        </defs>
+        <line x1="2" y1="19" x2="28" y2="19" stroke="var(--line)" stroke-width=".08" shape-rendering="auto"/>
+
+        <!-- night sky, shown while asleep -->
+        <g id="night">
+          <path d="M 6.2 1.9 A 2.3 2.3 0 1 0 7.6 5.9 A 1.8 1.8 0 1 1 6.2 1.9 Z" fill="var(--t3)" shape-rendering="auto"/>
+          <g class="stars" fill="var(--t4)"><rect x="8.2" y="2.6" width=".3" height=".3"/><rect x="3" y="8" width=".3" height=".3"/><rect x="26.4" y="3.4" width=".3" height=".3"/><rect x="7" y="6.4" width=".25" height=".25"/></g>
+        </g>
+        <g id="confetti"></g>
+
+        <!-- thought bubble with a spinning spark -->
+        <g id="bubble" shape-rendering="auto">
+          <circle cx="20.4" cy="10.6" r=".3" fill="var(--bg)" stroke="var(--t5)" stroke-width=".1"/>
+          <circle cx="21.4" cy="9.4" r=".5" fill="var(--bg)" stroke="var(--t5)" stroke-width=".1"/>
+          <ellipse class="puff" cx="24.2" cy="6.4" rx="2.9" ry="2.2" fill="var(--bg)" stroke="var(--t5)" stroke-width=".1"/>
+          <g class="dots" fill="var(--t3)"><circle cx="23.1" cy="6.5" r=".32"/><circle cx="24.2" cy="6.5" r=".32"/><circle cx="25.3" cy="6.5" r=".32"/></g>
+        </g>
+
+        <!-- critter -->
+        <g id="mover">
+          <ellipse id="shadow" cx="15" cy="19.15" rx="5.8" ry=".62" fill="url(#hatch)" shape-rendering="auto"/>
+          <g transform="translate(8 9.4)">
+            <g id="crit">
+              <g class="legA" fill="var(--clay-deep)"><rect x="3" y="7" width="1" height="2.6"/><rect x="8" y="7" width="1" height="2.6"/></g>
+              <g class="legB" fill="var(--clay-deep)"><rect x="5" y="7" width="1" height="2.6"/><rect x="10" y="7" width="1" height="2.6"/></g>
+              <g id="upper">
+                <rect id="armL" x="1" y="4" width="1.2" height="2" fill="var(--clay)"/>
+                <rect id="armR" x="11.8" y="4" width="1.2" height="2" fill="var(--clay)"/>
+                <rect x="2" y="1.5" width="10" height="6" fill="var(--clay)"/>
+                <g id="cheeks" fill="var(--blush)"><rect x="3" y="5.3" width="1.2" height=".6"/><rect x="9.8" y="5.3" width="1.2" height=".6"/></g>
+                <g id="eyeLook"><g id="eyes" fill="var(--eye)"><rect x="4" y="3" width="1" height="2"/><rect x="9" y="3" width="1" height="2"/></g></g>
+                <g id="zeyes" fill="var(--eye)"><rect x="3.6" y="4.4" width="1.8" height=".5"/><rect x="8.6" y="4.4" width="1.8" height=".5"/></g>
+                <g id="sweat" fill="var(--sky)"><rect x="1.1" y=".6" width=".5" height=".5"/><rect x=".9" y="1.1" width=".9" height=".9"/></g>
+              </g>
+              <g transform="translate(5.5 -2.8)"><g id="heart" fill="var(--heart)">
+                <rect x=".5" y="0" width=".5" height=".5"/><rect x="2" y="0" width=".5" height=".5"/>
+                <rect x="0" y=".5" width="3" height=".5"/><rect x=".5" y="1" width="2" height=".5"/><rect x="1" y="1.5" width="1" height=".5"/>
+              </g></g>
+            </g>
+          </g>
+        </g>
+
+        <!-- laptop: the lid faces us, with the spark on the back -->
+        <g id="laptop">
+          <g id="lid"><rect x="10" y="15.7" width="10" height="2.8" fill="var(--lid)"/>
+            <g transform="translate(15 17.1)"><g transform="scale(.014)"><g class="spark-rays" fill="var(--clay)"></g></g></g></g>
+          <rect x="9.4" y="18.5" width="11.2" height=".5" fill="var(--base)"/>
+        </g>
+        <g id="bits"></g>
+
+        <!-- mug of something warm -->
+        <g id="mug" data-press="off">
+          <g class="steam" fill="var(--t4)"><rect x="22.6" y="15.4" width=".35" height=".6"/><rect x="23.3" y="15" width=".35" height=".6"/><rect x="22.9" y="15.2" width=".35" height=".6"/></g>
+          <rect x="22.1" y="16.7" width="1.9" height="2.3" fill="var(--bg)" stroke="var(--t2)" stroke-width=".2"/>
+          <rect x="24" y="17.2" width=".7" height="1.1" fill="none" stroke="var(--t2)" stroke-width=".2"/>
+          <rect x="22.4" y="17.7" width="1.3" height=".3" fill="var(--clay)"/>
+        </g>
+
+        <!-- voice: a little level meter beside the critter while it listens (clay) or speaks (ink) -->
+        <g id="hear"><rect x="5.3" y="13" width=".55" height="2.4"/><rect x="6.25" y="12.2" width=".55" height="3.2"/><rect x="7.2" y="13.4" width=".55" height="2"/></g>
+
+        <g id="zzz"><text x="20.5" y="9.5">z</text><text x="21" y="9">z</text><text x="20.7" y="9.3">Z</text></g>
+      </svg>
+      <div class="say" id="say">hello!</div>
+    </div>
+
+    <section class="lim right" data-tap="weekly">
+      <div class="lhead"><b>This week</b><span class="lhint">Tap for details</span></div>
+      <div class="big num" id="wPct">–</div>
+      <div class="sub" id="wSub">–</div>
+      <div class="face">
+        <div class="barrow"><div class="bar" id="wBar"><i></i><span class="now"></span></div><span class="used num" id="wUsed"></span></div>
+        <div class="pacenote" id="wPace"></div>
+      </div>
+      <div class="detail rows" id="wDetail"></div>
+    </section>
+  </div>
+
+  <div class="bottom">
+    <div>
+      <div class="kicker"><span>Sessions</span><span id="sessCount"></span><button class="newsess hit" id="newSess">+ New</button></div>
+      <div class="sess" id="sess"><div class="empty">Looking for sessions…</div></div>
+    </div>
+    <div>
+      <div class="kicker"><span>Your usage</span><span id="plan"></span></div>
+      <div class="summary" id="summary">–</div>
+      <div class="todayline"><b class="num" id="tTokens">–</b> tokens · <b class="num" id="tReplies">–</b> replies today<br><span id="tBurn"></span></div>
+    </div>
+  </div>
+
+  <!-- the Sessions screen, laid out like the Claude desktop app's Code tab:
+       sidebar of sessions by folder · the conversation · a composer pinned at the bottom -->
+  <div class="sv" id="sv" hidden>
+    <aside class="sb">
+      <div class="sb-top">
+        <button class="sb-back" id="svBack"><svg viewBox="0 0 16 16"><path d="M10 3 5 8l5 5"/></svg>Back</button>
+        <button class="sb-new" id="svNew"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg>New session</button>
+        <div class="sb-search" id="svSearch" role="button" aria-label="Search sessions"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.2"/><path d="m10.2 10.2 3.3 3.3"/></svg><span id="svSearchText">Search sessions</span><span class="sb-clear hit" id="svSearchClear" role="button" aria-label="Clear search" hidden><svg viewBox="0 0 16 16"><path d="m4.5 4.5 7 7M11.5 4.5l-7 7"/></svg></span></div>
+      </div>
+      <div class="sb-list" id="svList"></div>
+      <!-- at the bottom of the list: switches between the sessions and the archived ones -->
+      <button class="sb-arch" id="svArch"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="3" rx="1"/><path d="M3 6v6.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V6M6.5 9h3"/></svg><span id="svArchText">Archived</span></button>
+    </aside>
+
+    <div class="sv-main">
+      <div class="sv-head">
+        <div class="sv-title"><b id="svTitle"></b><span id="svSub"></span></div>
+        <button class="nudge hit" id="svNudge" hidden></button>
+        <!-- the pinned messages in this conversation: tap to jump to the next one -->
+        <button class="sv-pins hit" id="svPins" hidden><svg viewBox="0 0 16 16"><path d="M6 2.5h4l-.6 4 2 2.2v1H4.6v-1l2-2.2zM8 9.7V14"/></svg><span id="svPinsText">Pinned</span></button>
+        <span class="live" id="svState"><i></i><span id="svStateText"></span></span>
+      </div>
+
+      <!-- the conversation -->
+      <div class="sv-body">
+        <div class="sv-logwrap">
+          <div class="sv-log" id="svLog"></div>
+          <button class="jump" id="svJump" hidden>↓ Latest</button>
+        </div>
+      </div>
+
+      <!-- a new session: the critter and the folder choice in the middle -->
+      <div class="ns" id="ns" hidden>
+        <svg class="ns-crit" viewBox="0 0 14 11" shape-rendering="crispEdges" aria-hidden="true">
+          <g fill="var(--clay-deep)"><rect x="3" y="7" width="1" height="2.6"/><rect x="5" y="7" width="1" height="2.6"/><rect x="8" y="7" width="1" height="2.6"/><rect x="10" y="7" width="1" height="2.6"/></g>
+          <g class="ns-bod"><rect x="1" y="4" width="1.2" height="2" fill="var(--clay)"/><rect x="11.8" y="4" width="1.2" height="2" fill="var(--clay)"/>
+            <rect x="2" y="1.5" width="10" height="6" fill="var(--clay)"/>
+            <g class="ns-eyes" fill="var(--eye)"><rect x="4" y="3" width="1" height="2"/><rect x="9" y="3" width="1" height="2"/></g></g>
+        </svg>
+        <div class="ns-card" id="nsFolders"></div>
+        <div class="ns-hint" id="nsHint">Pick a folder, then tell Claude what to do.</div>
+        <!-- first-message starters for the chosen folder: tap one to fill the composer -->
+        <div class="ns-starts" id="nsStarts" hidden></div>
+      </div>
+
+      <!-- under the conversation: an approval, quick replies or why you can't reply, then the composer -->
+      <div class="sv-dock">
+        <div class="sv-approval" id="svApproval" hidden>
+          <div class="sv-ask-row"><span class="sv-ask" id="svAsk"></span><span class="sv-count" id="svCount"></span></div>
+          <pre class="sv-detail" id="svDetail"></pre>
+          <div class="sv-plan m-asst" id="svPlan" hidden></div>
+          <div class="sv-buttons"><button class="qr" id="svDeny">Deny</button><button class="qr" id="svAllowEdits" hidden>Yes, accept edits</button><button class="qr primary" id="svAllow">Allow</button></div>
+        </div>
+        <div class="sv-quick" id="svQuick" hidden></div>
+        <div class="sv-blocked" id="svBlocked" hidden><b id="svBlockedTitle"></b><span id="svBlockedText"></span></div>
+        <div class="cp" id="svComposer">
+          <!-- photos to send with the next message (from the Camera and Photos apps) -->
+          <div class="cp-photos" id="svPhotos" hidden></div>
+          <div class="cp-box">
+            <button class="cp-plus" id="svPlus" aria-label="Write a message"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></svg></button>
+            <button class="cp-input" id="svInput"><span id="svPh">Describe a task or ask a question</span></button>
+            <button class="cp-btn voice" id="svMic" aria-label="Talk to Claude" hidden><svg viewBox="0 0 16 16"><rect x="5.6" y="1.8" width="4.8" height="8" rx="2.4"/><path d="M3.4 7.6a4.6 4.6 0 0 0 9.2 0M8 12.2v2"/></svg></button>
+            <!-- with photos attached and nothing typed: send them as they are -->
+            <button class="cp-btn send" id="svSend" aria-label="Send" hidden><svg viewBox="0 0 16 16"><path d="M8 13V3.2M3.8 7.2 8 3l4.2 4.2"/></svg></button>
+            <button class="cp-btn stop" id="svStop" aria-label="Stop Claude"><i></i><span>Stop</span></button>
+          </div>
+          <div class="cp-meta">
+            <span class="cp-chip"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="8" rx="1.5"/><path d="M5 14h6M8 11v3"/></svg>This computer</span>
+            <button class="cp-chip strong hit" id="svFolderChip"><svg viewBox="0 0 16 16"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"/></svg><b id="svFolderName">Choose folder</b></button>
+            <!-- session controls (sessions/controls.ts): model · effort · mode, and how full the context is -->
+            <span class="cp-right" id="svCtl">
+              <button class="cp-pick" id="svModel"><span>Default model</span></button>
+              <button class="cp-pick" id="svEffort"><span>Default effort</span></button>
+              <button class="cp-pick mode" id="svMode">Manual</button>
+              <button class="cp-ctx hit" id="svCtx" aria-label="Context used" hidden><svg viewBox="0 0 20 20"><circle class="trk" cx="10" cy="10" r="7"/><circle class="arc" cx="10" cy="10" r="7"/></svg></button>
+            </span>
+            <span class="cp-tip" id="svCtxTip" hidden></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- the session controls' menu (model / effort / more models / mode), opened from the composer's chips -->
+    <div class="cm" id="svMenu" role="menu" hidden></div>
+
+    <!-- a photo from the conversation, full size: tap to close -->
+    <div class="pv" id="svPhotoView" hidden><img id="svPhotoFull" alt="Photo"></div>
+
+    <!-- a session's actions (from the ⋯ on its row): Archive or Unarchive, Delete (asks first) -->
+    <div class="sm" id="svSessMenu" hidden>
+      <div class="sm-card" role="dialog" aria-modal="true">
+        <div class="sm-title" id="smTitle"></div>
+        <p class="sm-msg" id="smMsg"></p>
+        <div class="sm-acts" id="smActs">
+          <button class="sm-row" id="smArchive"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="3" rx="1"/><path d="M3 6v6.5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5V6M6.5 9h3"/></svg><span id="smArchiveText">Archive</span></button>
+          <button class="sm-row danger" id="smDelete"><svg viewBox="0 0 16 16"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5"/></svg>Delete</button>
+          <button class="sm-row" id="smClose">Close</button>
+        </div>
+        <div class="sm-confirm" id="smConfirm" hidden>
+          <p class="sm-ask">Delete this session? This can’t be undone.</p>
+          <div class="sm-btns">
+            <button class="sm-btn" id="smKeep">Keep it</button>
+            <button class="sm-btn danger" id="smGone">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PIN pad: shown before the first reply or approval -->
+    <div class="pin" id="pin" hidden>
+      <div class="pin-card">
+        <div class="kicker">Enter your PIN</div>
+        <div class="pin-dots" id="pinDots"></div>
+        <div class="pin-msg" id="pinMsg">&nbsp;</div>
+        <div class="pin-keys" id="pinKeys"></div>
+      </div>
+    </div>
+  </div>

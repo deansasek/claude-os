@@ -1,0 +1,217 @@
+<header class="app-hd">   <!-- the shell draws the globe and "Browser" -->
+  </header>
+
+  <!-- the tabs: their own row above the address bar (not in the header). Compact hides the header, so this row takes its place -->
+  <div class="br-tabs-row">
+    <div class="app-hd-after"><div class="br-tabs" id="brTabs"></div></div>
+  </div>
+
+  <div class="br-bar">
+    <button class="br-btn" id="brBack" aria-label="Back"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l-6 6 6 6"/></svg></button>
+    <button class="br-btn" id="brFwd" aria-label="Forward"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4l6 6-6 6"/></svg></button>
+    <button class="br-btn" id="brReload" aria-label="Reload"></button>
+    <button class="br-addr" id="brAddr" data-press="soft"><span class="br-lock" id="brLock"></span><span class="br-host" id="brHost"></span></button>
+    <!-- the tab buttons live in the bar (Compact): new tab, and all tabs with the count -->
+    <button class="br-new" id="brNew" aria-label="New tab"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></button><button class="br-new br-overview" id="brOverviewBtn" aria-label="All tabs"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1.6"/><rect x="11" y="3" width="6" height="6" rx="1.6"/><rect x="3" y="11" width="6" height="6" rx="1.6"/><rect x="11" y="11" width="6" height="6" rx="1.6"/></svg><b class="br-count" id="brCount" aria-hidden="true">1</b></button>
+    <button class="br-btn" id="brStar" aria-label="Bookmark this page"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M10 3.4l1.9 4 4.3.5-3.2 2.9.9 4.3L10 13.1l-3.9 2.0.9-4.3-3.2-2.9 4.3-.5z"/></svg></button>
+    <button class="br-btn" id="brHome" aria-label="New tab page"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5L10 4l6.5 5.5"/><path d="M5.5 8.5V16h9V8.5"/></svg></button>
+    <button class="br-btn br-claude" id="brClaude" aria-label="Ask Claude about this page"><span class="cl-bar-spark" id="clBarSpark"></span></button>
+    <button class="br-btn" id="brMore" aria-label="Menu"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="4.5" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="15.5" cy="10" r="1.6"/></svg></button>
+  </div>
+
+  <div class="br-content">
+    <i class="br-load" id="brLoad"></i>
+
+    <!-- Claude in the Browser (claude-panel.ts): the right-hand panel; the page fits to its left while it is open -->
+    <aside class="cl" id="clPanel" aria-label="Claude" hidden>
+      <div class="cl-split" id="clSplit" aria-hidden="true" title="Drag to resize"></div>
+      <div class="cl-hd">
+        <span class="cl-brand"><span class="cl-spark" id="clSpark"></span>Claude</span>
+        <span class="cl-hd-r">
+          <button class="cl-ib" id="clRecentBtn" aria-label="Recent sessions"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="6.5"/><path d="M10 6.5V10l2.5 1.5"/></svg></button>
+          <button class="cl-ib" id="clNew" aria-label="New chat"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></button>
+          <button class="cl-ib" id="clClose" aria-label="Close"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
+        </span>
+      </div>
+      <div class="cl-body" id="clBody"></div>
+      <form class="cl-comp" id="clForm">
+        <div class="cl-box">
+          <textarea id="clText" rows="1" placeholder="How can I help you today?" aria-label="Message Claude"></textarea>
+          <div class="cl-tools">
+            <!-- as the Claude composer: + (attachments: not in the panel yet), then the permission pill on the left and the
+                 model · effort on the right (claude/web/sessions/controls.ts, ids 'cl…'), then the mic and send -->
+            <button class="cl-plus" id="clPlus" type="button" aria-label="Add" title="Add a photo or file"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg></button>
+            <span class="cp-right" id="clCtl" hidden>
+              <button class="cp-pick mode" id="clMode">Manual</button>
+              <button class="cp-pick cl-model" id="clModel"><span>Default model</span></button>
+              <button class="cp-pick cl-effort" id="clEffort"><span>Medium</span></button>
+              <button class="cp-ctx hit" id="clCtx" aria-label="Context used" hidden><svg viewBox="0 0 20 20"><circle class="trk" cx="10" cy="10" r="7"/><circle class="arc" cx="10" cy="10" r="7"/></svg></button>
+            </span>
+            <button class="cl-mic" id="clMic" type="button" aria-label="Dictate" title="Tap, then say your message" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="7.5" y="3" width="5" height="9" rx="2.5"/><path d="M4.5 9.5a5.5 5.5 0 0 0 11 0M10 15v2"/></svg></button>
+            <button class="cl-send" id="clSend" type="submit" aria-label="Send"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 16V4M5 9l5-5 5 5"/></svg></button>
+          </div>
+        </div>
+      </form>
+      <span class="cp-tip" id="clCtxTip" hidden></span>
+      <!-- the session controls' menu (model / effort / more models / mode), opened from the composer's chips -->
+      <div class="cm" id="clMenu" role="menu" hidden></div>
+      <div class="cl-recent" id="clRecent" hidden>
+        <div class="cl-hd">
+          <span class="cl-brand">Recent sessions</span>
+          <span class="cl-hd-r"><button class="cl-ib" id="clRecentClose" aria-label="Close"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg></button></span>
+        </div>
+        <div class="cl-list" id="clList"></div>
+      </div>
+    </aside>
+    <div class="br-frame" id="brFrame"></div>   <!-- the mock tablet's iframe goes over this; on the tablet, the native page -->
+
+    <div class="br-find" id="brFind" hidden>
+      <button class="br-find-field" id="brFindField" aria-label="Find in page"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5l3.5 3.5"/></svg><span id="brFindText"></span></button>
+      <span class="br-find-count" id="brFindCount"></span>
+      <button class="br-find-btn" id="brFindPrev" aria-label="Previous match"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"/></svg></button>
+      <button class="br-find-btn" id="brFindNext" aria-label="Next match"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button>
+      <button class="br-find-btn" id="brFindClose" aria-label="Close find"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>
+    </div>
+
+    <!-- Google sign-in is open in Chrome's side sheet on the right (BrowserView.java): this side keeps a note -->
+    <div class="br-chrome" id="brChrome" hidden>
+      <div class="br-chrome-in">
+        <h2 class="br-chrome-h">Signing in with Google <span aria-hidden="true">→</span></h2>
+        <p>The sign-in is open on the right. Finish it there, and this side comes back when it closes.</p>
+        <button class="br-pill" id="brChromeDone">Done</button>
+      </div>
+    </div>
+
+    <div class="br-page br-ntp" id="brNtp">
+      <div class="br-ntp-in">
+        <button class="br-pill quiet br-ntp-back" id="brNtpBack" hidden></button>
+        <div class="br-brand"><span class="br-brand-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17"/></svg></span><span class="br-brand-t">Browser</span></div>
+        <h2 class="br-greet" id="brGreet">Where to?</h2>
+        <button class="br-search" id="brSearch" data-press="soft"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"/><path d="M13 13l4 4"/></svg><span id="brSearchPh">Search or type an address</span></button>
+        <div class="lhead br-lh"><b>Quick links</b><button class="br-edit" id="brEdit">Edit</button></div>
+        <div class="br-quick" id="brQuick"></div>
+        <div class="lhead br-lh"><b>Recent</b><button class="br-edit" id="brSeeHistory">All history</button></div>
+        <div class="br-recent" id="brRecent"></div>
+      </div>
+    </div>
+
+    <div class="br-page br-msg" id="brMsg" hidden>
+      <div class="br-msg-in">
+        <svg class="br-msg-ic" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="24" cy="24" r="17"/><path d="M7 24h34M24 7c-5 5-7 11-7 17s2 12 7 17M24 7c5 5 7 11 7 17s-2 12-7 17"/></svg>
+        <h2 id="brMsgTitle"></h2>
+        <p id="brMsgBody"></p>
+        <div class="br-msg-btns"><button class="br-pill quiet" id="brMsgBack">Back</button><button class="br-pill" id="brRetry">Try again</button><button class="br-pill quiet" id="brMsgHome">New tab</button></div>
+      </div>
+    </div>
+
+    <div class="br-page br-suggest" id="brSuggest" hidden></div>
+
+    <!-- a short Undo line after something is removed (5 seconds) -->
+    <div class="br-undo" id="brUndo" role="status" hidden>
+      <span id="brUndoText"></span><button class="br-undo-btn" id="brUndoBtn">Undo</button>
+    </div>
+
+    <!-- full pages: history, bookmarks, downloads, reader, tab overview -->
+    <section class="br-over br-full" id="brHistory" aria-label="History">
+      <div class="br-full-hd"><button class="br-pill quiet br-back">Back</button><h2>History</h2><button class="br-edit" id="brHistoryClear">Clear</button></div>
+      <button class="br-search br-search-s" id="brHistorySearch" data-press="soft"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="9" r="5.5"/><path d="M13 13l4 4"/></svg><span id="brHistoryQ">Search your history</span></button>
+      <div class="br-list" id="brHistoryList"></div>
+    </section>
+
+    <section class="br-over br-full" id="brBookmarks" aria-label="Bookmarks">
+      <div class="br-full-hd"><button class="br-pill quiet br-back">Back</button><h2>Bookmarks</h2><span></span></div>
+      <div class="br-list" id="brBookmarkList"></div>
+    </section>
+
+    <section class="br-over br-full" id="brLater" aria-label="Reading list">
+      <div class="br-full-hd"><button class="br-pill quiet br-back">Back</button><h2>Reading list</h2><span></span></div>
+      <div class="br-list" id="brLaterList"></div>
+    </section>
+
+    <section class="br-over br-full" id="brDownloads" aria-label="Downloads">
+      <div class="br-full-hd"><button class="br-pill quiet br-back">Back</button><h2>Downloads</h2><span></span></div>
+      <div class="br-list" id="brDownloadList"></div>
+    </section>
+
+    <section class="br-over br-full" id="brReader" aria-label="Reader view">
+      <div class="br-full-hd"><button class="br-pill quiet br-back">Close</button><h2>Reader</h2><span></span></div>
+      <article class="br-article" id="brArticle"></article>
+    </section>
+
+    <section class="br-over br-full" id="brViewer" aria-label="File">
+      <div class="br-full-hd"><button class="br-pill quiet br-back">Close</button><h2 id="brViewerTitle">File</h2><span></span></div>
+      <div class="br-viewer" id="brViewerBody"></div>
+    </section>
+
+    <section class="br-over br-full" id="brOverview" aria-label="Tabs">
+      <div class="br-full-hd"><button class="br-pill quiet br-back">Back</button><h2>Tabs</h2><button class="br-edit" id="brOverviewNew">New tab</button></div>
+      <div class="br-cards" id="brCards"></div>
+    </section>
+
+    <!-- sheets: menu, the long-press choices, uploads, photos, site permissions -->
+    <div class="br-over br-sheet-wrap" id="brMenu" data-close-over>
+      <div class="br-sheet" role="menu" id="brMenuList"></div>
+    </div>
+    <div class="br-over br-sheet-wrap" id="brCtx" data-close-over>
+      <div class="br-sheet">
+        <div class="br-sheet-t" id="brCtxTitle"></div>
+        <div id="brCtxList"></div>
+      </div>
+    </div>
+    <div class="br-over br-sheet-wrap" id="brChoose" data-close-over>
+      <div class="br-sheet">
+        <div class="br-sheet-t">Upload a file</div>
+        <div id="brChooseList"></div>
+        <div class="br-sheet-btns"><button class="br-pill quiet" id="brChooseCancel">Cancel</button></div>
+      </div>
+    </div>
+    <div class="br-over br-sheet-wrap" id="brPhotos" data-close-over>
+      <div class="br-sheet br-sheet-wide">
+        <div class="br-sheet-t">ClaudeOS photos</div>
+        <div class="br-photos" id="brPhotoGrid"></div>
+        <div class="br-sheet-btns"><button class="br-pill quiet" id="brPhotosCancel">Cancel</button></div>
+      </div>
+    </div>
+    <div class="br-over br-sheet-wrap" id="brShare" data-close-over>
+      <div class="br-sheet">
+        <div class="br-sheet-t" id="brShareTitle"></div>
+        <p class="br-sheet-p br-share-url" id="brShareUrl"></p>
+        <div id="brShareList">
+          <button class="br-row2" data-sact="copy"><span class="br-r">Copy link</span></button>
+          <button class="br-row2" data-sact="claude"><span class="br-r">Send to a Claude session</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="br-over br-sheet-wrap" id="brDialog" data-close-over>
+      <div class="br-sheet">
+        <div class="br-sheet-t" id="brDlgTitle"></div>
+        <p class="br-sheet-p" id="brDlgBody"></p>
+        <button class="br-dlg-field" id="brDlgField" hidden><span id="brDlgText"></span></button>
+        <div class="br-sheet-btns">
+          <button class="br-pill quiet" id="brDlgCancel">Cancel</button>
+          <button class="br-pill" id="brDlgOk">OK</button>
+        </div>
+      </div>
+    </div>
+    <div class="br-over br-sheet-wrap" id="brDel" data-close-over>
+      <div class="br-sheet">
+        <div class="br-sheet-t">Delete this file?</div>
+        <p class="br-sheet-p">This can’t be undone. The file is deleted from the tablet.</p>
+        <div class="br-sheet-btns">
+          <button class="br-pill quiet" id="brDelKeep">Keep it</button>
+          <button class="br-pill danger" id="brDelGo">Delete</button>
+        </div>
+      </div>
+    </div>
+    <div class="br-over br-sheet-wrap" id="brPerm" data-close-over>
+      <div class="br-sheet">
+        <div class="br-sheet-t" id="brPermTitle"></div>
+        <p class="br-sheet-p" id="brPermBody"></p>
+        <div class="br-sheet-btns">
+          <button class="br-pill quiet" id="brPermBlock">Block</button>
+          <button class="br-pill quiet" id="brPermNot">Not now</button>
+          <button class="br-pill" id="brPermAllow">Allow</button>
+        </div>
+      </div>
+    </div>
+  </div>

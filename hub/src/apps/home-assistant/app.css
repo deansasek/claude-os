@@ -1,0 +1,163 @@
+/* ===== Home Assistant ===== (everything scoped to #app-home-assistant) */
+#app-home-assistant [hidden] { display: none !important; }
+
+/* the header: a quiet "Demo" pill, and Edit / Done (in edit mode also Add room and Add device) */
+#app-home-assistant .app-hd-right { gap: 8px; }
+#app-home-assistant .ha-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 99px;
+  font: 500 12px var(--sans); letter-spacing: .02em; color: var(--t4); background: var(--card); box-shadow: 0 0 0 1px var(--line); white-space: nowrap; }
+#app-home-assistant .ha-pill.bad { color: var(--clay-deep); }
+:root[data-theme="dark"] #app-home-assistant .ha-pill.bad { color: var(--clay); }
+#app-home-assistant .ha-hbtn { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-flex; align-items: center;
+  min-height: 44px; padding: 7px 16px; border-radius: 99px; font: 500 14px var(--sans); white-space: nowrap;
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
+#app-home-assistant .ha-hbtn:active { background: var(--card-2); }
+#app-home-assistant .ha-hbtn.on { background: var(--text); color: var(--bg); box-shadow: none; }
+#app-home-assistant .ha-hbtn:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+#app-home-assistant .ha-scroll { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+#app-home-assistant .ha-scroll::-webkit-scrollbar { display: none; }
+#app-home-assistant .ha-note { margin: 0 0 16px; font-size: 15px; line-height: 1.4; color: var(--clay-deep); }
+:root[data-theme="dark"] #app-home-assistant .ha-note { color: var(--clay); }
+#app-home-assistant .ha-hint { margin: 0 0 14px; font-size: 14px; line-height: 1.4; color: var(--t4); }
+
+/* the rooms: a grid of sections, each a serif name over its own grid of tiles */
+#app-home-assistant .ha-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 26px 24px; align-items: start; padding-bottom: 16px; }
+#app-home-assistant .ha-room { min-width: 0; }
+#app-home-assistant .ha-room-hd { display: flex; align-items: center; gap: 4px; min-height: 36px; margin: 0 0 10px; }
+#app-home-assistant .ha-room-name { flex: 1; min-width: 0; margin: 0; font: 400 22px/1.2 var(--serif); letter-spacing: -.01em; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-home-assistant .ha-link { all: unset; cursor: pointer; flex: none; padding: 6px 10px; border-radius: 8px; font: 500 14px var(--sans); color: var(--t3); }
+#app-home-assistant .ha-link:active { background: var(--card-2); }
+#app-home-assistant .ha-link.danger { color: var(--danger); }
+#app-home-assistant .ha-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; min-height: 0; }
+#app-home-assistant .ha-room.edit .ha-grid { min-height: 112px; }
+#app-home-assistant .ha-drop { grid-column: 1 / -1; min-height: 112px; display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+  border-radius: 18px; border: 1.5px dashed var(--line); font: 400 14px var(--sans); color: var(--t4); }
+
+/* the tiles: each about 112px tall, well over the 44px touch minimum */
+#app-home-assistant .ha-tile { all: unset; box-sizing: border-box; position: relative; min-width: 0; min-height: 112px; padding: 14px 16px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+  border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--line);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  transition: background-color var(--dur-fast, .15s) ease, box-shadow var(--dur-fast, .15s) ease, transform var(--dur-fast, .15s) ease; }
+#app-home-assistant button.ha-tile { cursor: pointer; }
+#app-home-assistant button.ha-tile:active { transform: scale(.97); }
+#app-home-assistant button.ha-tile:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+/* on: a clay wash with a clay ring; off: the quiet card colour */
+#app-home-assistant .ha-tile.on { background: rgba(191, 93, 60, .16); box-shadow: 0 0 0 1.5px rgba(191, 93, 60, .5); }
+:root[data-theme="dark"] #app-home-assistant .ha-tile.on { background: rgba(217, 119, 87, .18); box-shadow: 0 0 0 1.5px rgba(217, 119, 87, .55); }
+#app-home-assistant .ha-tile.busy { opacity: .65; }
+#app-home-assistant .ha-tile.gone { opacity: .6; }
+#app-home-assistant .ha-tile-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; min-width: 0; }
+#app-home-assistant .ha-ico { width: 28px; height: 28px; flex: none; color: var(--t3); }
+#app-home-assistant .ha-ico svg { width: 100%; height: 100%; display: block; }
+#app-home-assistant .ha-tile.on .ha-ico { color: var(--clay); }
+#app-home-assistant .ha-text { min-width: 0; }
+#app-home-assistant .ha-name { font: 500 16px/1.25 var(--sans); color: var(--text); letter-spacing: -.01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-home-assistant .ha-state { margin-top: 3px; font: 400 14px/1.3 var(--sans); color: var(--t3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-home-assistant .ha-tile.on .ha-state { color: var(--t2); }
+#app-home-assistant .ha-tile.on .ha-state::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 7px;
+  border-radius: 50%; background: var(--clay); vertical-align: 1px; }
+#app-home-assistant .ha-big { min-width: 0; font: 500 26px/1 var(--serif); letter-spacing: -.02em; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* scenes: their own row at the top of a room, shorter tiles with the name in the serif; pressed, a clay wash */
+#app-home-assistant .ha-break { grid-column: 1 / -1; height: 0; }
+#app-home-assistant .ha-tile.scene { min-height: 76px; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; padding: 12px 16px; }
+#app-home-assistant .ha-tile.scene .ha-tile-top { flex: none; }
+#app-home-assistant .ha-tile.scene .ha-name { font: 500 18px/1.2 var(--serif); letter-spacing: -.01em; }
+#app-home-assistant .ha-tile.scene .ha-state { margin-top: 2px; font-size: 13px; }
+#app-home-assistant .ha-tile.scene:not(.edit):active,
+#app-home-assistant .ha-tile.scene.busy { background: rgba(191, 93, 60, .16); box-shadow: 0 0 0 1.5px var(--clay); opacity: 1; }
+#app-home-assistant .ha-tile.scene:not(.edit):active .ha-ico, #app-home-assistant .ha-tile.scene.busy .ha-ico,
+#app-home-assistant .ha-tile.scene.done .ha-ico { color: var(--clay); }
+#app-home-assistant .ha-tile.scene.done .ha-state { color: var(--clay-deep); font-weight: 600; }
+#app-home-assistant .ha-tile.scene.fail .ha-state { color: var(--danger); font-weight: 600; }
+:root[data-theme="dark"] #app-home-assistant .ha-tile.scene:not(.edit):active,
+:root[data-theme="dark"] #app-home-assistant .ha-tile.scene.busy { background: rgba(217, 119, 87, .18); }
+:root[data-theme="dark"] #app-home-assistant .ha-tile.scene.done .ha-state { color: var(--clay); }
+
+/* edit mode: a tile is dragged by itself (so it doesn't scroll the page), and has a small settings button */
+#app-home-assistant .ha-tile.edit { cursor: grab; touch-action: none; }
+#app-home-assistant .ha-tile.edit .ha-tile-top { padding-right: 34px; }
+#app-home-assistant .ha-tile-edit { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; top: 8px; right: 8px;
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 10px;
+  background: var(--bg); box-shadow: 0 0 0 1px var(--line); color: var(--t3); }
+#app-home-assistant .ha-tile-edit svg { width: 18px; height: 18px; }
+#app-home-assistant .ha-tile.scene.edit { padding-right: 52px; }
+#app-home-assistant .ha-tile.scene.edit .ha-tile-top { padding-right: 0; }
+#app-home-assistant .ha-tile.scene .ha-tile-edit { top: 50%; margin-top: -18px; }
+#app-home-assistant .ha-tile-edit:active { background: var(--card-2); }
+#app-home-assistant .ha-ph { border-radius: 18px; border: 1.5px dashed var(--clay); background: rgba(191, 93, 60, .06); box-sizing: border-box; min-height: 112px; }
+#app-home-assistant .ha-ghost { position: absolute; left: 0; top: 0; z-index: 20; margin: 0; pointer-events: none; transition: none;
+  box-shadow: 0 0 0 1px var(--line), 0 14px 36px rgba(20, 20, 19, .22); opacity: .96; }
+:root[data-theme="dark"] #app-home-assistant .ha-ghost { box-shadow: 0 0 0 1px var(--line), 0 14px 36px rgba(0, 0, 0, .55); }
+
+/* nothing to show yet: one line, one button */
+#app-home-assistant .ha-empty { margin: 72px auto 0; max-width: 440px; padding: 0 16px; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  text-align: center; }
+#app-home-assistant .ha-empty b { font: 400 26px/1.2 var(--serif); color: var(--text); }
+#app-home-assistant .ha-empty span { font-size: 15px; line-height: 1.5; color: var(--t3); }
+#app-home-assistant .ha-empty-go { all: unset; box-sizing: border-box; cursor: pointer; margin-top: 16px; min-height: 44px; display: inline-flex; align-items: center;
+  padding: 10px 22px; border-radius: 12px; background: var(--text); color: var(--bg); font: 500 15px var(--sans); }
+#app-home-assistant .ha-empty-go:active { opacity: .85; }
+#app-home-assistant .ha-empty-go:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+/* the ClaudeOS sheet (the same look as Photos' and Settings' sheets) */
+#app-home-assistant .ha-sheet { position: absolute; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 20, 19, .22); animation: ha-fade .2s ease-out; }
+:root[data-theme="dark"] #app-home-assistant .ha-sheet { background: rgba(0, 0, 0, .45); }
+@keyframes ha-fade { from { opacity: 0; } }
+#app-home-assistant .ha-sheet-card { width: 480px; max-width: calc(100% - 32px); max-height: calc(100% - 48px); padding: 22px 24px 18px; border-radius: 18px;
+  display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 16px 48px rgba(20, 20, 19, .2);
+  animation: ha-pop .25s cubic-bezier(.2, .8, .2, 1); box-sizing: border-box; }
+#app-home-assistant .ha-sheet-card.wide { width: 620px; }
+:root[data-theme="dark"] #app-home-assistant .ha-sheet-card { background: var(--card); box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
+@keyframes ha-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+#app-home-assistant .ha-sheet-card h3 { margin: 0 0 4px; font: 500 22px/1.25 var(--serif); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-home-assistant .ha-sub { margin: 0 0 14px; font-size: 14px; line-height: 1.45; color: var(--t3); }
+#app-home-assistant .ha-srow { display: flex; align-items: center; gap: 12px; min-height: 52px; border-top: 1px solid var(--line); padding: 4px 0; }
+#app-home-assistant .ha-srow.col { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 0; }
+#app-home-assistant .ha-slabel { flex: none; font: 500 13px var(--sans); color: var(--t4); }
+#app-home-assistant .ha-srow:not(.col) .ha-slabel { width: 56px; }
+#app-home-assistant .ha-sval { flex: 1; min-width: 0; font: 400 15px var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-home-assistant .ha-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+#app-home-assistant .ha-chip { all: unset; box-sizing: border-box; cursor: pointer; position: relative; max-width: 220px; height: 44px; line-height: 44px; padding: 0 16px;
+  display: inline-block; border-radius: 99px; font: 500 14px var(--sans); color: var(--t2);
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root[data-theme="dark"] #app-home-assistant .ha-chip { background: var(--card-2); }
+#app-home-assistant .ha-chip.on { background: var(--text); color: var(--bg); box-shadow: none; }
+#app-home-assistant .ha-claude { margin: 0; padding: 12px 0 0; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.45; color: var(--t3); }
+#app-home-assistant .ha-sheet-btns { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex: none; }
+#app-home-assistant .ha-flex { flex: 1; }
+#app-home-assistant .ha-btn { all: unset; box-sizing: border-box; cursor: pointer; position: relative; flex: none; display: inline-flex; align-items: center;
+  min-height: 44px; padding: 10px 18px; border-radius: 10px; font: 500 15px var(--sans); white-space: nowrap;
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
+:root[data-theme="dark"] #app-home-assistant .ha-btn { background: var(--card-2); }
+#app-home-assistant .ha-btn.primary { background: var(--text); color: var(--bg); box-shadow: none; }
+#app-home-assistant .ha-btn.danger { color: var(--danger); }
+#app-home-assistant .ha-btn:active, #app-home-assistant .ha-chip:active { opacity: .85; }
+#app-home-assistant .ha-btn:focus-visible, #app-home-assistant .ha-chip:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+/* "Add devices": the list scrolls inside the sheet */
+#app-home-assistant .ha-list { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  border-top: 1px solid var(--line); margin: 0 -8px; padding: 0 8px; }
+#app-home-assistant .ha-list::-webkit-scrollbar { display: none; }
+#app-home-assistant .ha-group { margin: 16px 0 4px; font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t4); }
+#app-home-assistant .ha-muted { margin: 18px 0; font-size: 15px; line-height: 1.45; color: var(--t3); }
+#app-home-assistant .ha-row { all: unset; box-sizing: border-box; cursor: pointer; min-height: 56px; padding: 6px 8px; margin: 0 -8px;
+  display: flex; align-items: center; gap: 12px; border-radius: 12px; width: calc(100% + 16px); }
+#app-home-assistant .ha-row:active { background: var(--card-2); }
+#app-home-assistant .ha-row-ico { width: 24px; height: 24px; flex: none; color: var(--t3); }
+#app-home-assistant .ha-row-ico svg { width: 100%; height: 100%; display: block; }
+#app-home-assistant .ha-row.on .ha-row-ico { color: var(--clay); }
+#app-home-assistant .ha-row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#app-home-assistant .ha-row-name { font: 500 15px/1.3 var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-home-assistant .ha-row-sub { font: 400 13px/1.3 var(--sans); color: var(--t4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-home-assistant .ha-tick { flex: none; width: 26px; height: 26px; border-radius: 8px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--line); color: var(--bg); }
+#app-home-assistant .ha-row.on .ha-tick { background: var(--clay); border-color: var(--clay); }
+#app-home-assistant .ha-tick svg { width: 18px; height: 18px; }

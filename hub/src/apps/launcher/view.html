@@ -1,0 +1,29 @@
+<!-- the shell draws the icon and "Apps" (core/web/app-header.ts) -->
+<header class="app-hd">
+  <div class="app-hd-right">
+    <button class="ln-btn ln-add" id="lnAdd" hidden>Add apps</button>
+    <button class="ln-btn" id="lnEdit" aria-pressed="false"><svg class="ln-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg><span id="lnEditLabel">Edit</span></button>
+  </div>
+</header>
+
+<div class="ln-body" id="lnBody">
+  <p class="ln-hint" id="lnHint" hidden>Drag apps to arrange them. Hide or pin apps, or add apps from this tablet.</p>
+
+  <!-- one grid, in the family's order: ClaudeOS's apps and the tablet's allowed apps together -->
+  <div class="ln-grid" id="lnGrid"></div>
+  <p class="ln-empty" id="lnEmpty" hidden>Nothing from the tablet here yet. Tap Edit, then Add apps, and pick a few for ClaudeOS to open.</p>
+</div>
+
+<!-- picker: the tablet's launchable apps; a tick means Claude Home may open it -->
+<div class="ln-sheet" id="lnSheet" hidden>
+  <div class="ln-shade" id="lnShade"></div>
+  <div class="ln-panel" role="dialog" aria-label="Add apps">
+    <div class="ln-panel-hd">
+      <b>Apps on this tablet</b>
+      <button class="ln-btn" id="lnInstall">Install apps</button>
+      <button class="ln-btn ln-primary" id="lnSheetDone">Done</button>
+    </div>
+    <p class="ln-panel-sub">Ticked apps appear in Apps, and ClaudeOS can open them. The same list as Settings › Apps.</p>
+    <div class="ln-list" id="lnList"></div>
+  </div>
+</div>

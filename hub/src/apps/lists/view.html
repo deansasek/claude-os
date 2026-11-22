@@ -1,0 +1,38 @@
+<header class="app-hd">   <!-- the shell draws the icon and "Lists" (core/web/app-header.ts) -->
+  <div class="app-hd-right">
+    <button class="ls-hbtn" id="lsClear" hidden>Clear ticked</button>
+    <button class="ls-hbtn" id="lsNew">New list</button>
+  </div>
+</header>
+
+<div class="ls-tabs" id="lsTabs" role="tablist" aria-label="Lists"></div>
+
+<div class="ls-head">
+  <h2 class="ls-title" id="lsTitle"></h2>
+  <span class="ls-count" id="lsCount"></span>
+  <button class="ls-link danger hit" id="lsDelete" hidden>Delete list</button>
+</div>
+
+<div class="ls-scroll" id="lsScroll">
+  <p class="ls-note" id="lsNote" hidden></p>
+  <ul class="ls-items" id="lsItems"></ul>
+  <div class="ls-empty" id="lsEmpty" hidden>
+    <b id="lsEmptyTitle">Nothing here yet</b>
+    <span id="lsEmptyText">Add the first item below.</span>
+  </div>
+</div>
+
+<button class="ls-add" id="lsAdd">
+  <span class="ls-add-plus" aria-hidden="true">+</span>
+  <span class="ls-add-text" id="lsAddText">Add an item</span>
+</button>
+
+<div class="ls-undo" id="lsUndo" hidden>
+  <span class="ls-undo-text" id="lsUndoText"></span>
+  <button class="ls-undo-btn" id="lsUndoBtn">Undo</button>
+</div>
+
+<!-- the ClaudeOS sheet (deleting a list). "st-sheet" is the shared name the system's gestures check. -->
+<div class="ls-sheet st-sheet" id="lsSheet" hidden>
+  <div class="ls-sheet-card" id="lsSheetCard" role="dialog" aria-modal="true"></div>
+</div>

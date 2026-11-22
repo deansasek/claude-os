@@ -1,0 +1,131 @@
+// Claude control on the tablet: runs the jobs that sessions ask for and sends each answer back.
+//   browser jobs (server/browser.ts)   through the Browser's native bridge (core/web/device.ts)
+//   tablet jobs  (server/tablet.ts)    timers, alarms and reminders in the Clock app (its ClockApi), notices (system.ts)
+// When it runs: the Claude app mounts at boot with every other app, on the one page that is always loaded, and starts
+// the relay then. It stops after IDLE_MS with no job, so the PIN unlock can lapse again. It starts again (and the idle
+// time restarts) when a job comes in, when the Claude page is shown, and whenever the Claude app's usage check (every
+// 3 to 10 seconds, on screen or off) sees a reply running or waiting for approval: every tool call happens inside such
+// a turn, and its approval card comes first, so the relay is listening by the time a call needs it.
+import { browser } from '../../../core/web/device.ts';
+import { notify, prefs } from '../../../core/web/system.ts';
+import { getClock, getRoutines } from '../../../core/web/voice-commands.ts';
+import { call } from './sessions/pin.ts';
+import { cur, getControl } from '../../browser/web/state.ts';
+
+type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine';
+interface Job { id: string; op: Op; ref?: string; text?: string; args?: Record<string, unknown> }
+interface NextReply { ok: boolean; job?: Job | null; error?: string }
+type Answer = { ok: boolean; data: string };
+
+const IDLE_MS = 3 * 60e3;      // no job (and no running turn) for this long: stop polling
+const RETRY_MS = 5e3;          // locked or offline: try again this often
+const MAX_ACTIVE = 20;         // timers and alarms on, in total (the server checks the same with the count sent below)
+
+let running = false;
+let lastJobAt = 0;
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+/** Start polling for jobs, or keep it going: either way the idle time starts again from now. */
+export function startBrowserRelay(): void {
+  lastJobAt = Date.now();
+  if (running) return;
+  running = true;
+  void loop();
+}
+
+async function loop(): Promise<void> {
+  while (running) {
+    if (Date.now() - lastJobAt > IDLE_MS) { running = false; return; }
+    let r: NextReply;
+    try { r = await call<NextReply>('browser/next', { active: getClock()?.active() ?? null }); }
+    catch { await sleep(RETRY_MS); continue; }   // locked (the PIN is needed) or no connection: try later
+    if (!r.ok || !r.job) continue;               // nothing yet: poll again
+    lastJobAt = Date.now();
+    const answer = await run(r.job);
+    lastJobAt = Date.now();
+    await call('browser/result', { id: r.job.id, ok: answer.ok, data: answer.data }).catch(() => undefined);
+  }
+}
+
+function run(job: Job): Promise<Answer> | Answer {
+  if (job.op === 'routine') return runRoutine(job.args || {});
+  if (job.op === 'timer' || job.op === 'alarm' || job.op === 'reminder' || job.op === 'notify') return runTablet(job.op, job.args || {});
+  return runBrowser(job);
+}
+
+/** "17:05" for the answer, as Claude gave it (24-hour). */
+const hhmm = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
+
+/** A tablet job: the arguments were checked on the server; checked again here where the Clock's state lives. */
+function runTablet(op: 'timer' | 'alarm' | 'reminder' | 'notify', a: Record<string, unknown>): Answer {
+  if (op === 'notify') {
+    const title = str(a.title).slice(0, 80), body = str(a.body).slice(0, 80);
+    if (!title) return { ok: false, data: 'The notification needs a title.' };
+    // a ClaudeOS banner, kept in the notification list; with Do Not Disturb on it only goes in the list
+    notify({ title, ...(body ? { body } : {}), app: 'claude' }, prefs.dnd);
+    return { ok: true, data: prefs.dnd ? 'The notification is in the tablet’s list; Do Not Disturb is on, so no banner showed.' : 'Notification shown on the tablet.' };
+  }
+  const clock = getClock();
+  if (!clock) return { ok: false, data: 'The tablet’s Clock isn’t ready. Try again in a moment.' };
+  if (clock.active() >= MAX_ACTIVE) return { ok: false, data: `There are already ${clock.active()} timers and alarms on (the most is ${MAX_ACTIVE}). Ask the user to turn one off in the Clock first.` };
+  const label = str(a.label).slice(0, 80);
+  if (op === 'timer') {
+    const ms = num(a.ms);
+    if (!(ms >= 60e3 && ms <= 720 * 60e3)) return { ok: false, data: 'A timer can be from 1 to 720 minutes.' };
+    const left = clock.timerLeft();
+    if (left != null) {
+      const mins = Math.ceil(left / 60e3);
+      return { ok: false, data: `The tablet’s Clock already has a timer set (${mins} minute${mins === 1 ? '' : 's'} left) and it holds one timer at a time. Set an alarm or a reminder for the time instead, or ask the user to stop that timer.` };
+    }
+    clock.startTimer(ms, label);
+    const ends = new Date(Date.now() + ms);
+    return { ok: true, data: `Timer set for ${str(a.words) || `${Math.round(ms / 60e3)} minutes`}${label ? ` (${label})` : ''}. It rings at ${hhmm(ends.getHours(), ends.getMinutes())}.` };
+  }
+  const h = num(a.h), m = num(a.m);
+  if (!(Number.isInteger(h) && h >= 0 && h <= 23 && Number.isInteger(m) && m >= 0 && m <= 59)) return { ok: false, data: 'That isn’t a time the Clock can use.' };
+  if (op === 'reminder' && !label) return { ok: false, data: 'The reminder needs some text to show.' };
+  const set = clock.addLabelled(h, m, label);
+  if (!set) return { ok: false, data: 'The tablet’s Clock is full (20 alarms). Ask the user to delete one in the Clock first.' };
+  return op === 'reminder'
+    ? { ok: true, data: `Reminder set for ${hhmm(h, m)} ${set.when}: “${label}”. The Clock will ring and show it then.` }
+    : { ok: true, data: `Alarm set for ${hhmm(h, m)} ${set.when}${label ? ` (${label})` : ''}.` };
+}
+
+/** run_routine (routines/server/tools.ts): the Routines app's runner starts it by id (it reads the routine from the
+ *  PC again, so only a saved routine runs) and the answer comes as soon as it has started. */
+async function runRoutine(a: Record<string, unknown>): Promise<Answer> {
+  const r = a.routine && typeof a.routine === 'object' ? a.routine as { id?: unknown; name?: unknown } : {};
+  const id = str(r.id), name = str(r.name).slice(0, 40);
+  const api = getRoutines();
+  if (!api) return { ok: false, data: 'Routines aren’t ready on the tablet. Try again in a moment.' };
+  if (!id || !(await api.run(id))) return { ok: false, data: `The tablet couldn’t find the routine ${name || id}.` };
+  return { ok: true, data: `Started ${name || 'the routine'} on the tablet.` };
+}
+
+/** One browser job through the Browser: the tab on screen (the Browser's current tab) and its native calls.
+ *  open and back go through the Browser app's own functions (state.ts BrowserControl); open makes its new tab the
+ *  current one, so the read, click, type and screenshot that follow work on it. */
+async function runBrowser(job: Job): Promise<Answer> {
+  if (job.op === 'open' || job.op === 'back') {
+    const control = getControl();
+    if (!control) return { ok: false, data: 'The Browser isn’t ready on the tablet. Try again in a moment.' };
+    try { return job.op === 'open' ? await control.open(job.text ?? '') : await control.back(); }
+    catch (e) { return { ok: false, data: (e as Error).message || 'The Browser could not do that.' }; }
+  }
+  const tab = cur()?.id;
+  if (!tab || !cur().url) return { ok: false, data: 'The Browser has no page open. Open one with browser_open first.' };
+  try {
+    if (job.op === 'read') return { ok: true, data: JSON.stringify(await browser.readPage(tab)) };
+    if (job.op === 'screenshot') return { ok: true, data: await browser.screenshot(tab) };
+    if (job.op === 'click') {
+      const out = await browser.click(tab, job.ref ?? '');
+      return out === 'ok' ? { ok: true, data: 'Clicked.' } : { ok: false, data: 'That element is no longer on the page. Read the page again.' };
+    }
+    const out = await browser.type(tab, job.ref ?? '', job.text ?? '');
+    return out === 'ok' ? { ok: true, data: 'Typed.' } : { ok: false, data: 'That field is no longer on the page. Read the page again.' };
+  } catch (e) {
+    return { ok: false, data: (e as Error).message || 'The Browser could not run that.' };
+  }
+}

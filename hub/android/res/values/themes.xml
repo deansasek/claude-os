@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MainActivity's theme: the Android 12+ splash (cream, or dark at night) with the spark, then the page. -->
+<resources>
+  <style name="Theme.Hub" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+    <item name="android:windowBackground">@color/splash_background</item>
+    <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+    <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_spark_anim</item>
+    <item name="android:windowSplashScreenAnimationDuration">800</item>
+  </style>
+</resources>

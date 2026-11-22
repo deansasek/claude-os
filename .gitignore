@@ -1,0 +1,65 @@
+# Secrets and personal data: never in the repository.
+# These hold tokens, addresses, the PIN, or your own household data.
+hub/.ha-config.json
+hub/.calendar-config.json
+hub/.hub-pin
+hub/.hub-pin.*
+hub/.ha-layout.json
+hub/.launcher-layout.json
+hub/.lists.json
+hub/.routines.json
+hub/.limits-cache.json
+hub/claude-state.json
+hub/hub-sessions.json
+hub/profile.json
+hub/plugins-state.json
+hub/meter-config.json
+meter-config.json
+hub/photos/
+hub/workspace/
+hub/logs/
+hub/host/logs/
+hub/host/*.pid
+hub/config.json
+hub/claudeos-pin.json
+hub/claudeos-pin.json.tmp
+hub/instructions.txt
+hub/profile-photo.jpg
+hub/host/host.config.json
+hub/host/*.exe
+hub/android/hub.keystore
+hub/android/*.keystore
+*.keystore
+*.jks
+
+# Build output and large downloaded tools (rebuilt or re-downloaded on setup).
+node_modules/
+hub/node_modules/
+hub/tools/
+hub/android/build/
+hub/android/assets/model-en-us/
+*.apk
+*.aab
+*.log
+
+# Local Claude Code settings.
+.claude/
+
+# Old prototypes at the project root, kept locally for now (candidates for removal).
+/usage_server.py
+/index.html
+/centrestage.html
+/fieldguide.html
+/meter.html
+/meter-tiles.html
+/meter-config.json
+/mocks.html
+/mocks2.html
+
+# Empty stray files (candidates for removal).
+/main.web.ts
+hub/main.web.ts
+hub/tools.ts
+
+# Recorded voice warm-up audio (may be a personal recording). Decide before publishing.
+hub/android/assets/voice-warmup.raw

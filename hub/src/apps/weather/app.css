@@ -1,0 +1,138 @@
+/* Weather app styles. Everything is scoped to #app-weather.
+   The stage is 600 tall on the Nest Hub and 640 on the 1280×800 tablet (up to 700 on squarer screens).
+   The app fills the whole stage (core); the extra height is split between the main row and the hourly strip:
+   (100% - 600px) / 2 each, where 100% is the app's height. */
+
+/* ---------- header ---------- */
+/* the icon and "Weather" are the shell's (core/web/app-header.ts); the city picker sits in .app-hd-after */
+#app-weather .wicon svg { width: 100%; height: 100%; overflow: visible; }
+#app-weather .placebtn { padding: 6px 10px 6px 8px; margin: -6px 0 -6px 2px; max-width: 300px; }   /* a long city name stops well short of the status pill */
+#app-weather .placebtn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#app-weather .placebtn svg { flex: none; }
+#app-weather .placebtn.unset { color: var(--clay-deep); }
+
+/* ---------- main row: now · critter · week ---------- */
+#app-weather .wmain { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: calc(206px + (100% - 600px) / 2);
+  display: grid; grid-template-columns: 1fr 296px 1.12fr; gap: 20px; }
+#app-weather .lhead { align-items: center; min-height: 22px; }
+#app-weather .backnow { padding: 6px 14px; margin: -8px 0 -8px 12px; font-size: 13px; }   /* finger-sized through core's .backnow */
+
+/* left: the big number and a sentence (the label lands on --app-label-y, the line every app's first label sits on;
+   the 22px head centres it 2px lower than its top) */
+#app-weather .wnow { display: flex; flex-direction: column; min-width: 0; padding-top: calc(var(--app-label-y) - var(--app-body) - 2px); }
+#app-weather .wnow .lhead { justify-content: flex-start; }
+#app-weather .wtemp { all: unset; cursor: pointer; align-self: flex-start; font: 500 92px var(--serif); letter-spacing: -.035em; line-height: 1;
+  margin: 12px 0 10px; white-space: nowrap; border-radius: 14px; transition: background-color .2s; }
+#app-weather .wtemp small { font-size: 34px; letter-spacing: -.01em; color: var(--t3); margin-left: -2px; }   /* units in --t3, like "% left" and "PM" */
+#app-weather .wtemp small.lo { margin-left: 10px; }
+#app-weather .wtemp:active { background: var(--card); }
+#app-weather .wtap { margin: -4px 0 8px 2px; font-size: 14px; color: var(--t3); white-space: nowrap; }
+#app-weather .wtap[hidden] { display: none; }
+#app-weather .wfacts { font-size: 15px; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* three lines of the sentence; a fourth on the taller tablet stage (core's --tall) */
+#app-weather .whead { margin-top: 16px; font-size: 17px; font-weight: 600; line-height: 1.34; letter-spacing: -.01em;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: calc(3 + var(--tall)); line-clamp: calc(3 + var(--tall)); overflow: hidden; }
+#app-weather .whead em { font: 400 18px var(--serif); font-style: normal; color: var(--t3); letter-spacing: 0; }
+#app-weather .whead .alert { color: var(--clay-deep); font-weight: 600; }   /* the one thing to know soon: clay is for attention */
+#app-weather .wnote { margin-top: auto; padding-top: 10px; font-size: 14px; color: var(--t3); white-space: nowrap; }
+
+/* centre: condition and critter */
+#app-weather .centre { cursor: pointer; }
+#app-weather .wicon { display: inline-flex; width: 38px; height: 38px; margin: -4px 0 -4px -6px; }
+#app-weather .statussub { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-weather .wscene-svg { display: block; width: 100%; height: auto; margin: calc(12px + 8px * var(--tall)) auto 0; overflow: visible; }
+
+/* right: seven days, ranges on one shared scale */
+#app-weather .wweek { display: flex; flex-direction: column; min-width: 0; padding-top: calc(var(--app-label-y) - var(--app-body) - 2px); }
+#app-weather .wweek .lhead { justify-content: flex-end; }
+#app-weather .drows { flex: 1; display: flex; flex-direction: column; margin-top: 6px; min-height: 0; }
+#app-weather .drow { all: unset; box-sizing: border-box; position: relative; flex: 1 1 0; min-height: 0; cursor: pointer;
+  display: grid; grid-template-columns: 50px 24px 34px 30px 1fr 30px; align-items: center; gap: 8px;
+  margin: 0 -10px; padding: 0 10px; border-radius: 10px; font-size: 15px; color: var(--text); transition: background-color .2s; }
+#app-weather .drow::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 1px; background: var(--line); }
+#app-weather .drow:last-child::after, #app-weather .drow.sel::after, #app-weather .drow:has(+ .sel)::after { display: none; }
+#app-weather .drow .dn { font-weight: 500; white-space: nowrap; }
+#app-weather .drow svg { width: 24px; height: 24px; display: block; }
+#app-weather .drow .pp { font-size: 13px; font-weight: 500; color: var(--blue); }
+#app-weather .drow .lo { color: var(--t4); text-align: right; }
+#app-weather .drow .hi { text-align: right; font-weight: 500; }
+#app-weather .tbar { position: relative; height: 6px; border-radius: 99px; background: var(--track); box-shadow: inset 0 0 0 1px var(--track-edge); }
+#app-weather .tbar i { position: absolute; top: 0; bottom: 0; min-width: 6px; border-radius: 99px; transition: left .6s, width .6s; }
+#app-weather .tbar b { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+  background: var(--bg); box-shadow: 0 0 0 2px var(--text); }
+#app-weather .drow.sel { background: var(--card); --ic-bg: var(--card); }
+#app-weather .drow.sel .tbar b { background: var(--card); }
+#app-weather .drow:active { background: var(--card-2); --ic-bg: var(--card-2); }
+
+/* ---------- bottom: the next 24 hours ---------- */
+#app-weather .whours { position: absolute; left: var(--app-l); right: var(--app-r); bottom: var(--app-strip-b); height: calc(164px + (100% - 600px) / 2);
+  border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; }
+#app-weather .whours .kicker { margin-bottom: 4px; }
+#app-weather .wsrc { margin-left: auto; }
+#app-weather .hstrip { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); margin: 0 -4px; }
+#app-weather .hcol { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; min-width: 0;
+  margin: 0 2px; padding-bottom: 3px; border-radius: 12px; cursor: pointer; transition: background-color .2s; }
+#app-weather .hcol .hsp { flex: 1; align-self: stretch; }
+#app-weather .hcol svg { width: 24px; height: 24px; display: block; margin-bottom: 4px; }
+#app-weather .hcol .ht { font-size: 13px; color: var(--t3); white-space: nowrap; line-height: 16px; }
+#app-weather .hcol .ht b { font-weight: 600; color: var(--text); }
+#app-weather .hcol .hp { font-size: 13px; font-weight: 500; color: var(--blue); line-height: 16px; height: 16px; }
+#app-weather .hcol.sel { background: var(--card); --ic-bg: var(--card); }
+#app-weather .hcol:active { background: var(--card-2); --ic-bg: var(--card-2); }
+#app-weather .hchart { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 1; }
+#app-weather .hchart .htemp { font: 500 15px var(--sans); fill: var(--text); text-anchor: middle; font-variant-numeric: tabular-nums; }
+#app-weather .hchart .htemp.dim { fill: var(--t3); }
+
+/* ---------- empty, loading and error ---------- */
+#app-weather .wempty { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: 40px; display: grid; grid-template-columns: 1fr 330px;
+  gap: 48px; align-items: center; }
+#app-weather .wempty h2 { font: 500 50px/1.08 var(--serif); letter-spacing: -.02em; margin: 0 0 14px; }
+#app-weather .wempty p { font-size: 17px; color: var(--t3); line-height: 1.5; margin: 0; max-width: 460px; }
+#app-weather .wempty .wscene-svg { margin: 0; }
+#app-weather .wacts { display: flex; gap: 12px; margin-top: 28px; }
+#app-weather .wacts .pbtn { margin: 0; }
+#app-weather .gbtn { all: unset; cursor: pointer; display: inline-flex; align-items: center; padding: 12px 22px; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--pillbg); color: var(--text); font: 500 16px var(--sans); }
+#app-weather .gbtn:active { transform: scale(.97); background: var(--card); }
+#app-weather .wacts [hidden] { display: none; }
+#app-weather .wempty.loading .w-mark { animation: wpulse 1.6s ease-in-out infinite; }
+@keyframes wpulse { 50% { opacity: .25; } }
+
+/* ---------- the weather critter ---------- */
+#app-weather .wsc .w-bod { animation: wbob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
+#app-weather .wsc .w-bod.w-sleep { animation-duration: 4.2s; }
+#app-weather .wsc .w-eyes { animation: blink 3.8s infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+#app-weather .wsc.hop .w-crit { animation: hop .75s ease-out; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes wbob { 50% { transform: translateY(-.2px); } }
+#app-weather .w-drop { animation: fall .85s linear infinite; }
+@keyframes fall { from { transform: translate(0, -2px); } to { transform: translate(-1.2px, 21px); } }
+#app-weather .w-flake { animation: snow 5s linear infinite; }
+@keyframes snow { 0% { transform: translate(0, -1px); } 50% { transform: translate(.8px, 10px); } 100% { transform: translate(-.4px, 20px); } }
+#app-weather .w-spin { animation: spin 24s linear infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+#app-weather .w-drift { animation: drift 14s ease-in-out infinite alternate; }
+@keyframes drift { from { transform: translateX(-1.2px); } to { transform: translateX(1.2px); } }
+#app-weather .w-fog { animation: drift 7s ease-in-out infinite alternate; }
+#app-weather .w-flash { animation: flash 5s steps(1) infinite; }
+@keyframes flash { 0%, 88%, 94%, 100% { opacity: 0; } 90%, 96% { opacity: 1; } }
+#app-weather .w-star { animation: twinkle 3s steps(2) infinite; }
+#app-weather .w-sweat { animation: sweat 2.4s ease-in infinite; }
+@keyframes sweat { 0%, 40% { opacity: 0; transform: none; } 50% { opacity: 1; } 90% { opacity: 1; transform: translateY(2.4px); } 100% { opacity: 0; transform: translateY(2.8px); } }
+#app-weather .w-gust { animation: gust 3.3s ease-in-out infinite; }
+@keyframes gust { 0% { opacity: 0; transform: translateX(-2px); } 30%, 60% { opacity: .9; } 100% { opacity: 0; transform: translateX(5px); } }
+#app-weather .w-z { animation: zz 3.6s ease-in-out infinite; }
+@keyframes zz { 0% { opacity: 0; transform: none; } 30%, 70% { opacity: 1; } 100% { opacity: 0; transform: translate(1px, -2.4px); } }
+
+/* ---------- city picker (sits above the keyboard) ---------- */
+#app-weather .wpick { position: absolute; left: var(--app-l); right: var(--app-r); top: 76px; height: 220px; display: none; }
+#app-weather .wpick.on { display: block; }
+#app-weather .wpick .ph { display: flex; align-items: center; justify-content: space-between; }
+#app-weather .wpick h2 { font: 500 30px var(--serif); letter-spacing: -.015em; margin: 0; }
+#app-weather .seg button { padding: 9px 18px; font-size: 15px; }
+#app-weather .wres { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
+#app-weather .wres button { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: baseline; gap: 8px; min-height: 50px;
+  padding: 14px 12px; margin: 0 -12px; border-radius: 10px; border-bottom: 1px solid var(--line); font-size: 16px; font-weight: 500;
+  white-space: nowrap; overflow: hidden; }
+#app-weather .wres button:active { background: var(--card); }
+#app-weather .wres button span { font-weight: 400; color: var(--t4); font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+#app-weather .wres .hint { grid-column: 1 / -1; padding: 14px 0; color: var(--t3); font-size: 16px; }
+#app-weather .wres .hint em { font: italic 400 18px var(--serif); color: var(--text); }

@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Claude Hub for the desk tablet: a full-screen window onto the Hub server on the PC.
+     It is the tablet's home screen, and once made device owner it locks the tablet to itself (kiosk). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="hub.kiosk"
+    android:versionCode="8"
+    android:versionName="1.7">
+
+  <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="34" />
+
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+  <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+  <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+  <uses-permission android:name="android.permission.WAKE_LOCK" />
+  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+  <uses-permission android:name="android.permission.WRITE_SETTINGS" />
+  <!-- granted once over adb, so the app can re-enable its Desk mode helper after updates -->
+  <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+  <!-- voice: "Hey Claude" is heard on the tablet itself (VoiceService, see VOICE.md) -->
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <!-- the Camera app: a live preview and photos (CameraView); granted to the device owner in MainActivity.lockdown() -->
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-feature android:name="android.hardware.camera" android:required="false" />
+  <!-- Settings → Bluetooth: the paired devices' names (granted to the device owner in MainActivity.lockdown()) -->
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <!-- the Browser's downloads show no Android notification (BrowserDownloads); granted only where Android allows it -->
+  <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
+  <!-- the floating "back to ClaudeOS" button over an allowed app (BackButton): granted by the user with appops, never requested in code -->
+  <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+
+  <!-- Android 11+ hides other apps unless declared: the stock keyboard (on/off switch) and the home screens (the guard) -->
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+  <queries>
+    <package android:name="com.google.android.inputmethod.latin" />
+    <intent>
+      <action android:name="android.intent.action.MAIN" />
+      <category android:name="android.intent.category.HOME" />
+    </intent>
+  </queries>
+
+  <application
+      android:label="ClaudeOS"
+      android:icon="@drawable/ic_hub"
+      android:allowBackup="false"
+      android:networkSecurityConfig="@xml/network_security_config"
+      android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+
+    <activity
+        android:name=".MainActivity"
+        android:theme="@style/Theme.Hub"
+        android:exported="true"
+        android:launchMode="singleTask"
+        android:screenOrientation="sensorLandscape"
+        android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|smallestScreenSize|density|uiMode"
+        android:windowSoftInputMode="stateAlwaysHidden|adjustNothing"
+        android:lockTaskMode="if_whitelisted"
+        android:resizeableActivity="false">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+        <category android:name="android.intent.category.HOME" />
+        <category android:name="android.intent.category.DEFAULT" />
+      </intent-filter>
+      <!-- default browser: a web link from another app opens in the Browser app (BrowserView.fromIntent) -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="http" />
+        <data android:scheme="https" />
+      </intent-filter>
+    </activity>
+
+    <!-- the Browser's files for uploads (camera picture, photo from Claude Home): only this app reads them -->
+    <provider
+        android:name=".BrowserFiles"
+        android:authorities="hub.kiosk.browserfiles"
+        android:exported="false"
+        android:grantUriPermissions="true" />
+
+    <!-- device owner: lets the app lock the tablet down and change its settings -->
+    <receiver
+        android:name=".AdminReceiver"
+        android:exported="true"
+        android:permission="android.permission.BIND_DEVICE_ADMIN">
+      <meta-data android:name="android.app.device_admin" android:resource="@xml/device_admin" />
+      <intent-filter>
+        <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+        <action android:name="android.app.action.PROFILE_PROVISIONING_COMPLETE" />
+      </intent-filter>
+    </receiver>
+
+    <!-- kiosk guard (when not device owner): closes the notification shade, leaves recents -->
+    <service
+        android:name=".Guard"
+        android:label="@string/guard_label"
+        android:exported="false"
+        android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+      <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+      <meta-data android:name="android.accessibilityservice" android:resource="@xml/guard" />
+    </service>
+
+    <!-- voice: the wake word and speech-to-text, offline (Vosk); runs while Claude Home or any app is in front -->
+    <service
+        android:name=".VoiceService"
+        android:exported="false"
+        android:foregroundServiceType="microphone" />
+
+    <!-- Claude Keyboard: the tablet's keyboard in every app (ime/ClaudeKeyboard); ImeSettings makes it the default -->
+    <service
+        android:name=".ime.ClaudeKeyboard"
+        android:label="@string/ime_label"
+        android:exported="true"
+        android:permission="android.permission.BIND_INPUT_METHOD">
+      <intent-filter>
+        <action android:name="android.view.InputMethod" />
+      </intent-filter>
+      <meta-data android:name="android.view.im" android:resource="@xml/method" />
+    </service>
+
+    <!-- the result of a silent self-update (Updater): device owner only -->
+    <receiver android:name=".UpdateReceiver" android:exported="false" />
+
+    <!-- start again after a reboot or an app update, even before anyone touches the screen -->
+    <receiver android:name=".BootReceiver" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+      </intent-filter>
+    </receiver>
+  </application>
+</manifest>

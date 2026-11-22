@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="ime_label">ClaudeOS Keyboard</string>
+  <string name="ime_subtype_label">English (US)</string>
+  <string name="guard_label">ClaudeOS</string>
+  <string name="guard_description">Keeps this tablet in ClaudeOS: it closes the pull-down bar and leaves the recents screen as soon as they appear. It only sees which app came to the front, never what\'s on screen. You can pause it any time in ClaudeOS → Settings → Desk mode.</string>
+</resources>

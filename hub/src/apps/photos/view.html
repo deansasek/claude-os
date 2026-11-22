@@ -1,0 +1,54 @@
+<header class="app-hd">   <!-- the shell draws the icon and "Photos" (core/web/app-header.ts) -->
+  <div class="app-hd-right"><span class="num" id="phCount"></span><button class="ph-selectbtn" id="phSelect" hidden>Select</button></div>
+</header>
+
+<!-- the select mode's bar: shown over the header while photos are being picked (Select, or hold a photo) -->
+<div class="ph-selbar">
+  <span class="ph-selcount" id="phSelCount" aria-live="polite">Select photos</span>
+  <button id="phSelAll">Select all</button>
+  <button class="ph-selask" id="phSelAsk" disabled>Ask Claude</button>
+  <button class="ph-selgo" id="phSelDel" disabled>Delete</button>
+  <button id="phSelCancel">Cancel</button>
+</div>
+
+<div class="ph-scroll">
+  <div class="ph-days" id="phDays"></div>
+  <div class="ph-empty" id="phEmpty" hidden>
+    <b>No photos yet</b>
+    <span>Open Camera and take a picture. It appears here, by day.</span>
+    <button class="ph-empty-go" id="phOpenCam">Open Camera</button>
+  </div>
+  <div class="ph-note" id="phNote" hidden></div>
+</div>
+
+<!-- one photo, full size -->
+<div class="ph-viewer" id="phViewer" hidden>
+  <div class="ph-vbar">
+    <button class="ph-back" id="phBack">‹ Back</button>
+    <span class="ph-when" id="phWhen"></span>
+    <span class="ph-pos num" id="phPos"></span>
+    <button class="ph-del" id="phDel" aria-label="Delete this photo">Delete</button>
+  </div>
+  <div class="ph-stage" id="phStage">
+    <img id="phFull" alt="">
+    <button class="ph-nav ph-prev" id="phPrev" aria-label="Previous photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="ph-nav ph-next" id="phNext" aria-label="Next photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+  <div class="ph-foot">
+    <button class="ph-ask" id="phAsk">Ask Claude about this</button>
+  </div>
+</div>
+
+<!-- the ClaudeOS sheet that asks before anything is deleted (one photo, or the ones picked). "st-sheet" is the
+     shared name the system's gestures check, so a pull-down does not open over it. -->
+<div class="ph-sheet st-sheet" id="phSheet" hidden>
+  <div class="ph-sheet-card" role="dialog" aria-modal="true" aria-labelledby="phSheetTitle">
+    <h3 id="phSheetTitle">Delete this photo?</h3>
+    <p>This can’t be undone.</p>
+    <p class="ph-sheet-err" id="phSheetErr" hidden></p>
+    <div class="ph-sheet-btns">
+      <button class="ph-keep" id="phKeep">Keep it</button>
+      <button class="ph-gone" id="phGone">Delete</button>
+    </div>
+  </div>
+</div>

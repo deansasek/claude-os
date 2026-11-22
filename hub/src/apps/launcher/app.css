@@ -1,0 +1,109 @@
+/* Apps (src/apps/launcher): a calm grid of cards. Everything is scoped under #app-launcher. */
+#app-launcher .ln-btn { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; padding: 0 18px; border-radius: 99px; border: 1px solid var(--line);
+  background: var(--pillbg); color: var(--t2); font: 500 14px var(--sans); }
+#app-launcher .ln-pencil { width: 15px; height: 15px; flex: none; }
+/* the primary action (Done, the picker's Done): ink, not clay. Add apps beside Done stays a quiet pill */
+#app-launcher.ln-editing #lnEdit, #app-launcher .ln-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+/* one line under the header, edit mode only: what Edit is for */
+#app-launcher .ln-hint { margin: 0 0 22px; font-size: 14px; color: var(--t3); }
+
+#app-launcher .ln-body { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: 0;
+  overflow-y: auto; padding: 4px 4px 32px; margin: -4px; scrollbar-width: none; }
+#app-launcher .ln-body::-webkit-scrollbar { display: none; }
+/* Add apps sits beside Edit in the header in edit mode (tablet only); the same 44px height */
+#app-launcher .app-hd-right .ln-add + .ln-btn { margin-left: -8px; }
+
+/* one grid, four across, ClaudeOS's apps and the tablet's together in the family's order. position: relative so each tile's
+   offsetLeft/Top is its cell in the grid (the drag places the lifted tile from that, web/index.ts slot()) */
+#app-launcher .ln-grid { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+#app-launcher .ln-grid[hidden] { display: none; }
+#app-launcher .ln-tile { all: unset; position: relative; box-sizing: border-box; cursor: pointer; height: 124px; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  border-radius: 22px; background: var(--card); border: 1px solid transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  transition: opacity var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base); }
+/* the icon sits in a quiet well on the card: ink line art, the rail's icons */
+#app-launcher .ln-art { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 20px; background: var(--bg); flex: none; }
+#app-launcher .ln-svg { display: flex; width: 32px; height: 32px; color: var(--t2); }
+#app-launcher .ln-svg svg { width: 100%; height: 100%; overflow: visible; }
+/* the rail icons can carry an accent (Weather's sun, Clock's hand): here every line is ink, and Claude keeps its clay */
+#app-launcher .ln-svg:not(.ln-claude) [fill^="var(--clay"], #app-launcher .ln-svg:not(.ln-claude) [fill^="var(--blue"],
+#app-launcher .ln-svg:not(.ln-claude) [fill^="var(--olive"], #app-launcher .ln-svg:not(.ln-claude) [fill^="var(--sky"] { fill: currentColor; }
+#app-launcher .ln-svg:not(.ln-claude) [stroke^="var(--clay"], #app-launcher .ln-svg:not(.ln-claude) [stroke^="var(--blue"],
+#app-launcher .ln-svg:not(.ln-claude) [stroke^="var(--olive"], #app-launcher .ln-svg:not(.ln-claude) [stroke^="var(--sky"] { stroke: currentColor; }
+#app-launcher .ln-img { width: 44px; height: 44px; border-radius: 12px; }
+#app-launcher .ln-letter { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px;
+  background: var(--card-2); font: 500 20px var(--serif); color: var(--t2); }
+#app-launcher .ln-name { font: 500 15px var(--sans); color: var(--t2); max-width: 88%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* long-press a tile to read its full name (the label is cut with an ellipsis otherwise) */
+#app-launcher .ln-tile.full { z-index: 3; }
+#app-launcher .ln-tile.full .ln-name { position: absolute; left: 8px; right: 8px; bottom: 10px; max-width: none; padding: 8px 10px; border-radius: 12px;
+  white-space: normal; overflow: visible; text-overflow: clip; text-align: center; line-height: 1.3; background: var(--bg); box-shadow: 0 6px 20px rgba(20, 20, 19, .16); }
+:root[data-theme="dark"] #app-launcher .ln-tile.full .ln-name { background: var(--card-2); box-shadow: 0 6px 20px rgba(0, 0, 0, .5); }
+
+/* an Android app opens outside ClaudeOS: a small glyph in the corner says so */
+#app-launcher .ln-ext { position: absolute; right: 8px; bottom: 8px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); color: var(--t3); box-shadow: 0 0 0 1px var(--line); }
+#app-launcher .ln-ext svg { width: 13px; height: 13px; }
+
+/* a Claude Home app that is pinned to the sidebar: a small ink pin, shown in normal use (edit mode has the full pin) */
+#app-launcher .ln-pinmark { position: absolute; top: 12px; left: 12px; display: flex; color: var(--t3); }
+#app-launcher .ln-pinmark svg { width: 14px; height: 14px; }
+#app-launcher .ln-pinmark svg path:first-child { fill: currentColor; }
+#app-launcher.ln-editing .ln-pinmark { display: none; }
+
+/* edit mode: an eye on each card, hidden cards fade back with a dashed edge, a lifted card while dragging */
+#app-launcher .ln-eye { display: none; position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%;
+  align-items: center; justify-content: center; background: var(--bg); color: var(--t3); box-shadow: 0 0 0 1px var(--line); }
+/* the visible dot stays 30px; its touch area is 44px */
+#app-launcher .ln-eye::after, #app-launcher .ln-pin::after { content: ""; position: absolute; inset: -7px; }
+#app-launcher .ln-eye svg { width: 17px; height: 17px; }
+#app-launcher.ln-editing .ln-eye { display: flex; }
+/* edit mode: a pin (top left) keeps a Claude Home app in the sidebar; ink when pinned */
+#app-launcher .ln-pin { display: none; position: absolute; top: 8px; left: 8px; width: 30px; height: 30px; border-radius: 50%;
+  align-items: center; justify-content: center; background: var(--bg); color: var(--t4); box-shadow: 0 0 0 1px var(--line);
+  transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out); }
+#app-launcher .ln-pin svg { width: 16px; height: 16px; }
+#app-launcher .ln-pin.on { background: var(--text); color: var(--bg); box-shadow: none; }
+#app-launcher .ln-pin.on svg path:first-child { fill: currentColor; }
+#app-launcher.ln-editing .ln-pin { display: flex; }
+#app-launcher.ln-editing .ln-tile { touch-action: none; cursor: grab; border-color: var(--line); }
+#app-launcher .ln-tile.off { opacity: .45; background: transparent; border: 1px dashed var(--t5); }
+/* hidden tiles stay in the grid (so starting edit mode never rebuilds it) but show only in edit mode */
+#app-launcher:not(.ln-editing) .ln-tile.off { display: none; }
+/* the lifted tile follows the finger (an inline transform, risen by --rise: 0 with reduced motion) above the others; it
+   lets touches through so the tile under the finger can be found. .drop: gliding into its cell after the finger lifts */
+#app-launcher .ln-tile.lift { z-index: 4; pointer-events: none; cursor: grabbing; background: var(--bg); border-color: var(--t4); opacity: 1;
+  box-shadow: 0 10px 28px rgba(20, 20, 19, .14); }
+#app-launcher .ln-tile.drop { z-index: 4; }
+:root[data-theme="dark"] #app-launcher .ln-tile.lift { box-shadow: 0 10px 28px rgba(0, 0, 0, .5); background: var(--card-2); }
+#app-launcher .ln-empty:not([hidden]) { margin-top: 22px; }
+
+#app-launcher .ln-empty { margin: 2px 0 0; max-width: 520px; font: 400 19px/1.45 var(--serif); color: var(--t3); }
+
+/* the picker sheet */
+#app-launcher .ln-sheet { position: absolute; inset: 0; z-index: 20; }
+#app-launcher .ln-sheet[hidden] { display: none; }
+#app-launcher .ln-shade { position: absolute; inset: 0; background: rgba(20, 20, 19, .22); opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out); }
+:root[data-theme="dark"] #app-launcher .ln-shade { background: rgba(0, 0, 0, .45); }
+#app-launcher .ln-panel { position: absolute; left: 50%; bottom: 0; width: 560px; max-height: 470px; margin-left: -280px;
+  display: flex; flex-direction: column; box-sizing: border-box; padding: 22px 24px 14px; border-radius: 22px 22px 0 0;
+  background: var(--bg); box-shadow: 0 -12px 40px rgba(20, 20, 19, .16);
+  transform: translateY(24px); opacity: 0; transition: transform var(--dur-slow) var(--ease-emph), opacity var(--dur-base) var(--ease-out); }
+:root[data-theme="dark"] #app-launcher .ln-panel { background: var(--card); box-shadow: 0 -12px 40px rgba(0, 0, 0, .5); }
+#app-launcher .ln-sheet.on .ln-shade { opacity: 1; }
+#app-launcher .ln-sheet.on .ln-panel { transform: none; opacity: 1; }
+#app-launcher .ln-panel-hd { display: flex; align-items: center; justify-content: space-between; }
+#app-launcher .ln-panel-hd b { font: 500 22px var(--serif); }
+#app-launcher .ln-panel-sub { margin: 6px 0 12px; font-size: 14px; color: var(--t3); }
+#app-launcher .ln-list { overflow-y: auto; scrollbar-width: none; }
+#app-launcher .ln-row { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; align-items: center; gap: 14px;
+  padding: 10px 6px; border-top: 1px solid var(--line); }
+#app-launcher .ln-row img, #app-launcher .ln-row .ln-letter { width: 38px; height: 38px; border-radius: 10px; font-size: 17px; }
+#app-launcher .ln-row-name { flex: 1; font: 500 16px var(--sans); color: var(--text); }
+#app-launcher .ln-tick { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid var(--t5); color: transparent; transition: background-color var(--dur-base), border-color var(--dur-base), color var(--dur-base); }
+#app-launcher .ln-tick svg { width: 16px; height: 16px; }
+#app-launcher .ln-row.on .ln-tick { background: var(--text); border-color: var(--text); color: var(--bg); }
+#app-launcher [hidden] { display: none !important; }

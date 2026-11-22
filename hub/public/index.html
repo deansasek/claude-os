@@ -1,0 +1,146 @@
+<!doctype html>
+<html data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaudeOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;1,8..60,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/core.css">
+<script>
+  // Plain (non-module) script, outside the app's module graph, so it works even when the app's modules can't load.
+  // Until the app says it has started (window.hubBooted, called from shell.ts), it covers the screen with a calm
+  // ClaudeOS start screen. If the app doesn't start within 8 seconds, or a module fails to load, it reports that to
+  // the server log and reloads with a backoff (3s, 6s, 12s, then every 30s). A new server version reloads at once.
+  // The native shell (MainActivity.java) has its own backstop for when this script never runs; keep the numbers there in step.
+  (function () {
+    var BOOT_MS = 8000, BACKOFF_MS = [3000, 6000, 12000], CAP_MS = 30000, POLL_MS = 3000, SHOW_AFTER_MS = 600;
+    var RETRY_KEY = 'hubBootRetries';
+    var booted = false, failing = false, loadedVersion = null;
+    var overlay = null, showTimer = null, bootTimer = null, reloadTimer = null, poll = null;
+
+    function send(kind, msg) {
+      try {
+        var x = new XMLHttpRequest();
+        x.open('POST', '/api/core/log'); x.setRequestHeader('Content-Type', 'application/json');
+        x.send(JSON.stringify({ kind: kind, msg: String(msg).slice(0, 500), ua: navigator.userAgent }));
+      } catch (e) { /* nothing else to try */ }
+    }
+
+    // how many times this tab has retried a failed start (kept across the reloads, so the backoff grows)
+    function retriesSoFar() { try { return Number(sessionStorage.getItem(RETRY_KEY)) || 0; } catch (e) { return 0; } }
+    function saveRetries(n) { try { sessionStorage.setItem(RETRY_KEY, String(n)); } catch (e) { /* no storage: backoff restarts */ } }
+    function forgetRetries() { try { sessionStorage.removeItem(RETRY_KEY); } catch (e) { /* ignore */ } }
+
+    /** The server's page version, or null when the PC doesn't answer. */
+    function version(cb) {
+      try {
+        var x = new XMLHttpRequest();
+        x.open('GET', '/api/core/version?t=' + Date.now());
+        x.timeout = 4000;
+        x.onload = function () {
+          var v = null;
+          try { v = JSON.parse(x.responseText).version; } catch (e) { /* not the hub */ }
+          cb(v == null ? null : v);
+        };
+        x.onerror = x.ontimeout = function () { cb(null); };
+        x.send();
+      } catch (e) { cb(null); }
+    }
+
+    function buildScreen() {
+      var css = document.createElement('style');
+      css.textContent =
+        '#hub-start{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+        'padding:0 16px;box-sizing:border-box;background:#faf9f5;color:#141413;font-family:"Source Serif 4",Georgia,serif;text-align:center}' +
+        '#hub-start h1{font-weight:400;font-size:34px;margin:22px 0 8px;letter-spacing:-.01em}' +
+        '#hub-start p{margin:4px 0;font:15px/1.45 Inter,"Segoe UI",system-ui,sans-serif;color:#5e5d59;min-height:1.45em}' +
+        '#hub-start svg{animation:hub-start-bob 2.4s ease-in-out infinite}' +
+        '@keyframes hub-start-bob{50%{transform:translateY(-6px)}}' +
+        '@media (prefers-reduced-motion:reduce){#hub-start svg{animation:none}}' +
+        '@media (prefers-color-scheme:dark){#hub-start{background:#141413;color:#faf9f5}#hub-start p{color:#a6a49b}}';
+      document.head.appendChild(css);
+      overlay = document.createElement('div');
+      overlay.id = 'hub-start';
+      overlay.setAttribute('role', 'status');
+      overlay.innerHTML =
+        '<svg width="112" height="88" viewBox="0 0 14 11" shape-rendering="crispEdges" aria-hidden="true">' +
+        '<g fill="#B85C3E"><rect x="3" y="7" width="1" height="2.6"/><rect x="5" y="7" width="1" height="2.6"/><rect x="8" y="7" width="1" height="2.6"/><rect x="10" y="7" width="1" height="2.6"/></g>' +
+        '<rect x="1" y="4" width="1.2" height="2" fill="#D97757"/><rect x="11.8" y="4" width="1.2" height="2" fill="#D97757"/>' +
+        '<rect x="2" y="1.5" width="10" height="6" fill="#D97757"/><g fill="#141413"><rect x="4" y="3" width="1" height="2"/><rect x="9" y="3" width="1" height="2"/></g></svg>' +
+        '<h1>ClaudeOS</h1><p></p>';
+      document.documentElement.appendChild(overlay);
+    }
+
+    function showScreen(line) {
+      if (booted) return;
+      if (!overlay) buildScreen();
+      overlay.querySelector('p').textContent = line;
+    }
+
+    /** The app did not start, or a module failed to load: report it, show the message, and retry. */
+    function fail(msg) {
+      if (booted || failing) return;
+      failing = true;
+      clearTimeout(bootTimer);
+      send('boot', msg);
+      var n = retriesSoFar();
+      saveRetries(n + 1);
+      var wait = n < BACKOFF_MS.length ? BACKOFF_MS[n] : CAP_MS;
+      showScreen("Something didn’t load. Trying again…");
+      reloadTimer = setTimeout(function () { location.reload(); }, wait);
+      poll = setInterval(function () {
+        version(function (v) {
+          if (v === null) { showScreen("Can’t reach your PC. Trying again…"); return; }
+          showScreen("Something didn’t load. Trying again…");
+          if (loadedVersion === null) loadedVersion = v;
+          else if (v !== loadedVersion) location.reload();   // the server has new files: pick them up now
+        });
+      }, POLL_MS);
+    }
+
+    window.addEventListener('error', function (e) {
+      send('error', (e.message || (e.target && (e.target.src || e.target.href)) || 'unknown') + (e.filename ? ' @ ' + e.filename + ':' + e.lineno + ':' + e.colno : ''));
+      // a module in the app's graph 404'd or failed to parse: the app can't start, so don't wait for the timeout
+      if (e.target && e.target.tagName === 'SCRIPT' && e.target.type === 'module') fail('a module failed to load: ' + e.target.src);
+    }, true);
+    window.addEventListener('unhandledrejection', function (e) { send('promise', e.reason && (e.reason.stack || e.reason.message) || e.reason); });
+
+    // called by the app (shell.ts) once it has mounted: hide the start screen and stop the watchdogs
+    window.hubBooted = function () {
+      booted = true;
+      clearTimeout(showTimer); clearTimeout(bootTimer); clearTimeout(reloadTimer); clearInterval(poll);
+      forgetRetries();
+      if (overlay) { overlay.remove(); overlay = null; }
+      try { if (window.HubDevice && HubDevice.booted) HubDevice.booted(); } catch (e) { /* not on the tablet */ }
+    };
+
+    showTimer = setTimeout(function () { showScreen('Starting up…'); }, SHOW_AFTER_MS);   // a normal start never shows it
+    version(function (v) { loadedVersion = v; });
+    bootTimer = setTimeout(function () { fail('the app did not start within 8 seconds'); }, BOOT_MS);
+  })();
+</script>
+<!-- ?device=mock: a pretend desk tablet for the PC (core/web/mock-device.ts), loaded before the app's modules -->
+<script>if (/[?&]device=mock\b/.test(location.search)) document.write('<script src="/src/core/web/mock-device.ts"><\/script>');</script>
+<script type="module" src="/src/main.web.ts"></script>
+</head>
+<body>
+<div class="stage" id="stage">
+  <!-- the rail is filled in from the app list; each app's view is loaded into its own <section> -->
+  <nav class="rail" id="rail">
+    <div class="rail-foot"></div>
+  </nav>
+
+  <!-- shared on-screen keyboard; any app can open it with Keyboard.open({...}) -->
+  <div class="kb" id="kb">
+    <div class="kb-bar">
+      <button class="kb-cancel" id="kbCancel">Cancel</button>
+      <div class="kb-field"><span id="kbText"></span><i class="kb-caret"></i><span class="kb-ph" id="kbPh"></span></div>
+      <button class="kb-done" id="kbDone">Done</button>
+    </div>
+    <div class="kb-keys" id="kbKeys"></div>
+  </div>
+</div>
+</body>
+</html>

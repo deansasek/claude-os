@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Plain http is allowed app-wide (the user's choice: local addresses and the Hub are plain http).
+  The platform cannot tell private addresses from public ones, so the rule is enforced in code, not here:
+  - BrowserView: public http is upgraded to https for every Browser navigation, redirect, download and window.open;
+    public http subresources are refused (shouldInterceptRequest); local and Hub http is allowed.
+  - Public https pages never load http subresources (WebSettings.MIXED_CONTENT_NEVER_ALLOW).
+  - MainActivity: the Hub's own WebView only navigates to the Hub, and refuses public http subresources.
+-->
+<network-security-config>
+  <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

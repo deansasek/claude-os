@@ -1,0 +1,428 @@
+/* Browser app. The header holds the tabs; under it the bar (back, forward, reload, address, star, home, menu), then
+   the content area, which on the tablet is covered exactly by a native WebView (BrowserView.java) while a page shows.
+   Anything drawn over the content area (a full page, a sheet, the find bar's space) is an element with class br-over
+   or br-find; while one is on, the native page is hidden (app.ts sync). */
+
+#app-browser { height: 100%; }
+#app-browser [hidden] { display: none !important; }
+
+/* ---- tabs, in the header after "Browser" ---- */
+#app-browser .app-hd-after { display: flex; align-items: center; gap: 6px; margin-left: 20px; min-width: 0; flex: 1; }
+/* the pull-down handle's pill (core.css .cc-handle::after) runs through this header row, across the tabs: hidden while
+   the Browser is on. Its hit area stays; the header controls above it (core.css) take the taps. */
+.stage:has(#app-browser.on) .cc-handle::after { opacity: 0; }
+#app-browser .br-tabs { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+#app-browser .br-tabs::-webkit-scrollbar { display: none; }
+#app-browser .br-tab { flex: 0 1 190px; min-width: 96px; height: 36px; display: flex; align-items: center; gap: 8px;
+  padding: 0 4px 0 12px; border-radius: 12px; border: 1px solid transparent; background: transparent; color: var(--t3);
+  font: 500 13px var(--sans); cursor: pointer; transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+#app-browser .br-tab { position: relative; }
+#app-browser .br-tab::before { content: ''; position: absolute; inset: -4px 0; }   /* a 44px-tall touch area, the look stays 36px */
+#app-browser .br-tab.on { background: var(--card); border-color: var(--line); color: var(--text); }
+#app-browser .br-tab.priv { border-style: dashed; }
+#app-browser .br-fav { width: 16px; height: 16px; flex: none; border-radius: 4px; display: grid; place-items: center;
+  font: 600 10px var(--sans); color: var(--bg); background: var(--t4); overflow: hidden; }
+#app-browser .br-fav img { width: 16px; height: 16px; display: block; }
+#app-browser .br-fav.globe { background: none; color: var(--t3); }
+#app-browser .br-fav svg { width: 16px; height: 16px; }
+#app-browser .br-tab .br-t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+#app-browser .br-x { position: relative; width: 28px; height: 28px; flex: none; border-radius: 8px; display: grid; place-items: center; color: var(--t4); }
+#app-browser .br-x::before { content: ''; position: absolute; inset: -8px; }
+#app-browser .br-x svg { width: 12px; height: 12px; }
+#app-browser .br-new { width: 36px; height: 36px; flex: none; border: 0; border-radius: 12px; background: transparent; color: var(--t3);
+  display: grid; place-items: center; cursor: pointer; }
+#app-browser .br-new svg { width: 18px; height: 18px; }
+#app-browser .br-new:disabled { color: var(--t4); cursor: default; }
+
+/* ---- the bar ---- */
+#app-browser .br-bar { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); height: 44px;
+  display: flex; align-items: center; gap: 6px; }
+#app-browser .br-btn { width: 44px; height: 44px; flex: none; border: 0; border-radius: 12px; background: transparent; color: var(--t2);
+  display: grid; place-items: center; cursor: pointer; transition: opacity var(--dur-fast) var(--ease-out); }
+#app-browser .br-btn svg { width: 20px; height: 20px; }
+/* a disabled control is drawn in the quiet token, not faded: its icon keeps 3:1 contrast on the page */
+#app-browser .br-btn:disabled { color: var(--t4); cursor: default; }
+#app-browser #brStar.on { color: var(--text); }
+#app-browser #brStar.on svg { fill: currentColor; }
+#app-browser .br-addr { flex: 1; min-width: 0; height: 44px; margin: 0 6px; padding: 0 18px; border-radius: 22px; border: 1px solid var(--line);
+  background: var(--card); color: var(--text); display: flex; align-items: center; justify-content: center; gap: 8px;
+  font: 500 15px var(--sans); cursor: text; }
+/* the address reads from the left, as in a browser; the placeholder and the page's host share the one spot */
+#app-browser .br-addr { justify-content: flex-start; padding: 0 16px; }
+#app-browser .br-host { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser .br-host.ph { color: var(--t4); font-weight: 400; }
+#app-browser .br-lock { display: contents; color: var(--t4); }
+#app-browser .br-lock svg { width: 13px; height: 13px; flex: none; }
+/* a plain-http page (local only: public ones are upgraded or refused): no lock, a quiet word instead */
+#app-browser .br-insecure { font: 500 13px var(--sans); color: var(--t3); white-space: nowrap; }
+#app-browser .br-load { position: absolute; left: 0; top: 0; height: 2px; width: 0; z-index: 3; background: var(--clay); opacity: 0;
+  transition: width var(--dur-base) var(--ease-out), opacity var(--dur-slow) var(--ease-out); }
+/* clay is kept for the one thing that needs attention (an error page's icon); loading and selection are ink */
+#app-browser .br-load { background: var(--t3); }
+
+/* ---- content ---- */
+#app-browser .br-content { position: absolute; left: var(--app-l); right: var(--app-r); top: calc(var(--app-body) + 56px); bottom: 22px;
+  border-radius: 14px; border: 1px solid var(--line); background: var(--bg); overflow: hidden; }
+#app-browser .br-load.on { opacity: 1; }
+#app-browser .br-frame { position: absolute; inset: 0; }
+#app-browser .br-frame.shift { top: 52px; }
+#app-browser .br-page { position: absolute; inset: 0; z-index: 2; background: var(--bg); overflow-y: auto; }
+
+/* find in page: a strip over the top of the content, the page starts under it */
+#app-browser .br-find { position: absolute; left: 0; right: 0; top: 0; height: 52px; z-index: 4; display: flex; align-items: center;
+  gap: 6px; padding: 0 10px; background: var(--card); border-bottom: 1px solid var(--line); }
+#app-browser .br-find-field { flex: 1; min-width: 0; height: 36px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg);
+  display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--t3); font: 400 15px var(--sans); cursor: text; }
+#app-browser .br-find-field svg { width: 15px; height: 15px; flex: none; }
+#app-browser .br-find-field #brFindText { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+#app-browser .br-find-count { min-width: 64px; text-align: center; font: 500 13px var(--sans); color: var(--t3); }
+#app-browser .br-find-btn { width: 40px; height: 40px; border: 0; border-radius: 12px; background: transparent; color: var(--t2);
+  display: grid; place-items: center; cursor: pointer; }
+#app-browser .br-find-btn svg { width: 18px; height: 18px; }
+
+/* Google sign-in open in Chrome's side sheet on the right: the whole stage is fitted left of the sheet (dom.ts
+   setStageInset), so the note fills the content area; its arrow points at the sheet just past the stage's edge */
+#app-browser .br-chrome { position: absolute; inset: 0; z-index: 4; background: var(--bg);
+  display: grid; place-items: center; padding: 24px; box-sizing: border-box; animation: brFade var(--dur-base) var(--ease-out); }
+/* a little larger than the app's body text: the stage is shown smaller (about 0.7×) while the sheet is open */
+#app-browser .br-chrome-in { max-width: 400px; }
+#app-browser .br-chrome-h { font: 500 26px var(--sans); color: var(--text); margin: 0 0 12px; }
+#app-browser .br-chrome p { font: 400 19px/1.45 var(--sans); color: var(--t3); margin: 0 0 22px; }
+
+/* finger-sized targets for the small buttons: an invisible 44px area, as core's .hit does (the look stays the same) */
+#app-browser .br-new, #app-browser .br-find-btn, #app-browser .br-edit, #app-browser .br-mini { position: relative; }
+#app-browser .br-new::before, #app-browser .br-find-btn::before, #app-browser .br-edit::before, #app-browser .br-mini::before,
+#app-browser .br-q .br-qx::before, #app-browser .br-card .br-cx::before { content: ''; position: absolute; inset: min(0px, calc(50% - 22px)); }
+
+/* overlays: full pages and sheets over the content area */
+#app-browser .br-over { display: none; position: absolute; inset: 0; z-index: 5; background: var(--bg); }
+#app-browser .br-over.on { display: block; animation: brFade var(--dur-base) var(--ease-out); }
+@keyframes brFade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---- Header variants: Full (the name, the tabs row, the bar) and Compact (the name hidden, the bar tighter, the page
+   higher). Settings → Browser → Header chooses it. The page gets the height the header gives back. ---- */
+/* the tabs are their own row above the bar, never in the header. Full: the header (the name) above the tabs.
+   Compact: no header; the tabs take the top, and the bar and page move up. */
+/* Full: the name, then the tab row (32 px), an 8 px gap, the bar (40 px), an 8 px gap, the page (starts at 152).
+   Compact: no name; the tab row at the top (32 px), a 6 px gap, the bar (38 px), a 6 px gap, the page (starts at 110). */
+#app-browser { --app-body: 104px; }
+#app-browser .br-tabs-row { position: absolute; left: var(--app-l); right: var(--app-r); top: calc(var(--app-top) + 36px); height: 32px;
+  display: flex; align-items: center; min-width: 0; }
+#app-browser .br-tabs-row .app-hd-after { margin-left: 0; flex: 1; min-width: 0; }
+#app-browser .br-bar { height: 40px; }
+#app-browser .br-btn { width: 40px; height: 40px; }
+#app-browser .br-addr { height: 40px; border-radius: 20px; }
+#app-browser .br-tab { height: 32px; border-radius: 10px; }
+#app-browser .br-tab.on { background: var(--card-2); border-color: transparent; }
+#app-browser .br-content { top: calc(var(--app-body) + 44px); bottom: 14px; left: 12px; right: 12px; }
+#app-browser .br-bar, #app-browser .br-tabs-row { left: 12px; right: 12px; }
+/* with the Claude panel open, the page runs to the panel's edge and the panel to the screen's right edge */
+#app-browser .br-content.cl-open { right: 0; }
+/* the ⋯ menu is a column at the content's right edge (like the Claude panel): the page and the new-tab page move left of
+   it, so they stay visible and are never dimmed. A native page can't have HTML drawn over it, so the menu never sits on
+   top of the page. Tapping outside the column (the transparent wrapper) closes it. */
+#app-browser #brMenu.br-over { background: transparent; padding: 0; }
+#app-browser #brMenu .br-sheet { position: absolute; top: 0; right: 0; bottom: 0; left: auto; width: 300px; max-width: none; max-height: none;
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 0 8px 12px;
+  border: 0; border-left: 1px solid var(--line); border-radius: 0 14px 14px 0; background: var(--card); box-shadow: none;
+  transform: none; animation: brMenuIn var(--dur-base) var(--ease-out); }
+@keyframes brMenuIn { from { transform: translateX(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+#app-browser .br-content:has(#brMenu.on) > #brFrame,
+#app-browser .br-content:has(#brMenu.on) > #brNtp { right: 300px; }
+/* the header: the page's site in the serif, the page's title (or "Private tab") quiet under it; it stays put while
+   the list scrolls under it */
+#app-browser #brMenu .br-mhd { position: sticky; top: 0; z-index: 1; margin: 0 -8px 4px; padding: 16px 20px 12px;
+  background: var(--card); border-bottom: 1px solid var(--line); }
+#app-browser #brMenu .br-mhd-t { font: 400 20px/1.25 var(--serif); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser #brMenu .br-mhd-s { margin-top: 2px; font: 400 13px/1.35 var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* rows: 48 px, the icons in one column (20 px box, 14 px gap), the text in another */
+#app-browser #brMenu .br-row2 { min-height: 48px; gap: 14px; padding: 0 12px; border-radius: 10px; font-size: 16px;
+  transition: background-color var(--dur-fast) var(--ease-out); }
+#app-browser #brMenu .br-row2 svg { width: 20px; height: 20px; color: var(--t2); }
+#app-browser #brMenu .br-row2:hover:not(:disabled):not(.br-zoom) { background: var(--card-2); }
+#app-browser #brMenu .br-row2:active:not(:disabled):not(.br-zoom) { background: var(--card-2); }
+#app-browser #brMenu .br-row2:focus-visible { outline: 2px solid var(--clay); outline-offset: -2px; }
+#app-browser #brMenu .br-row2:disabled { opacity: 1; color: var(--t4); }
+#app-browser #brMenu .br-row2:disabled svg { color: var(--t4); }
+#app-browser #brMenu .br-row2 .br-m { color: var(--t3); font: 400 14px var(--sans); font-variant-numeric: tabular-nums; }
+/* the thin line between groups, inset to the text */
+#app-browser #brMenu .br-msep { height: 1px; margin: 6px 12px; background: var(--line); }
+/* Desktop site: a small switch, clay when on */
+#app-browser #brMenu .br-mswitch { position: relative; flex: none; width: 36px; height: 22px; border-radius: 11px; background: var(--line);
+  transition: background-color var(--dur-fast) var(--ease-out); }
+#app-browser #brMenu .br-mswitch i { position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg);
+  box-shadow: 0 1px 2px rgba(20, 20, 19, .2); transition: transform var(--dur-fast) var(--ease-out); }
+#app-browser #brMenu .br-mswitch.on { background: var(--clay); }
+#app-browser #brMenu .br-mswitch.on i { transform: translateX(14px); }
+#app-browser #brMenu .br-row2:disabled .br-mswitch { opacity: .5; }
+/* the zoom control fits the 300 px column: − 100% + in 44 px targets */
+#app-browser #brMenu .br-zoom-ctl { gap: 4px; }
+#app-browser #brMenu .br-zbtn, #app-browser #brMenu .br-zpct { height: 44px; border-radius: 10px; background: var(--bg); }
+#app-browser #brMenu .br-zpct { min-width: 64px; padding: 0 6px; }
+#app-browser #brMenu .br-zbtn:active:not(:disabled), #app-browser #brMenu .br-zpct:active:not(:disabled) { background: var(--card-2); }
+#app-browser #brMenu .br-zoom:has(.br-zbtn:disabled) { color: var(--t4); }
+#app-browser #brMenu .br-zoom:has(.br-zbtn:disabled) svg { color: var(--t4); }
+#app-browser #brMenu .br-zbtn:disabled, #app-browser #brMenu .br-zpct:disabled { background: transparent; }
+
+/* landing page refinements: no switcher pill over the page, no card-in-card border on the landing page, quieter section
+   labels in sentence case, quieter quick-link tiles */
+.stage:has(#app-browser.on) .sw-handle::after { opacity: 0; }
+#app-browser .br-content:has(#brNtp:not([hidden])) { border-color: transparent; }
+#app-browser .br-lh b { text-transform: none; letter-spacing: 0; font: 500 14px var(--sans); color: var(--t3); }
+#app-browser .br-lh .br-edit { text-decoration: none; color: var(--t3); }
+#app-browser .br-q { border-color: transparent; background: transparent; }
+#app-browser .br-q:active { background: var(--card); }
+
+/* the landing page's name: the globe and "Browser", as the header draws them (clay globe, serif name) */
+/* the landing page's heading block: the name and the greeting have room between them and above them */
+#app-browser .br-brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px 0 26px; }
+#app-browser .br-greet { margin: 0 0 30px; }
+#app-browser .br-brand-ic { width: 26px; height: 26px; display: flex; color: var(--clay); }
+#app-browser .br-brand-ic svg { width: 100%; height: 100%; display: block; }
+#app-browser .br-brand-t { font: 500 27px/1 var(--serif); letter-spacing: -.015em; color: var(--text); }
+
+/* Compact is bar-first: no header and no tab row. The address bar is the top element; the tabs are opened from the
+   bar's tab buttons (new tab, and all tabs with the count). The page starts 10 px under the bar. */
+#app-browser.br-compact { --app-body: 22px; }
+#app-browser.br-compact .app-hd, #app-browser.br-compact .br-tabs-row { display: none; }
+/* the bar sits above the pull-down handle (core.css .cc-handle, centred at the top), so taps on its middle reach it */
+#app-browser.br-compact .br-bar { top: var(--app-body); height: 40px; gap: 4px; left: 12px; right: 12px; z-index: 41; }
+#app-browser.br-compact .br-btn { width: 36px; height: 36px; }
+#app-browser.br-compact .br-addr { height: 36px; border-radius: 18px; }
+#app-browser.br-compact .br-bar .br-new { width: 36px; height: 36px; flex: none; }
+#app-browser.br-compact .br-content { top: calc(var(--app-body) + 50px); }
+
+/* ---- Claude in the Browser (claude-panel.ts): Claude's side panel, in the look of the Claude page ---- */
+#app-browser { --cl-w: 300px; }
+#app-browser .br-claude .cl-bar-spark { width: 20px; height: 20px; display: block; }
+#app-browser .br-claude .cl-bar-spark svg { width: 100%; height: 100%; display: block; }
+/* while the panel is open, everything in the content area (the native page's frame, the new-tab page, the find bar,
+   the full pages) stops at the panel's left edge: the page and the panel sit side by side, never one over the other */
+#app-browser .br-content.cl-open > *:not(.cl) { right: var(--cl-w); }
+#app-browser .cl { position: absolute; top: 0; right: 0; bottom: 0; width: var(--cl-w); z-index: 4; display: flex; flex-direction: column;
+  background: var(--rail); border-left: 1px solid var(--line); }
+/* the divider on the panel's left edge: drag it to make the panel wider or narrower; the page fits beside it */
+#app-browser .cl-split { position: absolute; left: 0; top: 0; bottom: 0; width: 12px; cursor: col-resize; touch-action: none; z-index: 6; }
+#app-browser .cl-split::after { content: ''; position: absolute; top: 0; bottom: 0; left: 6px; width: 2px; background: transparent;
+  transition: background-color var(--dur-fast) var(--ease-out); }
+#app-browser .cl-split:hover::after, #app-browser .cl-split:active::after { background: var(--clay); }
+#app-browser .cl-hd { position: relative; display: flex; align-items: center; justify-content: space-between; height: 44px; flex: none; padding: 0 8px 0 16px; border-bottom: 1px solid var(--line); }
+#app-browser .cl-brand { display: flex; align-items: center; gap: 8px; font: 600 15px var(--sans); color: var(--text); }
+#app-browser .cl-spark { width: 18px; height: 18px; display: block; }
+#app-browser .cl-spark svg { width: 100%; height: 100%; display: block; }
+#app-browser .cl-hd-r { display: flex; gap: 2px; }
+#app-browser .cl-ib { width: 40px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: var(--t3); display: grid; place-items: center; cursor: pointer; }
+#app-browser .cl-ib svg { width: 20px; height: 20px; }
+#app-browser .cl-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 14px; user-select: text; -webkit-user-select: text; }
+#app-browser .cl-empty { margin: auto; text-align: center; color: var(--t4); font: 400 14px/1.5 var(--sans); max-width: 240px; }
+#app-browser .cl-empty .cl-spark { width: 44px; height: 44px; margin: 0 auto 12px; }
+#app-browser .cl-msg { font: 400 14px/1.55 var(--sans); color: var(--text); overflow-wrap: anywhere; }
+#app-browser .cl-msg.user { align-self: flex-end; max-width: 86%; background: var(--card); border-radius: 16px; padding: 8px 12px; }
+#app-browser .cl-msg.note { color: var(--t3); font-size: 13px; }
+#app-browser .cl-msg.status { color: var(--t4); font-size: 13px; }
+#app-browser .cl-step { font-style: italic; }
+#app-browser .cl-msg p { margin: 0 0 8px; }
+#app-browser .cl-msg code { font: 500 12.5px ui-monospace, Consolas, monospace; background: var(--card-2); border-radius: 6px; padding: 1px 5px; }
+#app-browser .cl-appr { border: 1px solid var(--line); border-radius: 14px; padding: 12px; background: var(--card); font: 400 13px/1.45 var(--sans); color: var(--t2); }
+#app-browser .cl-appr b { color: var(--text); font-weight: 600; }
+#app-browser .cl-detail { margin-top: 4px; color: var(--t4); overflow-wrap: anywhere; }
+#app-browser .cl-appr-btns { display: flex; gap: 8px; margin-top: 10px; }
+#app-browser .cl-btn { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 500 13px var(--sans); cursor: pointer; }
+#app-browser .cl-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+#app-browser .cl-comp { flex: none; padding: 8px 12px 14px; }
+#app-browser .cl-box { border: 1px solid var(--line); border-radius: 18px; background: var(--card-2); padding: 14px 14px 8px; }
+#app-browser .cl-model { color: var(--text); padding-right: 3px; }
+#app-browser .cl-effort { color: var(--t3); padding-left: 3px; }
+#app-browser .cl-box textarea { display: block; width: 100%; border: 0; outline: none; background: transparent; resize: none; font: 400 15px/1.4 var(--sans); color: var(--text); min-height: 24px; max-height: 120px; user-select: text; -webkit-user-select: text; }
+#app-browser .cl-box textarea::placeholder { color: var(--t5); }
+/* the composer's footer, as the Claude composer: + and the mic are quiet round buttons; the permission pill has its chevron */
+#app-browser .cl-tools { gap: 2px; margin-top: 8px; }
+#app-browser .cl-tools #clCtl { flex: 1 1 auto; display: flex; align-items: center; gap: 2px; min-width: 0; }
+#app-browser .cl-plus, #app-browser .cl-mic { width: 36px; height: 36px; flex: none; border: 0; border-radius: 50%; background: transparent; color: var(--t3); display: grid; place-items: center; cursor: pointer; }
+#app-browser .cl-plus svg, #app-browser .cl-mic svg { width: 20px; height: 20px; }
+#app-browser .cl-mic[hidden] { display: none; }
+#app-browser .cl-mic.on { color: var(--clay); background: color-mix(in srgb, var(--clay) 14%, transparent); }
+#app-browser .cl .cp-pick.mode::after { content: ''; width: 5px; height: 5px; margin: -3px 0 0 3px; border: solid var(--t4); border-width: 0 1.4px 1.4px 0; transform: rotate(45deg); }
+#app-browser .cl-tools { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+#app-browser .cl-hint { color: var(--t5); font: 400 12px var(--sans); }
+/* the composer's chips (the Claude app's own styles for .cp-pick, .cp-ctx and the menu .cm apply here too): the ring's
+   colours are the Claude app's, scoped to the panel; the chips shrink with the panel's width */
+#app-browser .cl .cp-right { min-width: 0; flex: 1 1 auto; overflow: hidden; margin-left: 0; gap: 0; }
+/* as the Claude composer: the permission pill on the left, the model and effort on the right, quieter */
+#app-browser .cl .cp-pick.cl-model, #app-browser .cl .cp-pick.cl-effort { color: var(--t3); height: 36px; }
+#app-browser .cl .cp-pick.cl-model { margin-left: auto; }
+#app-browser .cl .cp-pick.mode { height: 36px; color: var(--t2); }
+#app-browser .cl .cp-pick { min-width: 0; max-width: 100%; font-size: 13px; padding: 0 6px; gap: 4px; flex: 0 1 auto; }
+#app-browser .cl .cp-pick > span { min-width: 0; }
+#app-browser .cl .cp-pick.cl-model { flex: 0 1 auto; min-width: 40px; }
+#app-browser .cl .cp-pick.mode, #app-browser .cl .cp-pick.cl-effort { flex: 0 0 auto; }
+#app-browser .cl .cp-ctx .trk { stroke: var(--line); stroke-width: 2.4; }
+#app-browser .cl .cp-ctx .arc { stroke: var(--t3); stroke-width: 2.4; stroke-dasharray: 0 43.98; transition: stroke-dasharray .4s; }
+#app-browser .cl .cp-ctx.warn .arc { stroke: var(--hot); }
+#app-browser .cl .cm { position: absolute; bottom: 60px; right: 12px; width: 260px; max-width: calc(100% - 24px); }
+#app-browser .cl-send { width: 32px; height: 32px; border: 0; border-radius: 8px; background: var(--card); color: var(--t2); display: grid; place-items: center; cursor: pointer; }
+#app-browser .cl-send:disabled { opacity: .35; cursor: default; }
+#app-browser .cl-send svg { width: 18px; height: 18px; }
+#app-browser .cl-recent { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; background: var(--rail); }
+#app-browser .cl-recent[hidden] { display: none !important; }
+#app-browser .cl-list { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 12px 16px; display: flex; flex-direction: column; gap: 2px; }
+#app-browser .cl-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+#app-browser .cl-item:active { background: var(--card); }
+#app-browser .cl-item-t { font: 500 14px var(--sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+#app-browser .cl-item-s { font: 400 12px var(--sans); color: var(--t4); }
+#app-browser .cl-muted { padding: 16px 12px; color: var(--t4); font: 400 14px var(--sans); }
+#app-browser .br-full { overflow-y: auto; }
+#app-browser .br-full-hd { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  gap: 12px; padding: 14px 20px; background: var(--bg); border-bottom: 1px solid var(--line); }
+#app-browser .br-full-hd h2 { margin: 0; text-align: center; font: 400 22px var(--serif); color: var(--text); }
+#app-browser .br-full-hd > span { display: block; }
+#app-browser .br-back { height: 44px; padding: 0 16px; }
+#app-browser .br-list { padding: 8px 20px 28px; max-width: 760px; margin: 0 auto; }
+#app-browser .br-day { font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t4); margin: 18px 0 6px; }
+#app-browser .br-item { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 10px; border-radius: 12px;
+  background: none; border: 0; width: 100%; color: var(--text); font: 400 15px var(--sans); text-align: left; cursor: pointer; }
+#app-browser .br-item:hover { background: var(--card); }
+#app-browser .br-item .br-it-t { flex: 1; min-width: 0; }
+#app-browser .br-item .br-it-t b { display: block; font: 500 15px var(--sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser .br-item .br-it-t small { display: block; color: var(--t4); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser .br-item .br-ic { width: 36px; height: 36px; border-radius: 10px; flex: none; display: grid; place-items: center;
+  background: var(--card); color: var(--t2); border: 1px solid var(--line); }
+#app-browser .br-item .br-ic svg { width: 17px; height: 17px; }
+#app-browser .br-item .br-acts { display: flex; gap: 6px; flex: none; }
+#app-browser .br-mini { height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card);
+  color: var(--t2); font: 500 13px var(--sans); cursor: pointer; }
+#app-browser .br-mini.danger { color: var(--danger); }
+#app-browser .br-empty-l { font: italic 400 15px var(--serif); color: var(--t4); padding: 14px 10px; }
+#app-browser .br-progressbar { height: 4px; border-radius: 2px; background: var(--card-2); overflow: hidden; margin-top: 6px; }
+#app-browser .br-progressbar i { display: block; height: 100%; background: var(--t3); transition: width var(--dur-base) var(--ease-out); }
+
+/* search field (history) */
+#app-browser .br-search-s { margin: 12px 20px 0; max-width: 720px; width: calc(100% - 40px); }
+#app-browser .br-search-s { position: relative; }
+
+/* tab overview cards */
+#app-browser .br-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; padding: 16px 20px 28px; }
+#app-browser .br-card { position: relative; border-radius: 14px; border: 1px solid var(--line); background: var(--card); overflow: hidden;
+  display: flex; flex-direction: column; cursor: pointer; text-align: left; padding: 0; color: var(--text); font: 500 14px var(--sans); }
+#app-browser .br-card.on { border-color: var(--t3); box-shadow: 0 0 0 1px var(--t3); }
+#app-browser .br-card .br-priv { color: var(--t2); font-weight: 600; }
+#app-browser .br-count { position: absolute; right: 2px; bottom: 0; min-width: 14px; font: 600 10px/14px var(--sans); color: var(--t2); text-align: center; }
+#app-browser .br-card.priv { border-style: dashed; }
+#app-browser .br-card .br-thumb { aspect-ratio: 4 / 3; background: var(--card-2); display: grid; place-items: center; color: var(--t4); overflow: hidden; }
+#app-browser .br-card .br-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+#app-browser .br-card .br-thumb .br-fav { width: 40px; height: 40px; font-size: 18px; border-radius: 12px; }
+#app-browser .br-card .br-thumb .br-fav svg { width: 22px; height: 22px; }
+#app-browser .br-card .br-ct { padding: 10px 12px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser .br-card .br-cx { position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 50%; display: grid;
+  place-items: center; background: rgba(20, 20, 19, .6); color: var(--paper); border: 0; }
+#app-browser .br-card .br-cx svg { width: 11px; height: 11px; }
+#app-browser .br-card.add { border-style: dashed; background: transparent; align-items: center; justify-content: center; color: var(--t3); min-height: 180px; gap: 10px; }
+/* the "+" is a line icon like the others: 44px, a 1.5 stroke, in the quiet token (the svg has no size of its own) */
+#app-browser .br-card.add > svg { width: 44px; height: 44px; flex: none; color: var(--t3); stroke-width: 1.5; }
+
+/* the reader view */
+#app-browser .br-article { max-width: 640px; margin: 0 auto; padding: 26px 24px 60px; color: var(--text); font: 400 18px/1.65 var(--serif); }
+#app-browser .br-article h1 { font: 400 34px/1.2 var(--serif); margin: 0 0 8px; letter-spacing: -.01em; }
+#app-browser .br-article .br-by { font: 500 14px var(--sans); color: var(--t3); margin: 0 0 26px; }
+#app-browser .br-article h2, #app-browser .br-article h3, #app-browser .br-article h4 { font: 400 24px/1.3 var(--serif); margin: 28px 0 8px; }
+#app-browser .br-article p, #app-browser .br-article li { margin: 0 0 14px; }
+#app-browser .br-article li { margin-left: 20px; }
+#app-browser .br-article blockquote { margin: 18px 0; padding: 4px 18px; border-left: 3px solid var(--t5); color: var(--t2); font-style: italic; }
+#app-browser .br-article pre { white-space: pre-wrap; font: 400 14px/1.5 ui-monospace, Menlo, monospace; background: var(--card); padding: 12px; border-radius: 10px; }
+
+/* the sheets: menu, long-press, uploads, photos, permissions */
+#app-browser .br-sheet-wrap { background: rgba(20, 20, 19, .34); align-items: flex-end; justify-content: center; padding: 0 16px 14px; }
+/* a sheet shows only when it is on: the flex display above would otherwise override .br-over's display:none */
+#app-browser .br-sheet-wrap.on { display: flex; }
+#app-browser .br-sheet { width: 100%; max-width: 460px; max-height: 100%; overflow-y: auto; background: var(--card); border: 1px solid var(--line);
+  border-radius: 18px; padding: 10px; box-shadow: 0 10px 40px rgba(20, 20, 19, .18); animation: brRise var(--dur-base) var(--ease-out); }
+#app-browser .br-sheet-wide { max-width: 640px; }
+@keyframes brRise { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+#app-browser .br-sheet-t { font: 400 20px var(--serif); color: var(--text); padding: 6px 10px 10px; }
+#app-browser .br-sheet-p { font: 400 15px/1.5 var(--sans); color: var(--t2); margin: 0 10px 14px; }
+#app-browser .br-sheet-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; padding: 4px 6px 6px; }
+#app-browser .br-share-url { word-break: break-all; }
+#app-browser .br-dlg-field { display: block; width: calc(100% - 20px); margin: 0 10px 14px; padding: 12px 14px; text-align: left; border-radius: 12px;
+  border: 1px solid var(--line); background: var(--bg); color: var(--text); font: 400 17px var(--sans); cursor: pointer; }
+/* a downloaded picture or text, shown in ClaudeOS (the viewer) */
+#app-browser .br-viewer { display: flex; align-items: center; justify-content: center; padding: 18px 20px 40px; min-height: 60%; }
+#app-browser .br-viewer img { max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: 10px; }
+#app-browser .br-viewer pre { width: 100%; max-width: 760px; white-space: pre-wrap; word-break: break-word; font: 400 14px/1.5 ui-monospace, Menlo, monospace;
+  color: var(--text); margin: 0; }
+#app-browser .br-viewer .br-msg-line { font: italic 400 16px var(--serif); color: var(--t4); text-align: center; }
+#app-browser .br-row2 { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 0 12px; border: 0; border-radius: 12px;
+  background: none; color: var(--text); font: 400 15px var(--sans); text-align: left; cursor: pointer; }
+#app-browser .br-row2:hover { background: var(--card-2); }
+#app-browser .br-row2:disabled { opacity: .4; cursor: default; }
+#app-browser .br-row2 svg { width: 19px; height: 19px; flex: none; color: var(--t2); }
+#app-browser .br-row2 .br-r { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser .br-row2 .br-m { color: var(--t4); font-size: 13px; }
+#app-browser .br-row2.danger { color: var(--danger); }
+/* the zoom row: one line, "Zoom" and − 100% + (the percent resets to actual size); 44px targets */
+#app-browser .br-zoom { cursor: default; }
+#app-browser .br-zoom:hover { background: none; }
+#app-browser .br-zoom-ctl { display: flex; align-items: center; gap: 6px; flex: none; }
+#app-browser .br-zbtn, #app-browser .br-zpct { height: 44px; border: 1px solid var(--line); background: var(--bg); color: var(--t2);
+  border-radius: 12px; font: 500 15px var(--sans); cursor: pointer; }
+#app-browser .br-zbtn { width: 44px; font-size: 22px; line-height: 1; }
+#app-browser .br-zpct { min-width: 76px; padding: 0 10px; color: var(--text); font-variant-numeric: tabular-nums; }
+#app-browser .br-zbtn:disabled, #app-browser .br-zpct:disabled { color: var(--t4); cursor: default; }
+#app-browser .br-photos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 4px 6px 8px; max-height: 56vh; overflow-y: auto; }
+#app-browser .br-photos button { aspect-ratio: 1; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--card-2); cursor: pointer; }
+#app-browser .br-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#app-browser .br-photos .br-msg-line { grid-column: 1 / -1; font: italic 400 15px var(--serif); color: var(--t4); padding: 12px 6px; }
+
+/* ---- the new-tab page ---- */
+#app-browser .br-ntp-in { max-width: 640px; margin: 0 auto; padding: 34px 24px 30px; }
+#app-browser .br-greet { font: 400 32px/1.15 var(--serif); letter-spacing: -.01em; color: var(--text); margin: 0 0 18px; text-align: center; }
+#app-browser .br-search { width: 100%; height: 50px; border-radius: 25px; border: 1px solid var(--line); background: var(--card);
+  display: flex; align-items: center; gap: 12px; padding: 0 20px; color: var(--t4); font: 400 15px var(--sans); cursor: text; }
+#app-browser .br-search svg { width: 18px; height: 18px; flex: none; }
+#app-browser .br-lh { margin: 26px 0 10px; display: flex; align-items: center; justify-content: space-between; }
+#app-browser .br-lh b { font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t4); }
+#app-browser .br-edit { border: 0; background: none; color: var(--t2); font: 500 13px var(--sans); padding: 8px 4px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--t5); }
+#app-browser .br-quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+#app-browser .br-q { position: relative; height: 92px; border-radius: 14px; border: 1px solid var(--line); background: var(--card);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; color: var(--t2);
+  font: 500 13px var(--sans); cursor: pointer; padding: 0 8px; }
+#app-browser .br-q .br-qn { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser .br-q .br-fav { width: 30px; height: 30px; border-radius: 9px; font-size: 15px; background: var(--card-2); color: var(--text); }
+#app-browser .br-q.add { border-style: dashed; background: transparent; color: var(--t4); }
+#app-browser .br-q.add svg { width: 22px; height: 22px; }
+#app-browser .br-q .br-qx { position: absolute; top: 4px; right: 4px; width: 30px; height: 30px; border-radius: 50%; display: grid;
+  place-items: center; background: var(--card-2); color: var(--t2); }
+#app-browser .br-q .br-qx svg { width: 11px; height: 11px; }
+#app-browser .br-recent { display: flex; flex-direction: column; }
+#app-browser .br-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 6px 8px; border: 0; border-radius: 10px;
+  background: none; color: var(--text); font: 400 14px var(--sans); cursor: pointer; text-align: left; }
+#app-browser .br-row .br-rt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser .br-row .br-rd { color: var(--t4); font-size: 13px; white-space: nowrap; }
+#app-browser .br-empty { font: italic 400 15px var(--serif); color: var(--t4); padding: 6px 8px; }
+
+/* message page: errors, blocked links */
+#app-browser .br-msg { display: grid; place-items: center; }
+#app-browser .br-msg-in { max-width: 460px; padding: 24px; text-align: center; }
+#app-browser .br-msg-ic { width: 44px; height: 44px; color: var(--clay-deep); }   /* the one attention colour on the page */
+#app-browser .br-msg h2 { font: 400 26px/1.2 var(--serif); color: var(--text); margin: 14px 0 8px; }
+#app-browser .br-msg p { font: 400 15px/1.5 var(--sans); color: var(--t3); margin: 0 0 20px; }
+#app-browser .br-msg-btns { display: flex; gap: 10px; justify-content: center; }
+#app-browser .br-pill { height: 44px; padding: 0 22px; border-radius: 22px; border: 0; background: var(--text); color: var(--bg);
+  font: 500 14px var(--sans); cursor: pointer; }
+#app-browser .br-pill.quiet { background: var(--card); color: var(--t2); border: 1px solid var(--line); }
+#app-browser .br-pill.danger { background: var(--danger-fill); color: var(--paper); }
+/* the new-tab page's Back, when this tab had a page before Home */
+#app-browser .br-ntp-back { margin: 0 0 14px; }
+
+/* the Undo line after a removal (bookmark, quick link) */
+#app-browser .br-undo { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6; max-width: calc(100% - 32px);
+  display: flex; align-items: center; gap: 12px; padding: 6px 6px 6px 16px; border-radius: 14px; background: var(--text); color: var(--bg);
+  font: 400 14px var(--sans); box-shadow: 0 8px 26px rgba(20, 20, 19, .22); animation: brRise var(--dur-base) var(--ease-out); }
+#app-browser .br-undo[hidden] { display: none; }
+#app-browser .br-undo span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-browser .br-undo-btn { position: relative; flex: none; height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: none;
+  color: var(--bg); font: 600 14px var(--sans); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+#app-browser .br-undo-btn::before { content: ''; position: absolute; inset: -2px -4px; }
+
+/* suggestions while typing an address */
+#app-browser .br-suggest { padding: 12px 16px; }
+#app-browser .br-suggest .br-row svg { width: 16px; height: 16px; color: var(--t4); flex: none; }

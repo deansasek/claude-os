@@ -1,0 +1,26 @@
+<header class="app-hd">   <!-- the shell draws the icon and "Home" (core/web/app-header.ts) -->
+  <div class="app-hd-right">
+    <span class="ha-pill" id="haMode" hidden></span>
+    <button class="ha-hbtn" id="haAddRoom" hidden>Add room</button>
+    <button class="ha-hbtn" id="haAdd" hidden>Add device</button>
+    <button class="ha-hbtn ha-edit" id="haEdit">Edit</button>
+  </div>
+</header>
+
+<div class="ha-scroll" id="haScroll">
+  <p class="ha-note" id="haNote" hidden></p>
+  <p class="ha-hint" id="haHint" hidden>Drag a device to move it. Tap it to rename it, change its room or remove it.</p>
+  <div class="ha-rooms" id="haRooms"></div>
+
+  <div class="ha-empty" id="haEmpty" hidden>
+    <b id="haEmptyTitle">Nothing on Home yet</b>
+    <span id="haEmptyText">Add the lights, switches and other devices you want to see here.</span>
+    <button class="ha-empty-go" id="haEmptyGo">Add devices</button>
+  </div>
+</div>
+
+<!-- the ClaudeOS sheet: a device's settings, or "Add devices". "st-sheet" is the shared name the system's gestures
+     check, so a pull-down does not open over it. -->
+<div class="ha-sheet st-sheet" id="haSheet" hidden>
+  <div class="ha-sheet-card" id="haSheetCard" role="dialog" aria-modal="true"></div>
+</div>

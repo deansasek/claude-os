@@ -1,0 +1,50 @@
+﻿<header class="app-hd">   <!-- the shell draws the icon and "Weather" (core/web/app-header.ts); the icon follows the sky -->
+    <div class="app-hd-after"><button class="placebtn" id="wPlaceBtn" aria-label="Change city"><span id="wPlace">Set city</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></button></div>
+    <div class="app-hd-right"><span class="live" id="wPill"><i></i><span id="wPillText">Loading</span></span></div>
+  </header>
+
+  <div id="wx" style="display:none">
+    <!-- the Claude page's grid: a figure on the left, the critter in the middle, the week on the right -->
+    <div class="wmain">
+      <section class="wnow">
+        <div class="lhead"><b id="wKick">Right now</b><button class="backnow" id="wBack" hidden>Back to now</button></div>
+        <button class="wtemp num" id="wTemp" aria-label="Switch between °F and °C">–</button>
+        <div class="wtap num" id="wTapHint" hidden></div>
+        <div class="wfacts num" id="wFacts">&nbsp;</div>
+        <div class="whead" id="wSummary"></div>
+        <div class="wnote num" id="wNote"></div>
+      </section>
+
+      <div class="centre wsc" id="wScene">
+        <div class="status"><span class="wicon" id="wCondIcon"></span><span id="wCond">–</span></div>
+        <div class="statussub num" id="wCondSub">&nbsp;</div>
+        <svg id="wSvg" class="wscene-svg" viewBox="0 0 30 22" shape-rendering="crispEdges"></svg>
+        <div class="say" id="wSay"></div>
+      </div>
+
+      <section class="wweek">
+        <div class="lhead"><b>Next 7 days</b></div>
+        <div class="drows" id="wDays"></div>
+      </section>
+    </div>
+
+    <div class="whours">
+      <div class="kicker"><span id="wHoursTitle">Next 24 hours</span><span class="wsrc" id="wSrc"></span></div>
+      <div class="hstrip" id="wHours"></div>
+    </div>
+  </div>
+
+  <div class="wempty" id="wEmpty">
+    <div>
+      <h2 id="wEmptyTitle">Checking the sky…</h2>
+      <p id="wEmptyText">One moment.</p>
+      <div class="wacts"><button class="pbtn" id="wChoose">Choose your city</button><button class="gbtn" id="wRetry">Try again</button></div>
+    </div>
+    <div class="wsc"><svg viewBox="0 0 30 22" shape-rendering="crispEdges" id="wEmptySvg" class="wscene-svg"></svg></div>
+  </div>
+
+  <div class="wpick" id="wPick">
+    <div class="ph"><h2>Where do you live?</h2>
+      <div class="seg" id="wUnits"><button data-u="fahrenheit">°F</button><button data-u="celsius">°C</button></div></div>
+    <div class="wres" id="wRes"></div>
+  </div>

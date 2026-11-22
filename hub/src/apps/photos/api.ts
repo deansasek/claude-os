@@ -1,0 +1,19 @@
+// Photos app API (all under /api/photos/):
+//   POST upload          raw JPEG body (max 8 MB), header X-Photo-Id: <id>   → {ok, id, url}
+//   GET  list?limit=     photos, newest first, grouped by day (hasThumb: the PC has a thumbnail for it) → {ok, days}
+//   GET  file?id=        the JPEG itself
+//   GET  file?id=&size=thumb   the photo's thumbnail if the PC has one, otherwise the JPEG itself
+//   POST thumb?id=       raw JPEG body (max THUMB_MAX_BYTES) for a photo the PC has → {ok, id}
+//   POST delete {id} or {ids}  → {ok, deleted, missing, failed}  (missing: already gone; failed: could not be removed)
+/** The most photos one message to Claude carries (the server's MAX_PER_ASK in server/store.ts). */
+export const ASK_MAX_PHOTOS = 3;
+/** A thumbnail's longest side in px, and the most bytes one may be (the PC refuses more). */
+export const THUMB_PX = 400;
+export const THUMB_MAX_BYTES = 200 * 1024;
+/** Where a photo's thumbnail is shown from. A photo with no thumbnail yet gets the full picture from the same address. */
+export const thumbUrl = (id: string): string => `/api/photos/file?id=${encodeURIComponent(id)}&size=thumb`;
+export interface PhotoItem { id: string; at: string; url: string; hasThumb: boolean }
+export interface PhotoDay { day: string; photos: PhotoItem[] }
+export interface PhotoList { ok: boolean; days: PhotoDay[] }
+export interface UploadResult { ok: boolean; id?: string; url?: string; error?: string }
+export interface PhotoDeleteResult { ok: boolean; error?: string; deleted?: string[]; missing?: string[]; failed?: string[] }

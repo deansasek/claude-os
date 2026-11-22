@@ -1,0 +1,25 @@
+<header class="app-hd">   <!-- the shell draws the icon and "Calendar" (core/web/app-header.ts) -->
+  <div class="app-hd-right">
+    <button class="cal-hbtn" id="calRefresh">Refresh</button>
+  </div>
+</header>
+
+<p class="cal-note" id="calNote" hidden></p>
+
+<div class="cal-days" id="calDays">
+  <section class="cal-day">
+    <h2 class="cal-dh"><span>Today</span><small id="calTodayDate"></small></h2>
+    <ul class="cal-list" id="calToday"></ul>
+  </section>
+  <section class="cal-day">
+    <h2 class="cal-dh"><span>Tomorrow</span><small id="calTmrDate"></small></h2>
+    <ul class="cal-list" id="calTmr"></ul>
+  </section>
+</div>
+
+<!-- no calendar yet: say how to add one (the address is typed on ClaudeOS's own keyboard) -->
+<div class="cal-empty" id="calSetup" hidden>
+  <b>Add your calendar</b>
+  <span>Paste or type your calendar’s secret address in iCal format (Google: Settings › your calendar › Integrate calendar; Outlook: Shared calendars › Publish). ClaudeOS only reads it.</span>
+  <button class="cal-btn" id="calSetupGo">Add address</button>
+</div>

@@ -1,0 +1,106 @@
+/* ===== Routines ===== (everything scoped to #app-routines) */
+#app-routines [hidden] { display: none !important; }
+
+/* buttons: all at least 44px tall */
+#app-routines .rt-hbtn, #app-routines .rt-btn, #app-routines .rt-chip, #app-routines .rt-input, #app-routines .rt-icon-btn, #app-routines .rt-card {
+  all: unset; box-sizing: border-box; cursor: pointer; position: relative; -webkit-tap-highlight-color: transparent; }
+#app-routines .rt-hbtn { display: inline-flex; align-items: center; min-height: 44px; padding: 7px 16px; border-radius: 99px; font: 500 14px var(--sans);
+  white-space: nowrap; background: var(--text); color: var(--bg); }
+#app-routines .rt-hbtn:active { opacity: .85; }
+#app-routines .rt-hbtn:disabled { opacity: .4; cursor: default; }
+#app-routines :focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+/* ---- left: the list ---- */
+#app-routines .rt-side { position: absolute; left: var(--app-l); top: var(--app-body); bottom: var(--app-strip-b); width: 340px;
+  display: flex; flex-direction: column; gap: 12px; }
+#app-routines .rt-list { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  display: flex; flex-direction: column; gap: 8px; }
+#app-routines .rt-list::-webkit-scrollbar { display: none; }
+#app-routines .rt-card { display: flex; flex-direction: column; gap: 3px; width: 100%; min-height: 64px; padding: 11px 16px; border-radius: 14px;
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+#app-routines .rt-card:active { background: var(--card-2); }
+#app-routines .rt-card.on { box-shadow: 0 0 0 2px var(--text); }
+#app-routines .rt-card b { font: 400 21px/1.2 var(--serif); letter-spacing: -.01em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-routines .rt-card span { font: 400 13px/1.35 var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-routines .rt-card .rt-home { position: absolute; top: 12px; right: 14px; font: 500 11px var(--sans); letter-spacing: .03em; color: var(--t4); }
+#app-routines .rt-card.running span.rt-sub { color: var(--clay-deep); }
+:root[data-theme="dark"] #app-routines .rt-card.running span.rt-sub { color: var(--clay); }
+#app-routines .rt-empty { padding: 28px 8px; text-align: center; font: italic 400 20px var(--serif); color: var(--t3); }
+#app-routines .rt-hint { margin: 0; font: 400 13px/1.45 var(--sans); color: var(--t4); }
+
+/* ---- right: the editor ---- */
+#app-routines .rt-edit { position: absolute; left: calc(var(--app-l) + 372px); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
+  display: flex; flex-direction: column; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+:root[data-theme="dark"] #app-routines .rt-edit { background: var(--card); }
+#app-routines .rt-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; padding: 20px 24px 12px; }
+#app-routines .rt-scroll::-webkit-scrollbar { display: none; }
+#app-routines .rt-note { margin: 0 0 14px; font: 400 15px/1.4 var(--sans); color: var(--clay-deep); }
+:root[data-theme="dark"] #app-routines .rt-note { color: var(--clay); }
+#app-routines .rt-field { margin-bottom: 20px; }
+#app-routines .rt-label { display: block; margin-bottom: 8px; font: 500 13px var(--sans); letter-spacing: .02em; color: var(--t3); }
+#app-routines .rt-count { color: var(--t4); font-weight: 400; }
+
+/* the name: looks like a field; a tap brings up ClaudeOS's keyboard */
+#app-routines .rt-input { display: flex; align-items: center; width: 100%; min-height: 52px; padding: 0 16px; border-radius: 12px;
+  background: var(--bg); box-shadow: 0 0 0 1px var(--line); cursor: text; }
+#app-routines .rt-name { font: 400 26px/1.2 var(--serif); letter-spacing: -.015em; color: var(--text); }
+#app-routines .rt-name.empty { color: var(--t4); font-style: italic; }
+
+/* phrases and the add-a-step chips */
+#app-routines .rt-chips, #app-routines .rt-add { display: flex; flex-wrap: wrap; gap: 8px; }
+#app-routines .rt-add { margin-top: 10px; }
+#app-routines .rt-chip { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0 0 0 16px; border-radius: 99px;
+  font: 400 15px var(--sans); color: var(--text); background: var(--bg); box-shadow: 0 0 0 1px var(--line); }
+#app-routines .rt-chip.add { padding: 0 16px; color: var(--t2); font-weight: 500; }
+#app-routines .rt-chip:active { background: var(--card-2); }
+#app-routines .rt-chip:disabled { opacity: .4; cursor: default; }
+#app-routines .rt-chip .rt-x { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 50%; color: var(--t4); }
+#app-routines .rt-chip .rt-x:active { color: var(--danger); }
+#app-routines .rt-chip .rt-x svg { width: 15px; height: 15px; }
+
+/* the steps */
+#app-routines .rt-steps { list-style: none; margin: 0; padding: 0; counter-reset: rt; }
+#app-routines .rt-step { display: flex; align-items: center; gap: 6px; min-height: 56px; padding: 4px 0; border-bottom: 1px solid var(--line); counter-increment: rt; }
+#app-routines .rt-step::before { content: counter(rt); flex: none; width: 26px; font: 500 15px var(--serif); color: var(--t4); text-align: center; }
+#app-routines .rt-step-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px; }
+#app-routines .rt-step-text { min-width: 0; font: 400 16px/1.35 var(--sans); color: var(--text); overflow-wrap: anywhere; }
+#app-routines button.rt-step-main { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 0; display: flex; align-items: center; min-height: 44px; border-radius: 8px; }
+#app-routines button.rt-step-main:active { background: var(--card-2); }
+#app-routines .rt-step-edit { flex: none; font: 500 13px var(--sans); color: var(--t4); }
+#app-routines .rt-step.bad .rt-step-text { color: var(--danger); }
+#app-routines .rt-stepper { flex: none; display: inline-flex; align-items: center; gap: 2px; }
+#app-routines .rt-stepper output { min-width: 64px; text-align: center; font: 500 15px var(--sans); color: var(--text); }
+#app-routines .rt-icon-btn { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; color: var(--t3); }
+#app-routines .rt-icon-btn svg { width: 18px; height: 18px; }
+#app-routines .rt-icon-btn:active { background: var(--card-2); }
+#app-routines .rt-icon-btn:disabled { opacity: .25; cursor: default; }
+#app-routines .rt-icon-btn.del:active { color: var(--danger); }
+
+/* the bar: Delete on the left; Run and Save on the right */
+#app-routines .rt-bar { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--line); }
+#app-routines .rt-bar-gap { flex: 1; }
+#app-routines .rt-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 20px; border-radius: 10px;
+  font: 500 15px var(--sans); white-space: nowrap; color: var(--t2); background: var(--bg); box-shadow: 0 0 0 1px var(--line); }
+#app-routines .rt-btn.primary { background: var(--text); color: var(--bg); box-shadow: none; }
+#app-routines .rt-btn.danger { background: var(--danger-fill); color: var(--paper); box-shadow: none; }
+#app-routines .rt-btn.danger-text { background: none; box-shadow: none; color: var(--danger); padding: 0 12px; }
+#app-routines .rt-btn:active { opacity: .85; }
+#app-routines .rt-btn:disabled { opacity: .4; cursor: default; }
+
+/* the ClaudeOS sheet (the same look as the Lists app's) */
+#app-routines .rt-sheet { position: absolute; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 20, 19, .22); animation: rt-fade .2s ease-out; }
+:root[data-theme="dark"] #app-routines .rt-sheet { background: rgba(0, 0, 0, .45); }
+@keyframes rt-fade { from { opacity: 0; } }
+#app-routines .rt-sheet-card { width: 460px; max-width: calc(100% - 32px); max-height: calc(100% - 48px); overflow-y: auto; padding: 22px 24px 18px; border-radius: 18px;
+  box-sizing: border-box; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 16px 48px rgba(20, 20, 19, .2); animation: rt-pop .25s cubic-bezier(.2, .8, .2, 1); }
+:root[data-theme="dark"] #app-routines .rt-sheet-card { background: var(--card); box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
+@keyframes rt-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+#app-routines .rt-sheet-card h3 { margin: 0 0 6px; font: 500 22px/1.25 var(--serif); color: var(--text); }
+#app-routines .rt-sheet-card p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--t3); }
+#app-routines .rt-pick { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+#app-routines .rt-pick .rt-btn { justify-content: flex-start; min-height: 52px; font: 400 18px var(--serif); color: var(--text); }
+#app-routines .rt-sheet-btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+html.reduce-motion #app-routines .rt-sheet, html.reduce-motion #app-routines .rt-sheet-card { animation: none; }

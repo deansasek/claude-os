@@ -1,0 +1,53 @@
+<header class="app-hd">   <!-- the shell draws the icon and "Routines" (core/web/app-header.ts) -->
+  <div class="app-hd-right">
+    <button class="rt-hbtn" id="rtNew">New routine</button>
+  </div>
+</header>
+
+<!-- left: every routine; a tap opens it in the editor -->
+<div class="rt-side">
+  <ul class="rt-list" id="rtList"></ul>
+  <p class="rt-hint" id="rtHint">The first four show on the Home screen. Say a phrase after “Hey Claude”, or ask Claude to run one.</p>
+</div>
+
+<!-- right: the routine being edited -->
+<section class="rt-edit" id="rtEdit">
+  <div class="rt-scroll" id="rtScroll">
+    <p class="rt-note" id="rtNote" hidden></p>
+
+    <div class="rt-field">
+      <span class="rt-label">Name</span>
+      <button class="rt-input rt-name" id="rtName"></button>
+    </div>
+
+    <div class="rt-field">
+      <span class="rt-label">Say it with</span>
+      <div class="rt-chips" id="rtPhrases"></div>
+    </div>
+
+    <div class="rt-field">
+      <span class="rt-label">Steps, in order <span class="rt-count" id="rtCount"></span></span>
+      <ol class="rt-steps" id="rtSteps"></ol>
+      <div class="rt-add" id="rtAdd">
+        <button class="rt-chip add" data-add="weather">+ Weather</button>
+        <button class="rt-chip add" data-add="calendar">+ Calendar</button>
+        <button class="rt-chip add" data-add="say">+ Say…</button>
+        <button class="rt-chip add" data-add="scene">+ Scene…</button>
+        <button class="rt-chip add" data-add="timer">+ Timer</button>
+        <button class="rt-chip add" data-add="pause">+ Pause</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="rt-bar">
+    <button class="rt-btn danger-text" id="rtDelete">Delete</button>
+    <span class="rt-bar-gap"></span>
+    <button class="rt-btn" id="rtRun">Run now</button>
+    <button class="rt-btn primary" id="rtSave">Save</button>
+  </div>
+</section>
+
+<!-- the ClaudeOS sheet (pick a scene, delete, discard). "st-sheet" is the shared name the system's gestures check. -->
+<div class="rt-sheet st-sheet" id="rtSheet" hidden>
+  <div class="rt-sheet-card" id="rtSheetCard" role="dialog" aria-modal="true"></div>
+</div>

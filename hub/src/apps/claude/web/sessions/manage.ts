@@ -1,0 +1,90 @@
+// A session's actions, from the ⋯ on its row in the sidebar: Archive (or Unarchive), and Delete. Delete asks
+// once more before it goes. Both go to the server behind the PIN (pin.ts), and the screen is told what changed
+// so it can move on (reply.ts: back to the new-session screen if the open session was the one touched).
+import { report } from '../../../../core/web/dom.ts';
+import type { AppContext } from '../../../../core/web/shell.ts';
+import { onBack } from '../../../../core/web/system.ts';
+import { call, withPin } from './pin.ts';
+
+let ctx: AppContext;
+const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
+
+type ManageDone ='archived' | 'unarchived' | 'deleted';
+let target: { id: string; title: string; archived: boolean } | null = null;
+let done: (id: string, what: ManageDone) => void = () => {};
+
+const MESSAGES: Record<string, string> = {
+  running: 'Claude is still working in this one. Let it finish, then try again.',
+  open_on_pc: 'It is open in a Claude Code window on your PC. Close it there first.',
+  not_found: 'That session is already gone.',
+  not_this_session: 'Nothing was deleted: the file did not look like this session’s.',
+};
+
+function show(acts: boolean): void {
+  $('smActs').hidden = !acts;
+  $('smConfirm').hidden = acts;
+}
+function close(): void {
+  $('svSessMenu').hidden = true;
+  target = null;
+}
+function say(text: string): void { $('smMsg').textContent = text; }
+
+/** Open the menu for one session (from its row's ⋯). */
+export function openSessionMenu(id: string, title: string, archived: boolean): void {
+  target = { id, title, archived };
+  $('smTitle').textContent = title;
+  $('smArchiveText').textContent = archived ? 'Unarchive' : 'Archive';
+  say('');
+  show(true);
+  $('svSessMenu').hidden = false;
+  report('session-menu');
+}
+
+async function changeState(on: boolean): Promise<void> {
+  const t = target;
+  if (!t) return;
+  const act = async (): Promise<void> => {
+    const r = await call<{ ok: boolean; error?: string }>('archive', { id: t.id, archived: on });
+    if (!r.ok) { say(MESSAGES[r.error || ''] || 'Nothing was changed. Try again.'); return; }
+    close();
+    done(t.id, on ? 'archived' : 'unarchived');
+  };
+  report(on ? 'session-archive' : 'session-unarchive');
+  await withPin(act);
+}
+
+async function remove(): Promise<void> {
+  const t = target;
+  if (!t) return;
+  const act = async (): Promise<void> => {
+    const r = await call<{ ok: boolean; error?: string }>('delete', { id: t.id });
+    if (!r.ok) {
+      show(true);
+      say(MESSAGES[r.error || ''] || 'Nothing was deleted. Try again.');
+      return;
+    }
+    close();
+    done(t.id, 'deleted');
+  };
+  report('session-delete');
+  await withPin(act);
+}
+
+export function initManage(context: AppContext, onDone: (id: string, what: ManageDone) => void): void {
+  ctx = context;
+  done = onDone;
+  $('smArchive').addEventListener('click', () => { if (target) void changeState(!target.archived); });
+  $('smDelete').addEventListener('click', () => { say(''); show(false); });
+  $('smKeep').addEventListener('click', () => { say(''); show(true); });
+  $('smGone').addEventListener('click', () => { void remove(); });
+  $('smClose').addEventListener('click', close);
+  $('svSessMenu').addEventListener('click', e => { if (e.target === $('svSessMenu')) close(); });   // tap the dimmed part to close
+  // Back: the delete confirmation goes back to the actions (as Keep it does), then the menu closes
+  onBack(() => {
+    if (!ctx.isVisible() || $('svSessMenu').hidden) return false;
+    if (!$('smConfirm').hidden) { say(''); show(true); return true; }
+    close();
+    return true;
+  }, 20);
+}

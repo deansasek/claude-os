@@ -1,0 +1,102 @@
+<!-- the shell draws the icon and "Claude Home" (core/web/app-header.ts) -->
+<header class="app-hd">
+  <div class="app-hd-right">
+    <span class="live" id="hmPill"><i></i><span id="hmPillText">Loading</span></span>
+    <span class="hm-dev" id="hmDev" hidden></span>
+  </div>
+</header>
+
+<div class="hm-main">
+  <!-- left: greeting, the time, the date, and what (if anything) needs you -->
+  <section class="hm-left">
+    <div class="lhead"><b id="hmGreeting">Hello</b></div>
+    <div class="hm-time num" id="hmTime">–</div>
+    <div class="hm-date" id="hmDate"></div>
+    <button class="hm-line" id="hmLine"><span></span></button>
+  </section>
+
+  <!-- right: the critter, living through the day -->
+  <div class="centre hm-centre" id="hmScene">
+    <div class="status"><span id="hmStatus">–</span></div>
+    <div class="statussub" id="hmStatusSub">&nbsp;</div>
+    <svg class="hm-svg" viewBox="0 0 30 22" shape-rendering="crispEdges" aria-hidden="true">
+      <defs>
+        <pattern id="hmHatch" width=".42" height=".42" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width=".1" height=".42" fill="var(--hatch)"/></pattern>
+      </defs>
+      <g id="hmSun" class="hm-sun" shape-rendering="auto"></g>
+      <g id="hmCloud" class="hm-cloud" shape-rendering="auto"></g>
+      <g class="hm-rain" stroke="var(--sky)" stroke-width=".14" stroke-linecap="round" shape-rendering="auto">
+        <path d="M7.4 6.4l-.3.9"/><path d="M8.8 6.6l-.3.9"/><path d="M10.2 6.4l-.3.9"/><path d="M11.4 6.7l-.3.9"/>
+      </g>
+      <g class="hm-night" shape-rendering="auto">
+        <path d="M24.6 1.6A2.6 2.6 0 1 0 26.3 6.2 2 2 0 1 1 24.6 1.6Z" fill="var(--cloud)" stroke="var(--text)" stroke-width=".13" stroke-linejoin="round"/>
+        <g class="hm-stars" stroke="var(--t3)" stroke-width=".12" stroke-linecap="round">
+          <path d="M5 2.65v.7M4.65 3h.7"/><path d="M9 1.05v.7M8.65 1.4h.7"/><path d="M18.5 1.85v.7M18.15 2.2h.7"/><path d="M3 6.65v.7M2.65 7h.7"/><path d="M28 7.65v.7M27.65 8h.7"/>
+        </g>
+      </g>
+      <g shape-rendering="auto" stroke-linecap="round">
+        <path d="M2 19H28" stroke="var(--line)" stroke-width=".1"/>
+        <path d="M3.6 19l-.25-.7M3.9 19v-.95M4.2 19l.3-.6M26 19l-.2-.6M26.3 19v-.85M26.6 19l.25-.5" stroke="var(--t4)" stroke-width=".11" fill="none"/>
+      </g>
+      <ellipse class="hm-shadow" cx="15" cy="19.15" rx="5.8" ry=".62" fill="url(#hmHatch)" shape-rendering="auto"/>
+      <g transform="translate(8 9.4)">
+        <g class="hm-crit">
+          <g fill="var(--clay-deep)"><rect x="3" y="7" width="1" height="2.6"/><rect x="8" y="7" width="1" height="2.6"/><rect x="5" y="7" width="1" height="2.6"/><rect x="10" y="7" width="1" height="2.6"/></g>
+          <g class="hm-upper">
+            <rect class="hm-armL" x="1" y="4" width="1.2" height="2" fill="var(--clay)"/>
+            <rect class="hm-armR" x="11.8" y="4" width="1.2" height="2" fill="var(--clay)"/>
+            <rect x="2" y="1.5" width="10" height="6" fill="var(--clay)"/>
+            <g class="hm-eyes" fill="var(--eye)"><rect x="4" y="3" width="1" height="2"/><rect x="9" y="3" width="1" height="2"/></g>
+            <g class="hm-shut" fill="var(--eye)"><rect x="3.6" y="4.4" width="1.8" height=".5"/><rect x="8.6" y="4.4" width="1.8" height=".5"/></g>
+            <g class="hm-cheeks" fill="var(--blush)"><rect x="3" y="5.3" width="1.2" height=".6"/><rect x="9.8" y="5.3" width="1.2" height=".6"/></g>
+          </g>
+        </g>
+      </g>
+      <!-- a session is waiting for you: a little clay "!" over its head -->
+      <g class="hm-bang" fill="var(--clay)"><rect x="14.5" y="5.6" width="1" height="2.2"/><rect x="14.5" y="8.3" width="1" height=".9"/></g>
+      <!-- Claude is working: the spark turns over its head -->
+      <g class="hm-think" transform="translate(15 7.4) scale(.03)" shape-rendering="auto"><g class="hm-spark"><g class="spark-rays" fill="var(--clay)"></g></g></g>
+      <!-- the evening mug -->
+      <g class="hm-mug">
+        <g class="hm-steam" fill="var(--t4)"><rect x="22.6" y="15.4" width=".35" height=".6"/><rect x="23.3" y="15" width=".35" height=".6"/><rect x="22.9" y="15.2" width=".35" height=".6"/></g>
+        <rect x="22.1" y="16.7" width="1.9" height="2.3" fill="var(--bg)" stroke="var(--t2)" stroke-width=".2"/>
+        <rect x="24" y="17.2" width=".7" height="1.1" fill="none" stroke="var(--t2)" stroke-width=".2"/>
+        <rect x="22.4" y="17.7" width="1.3" height=".3" fill="var(--clay)"/>
+      </g>
+      <g class="hm-zzz"><text x="20.5" y="9.5">z</text><text x="21" y="9">z</text><text x="20.7" y="9.3">Z</text></g>
+    </svg>
+    <div class="say" id="hmSay"></div>
+  </div>
+</div>
+
+<!-- bottom: the other apps at a glance, then a few things to do -->
+<div class="bottom hm-bottom">
+  <div class="hm-tiles">
+    <button class="hm-tile" data-go="weather" title="Open Weather">
+      <span class="kicker"><span id="hmWxKick">Weather</span><i class="hm-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></i></span>
+      <span class="hm-val"><span class="hm-ic" id="hmWxIc"></span><b class="num" id="hmWxTemp">–</b></span>
+      <span class="hm-sub" id="hmWxSub">Checking the sky…</span>
+    </button>
+    <button class="hm-tile" data-go="claude" title="Open Claude">
+      <span class="kicker"><span>Claude</span><span class="hm-kdot" id="hmClDot"></span><i class="hm-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></i></span>
+      <span class="hm-val"><b class="num" id="hmClVal">–</b></span>
+      <span class="hm-sub" id="hmClSub">Loading usage…</span>
+    </button>
+    <button class="hm-tile" data-go="clock" title="Open Clock">
+      <span class="kicker"><span id="hmCkKick">Next alarm</span><i class="hm-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></i></span>
+      <span class="hm-val"><b class="num" id="hmCkVal">–</b></span>
+      <span class="hm-sub" id="hmCkSub"></span>
+    </button>
+    <button class="hm-tile" data-go="calendar" title="Open Calendar">
+      <span class="kicker"><span id="hmCalKick">Today</span><i class="hm-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></i></span>
+      <span class="hm-val"><b class="quiet" id="hmCalVal">–</b></span>
+      <span class="hm-sub" id="hmCalSub"></span>
+    </button>
+    <button class="hm-tile" data-go="notes" title="See all notifications">
+      <span class="kicker"><span>Notifications</span><span class="hm-hint" id="hmNtHint" hidden>See all</span><i class="hm-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></i></span>
+      <span class="hm-val"><b id="hmNtVal">–</b></span>
+      <span class="hm-sub" id="hmNtSub"></span>
+    </button>
+  </div>
+  <div class="hm-acts" id="hmActs"></div>
+</div>
