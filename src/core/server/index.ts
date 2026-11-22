@@ -172,7 +172,7 @@ export function startServer(apps: ServerApp[]): void {
           const out = await route.handle({ query: url.searchParams, body, raw, headers: req.headers, from });
           if (out && typeof out === 'object' && (out as Binary).binary === true) {
             const b = out as Binary;
-            return send(res, b.status ?? 200, b.body, b.contentType, 'no-cache');
+            return send(res, b.status ?? 200, b.body, b.contentType, b.cache ?? 'no-cache');
           }
           return json(res, out);
         } catch (e) {

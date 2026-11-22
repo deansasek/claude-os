@@ -30,7 +30,8 @@ const app: ServerApp = {
         const id = safeId(query.get('id'));
         const data = id ? readPhoto(id, query.get('size') === 'thumb') : null;
         if (!data) return { binary: true, status: 404, contentType: 'text/plain; charset=utf-8', body: Buffer.from('not found') };
-        return { binary: true, contentType: 'image/jpeg', body: data };
+        // a photo id names one picture; the browser may keep it for an hour (private: never shared caches)
+        return { binary: true, contentType: 'image/jpeg', body: data, cache: 'private, max-age=3600' };
       },
     },
     {
