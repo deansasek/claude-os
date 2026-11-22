@@ -25,6 +25,9 @@ function outPath(argv: string[]): string {
 
 const out = outPath(process.argv.slice(2));
 
+if (process.platform !== 'win32') {
+  fail('The tray host builds on Windows only (it uses the .NET Framework compiler). On macOS or Linux, start the hub with npm start.');
+}
 if (!existsSync(csc)) fail(`csc.exe not found at ${csc}`);
 if (!existsSync(src)) fail(`source not found: ${src}`);
 

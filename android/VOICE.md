@@ -118,7 +118,7 @@ Test **silently**: never play test audio out loud or trigger the assistant live 
 OK. A *dry run* feeds a WAV through the real wake → handover → transcription code in place of the
 mic for a few seconds, with no events to the page, no earcon and no Claude session:
 
-```powershell
+```bash
 adb push test.wav /sdcard/Android/data/hub.kiosk/files/          # 16 kHz mono 16-bit WAV (make it with SetOutputToWaveFile; don't play it)
 adb shell am broadcast -a hub.kiosk.VOICE_TEST --es dry /sdcard/Android/data/hub.kiosk/files/test.wav
 adb shell am broadcast -a hub.kiosk.VOICE_TEST --ez drylog true   # what it would have told the page (wake, partials, final)

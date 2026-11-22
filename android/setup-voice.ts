@@ -9,22 +9,14 @@
 
 import { cpSync, createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { extract, fail, tools } from './toolchain.ts';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const tools = join(here, '..', 'tools');
 const voice = join(tools, 'voice');
 const dl = join(voice, 'download');
 mkdirSync(dl, { recursive: true });
-
-function fail(message: string): never {
-  console.error(message);
-  process.exit(1);
-}
 
 function parseModel(argv: string[]): string {
   const i = argv.indexOf('--model');
@@ -34,13 +26,10 @@ function parseModel(argv: string[]): string {
   return value;
 }
 
-// tar.exe ships with Windows and reads zip files. Unpacking into a short temp folder
-// avoids the long-path limit that whole-archive extraction hits under tools/.
-function unpack(zip: string): string {
-  const dir = mkdtempSync(join(tmpdir(), 'hub-voice-'));
-  const result = spawnSync('tar', ['-xf', zip, '-C', dir], { stdio: 'inherit' });
-  if (result.status !== 0) fail(`unpacking ${zip} failed`);
-  return dir;
+// Unpack into a short temp folder, then copy only the files the build needs into tools/voice.
+// That keeps the deep model paths out of the long tools/ path.
+function scratchDir(): string {
+  return mkdtempSync(join(tmpdir(), 'hub-voice-'));
 }
 
 async function download(url: string, name: string): Promise<string> {
@@ -70,8 +59,9 @@ async function main(): Promise<void> {
   const jars = join(voice, 'jars');
   mkdirSync(lib, { recursive: true });
   mkdirSync(jars, { recursive: true });
-  aars.forEach((a, i) => {
-    const dir = unpack(aarFiles[i]);
+  for (const [i, a] of aars.entries()) {
+    const dir = scratchDir();
+    await extract(aarFiles[i], dir, false);
     try {
       cpSync(join(dir, 'classes.jar'), join(jars, `${a.lib}.jar`));
       const nativeDir = join(dir, 'jni', 'arm64-v8a');
@@ -83,14 +73,15 @@ async function main(): Promise<void> {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-  });
+  }
 
   // the model goes into assets/model-en-us, with a uuid file so the app knows when it changed
   const assets = join(voice, 'assets');
   rmSync(assets, { recursive: true, force: true });
   const modelDir = join(assets, 'model-en-us');
   mkdirSync(modelDir, { recursive: true });
-  const dir = unpack(modelZip);
+  const dir = scratchDir();
+  await extract(modelZip, dir, false);
   try {
     const tops = readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
     if (tops.length !== 1) fail(`expected one top folder in ${model}.zip, found ${tops.length}`);

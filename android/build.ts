@@ -1,31 +1,16 @@
 // Builds the tablet app without Gradle, using only the tools in tools (see setup-tools.ts):
 //   aapt2 (resources + manifest) -> javac -> d8 (dex) -> zipalign -> apksigner
+// Works on Windows, macOS and Linux.
 // Output: android/build/claude-hub.apk
 // Install / update it:   node android/build.ts --install [--device <serial>]
 
 import {
   cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
-import { dirname, join, relative, sep } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
-
-const here = dirname(fileURLToPath(import.meta.url));
-const tools = join(here, '..', 'tools');
-const sdk = join(tools, 'android-sdk');
-const bt = join(sdk, 'build-tools', '35.0.0');
-const androidJar = join(sdk, 'platforms', 'android-35', 'android.jar');
-const jdk = join(tools, 'jdk');
-const javac = join(jdk, 'bin', 'javac.exe');
-const keytool = join(jdk, 'bin', 'keytool.exe');
-const jarTool = join(jdk, 'bin', 'jar.exe');
-const adb = join(tools, 'platform-tools', 'adb.exe');
-const env = { ...process.env, JAVA_HOME: jdk };
-
-function fail(message: string): never {
-  console.error(message);
-  process.exit(1);
-}
+import { delimiter, dirname, join, relative, sep } from 'node:path';
+import {
+  androidJar, binPath, buildTools, fail, here, jdkTool, platformTools, run, tools,
+} from './toolchain.ts';
 
 function args(argv: string[]): { install: boolean; device: string } {
   const install = argv.includes('--install');
@@ -33,23 +18,6 @@ function args(argv: string[]): { install: boolean; device: string } {
   const device = i === -1 ? '' : argv[i + 1] ?? '';
   if (i !== -1 && !device) fail('--device needs a device serial.');
   return { install, device };
-}
-
-// Run an .exe directly. Fails the build on a non-zero exit.
-function run(exe: string, argv: string[], what: string, opts: { quiet?: boolean } = {}): void {
-  const result = spawnSync(exe, argv, { env, stdio: opts.quiet ? 'pipe' : 'inherit' });
-  if (result.status !== 0) fail(`${what} failed (exit ${result.status})`);
-}
-
-// Run a .bat (d8.bat, apksigner.bat). cmd.exe needs one verbatim command line when the path has spaces.
-function runBat(bat: string, argv: string[], what: string): void {
-  const line = [bat, ...argv].map((a) => (/[\s"]/.test(a) ? `"${a}"` : a)).join(' ');
-  const result = spawnSync('cmd.exe', ['/d', '/s', '/c', `"${line}"`], {
-    env,
-    stdio: 'inherit',
-    windowsVerbatimArguments: true,
-  });
-  if (result.status !== 0) fail(`${what} failed (exit ${result.status})`);
 }
 
 // Every file under dir with a given extension, as absolute paths.
@@ -69,6 +37,15 @@ function main(): void {
   const dex = join(out, 'dex');
   for (const d of [gen, classes, dex]) mkdirSync(d, { recursive: true });
 
+  const aapt2 = binPath(buildTools, 'aapt2');
+  const zipalign = binPath(buildTools, 'zipalign');
+  const d8 = binPath(buildTools, 'd8');
+  const apksigner = binPath(buildTools, 'apksigner');
+  const javac = jdkTool('javac');
+  const jarTool = jdkTool('jar');
+  const keytool = jdkTool('keytool');
+  const adb = binPath(platformTools, 'adb');
+
   // voice (Vosk + JNA + the speech model), fetched by setup-voice.ts into tools/voice
   const voice = join(tools, 'voice');
   if (!existsSync(join(voice, 'assets', 'model-en-us', 'uuid'))) {
@@ -80,8 +57,8 @@ function main(): void {
   if (!existsSync(webkitJar)) fail('androidx.webkit missing: see tools/webkit (webkit-1.12.1.aar, classes.jar)');
 
   // 1. resources and manifest
-  run(join(bt, 'aapt2.exe'), ['compile', '--dir', join(here, 'res'), '-o', join(out, 'res.zip')], 'aapt2 compile');
-  run(join(bt, 'aapt2.exe'), [
+  run(aapt2, ['compile', '--dir', join(here, 'res'), '-o', join(out, 'res.zip')], 'aapt2 compile');
+  run(aapt2, [
     'link', '-o', join(out, 'base.apk'), '-I', androidJar,
     '--manifest', join(here, 'AndroidManifest.xml'), '--java', gen, join(out, 'res.zip'),
   ], 'aapt2 link');
@@ -90,7 +67,7 @@ function main(): void {
   const sources = [...filesUnder(join(here, 'src'), '.java'), ...filesUnder(gen, '.java')];
   const argFile = join(out, 'javac-sources.txt');
   writeFileSync(argFile, sources.map((s) => `"${s.replace(/\\/g, '\\\\')}"`).join('\n'));
-  const classpath = [androidJar, ...voiceJars, webkitJar].join(';');
+  const classpath = [androidJar, ...voiceJars, webkitJar].join(delimiter);
   run(javac, [
     '-nowarn', '-Xlint:-options', '-source', '17', '-target', '17', '-encoding', 'UTF-8',
     '-cp', classpath, '-d', classes, `@${argFile}`,
@@ -100,7 +77,7 @@ function main(): void {
   // (packed into one jar first: listing every .class file overflows Windows' command-line limit)
   const appJar = join(out, 'app-classes.jar');
   run(jarTool, ['-cf', appJar, '-C', classes, '.'], 'jar');
-  runBat(join(bt, 'd8.bat'), [
+  run(d8, [
     '--release', '--min-api', '28', '--lib', androidJar, '--output', dex, appJar, ...voiceJars, webkitJar,
   ], 'd8');
 
@@ -131,7 +108,7 @@ function main(): void {
   }
   run(jarTool, ['-u', '-f', unsigned, '-C', stageRest, '.'], 'jar (libs and assets)');
 
-  run(join(bt, 'zipalign.exe'), ['-p', '-f', '4', unsigned, join(out, 'aligned.apk')], 'zipalign');
+  run(zipalign, ['-p', '-f', '4', unsigned, join(out, 'aligned.apk')], 'zipalign');
 
   // the app's signing key: made once, kept next to this script (updates must be signed with the same key)
   const ks = join(here, 'hub.keystore');
@@ -143,7 +120,7 @@ function main(): void {
     ], 'keytool', { quiet: true });
   }
   const apk = join(out, 'claude-hub.apk');
-  runBat(join(bt, 'apksigner.bat'), [
+  run(apksigner, [
     'sign', '--ks', ks, '--ks-pass', 'pass:hubkiosk', '--key-pass', 'pass:hubkiosk',
     '--out', apk, join(out, 'aligned.apk'),
   ], 'apksigner');
