@@ -41,6 +41,14 @@ test('deleting a routine removes only that one', async () => {
   assert.ok(after2.includes('bedtime'));
 });
 
+test('a routine saved with a time keeps its time in the file', async () => {
+  fs.writeFileSync(file, JSON.stringify(seed));
+  const r = await R.saveRoutine({ name: 'Wake up', phrases: ['wake up'], steps: [{ kind: 'weather' }], at: { h: 7, m: 30, days: [1, 2, 3, 4, 5] } });
+  assert.equal(r.ok, true);
+  const saved = (await R.readRoutines()).routines.find(x => x.id === r.id);
+  assert.deepEqual(saved?.at, { h: 7, m: 30, days: [1, 2, 3, 4, 5] });
+});
+
 test('a file that cannot be read is reported and left as it is', async () => {
   fs.writeFileSync(file, '{not json');
   const r = await R.readRoutines();

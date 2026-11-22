@@ -32,7 +32,13 @@ export interface Routine {
   name: string;
   phrases: string[];                   // what you say to run it ("good morning"); the name works with "run ... routine" too
   steps: Step[];
+  at?: RoutineTime;                    // runs by itself at this time, on these days (see RoutineTime)
 }
+
+/** When a routine runs by itself: a time of day (24-hour, the tablet's local time) and the days (0 = Sunday … 6 = Saturday).
+ *  No days means every day. A routine runs at most once a day, within an hour after its time (the tablet's scheduler). */
+export interface RoutineTime { h: number; m: number; days: number[] }
+export const AT_WINDOW_MIN = 60;       // minutes after its time that a routine can still start
 
 /** What every route answers: all the routines as they are now, and why a change was refused. */
 export interface RoutinesResult {
@@ -85,7 +91,21 @@ export function cleanStep(raw: unknown): Step | { error: string } {
 }
 
 /** A routine's name, phrases and steps checked (not its id, nor scenes against Home): the clean parts, or why not. */
-export function cleanRoutine(raw: unknown): { name: string; phrases: string[]; steps: Step[] } | { error: string } {
+/** A routine's time: HH:MM and its days, or null when it doesn't run by itself. */
+export function cleanTime(raw: unknown): RoutineTime | null | { error: string } {
+  if (raw == null) return null;
+  const bad = { error: 'That time isn’t right. Give it as HH:MM on the 24-hour clock.' };
+  if (typeof raw !== 'object') return bad;
+  const r = raw as Record<string, unknown>;
+  const { h, m } = r;
+  if (typeof h !== 'number' || !Number.isInteger(h) || h < 0 || h > 23) return bad;
+  if (typeof m !== 'number' || !Number.isInteger(m) || m < 0 || m > 59) return bad;
+  const days = Array.isArray(r.days) ? [...new Set(r.days as unknown[])] : [];
+  if (days.some(d => typeof d !== 'number' || !Number.isInteger(d) || d < 0 || d > 6)) return { error: 'The days must be from Sunday to Saturday.' };
+  return { h, m, days: (days as number[]).sort((a, b) => a - b) };
+}
+
+export function cleanRoutine(raw: unknown): { name: string; phrases: string[]; steps: Step[]; at?: RoutineTime } | { error: string } {
   if (!raw || typeof raw !== 'object') return { error: 'That isn’t a routine.' };
   const r = raw as Record<string, unknown>;
   const name = cleanText(r.name);
@@ -110,7 +130,9 @@ export function cleanRoutine(raw: unknown): { name: string; phrases: string[]; s
     if ('error' in c) return c;
     steps.push(c);
   }
-  return { name, phrases, steps };
+  const at = cleanTime(r.at);
+  if (at && 'error' in at) return at;
+  return { name, phrases, steps, ...(at ? { at } : {}) };
 }
 
 /** Find a routine by its id or its name ("Good morning", "the good morning routine"). */
