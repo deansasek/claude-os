@@ -22,6 +22,7 @@ const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let status: CalStatus | null = null;
 let data: CalEvents | null = null;
 let failed = false;
+let viaConnector = false;   // the events come from the claude.ai calendar connector, not an address
 let busy = false;
 let msg = '';
 let timer: number | undefined;
@@ -53,15 +54,40 @@ async function loadStatus(): Promise<void> {
   appSettingsChanged();
 }
 
-async function load(force = false): Promise<void> {
+/** auto: the 5-minute timer. A connector read is a Claude turn, so the timer never makes one: opening the app and Refresh do. */
+async function load(force = false, auto = false): Promise<void> {
   if (busy) return;
+  if (auto && viaConnector) return;
   busy = true;
   render();
-  try { data = await getJson<CalEvents>(`${API}/events${force ? '?refresh=1' : ''}`); failed = false; }
-  catch { failed = true; }
+  try {
+    data = await getJson<CalEvents>(`${API}/events${force ? '?refresh=1' : ''}`);
+    failed = false;
+    // no calendar address: the claude.ai calendar connector shows today and tomorrow instead
+    viaConnector = data.status === 'not_set';
+    if (viaConnector) data = await connectorView();
+  }
+  catch { failed = true; viaConnector = false; }
   busy = false;
   render();
   appSettingsChanged();
+}
+
+/** The connector's events for today and tomorrow, in the same shape the address route sends. */
+type ConnView = { status?: string; events?: { title: string; start: number; end: number; allDay: boolean }[] };
+async function connectorView(): Promise<CalEvents> {
+  const now = new Date(), p = (n: number) => String(n).padStart(2, '0');
+  const key = (d: Date) => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const today = key(now);
+  try {
+    const [t, m] = await Promise.all([getJson<ConnView>(`${API}/connector?day=today`), getJson<ConnView>(`${API}/connector?day=tomorrow`)]);
+    if (t.status !== 'ok' || m.status !== 'ok' || !t.events || !m.events) return { status: 'error', events: [], today, error: 'Couldn’t read the calendar connector.' };
+    const toEv = (day: 'today' | 'tomorrow') => (e: { title: string; start: number; end: number; allDay: boolean }): CalEvent =>
+      ({ title: e.title, start: new Date(e.start).toISOString(), end: new Date(e.end).toISOString(), allDay: e.allDay, day });
+    const events = [...t.events.map(toEv('today')), ...m.events.map(toEv('tomorrow'))]
+      .sort((a, b) => (a.allDay === b.allDay ? 0 : a.allDay ? -1 : 1) || a.start.localeCompare(b.start));
+    return { status: 'ok', events, today, fetchedAt: new Date().toISOString() };
+  } catch { return { status: 'error', events: [], today, error: 'Couldn’t reach the calendar connector.' }; }
 }
 
 async function saveAddress(address: string): Promise<void> {
@@ -105,7 +131,8 @@ function render(): void {
 
   const note = msg || (failed ? 'Couldn’t reach the PC. Trying again…'
     : d?.status === 'error' ? d.error ?? 'Couldn’t read the calendar.'
-    : d?.stale ? `Couldn’t read the calendar just now, so this is from ${hmFmt.format(new Date(d.fetchedAt ?? Date.now()))}. ${d.error ?? ''}` : '');
+    : d?.stale ? `Couldn’t read the calendar just now, so this is from ${hmFmt.format(new Date(d.fetchedAt ?? Date.now()))}. ${d.error ?? ''}`
+    : viaConnector ? 'From your claude.ai calendar connector. Add an address in Settings to use iCal instead.' : '');
   $('calNote').hidden = !note;
   $('calNote').textContent = note;
 
@@ -148,7 +175,7 @@ function settingRows(): SettingRow[] {
 }
 
 // ---------- the app ----------
-function start(): void { stop(); timer = window.setInterval(() => { void load(); }, REFRESH_MS); }
+function start(): void { stop(); timer = window.setInterval(() => { void load(false, true); }, REFRESH_MS); }
 function stop(): void { if (timer) clearInterval(timer); timer = undefined; }
 
 const app: HubApp = {
