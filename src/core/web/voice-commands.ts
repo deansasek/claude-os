@@ -17,7 +17,8 @@
 //            apps/home-assistant/web/voice-match.ts); "set movie night", "activate good morning" (scenes)
 //   Lists    "add milk to the shopping list", "put bin day on my to-do list", "what's on the shopping list"
 //            (Shopping and To-do only; see apps/lists/web/voice-match.ts)
-//   Calendar "what's on today", "what's on my calendar": the next three events today (read-only)
+//   Calendar "what's on today", "what's on my calendar": the next three events today (read-only);
+//            "what's on tomorrow": the first three events tomorrow
 //   Routines any phrase a routine has ("good morning"), "run the good night routine", "start good morning",
 //            "good night routine" (apps/routines: the Routines app speaks each step itself)
 //
@@ -273,6 +274,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
 
   // calendar: "what's on today", "what's on my calendar" (before the lists, so "what's on ..." is ours)
   if (/^(?:what(?:'s|s| is) on (?:for )?(?:today|(?:my|the) calendar(?: today| for today)?|today'?s calendar)|what do i have on today)$/.test(t)) return calendarCommand();
+  if (/^(?:what(?:'s|s| is) on (?:for )?tomorrow|what(?:'s|s| is) on (?:my|the) calendar (?:for )?tomorrow|what do i have (?:on )?tomorrow)$/.test(t)) return calendarCommand('tomorrow');
 
   // lists: "add milk to the shopping list" (the words as said, not normalised: "two" stays "two")
   const list = matchList(raw);
@@ -400,12 +402,18 @@ async function sceneCommand(raw: string): Promise<CommandResult | null> {
 
 // ---------- Calendar: "what's on today", "what's on my calendar" ----------
 /** The next three events still to come today, read aloud (the Calendar app's own route, GET /api/calendar/events). */
-export async function calendarCommand(): Promise<CommandResult> {
+export async function calendarCommand(day: 'today' | 'tomorrow' = 'today'): Promise<CommandResult> {
   let r: CalEvents;
   try { r = await getJson<CalEvents>('/api/calendar/events'); } catch { return { say: 'I can’t reach the calendar right now.' }; }
   if (r?.status === 'not_set') return { say: 'There’s no calendar yet. Add yours in the Calendar app.', app: 'calendar' };
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
   const at = (e: CalEvent) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${new Date(e.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+  if (day === 'tomorrow') {
+    const tmr = r.events.filter(e => e.day === 'tomorrow').slice(0, 3).map(at);
+    if (!tmr.length) return { say: 'Nothing on your calendar tomorrow.', react: 'hop' };
+    const w = tmr.length === 1 ? tmr[0] : `${tmr.slice(0, -1).join('; ')}; and ${tmr[tmr.length - 1]}`;
+    return { say: `Tomorrow: ${w}.`, react: 'look', app: 'calendar' };
+  }
   const now = Date.now();
   const next = r.events.filter(e => e.day === 'today' && Date.parse(e.end) > now).slice(0, 3).map(at);
   if (!next.length) {
