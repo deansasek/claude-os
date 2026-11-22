@@ -357,7 +357,8 @@ async function sceneCommand(raw: string): Promise<CommandResult | null> {
 export async function calendarCommand(day: 'today' | 'tomorrow' = 'today'): Promise<CommandResult> {
   let r: CalEvents;
   try { r = await getJson<CalEvents>('/api/calendar/events'); } catch { return { say: 'I can’t reach the calendar right now.' }; }
-  if (r?.status === 'not_set') return { say: 'There’s no calendar yet. Add yours in the Calendar app.', app: 'calendar' };
+  // no calendar address set: the claude.ai calendar connector answers instead (the PC's cached read)
+  if (r?.status === 'not_set') return connectorCommand(day);
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
   // the PC serves its last good copy when a read fails (up to 12 hours old): say so, never read it as current
   const old = r.stale ? 'The calendar may be out of date. ' : '';
@@ -380,6 +381,20 @@ export async function calendarCommand(day: 'today' | 'tomorrow' = 'today'): Prom
 
 // ---------- Lists: "add milk to the shopping list", "what's on the to-do list" ----------
 /** The same routes as the Lists app's own taps (POST /api/lists/add, GET /api/lists/lists); the PC checks it all. */
+/** Today's or tomorrow's events from the claude.ai calendar connector (GET /api/calendar/connector), read aloud. */
+async function connectorCommand(day: 'today' | 'tomorrow'): Promise<CommandResult> {
+  type Ev = { title: string; start: number; end: number; allDay: boolean };
+  let r: { status?: string; events?: Ev[] };
+  try { r = await getJson<{ status?: string; events?: Ev[] }>(`/api/calendar/connector?day=${day}`); } catch { return { say: 'I can’t reach the calendar right now.' }; }
+  if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
+  const at = (e: Ev) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${new Date(e.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+  const now = Date.now();
+  const shown = (day === 'today' ? r.events.filter(e => e.end > now) : r.events).slice(0, 3).map(at);
+  if (!shown.length) return { say: day === 'today' ? 'Nothing more on your calendar today.' : 'Nothing on your calendar tomorrow.', react: 'hop' };
+  const words = shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join('; ')}; and ${shown[shown.length - 1]}`;
+  return { say: `${day === 'today' ? 'Coming up' : 'Tomorrow'}: ${words}.`, react: 'look', app: 'calendar' };
+}
+
 /** The family's own tick-off lists (id and name), for voice. Shopping, To-do and Notes are not among them. */
 async function voiceCustomLists(): Promise<{ id: string; name: string }[]> {
   try {
