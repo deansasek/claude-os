@@ -14,7 +14,8 @@ import {
   type FamilyList, type ListItem, type ListKind, type ListsResult,
 } from '../api.ts';
 
-export const FILE = path.join(HUB, '.lists.json');
+// CLAUDEOS_LISTS_FILE is for the tests only: a scratch file instead of the family's lists.
+export const FILE = process.env.CLAUDEOS_LISTS_FILE || path.join(HUB, '.lists.json');
 
 const DEFAULTS: FamilyList[] = [
   { id: 'shopping', name: 'Shopping', kind: 'check', items: [] },
