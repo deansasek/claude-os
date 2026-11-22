@@ -1,5 +1,5 @@
 // Claude Hub Host: tray supervisor for the hub Node server plus a loopback control API.
-// Compiled with the .NET Framework 4.0 csc.exe (C# 5 language level). See build.ps1.
+// Compiled with the .NET Framework 4.0 csc.exe (C# 5 language level). See build.ts.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
