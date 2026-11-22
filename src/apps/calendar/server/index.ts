@@ -7,7 +7,7 @@
 import type { ServerApp } from '../../../core/server/app.ts';
 import { manifest } from '../manifest.ts';
 import { events, saveConfig, status } from './calendar.ts';
-import { connectorEvents } from './connector.ts';
+import { cachedConnectorEvents, connectorEvents } from './connector.ts';
 
 const app: ServerApp = {
   id: manifest.id,
@@ -16,7 +16,11 @@ const app: ServerApp = {
     { method: 'POST', path: 'config', handle: ({ body }) => saveConfig((body as Record<string, unknown> | null)?.address) },
     { method: 'GET', path: 'events', handle: ({ query }) => events(query.get('refresh') === '1') },
     // the claude.ai Google Calendar connector (connector.ts): one read per day, cached 15 minutes on the PC
-    { method: 'GET', path: 'connector', handle: ({ query }) => connectorEvents(query.get('day') === 'tomorrow' ? 'tomorrow' : 'today') },
+    // cached=1: only what is already read (no Claude turn); a miss says so. Timed routines use this.
+    { method: 'GET', path: 'connector', handle: ({ query }) => {
+      const day = query.get('day') === 'tomorrow' ? 'tomorrow' : 'today';
+      return query.get('cached') === '1' ? cachedConnectorEvents(day) : connectorEvents(day);
+    } },
   ],
 };
 export default app;

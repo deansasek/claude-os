@@ -20,6 +20,13 @@ function dateFor(day: 'today' | 'tomorrow'): string {
 
 export type ConnectorAnswer = { status: 'ok'; events: ConnEvent[]; cached: boolean } | { status: 'error'; error: string };
 
+/** The cached events for a day, with no Claude turn: a miss when nothing fresh is cached. Timed routines use this. */
+export function cachedConnectorEvents(day: 'today' | 'tomorrow'): ConnectorAnswer | { status: 'miss' } {
+  const hit = cache.get(day);
+  if (hit && Date.now() - hit.at < TTL_MS) return { status: 'ok', events: hit.events, cached: true };
+  return { status: 'miss' };
+}
+
 export async function connectorEvents(day: 'today' | 'tomorrow'): Promise<ConnectorAnswer> {
   const hit = cache.get(day);
   if (hit && Date.now() - hit.at < TTL_MS) return { status: 'ok', events: hit.events, cached: true };
