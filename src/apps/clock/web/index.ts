@@ -1083,6 +1083,12 @@ const clockApi: ClockApi = {
     saveAlarms(); renderAlarms(); renderNextPill();
     return n;
   },
+  /** The ring now: 'alarm' or 'timer', null when nothing rings. */
+  ringing(): 'alarm' | 'timer' | null { return ringing ? ringing.kind : null; },
+  /** Silence and dismiss the ring. False when nothing rings. */
+  stopRinging(): boolean { if (!ringing) return false; stopRing(); return true; },
+  /** Snooze a ringing alarm. False when nothing rings or a timer does. */
+  snoozeRinging(): boolean { if (!ringing || ringing.kind !== 'alarm') return false; snooze(); return true; },
   /** The next alarm to ring: its time and "today" / "tomorrow" / a weekday. */
   nextAlarm(): { h: number; m: number; when: string } | null {
     const n = nextAlarm();
