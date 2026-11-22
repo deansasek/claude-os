@@ -153,6 +153,21 @@ function ensure(force: boolean): Promise<void> {
 
 const ymd = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+/**
+ * The events that overlap [from, to) (ms), in order, from the same cache as events(). Used by Claude's calendar_range tool.
+ * Read-only, and capped at MAX_SHOWN.
+ */
+export async function eventsBetween(from: number, to: number): Promise<{ status: 'not_set' | 'error' | 'ok'; events: { title: string; start: number; end: number; allDay: boolean; location?: string }[]; error?: string; stale?: boolean }> {
+  if (!cfg.address) return { status: 'not_set', events: [] };
+  await ensure(false);
+  const c = cache && cache.address === cfg.address && Date.now() - cache.at < KEEP_MS ? cache : null;
+  if (!c) return { status: 'error', events: [], error: lastError || 'Couldn’t read the calendar.' };
+  const out = occurrences(c.events, from, to)
+    .filter(o => o.start < to && (o.end > from || (o.end === o.start && o.start >= from)))
+    .sort((a, b) => a.start - b.start || a.title.localeCompare(b.title));
+  return { status: 'ok', events: out.slice(0, MAX_SHOWN), ...(lastError ? { error: lastError, stale: true } : {}) };
+}
+
 /** Today's and tomorrow's events (the PC's days), sorted: today first; all-day events first, then by start time. */
 export async function events(force = false): Promise<CalEvents> {
   const now = new Date();
