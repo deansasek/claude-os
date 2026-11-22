@@ -1,7 +1,7 @@
 // The ClaudeOS PIN: an optional 4 to 6 digit lock for the tablet, set in Settings → Security. Kept on this PC in
 // claudeos-pin.json as a salted PBKDF2 hash (never the PIN itself). The file is read on every request, so
 // deleting it clears the PIN at once, with no restart. The wrong-try count and the cooldown live in the file too,
-// so a restart can't reset them. Separate from the Claude app's older PIN (.hub-pin, see claude/server/guard.ts).
+// so a restart can't reset them. This one PIN also guards replies in the Claude app (see claude/server/guard.ts); the older .hub-pin only applies until it is set.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

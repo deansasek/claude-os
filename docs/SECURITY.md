@@ -19,7 +19,7 @@ A web page from another site must not reach the hub, even one open on the tablet
 ## The two PINs
 
 - **ClaudeOS PIN.** Set in Settings → Security. 4 to 6 digits. The tablet asks for it when it wakes. Stored on the PC in `claudeos-pin.json` as a salted PBKDF2 hash. Five wrong tries give a 30-second wait. Delete the file to clear a forgotten PIN.
-- **Claude app PIN.** Optional. 4 to 8 digits, set on the PC in `.hub-pin` or the `HUB_PIN` environment variable, never from the page. It guards replies and approvals in the Claude app. An unlock lasts 10 minutes past the last action. Five wrong tries in 5 minutes lock it for 5 minutes. With no PIN set, anyone at the screen can reply and approve.
+- **One PIN for replies too.** Once a ClaudeOS PIN is set, it also guards replies and approvals in the Claude app. An unlock lasts 10 minutes past the last action. Until a ClaudeOS PIN is set, the older `.hub-pin` file (or the `HUB_PIN` environment variable, 4 to 8 digits) still guards replies. With no PIN set at all, anyone at the screen can reply and approve.
 
 Every reply and approval from the page goes in `logs/hub-actions.log`.
 

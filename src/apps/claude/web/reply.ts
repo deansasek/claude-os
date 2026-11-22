@@ -66,7 +66,7 @@ const BLOCKED: Record<ReplyBlock, [string, string]> = {
   open_on_pc: ['Open on your PC', 'Reply in that window. ClaudeOS only answers sessions that aren’t open anywhere else.'],
   busy: ['Claude is still working', 'Wait for this session to finish its turn, then you can reply from here.'],
   too_old: ['This one has gone quiet', 'You can read it here. ClaudeOS only replies to sessions active in the last 30 minutes.'],
-  no_pin: ['Set a PIN first', 'Replies from ClaudeOS need a PIN. On your PC, put 4 to 8 digits in <code>.hub-pin</code>, then come back.'],
+  no_pin: ['Set a PIN first', 'Replies from ClaudeOS need the ClaudeOS PIN. Set it in Settings, then come back.'],
   too_many: ['Two replies are already running', 'Give them a moment, then try again.'],
   running: ['Working on it', ''],
   not_found: ['Session not found', 'It may have ended or moved. Pick another one.'],
