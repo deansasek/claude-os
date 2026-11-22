@@ -98,7 +98,9 @@ export const WEB_FILE = /^\/src\/(main\.web\.ts|core\/web\/[\w./-]+\.(ts|html)|a
 
 /** The file a URL path serves, or null when the path may not be served (server code, traversal, anything outside the web set). */
 export function resolveStatic(urlPath: string): string | null {
-  const p = decodeURIComponent(urlPath === '/' ? '/index.html' : urlPath);
+  let p: string;
+  try { p = decodeURIComponent(urlPath === '/' ? '/index.html' : urlPath); }
+  catch { return null; }   // a bad escape such as %E0%A is not a file: answer 404, not an error
   if (p.includes('..') || p.includes('\0')) return null;
   if (p.startsWith('/src/')) return WEB_FILE.test(p) ? path.join(SRC, p.slice(5)) : null;
   const file = path.join(PUBLIC, p);

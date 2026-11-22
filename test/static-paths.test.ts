@@ -28,6 +28,7 @@ test('traversal and odd paths are refused', () => {
   assert.equal(resolveStatic('/src/apps/../../package.json'), null);
   assert.equal(resolveStatic('/%2e%2e/package.json'), null);
   assert.equal(resolveStatic('/x\u0000.html'), null);
+  assert.equal(resolveStatic('/%E0%A'), null);   // a bad escape: not a file, and no error either
 });
 
 test('files outside the browser set are not served from src', () => {
