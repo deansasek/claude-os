@@ -28,7 +28,7 @@ let seq = 0;
 const newItemId = (): string => `i${Date.now().toString(36)}${(seq++ % 1296).toString(36)}`.slice(0, 24);
 
 /** A clean copy of one stored list, or null when it isn't one. */
-function cleanList(raw: unknown): FamilyList | null {
+export function cleanList(raw: unknown): FamilyList | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   if (typeof r.id !== 'string' || !LIST_ID.test(r.id)) return null;
@@ -105,7 +105,7 @@ function change(fn: (lists: FamilyList[]) => string | Partial<ListsResult>): Lis
 const NO_LIST = 'There’s no list by that name.';
 
 /** Check an item's text: the cleaned text, or why not. */
-function itemText(v: unknown): { text: string } | { error: string } {
+export function itemText(v: unknown): { text: string } | { error: string } {
   const text = cleanText(v);
   if (!text) return { error: 'Type something to add.' };
   if (text.length > MAX_TEXT) return { error: `That’s too long: ${MAX_TEXT} characters at most.` };
@@ -182,7 +182,7 @@ export function clearDone(listRef: unknown): ListsResult {
 }
 
 /** A list id from a name: "Garden jobs" → "garden-jobs"; a different one if that is taken. */
-function idFor(name: string, lists: FamilyList[]): string {
+export function idFor(name: string, lists: FamilyList[]): string {
   let base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   if (!/^[a-z]/.test(base)) base = `l-${base}`.replace(/-+$/, '');
   base = base.slice(0, 20).replace(/-+$/, '') || 'list';
