@@ -248,6 +248,9 @@ export function startServer(apps: ServerApp[]): void {
   // Re-cast when the Hub has left the cast app (back to its photo frame), or when the cast app is
   // still up but the page inside it has gone quiet: a page that failed to load (e.g. it reloaded
   // while this server was restarting) shows a blank screen and never polls again.
+  if (args.cast && (args.host === '0.0.0.0' || args.host === '::')) {
+    console.log('cast: the page address is ' + args.host + ', which a Nest Hub cannot open. Set "host" in config.json to this PC\'s address, then restart.');
+  }
   if (args.cast) {
     const catt = args.cattPath, device = args.cast;
     const QUIET_MS = 90e3;

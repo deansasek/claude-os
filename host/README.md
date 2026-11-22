@@ -29,7 +29,7 @@ Created with defaults if missing. Runs the same command as the live server.
 | Field | Meaning |
 |---|---|
 | `nodePath` | Path to node.exe. Empty = find `node.exe` on PATH. |
-| `args` | Arguments passed to node. Default runs `src\main.server.ts --port 8000 ...`; the host and cast device come from `config.json`. |
+| `args` | Arguments passed to node. Default runs `src\main.server.ts --port 8000 ...`; the host and cast device come from `config.json`. A `--port` here wins over the port in `config.json`, so to change the port, edit `args` (or remove `--port` from it). |
 | `workingDir` | Child working directory. Empty = the repository root. |
 | `apiPort` | Control API port on 127.0.0.1. Default 47811. |
 | `autostart` | Start the server when the tray app launches. |
