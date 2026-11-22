@@ -4,7 +4,7 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { MAX_TEXT, findList, type FamilyList, type ListsResult } from '../api.ts';
-import { addItem, findItem, newList, readLists, removeItem, tickItem } from './store.ts';
+import { addItem, clearDone, findItem, newList, readLists, removeItem, tickItem } from './store.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -77,6 +77,16 @@ export const listsServer = createSdkMcpServer({
         const r = newList(name);
         if (!r.ok) return text(r.error ?? 'That didn’t work.', true);
         return text(`Made the list “${name.trim()}”. It is empty.`);
+      }),
+    tool('lists_clear_done',
+      'Clear the ticked-off items from a family list on the ClaudeOS tablet, for good. list: its name or id. The unticked items stay. '
+        + 'Use it when the user says to clear or tidy a list after shopping.',
+      { list: z.string().max(40) },
+      async ({ list }) => {
+        const r = clearDone(list);
+        if (!r.ok) return text(`${r.error ?? 'That didn’t work.'}${/no list/.test(r.error ?? '') ? ` The lists are: ${names(r)}.` : ''}`, true);
+        const l = findList(r.lists, list);
+        return text(`Cleared the ticked items from ${l?.name ?? list}.${l ? ` ${l.items.length} left.` : ''}`);
       }),
   ],
 });
