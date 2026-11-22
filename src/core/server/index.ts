@@ -199,7 +199,8 @@ export function startServer(apps: ServerApp[]): void {
           }
           return json(res, out);
         } catch (e) {
-          return json(res, { status: 'error', error: String((e as Error).message || e).slice(0, 160) });
+          // ok: false says it plainly (a missing ok was already read as failure); the HTTP status stays 200 for existing callers
+          return json(res, { ok: false, status: 'error', error: String((e as Error).message || e).slice(0, 160) });
         }
       }
       if (url.pathname.startsWith('/api/')) return send(res, 404, 'no such route', 'text/plain');
