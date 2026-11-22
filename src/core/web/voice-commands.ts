@@ -45,6 +45,8 @@ export interface ClockApi {
   /** Timers and alarms switched on (a running or paused timer counts as one). */
   active(): number;
   alarmsOff(): number;
+  /** Switch off only the alarms and reminders Claude set (they stay in the list). Returns how many were on. */
+  cancelClaudeAlarms(): number;
   nextAlarm(): { h: number; m: number; when: string } | null;
 }
 let clock: ClockApi | null = null;

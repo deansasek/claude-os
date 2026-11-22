@@ -49,6 +49,9 @@ const BUILT_IN: Record<string, ToolWords> = {
   'mcp__claudeos_tablet__set_alarm':    { now: 'Set an alarm on the tablet', past: 'Set an alarm on the tablet', doing: 'Setting an alarm' },
   'mcp__claudeos_tablet__set_reminder': { now: 'Set a reminder on the tablet', past: 'Set a reminder on the tablet', doing: 'Setting a reminder' },
   'mcp__claudeos_tablet__notify':       { now: 'Show a notification on the tablet', past: 'Showed a notification on the tablet', doing: 'Sending a notification' },
+  'mcp__claudeos_tablet__clock_status': { now: 'Check the tablet’s Clock', past: 'Checked the tablet’s Clock', doing: 'Checking the Clock' },
+  'mcp__claudeos_tablet__cancel_timer': { now: 'Cancel the tablet timer', past: 'Cancelled the tablet timer', doing: 'Cancelling the timer' },
+  'mcp__claudeos_tablet__cancel_alarms': { now: 'Switch off Claude’s alarms', past: 'Switched off Claude’s alarms', doing: 'Switching off alarms' },
   // ClaudeOS's family lists (lists/server/tools.ts, the claudeos_lists MCP server); the card's detail is the item's text
   'mcp__claudeos_lists__lists_read': { now: 'Read the family lists', past: 'Read the family lists', doing: 'Reading the lists' },
   'mcp__claudeos_lists__lists_add':  { now: 'Add to a family list', past: 'Added to a family list', doing: 'Adding to a list' },

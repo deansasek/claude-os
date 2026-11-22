@@ -45,6 +45,8 @@ const full = (): string | null => (activeOnTablet != null && activeOnTablet >= M
 
 /** Check a tool's arguments; the error is a plain sentence for Claude. */
 export function check(op: TabletOp, input: Record<string, unknown>): Checked {
+  // the Clock's status and cancels take no arguments; they run on the tablet, where the Clock's state is
+  if (op === 'clock_status' || op === 'cancel_timer' || op === 'cancel_alarms') return { ok: true, op, args: {} };
   if (op === 'notify') {
     const title = cleanText(input.title), body = cleanText(input.body);
     if (!title) return { ok: false, error: 'The notification needs a title.' };
@@ -105,5 +107,18 @@ export const tabletServer = createSdkMcpServer({
         + 'Use it for “tell me when the build is done”. title and body: up to 80 characters each.',
       { title: z.string(), body: z.string() },
       async input => run('notify', input)),
+    tool('clock_status',
+      'Read the ClaudeOS tablet’s Clock: whether a timer is running and how long is left, and how many timers and alarms are on. Read-only.',
+      {},
+      async () => run('clock_status', {})),
+    tool('cancel_timer',
+      'Cancel the timer on the user’s ClaudeOS tablet, if one is running. Use it when the user says to stop or cancel the timer.',
+      {},
+      async () => run('cancel_timer', {})),
+    tool('cancel_alarms',
+      'Switch off the alarms and reminders you set on the user’s ClaudeOS tablet (set_alarm, set_reminder). It keeps the user’s own alarms '
+        + 'and does not delete anything; they can be turned on again in the Clock.',
+      {},
+      async () => run('cancel_alarms', {})),
   ],
 });

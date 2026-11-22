@@ -13,7 +13,7 @@ import { z } from 'zod';
 export type BrowserOp = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back';
 /** The tablet tools' jobs (server/tablet.ts): run by the Clock and the notices on the tablet; 'routine' is
  *  run_routine's (routines/server/tools.ts), run by the Routines app's runner on the tablet. */
-export type TabletOp = 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine';
+export type TabletOp = 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms';
 /** A job for the tablet. Browser jobs use ref and text; tablet jobs carry their checked arguments in args. */
 export interface BrowserJob { id: string; op: BrowserOp | TabletOp; ref?: string; text?: string; args?: Record<string, unknown> }
 export interface BrowserAnswer { ok: boolean; data: string }
