@@ -7,7 +7,7 @@
 // Being on the dashboard is not being allowed for Claude: that is only the allowlist in .ha-config.json (ha.ts).
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB } from '../../../core/server/paths.ts';
+import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import {
   ENTITY_ID, MAX_DEVICE_NAME, MAX_HOME_SCENES, MAX_ROOM_NAME, MAX_ROOMS, ROOM_ID, isDeniedDomain, isReadOnlyDomain, isSceneDomain, isShownDomain,
   type HaLayout, type HaRoom,
@@ -109,9 +109,7 @@ let store = load();
 
 function persist(): boolean {
   try {
-    const tmp = `${FILE}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(store, null, 2), { encoding: 'utf8', mode: 0o600 });
-    fs.renameSync(tmp, FILE);
+    writeJsonFile(FILE, store, { indent: 2, mode: 0o600 });
     return true;
   } catch (e) {
     console.log('home-assistant: could not save the layout:', (e as NodeJS.ErrnoException).code ?? 'error');

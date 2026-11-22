@@ -7,7 +7,7 @@
 // each save): which Android apps are allowed stays on the tablet (Launcher.java), because lock task depends on it.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, SRC } from '../../../core/server/paths.ts';
+import { HUB, SRC, writeJsonFile } from '../../../core/server/paths.ts';
 import { cleanLayout, isScreen, type LauncherLayout, type LauncherLayoutResult, type LauncherScreen } from '../api.ts';
 import { manifest } from '../manifest.ts';
 
@@ -41,14 +41,11 @@ function load(): Store {
 let store = load();
 
 function persist(next: Store): boolean {
-  const tmp = `${FILE}.tmp`;
   try {
-    fs.writeFileSync(tmp, JSON.stringify(next, null, 2), { encoding: 'utf8', mode: 0o600 });
-    fs.renameSync(tmp, FILE);
+    writeJsonFile(FILE, next, { indent: 2, mode: 0o600 });
     return true;
   } catch (e) {
     console.log('launcher: could not save the layout:', (e as NodeJS.ErrnoException).code ?? 'error');
-    try { fs.rmSync(tmp, { force: true }); } catch { /* nothing more to do */ }
     return false;
   }
 }

@@ -8,7 +8,7 @@
 // when something changes. Nothing is made up for the family.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB } from '../../../core/server/paths.ts';
+import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import {
   BUILT_IN, ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, isBuiltIn,
   type FamilyList, type ListItem, type ListKind, type ListsResult,
@@ -75,9 +75,7 @@ function load(): FamilyList[] | null {
 
 function persist(lists: FamilyList[]): boolean {
   try {
-    const tmp = `${FILE}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify({ lists }, null, 1), { encoding: 'utf8', mode: 0o600 });
-    fs.renameSync(tmp, FILE);
+    writeJsonFile(FILE, { lists }, { indent: 1, mode: 0o600 });
     return true;
   } catch (e) {
     console.log('lists: could not save:', (e as NodeJS.ErrnoException).code ?? 'error');
