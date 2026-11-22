@@ -8,6 +8,7 @@ export interface RouteRequest {
   raw: Buffer | null;     // the body as bytes, for a route with rawMax (e.g. a JPEG); null otherwise
   headers: IncomingHttpHeaders;
   from: string;           // caller's IP
+  signal: AbortSignal;    // aborts when the caller goes away before the answer (a long poll ends early)
 }
 
 /** A file to send as it is (not as JSON), e.g. a photo. */
