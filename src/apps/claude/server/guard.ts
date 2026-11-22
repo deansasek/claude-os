@@ -7,14 +7,20 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { HUB } from '../../../core/server/paths.ts';
-import { checkPin, pinStatus } from '../../settings/server/pin.ts';
+import { checkPin, pinFingerprint, pinStatus } from '../../settings/server/pin.ts';
 
 const PIN_FILE = path.join(HUB, '.hub-pin');
 const LOG_FILE = path.join(HUB, 'logs', 'hub-actions.log');
 const UNLOCK_MS = 10 * 60e3;          // an unlock lasts 10 minutes past the last action
 const MAX_TRIES = 5, LOCKOUT_MS = 5 * 60e3;
 
-const tokens = new Map<string, number>();       // token -> expires at
+// token -> when it expires, and the PIN it was made with (a token from a PIN that has since changed or been removed is refused)
+const tokens = new Map<string, { exp: number; fp: string | null }>();
+/** Drop the tokens that have run out, so the map cannot grow for the whole uptime. */
+function pruneTokens(): void {
+  const now = Date.now();
+  for (const [t, v] of tokens) if (v.exp < now) tokens.delete(t);
+}
 let fails: number[] = [];
 let lockedUntil = 0;
 
@@ -32,13 +38,14 @@ export const pinIsSet = (): boolean => pinStatus().set || readPin() != null;
 const digest = (s: string) => crypto.createHash('sha256').update(s).digest();
 
 export function unlock(pin: unknown, from: string): { ok: boolean; token?: string; ttl?: number; error?: string; retryIn?: number } {
+  pruneTokens();
   if (pinStatus().set) {
     // the ClaudeOS PIN: its own tries and cooldown live in settings/server/pin.ts, so they are not counted twice here
     const r = checkPin(pin);
     logAction(from, r.ok ? 'unlock' : 'unlock-failed', {});
     if (r.ok) {
       const token = crypto.randomBytes(24).toString('base64url');
-      tokens.set(token, Date.now() + UNLOCK_MS);
+      tokens.set(token, { exp: Date.now() + UNLOCK_MS, fp: pinFingerprint() });
       return { ok: true, token, ttl: UNLOCK_MS / 1000 };
     }
     if (r.error === 'locked') return { ok: false, error: 'locked', retryIn: r.lockedFor };
@@ -59,7 +66,7 @@ export function unlock(pin: unknown, from: string): { ok: boolean; token?: strin
   }
   fails = [];
   const token = crypto.randomBytes(24).toString('base64url');
-  tokens.set(token, now + UNLOCK_MS);
+  tokens.set(token, { exp: now + UNLOCK_MS, fp: null });
   return { ok: true, token, ttl: UNLOCK_MS / 1000 };
 }
 
@@ -67,9 +74,11 @@ export function unlock(pin: unknown, from: string): { ok: boolean; token?: strin
 export function checkToken(token: unknown): boolean {
   if (!pinIsSet()) return true;   // no PIN set: nothing to unlock
   if (typeof token !== 'string') return false;
-  const exp = tokens.get(token);
-  if (!exp || exp < Date.now()) { tokens.delete(token); return false; }
-  tokens.set(token, Date.now() + UNLOCK_MS);
+  const v = tokens.get(token);
+  // a token made with a PIN that has since been changed or removed is no longer an unlock
+  const fp = pinStatus().set ? pinFingerprint() : null;
+  if (!v || v.exp < Date.now() || v.fp !== fp) { tokens.delete(token); return false; }
+  tokens.set(token, { exp: Date.now() + UNLOCK_MS, fp: v.fp });
   return true;
 }
 
