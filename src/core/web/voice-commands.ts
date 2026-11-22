@@ -31,6 +31,7 @@ import type { ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
+import { alarmWord } from './voice-alarm.ts';
 import { setThemeMode } from './theme.ts';
 
 export interface ClockApi {
@@ -46,6 +47,12 @@ export interface ClockApi {
   /** Timers and alarms switched on (a running or paused timer counts as one). */
   active(): number;
   alarmsOff(): number;
+  /** The ring now: 'alarm' or 'timer', null when nothing rings. */
+  ringing(): 'alarm' | 'timer' | null;
+  /** Silence and dismiss the ring. False when nothing rings. */
+  stopRinging(): boolean;
+  /** Snooze a ringing alarm. False when nothing rings or a timer does. */
+  snoozeRinging(): boolean;
   /** Switch off only the alarms and reminders Claude set (they stay in the list). Returns how many were on. */
   cancelClaudeAlarms(): number;
   nextAlarm(): { h: number; m: number; when: string } | null;
@@ -281,6 +288,14 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     clock.startTimer(ms);
     return { say: `Timer set for ${sayDuration(ms)}.`, react: 'hop' };
   }
+  // alarms: "stop" silences a ringing one; only "all my alarms" switches every alarm off (core/web/voice-alarm.ts)
+  if (clock) {
+    const word = alarmWord(t, clock.ringing() !== null);
+    if (word === 'stop-ring') { clock.stopRinging(); return { say: 'Stopped.', react: 'look' }; }
+    if (word === 'snooze') return clock.snoozeRinging() ? { say: 'Okay. Nine more minutes.', react: 'hop' } : { say: 'Snooze is for alarms. Say stop for the timer.' };
+    if (word === 'all-off') { const n = clock.alarmsOff(); return { say: n ? `Okay, ${n === 1 ? 'your alarm is' : `all ${n} alarms are`} off.` : 'You don’t have any alarms on.', react: 'look' }; }
+    if (word === 'one-alarm') return { say: 'Nothing is ringing. To switch them all off, say turn off all my alarms.' };
+  }
   if (/^(?:cancel|stop|delete|clear|end|reset|kill|turn off)(?: the| my)? timer$/.test(t)) {
     if (!clock) return null;
     return { say: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.', react: 'look' };
@@ -291,12 +306,6 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     return { say: left == null ? 'There’s no timer running.' : `${sayDuration(Math.ceil(left / 1000) * 1000)} left.`.replace(/^./, c => c.toUpperCase()) };
   }
 
-  // alarms
-  if (/^(?:turn off|cancel|disable|switch off|stop|clear|delete)(?: all)?(?: of)?(?: my| the)? alarms?$/.test(t)) {
-    if (!clock) return null;
-    const n = clock.alarmsOff();
-    return { say: n ? `Okay, ${n === 1 ? 'your alarm is' : `all ${n} alarms are`} off.` : 'You don’t have any alarms on.', react: 'look' };
-  }
   if (/^(?:when(?:'s| is) my (?:next )?alarm|what time is my alarm|is my alarm (?:on|set)|do i have an alarm(?: set)?)$/.test(t)) {
     if (!clock) return null;
     const n = clock.nextAlarm();
