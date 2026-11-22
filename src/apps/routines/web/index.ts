@@ -260,7 +260,7 @@ function addStep(kind: StepKind): void {
   if (draft.steps.length >= MAX_STEPS) return;
   if (kind === 'say') { editSay(null); return; }
   if (kind === 'scene') { pickScene(null); return; }
-  draft.steps.push(kind === 'timer' ? { kind, minutes: 5 } : kind === 'pause' ? { kind, seconds: 3 } : { kind } as Step);
+  draft.steps.push(kind === 'timer' ? { kind, minutes: 5 } : kind === 'pause' ? { kind, seconds: 3 } : kind === 'lists' ? { kind, list: 'shopping' } : { kind } as Step);
   render();
 }
 
