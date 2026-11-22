@@ -13,7 +13,7 @@ import { onBack } from '../../../core/web/system.ts';
 import type { HaScenes } from '../../home-assistant/api.ts';
 import {
   MAX_NAME, MAX_PAUSE_S, MAX_PHRASE, MAX_PHRASES, MAX_ROUTINES, MAX_SAY, MAX_STEPS, cleanRoutine, cleanText, stepLabel,
-  type Routine, type RoutinesResult, type Step, type StepKind,
+  type Routine, type RoutineTime, type RoutinesResult, type Step, type StepKind,
 } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { onRunState, runRoutine, runState, stopRoutine } from './run.ts';
@@ -33,7 +33,7 @@ const PLUS = svg('<path d="M10 5v10M5 10h10"/>', 2.2);
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 
-interface Draft { id: string | null; name: string; phrases: string[]; steps: Step[] }
+interface Draft { id: string | null; name: string; phrases: string[]; steps: Step[]; at: RoutineTime | null }
 let routines: Routine[] = [];
 let loaded = false;
 let draft: Draft = blank();
@@ -43,14 +43,14 @@ let busy = false;
 let sheetOpen = false;
 let scenes: { entity_id: string; name: string }[] = [];   // the ones a routine may set (on the dashboard or the Home screen)
 
-function blank(): Draft { return { id: null, name: '', phrases: [], steps: [] }; }
-const snap = (d: Draft) => JSON.stringify({ n: d.name, p: d.phrases, s: d.steps });
+function blank(): Draft { return { id: null, name: '', phrases: [], steps: [], at: null }; }
+const snap = (d: Draft) => JSON.stringify({ n: d.name, p: d.phrases, s: d.steps, a: d.at });
 const dirty = () => snap(draft) !== saved;
 const sceneName = (id: string) => scenes.find(s => s.entity_id === id)?.name;
 const changed = () => dispatchEvent(new CustomEvent('hub:routines'));
 
 function edit(r: Routine | null): void {
-  draft = r ? { id: r.id, name: r.name, phrases: [...r.phrases], steps: r.steps.map(s => ({ ...s })) } : blank();
+  draft = r ? { id: r.id, name: r.name, phrases: [...r.phrases], steps: r.steps.map(s => ({ ...s })), at: r.at ? { ...r.at, days: [...r.at.days] } : null } : blank();
   saved = snap(draft);
   note = '';
   render();
@@ -152,6 +152,7 @@ function render(): void {
     `<span class="rt-chip" data-i="${i}">“${esc(p)}”<button class="rt-x" data-act="phrase-x" aria-label="Remove ${esc(p)}">${X}</button></span>`).join('')
     + (draft.phrases.length < MAX_PHRASES ? '<button class="rt-chip add" data-act="phrase-add">+ Phrase</button>' : '');
 
+  $('rtTime').innerHTML = timeHtml();
   $('rtCount').textContent = `· ${draft.steps.length} of ${MAX_STEPS}`;
   $('rtSteps').innerHTML = draft.steps.map((s, i) => stepHtml(s, i, draft.steps.length)).join('');
   ctx.root.querySelectorAll<HTMLButtonElement>('#rtAdd [data-add]').forEach(b => { b.disabled = draft.steps.length >= MAX_STEPS; });
@@ -172,6 +173,46 @@ function editName(): void {
     value: draft.name, placeholder: 'Name, like “Good morning”', done: 'Done', autoCap: true, max: MAX_NAME,
     onDone: text => { draft.name = cleanText(text).slice(0, MAX_NAME); note = ''; render(); },
   });
+}
+
+// ---------- running by itself at a time ----------
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const AT_PRESETS: [number, number][] = [[6, 0], [6, 30], [7, 0], [7, 30], [8, 0], [12, 0], [18, 0], [19, 0], [20, 0], [21, 0]];
+const hm = (h: number, m: number): string => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+/** The row under the steps: "+ Run at a time", or the time and the days it runs on (none lit = every day). */
+function timeHtml(): string {
+  const at = draft.at;
+  if (!at) return '<button class="rt-chip add" data-act="at-add">+ Run at a time</button>';
+  const every = !at.days.length;
+  return `<button class="rt-chip on" data-act="at-edit">${hm(at.h, at.m)}</button>`
+    + DAY_SHORT.map((d, i) => `<button class="rt-chip${every || at.days.includes(i) ? ' on' : ''}" data-day="${i}">${d}</button>`).join('')
+    + `<button class="rt-chip" data-act="at-x" aria-label="Don’t run by itself">${X}</button>`;
+}
+
+function timeSheet(): void {
+  openSheet('<h3>Run at what time?</h3><p>On the tablet, once a day, within an hour of the time.</p>'
+    + `<div class="rt-pick">${AT_PRESETS.map(([h, m]) => `<button class="rt-btn" data-h="${h}" data-m="${m}">${hm(h, m)}</button>`).join('')}</div>`
+    + '<div class="rt-sheet-btns"><button class="rt-btn" data-act="cancel">Cancel</button></div>', b => {
+    const h = Number(b.dataset.h), m = Number(b.dataset.m);
+    if (Number.isNaN(h) || Number.isNaN(m)) return;
+    draft.at = { h, m, days: draft.at?.days ?? [] };
+    render();
+  });
+}
+
+function onTimeClick(ev: Event): void {
+  const b = (ev.target as Element).closest<HTMLElement>('button');
+  if (!b) return;
+  if (b.dataset.act === 'at-add' || b.dataset.act === 'at-edit') { timeSheet(); return; }
+  if (b.dataset.act === 'at-x') { draft.at = null; render(); return; }
+  if (b.dataset.day == null || !draft.at) return;
+  const i = Number(b.dataset.day);
+  const current = draft.at.days.length ? [...draft.at.days] : [0, 1, 2, 3, 4, 5, 6];
+  const next = current.includes(i) ? current.filter(d => d !== i) : [...current, i].sort((a, c) => a - c);
+  if (!next.length) return;   // at least one day; all seven is the same as every day
+  draft.at = { ...draft.at, days: next.length === 7 ? [] : next };
+  render();
 }
 
 function addPhrase(): void {
@@ -306,6 +347,7 @@ const app: HubApp = {
     });
     $('rtNew').addEventListener('click', () => { if (routines.length < MAX_ROUTINES) leave(() => { edit(null); editName(); }); });
     $('rtName').addEventListener('click', editName);
+    $('rtTime').addEventListener('click', onTimeClick);
     $('rtPhrases').addEventListener('click', ev => {
       const b = (ev.target as Element).closest<HTMLElement>('[data-act]');
       if (b?.dataset.act === 'phrase-add') addPhrase();
