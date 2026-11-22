@@ -53,6 +53,8 @@ const BUILT_IN: Record<string, ToolWords> = {
   'mcp__claudeos_lists__lists_read': { now: 'Read the family lists', past: 'Read the family lists', doing: 'Reading the lists' },
   'mcp__claudeos_lists__lists_add':  { now: 'Add to a family list', past: 'Added to a family list', doing: 'Adding to a list' },
   'mcp__claudeos_lists__lists_tick': { now: 'Tick off a list item', past: 'Ticked off a list item', doing: 'Ticking off a list item' },
+  'mcp__claudeos_lists__lists_remove': { now: 'Remove a list item', past: 'Removed a list item', doing: 'Removing a list item' },
+  'mcp__claudeos_lists__lists_new': { now: 'Make a new list', past: 'Made a new list', doing: 'Making a new list' },
   // ClaudeOS's calendar (calendar/server/tools.ts, the claudeos_calendar MCP server), read-only
   'mcp__claudeos_calendar__calendar_today': { now: 'Look at your calendar', past: 'Looked at your calendar', doing: 'Looking at your calendar' },
   // ClaudeOS's routines (routines/server/tools.ts, the claudeos_routines MCP server)
