@@ -104,7 +104,8 @@ function runTablet(op: 'timer' | 'alarm' | 'reminder' | 'notify', a: Record<stri
   const h = num(a.h), m = num(a.m);
   if (!(Number.isInteger(h) && h >= 0 && h <= 23 && Number.isInteger(m) && m >= 0 && m <= 59)) return { ok: false, data: 'That isn’t a time the Clock can use.' };
   if (op === 'reminder' && !label) return { ok: false, data: 'The reminder needs some text to show.' };
-  const set = clock.addLabelled(h, m, label);
+  const days = Array.isArray(a.days) ? (a.days as number[]) : [];
+  const set = clock.addLabelled(h, m, label, days);
   if (!set) return { ok: false, data: 'The tablet’s Clock is full (20 alarms). Ask the user to delete one in the Clock first.' };
   return op === 'reminder'
     ? { ok: true, data: `Reminder set for ${hhmm(h, m)} ${set.when}: “${label}”. The Clock will ring and show it then.` }

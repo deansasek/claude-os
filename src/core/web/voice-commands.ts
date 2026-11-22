@@ -41,7 +41,8 @@ export interface ClockApi {
   addAlarm(h: number, m: number, days: number[]): { when: string; at: number } | null;
   /** A new one-off alarm with a label (Claude's set_alarm and set_reminder); never changes an alarm already there.
    *  null when the Clock's list is full. */
-  addLabelled(h: number, m: number, label: string): { when: string; at: number } | null;
+  /** days: repeat on these (Date.getDay values); none means once. */
+  addLabelled(h: number, m: number, label: string, days?: number[]): { when: string; at: number } | null;
   /** Timers and alarms switched on (a running or paused timer counts as one). */
   active(): number;
   alarmsOff(): number;

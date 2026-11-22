@@ -1030,16 +1030,17 @@ function mount(context: AppContext): void {
 // Registered with core/web/voice-commands.ts when the Clock mounts; nothing else changes here.
 const clockApi: ClockApi = {
   startTimer(ms: number, label?: string): void { timerStart(Math.max(1e3, Math.min(24 * 3600e3, ms)), label?.trim().slice(0, LABEL_MAX)); },
-  addLabelled(h: number, m: number, label: string): { when: string; at: number } | null {
+  addLabelled(h: number, m: number, label: string, days: number[] = []): { when: string; at: number } | null {
     unlockAudio();
     const lbl = label.trim().slice(0, LABEL_MAX);
-    // the same time and words again: switch that one back on rather than adding a twin
-    let a = alarms.find(x => x.claude && x.h === h && x.m === m && labelOf(x) === lbl && !x.days.length);
+    const same = (x: Alarm) => JSON.stringify([...x.days].sort()) === JSON.stringify([...days].sort());
+    // the same time, words and days again: switch that one back on rather than adding a twin
+    let a = alarms.find(x => x.claude && x.h === h && x.m === m && labelOf(x) === lbl && same(x));
     if (!a) {
       // a full list: Claude's own one-off alarms that have already rung make room (the user's own are never touched)
       if (alarms.length >= MAX_ALARMS) alarms = alarms.filter(x => !(x.claude && !x.on && !x.snooze && !x.days.length));
       if (alarms.length >= MAX_ALARMS) return null;
-      a = { id: newId(), h, m, on: true, days: [], snooze: null, fired: null, claude: true, ...(lbl ? { label: lbl } : {}) };
+      a = { id: newId(), h, m, on: true, days: [...days], snooze: null, fired: null, claude: true, ...(lbl ? { label: lbl } : {}) };
       alarms.push(a);
     }
     a.on = true; a.snooze = null; arm(a);

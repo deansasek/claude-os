@@ -43,6 +43,15 @@ export type Checked = { ok: true; op: TabletOp; args: Record<string, unknown> } 
 const full = (): string | null => (activeOnTablet != null && activeOnTablet >= MAX_ACTIVE
   ? `There are already ${activeOnTablet} timers and alarms on (the most is ${MAX_ACTIVE}). Ask the user to turn one off in the Clock first.` : null);
 
+/** Repeat days from a tool call: 0 (Sunday) to 6 (Saturday), sorted and unique. None means once only. */
+function daysFrom(v: unknown): number[] | { error: string } {
+  if (v == null) return [];
+  if (!Array.isArray(v)) return { error: 'The days must be a list of numbers, like [1, 2, 3, 4, 5] for weekdays.' };
+  const days = [...new Set(v)];
+  if (days.some(d => typeof d !== 'number' || !Number.isInteger(d) || d < 0 || d > 6)) return { error: 'The days are numbers from 0 (Sunday) to 6 (Saturday).' };
+  return (days as number[]).sort((a, b) => a - b);
+}
+
 /** Check a tool's arguments; the error is a plain sentence for Claude. */
 export function check(op: TabletOp, input: Record<string, unknown>): Checked {
   // the Clock's status and cancels take no arguments; they run on the tablet, where the Clock's state is
@@ -63,16 +72,18 @@ export function check(op: TabletOp, input: Record<string, unknown>): Checked {
   }
   const t = parseHHMM(input.time);
   if (!t) return { ok: false, error: `“${String(input.time ?? '').slice(0, 20)}” isn’t a time I can use. Give it as HH:MM on the 24-hour clock, like 17:00.` };
+  const days = daysFrom(input.days);
+  if (!Array.isArray(days)) return { ok: false, error: days.error };
   if (op === 'reminder') {
     const what = cleanText(input.text);
     if (!what) return { ok: false, error: 'The reminder needs some text to show, like “Take the chicken out”.' };
     const busy = full();
     if (busy) return { ok: false, error: busy };
-    return { ok: true, op, args: { h: t.h, m: t.m, label: what } };
+    return { ok: true, op, args: { h: t.h, m: t.m, label: what, days } };
   }
   const busy = full();
   if (busy) return { ok: false, error: busy };
-  return { ok: true, op, args: { h: t.h, m: t.m, label } };
+  return { ok: true, op, args: { h: t.h, m: t.m, label, days } };
 }
 
 /** Check, send to the tablet, and turn its answer into the tool result. */
@@ -95,12 +106,12 @@ export const tabletServer = createSdkMcpServer({
     tool('set_alarm',
       'Set a one-off alarm in the Clock on the user’s ClaudeOS tablet. time: HH:MM on the 24-hour clock, in the tablet’s local time; '
         + 'the next time it comes round (today, or tomorrow if it has passed). label: optional, a few words shown when it rings.',
-      { time: z.string(), label: z.string().optional() },
+      { time: z.string(), label: z.string().optional(), days: z.array(z.number()).max(7).optional().describe('Repeat on these days: 0 = Sunday … 6 = Saturday, e.g. [1,2,3,4,5] for weekdays. Leave out for one time only.') },
       async input => run('alarm', input)),
     tool('set_reminder',
       'Set a reminder on the user’s ClaudeOS tablet: at time (HH:MM, 24-hour, the next time it comes round) the Clock rings and shows text. '
         + 'Use it for “remind me at 5 to take the chicken out”. text: what to show, up to 80 characters.',
-      { time: z.string(), text: z.string() },
+      { time: z.string(), text: z.string(), days: z.array(z.number()).max(7).optional().describe('Repeat on these days: 0 = Sunday … 6 = Saturday, e.g. [1,2,3,4,5] for weekdays. Leave out for one time only.') },
       async input => run('reminder', input)),
     tool('notify',
       'Show a notification on the user’s ClaudeOS tablet now (a banner, kept in its notification list). '
