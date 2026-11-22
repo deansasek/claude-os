@@ -129,7 +129,7 @@ namespace ClaudeHubHost
             ToolStripMenuItem miStop = new ToolStripMenuItem("Stop");
             ToolStripMenuItem miRestart = new ToolStripMenuItem("Restart");
             ToolStripMenuItem miLog = new ToolStripMenuItem("Open log");
-            ToolStripMenuItem miFolder = new ToolStripMenuItem("Open hub folder");
+            ToolStripMenuItem miFolder = new ToolStripMenuItem("Open project folder");
             ToolStripMenuItem miAuto = new ToolStripMenuItem("Start with Windows");
             miAuto.CheckOnClick = true;
             miAuto.Checked = AutoStartEnabled();

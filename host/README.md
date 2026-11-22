@@ -18,7 +18,7 @@ Uses the .NET Framework `csc.exe` that ships with Windows; no installs. Output: 
 & .\host\ClaudeHubHost.exe
 ```
 
-The tray icon's tooltip shows the state. Menu: Open hub in browser, Start, Stop, Restart, Open log, Open hub folder, Start with Windows, Exit (stops the server, then exits). A second launch shows a balloon and exits.
+The tray icon's tooltip shows the state. Menu: Open hub in browser, Start, Stop, Restart, Open log, Open project folder, Start with Windows, Exit (stops the server, then exits). A second launch shows a balloon and exits.
 
 Start with Windows: tick the menu item. It writes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\ClaudeHubHost` for the current user only. Untick to remove.
 
