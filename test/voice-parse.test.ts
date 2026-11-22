@@ -1,7 +1,7 @@
 // Voice parsing for durations, times of day and day lists (src/core/web/voice-parse.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseDays, parseDuration, parseTime } from '../src/core/web/voice-parse.ts';
+import { daysText, parseDays, parseDuration, parseTime, resolveHour, sayDuration } from '../src/core/web/voice-parse.ts';
 
 test('a duration phrase becomes milliseconds', () => {
   assert.equal(parseDuration('10 minutes'), 600_000);
@@ -29,4 +29,31 @@ test('a day list becomes day numbers, and no days means once', () => {
   assert.deepEqual(parseDays('on mondays'), [1]);
   assert.deepEqual(parseDays('every monday and friday'), [1, 5]);
   assert.equal(parseDays('frobnicate'), null);
+});
+
+test('a duration is said back in words', () => {
+  assert.equal(sayDuration(600_000), '10 minutes');
+  assert.equal(sayDuration(90_000), 'a minute and a half');
+  assert.equal(sayDuration(5_400_000), '1 hour and 30 minutes');
+  assert.equal(sayDuration(1_000), '1 second');
+});
+
+test('a spoken time with am or pm, or a 24-hour hour, is exact', () => {
+  assert.deepEqual(resolveHour({ h: 6, m: 30, meridiem: 'am' }, false), { h: 6, m: 30 });
+  assert.deepEqual(resolveHour({ h: 6, m: 30, meridiem: 'pm' }, false), { h: 18, m: 30 });
+  assert.deepEqual(resolveHour({ h: 12, m: 0, meridiem: 'pm' }, false), { h: 12, m: 0 });
+  assert.deepEqual(resolveHour({ h: 13, m: 0, meridiem: null }, false), { h: 13, m: 0 });
+  assert.deepEqual(resolveHour({ h: 0, m: 0, meridiem: null }, false), { h: 0, m: 0 });
+});
+
+test('a wake-up with no am or pm is in the morning', () => {
+  assert.deepEqual(resolveHour({ h: 7, m: 0, meridiem: null }, true), { h: 7, m: 0 });
+});
+
+test('a day list is said back in words', () => {
+  assert.equal(daysText([]), '');
+  assert.equal(daysText([1, 2, 3, 4, 5]), ' on weekdays');
+  assert.equal(daysText([0, 6]), ' at weekends');
+  assert.equal(daysText([0, 1, 2, 3, 4, 5, 6]), ' every day');
+  assert.equal(daysText([1]), ' on Mondays');
 });
