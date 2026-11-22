@@ -20,9 +20,9 @@ Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force "$out\gen", "$out\classes", "$out\dex" | Out-Null
 function Assert-Ok($what) { if ($LASTEXITCODE) { throw "$what failed (exit $LASTEXITCODE)" } }
 
-# voice (Vosk + JNA + the speech model), fetched by setup-voice.ps1 into tools/voice
+# voice (Vosk + JNA + the speech model), fetched by setup-voice.ts into tools/voice
 $voice = Join-Path $tools 'voice'
-if (-not (Test-Path (Join-Path $voice 'assets\model-en-us\uuid'))) { throw 'voice parts missing: run .\android\setup-voice.ps1 once' }
+if (-not (Test-Path (Join-Path $voice 'assets\model-en-us\uuid'))) { throw 'voice parts missing: run node android/setup-voice.ts once' }
 $voiceJars = @(Get-ChildItem (Join-Path $voice 'jars') -Filter *.jar | ForEach-Object FullName)
 # androidx.webkit 1.12.1 (tools/webkit, fetched from Google's Maven: WebSettingsCompat, the X-Requested-With allow-list)
 $webkitJars = @(Join-Path $tools 'webkit\webkit-classes.jar')
