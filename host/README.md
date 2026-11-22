@@ -4,10 +4,10 @@ A small Windows tray app that runs the hub server (`npm start` equivalent), rest
 
 ## Build
 
-Run from the `hub` folder:
+Run from the repository root:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\host\build.ps1
+node host/build.ts
 ```
 
 Uses the .NET Framework `csc.exe` that ships with Windows; no installs. Output: `host/ClaudeHubHost.exe`.
