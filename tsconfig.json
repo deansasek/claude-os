@@ -15,5 +15,5 @@
     "noUncheckedIndexedAccess": false,
     "skipLibCheck": true
   },
-  "include": ["src", "android/*.ts", "host/*.ts", "scripts/*.ts"]
+  "include": ["src", "android/*.ts", "host/*.ts", "scripts/*.ts", "test/*.ts"]
 }

@@ -10,7 +10,8 @@
     "check:web": "node --disable-warning=ExperimentalWarning scripts/check-web-imports.ts",
     "setup": "node --disable-warning=ExperimentalWarning scripts/setup.ts",
     "start": "node --disable-warning=ExperimentalWarning src/main.server.ts",
-    "dev": "node --watch src/main.server.ts"
+    "dev": "node --watch src/main.server.ts",
+    "test": "node --test --disable-warning=ExperimentalWarning test/pure.test.ts"
   },
   "type": "module",
   "devDependencies": {
