@@ -279,6 +279,92 @@ function render(): void {
   $('calBody').innerHTML = loading && !events.length ? '<p class="cal-none">Reading the calendar…</p>' : body;
 }
 
+// ---------- add an event: checked here, then written to the Google calendar only after Yes ----------
+interface Draft { title: string; date: string; start: string; end: string; allDay: boolean; where: string }
+let draft: Draft = { title: '', date: '', start: '09:00', end: '09:30', allDay: false, where: '' };
+let addSending = false;
+
+function openAdd(): void {
+  draft = { title: '', date: keyOf(anchor), start: '09:00', end: '09:30', allDay: false, where: '' };
+  $('calAdd').hidden = false;
+  backToForm();
+}
+
+function closeAdd(): void { $('calAdd').hidden = true; }
+
+function renderAdd(note: string): void {
+  $('calAddTitleV').textContent = draft.title || 'Tap to type';
+  $('calAddDateV').textContent = dayFmt.format(fromKey(draft.date));
+  $('calAddAllDayV').textContent = draft.allDay ? 'Yes' : 'No';
+  $('calAddStart').hidden = draft.allDay;
+  $('calAddEnd').hidden = draft.allDay;
+  $('calAddStartV').textContent = draft.start;
+  $('calAddEndV').textContent = draft.end;
+  $('calAddWhereV').textContent = draft.where || 'Optional';
+  $('calAddMsg').hidden = !note;
+  $('calAddMsg').textContent = note;
+}
+
+function editDraft(field: 'title' | 'date' | 'start' | 'end' | 'where'): void {
+  const placeholder = { title: 'Dentist', date: '2026-11-24', start: '09:00', end: '09:30', where: 'Main St' }[field];
+  Keyboard.open({ value: draft[field], placeholder, done: 'Done', max: field === 'where' ? 200 : 120,
+    onDone: v => { draft[field] = v.trim(); renderAdd(''); } });
+}
+
+/** The draft as a start and an end in ms, or why it is not ready. */
+function draftEvent(): { ok: true; start: number; end: number } | { ok: false; error: string } {
+  if (!draft.title) return { ok: false, error: 'Give the event a name.' };
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(draft.date);
+  if (!d) return { ok: false, error: 'The day should look like 2026-11-24.' };
+  const day = new Date(+d[1], +d[2] - 1, +d[3]);
+  if (draft.allDay) return { ok: true, start: day.getTime(), end: addDays(day, 1).getTime() };
+  const s = /^(\d{1,2}):(\d{2})$/.exec(draft.start), e = /^(\d{1,2}):(\d{2})$/.exec(draft.end);
+  const clock = (m: RegExpExecArray | null): boolean => !!m && +m[1] < 24 && +m[2] < 60;
+  if (!clock(s) || !clock(e)) return { ok: false, error: 'The times should look like 09:00.' };
+  const at = (m: RegExpExecArray): number => new Date(day.getFullYear(), day.getMonth(), day.getDate(), +m[1], +m[2]).getTime();
+  const start = at(s!), end = at(e!);
+  if (end <= start) return { ok: false, error: 'The end must be after the start.' };
+  return { ok: true, start, end };
+}
+
+function review(): void {
+  const r = draftEvent();
+  if (!r.ok) { renderAdd(r.error); return; }
+  const day = dayFmt.format(fromKey(draft.date));
+  const when = draft.allDay ? `all day on ${day}` : `${day}, ${timeFmt.format(new Date(r.start))} to ${timeFmt.format(new Date(r.end))}`;
+  $('calAddSummary').textContent = `“${draft.title}”, ${when}${draft.where ? `, at ${draft.where}` : ''}.`;
+  $('calAddForm').hidden = true;
+  $('calAddConfirm').hidden = false;
+}
+
+function backToForm(): void {
+  $('calAddForm').hidden = false;
+  $('calAddConfirm').hidden = true;
+  renderAdd('');
+}
+
+/** Writes the event, only after Yes. The PC checks it again and creates it through the connector. */
+async function addEvent(): Promise<void> {
+  if (addSending) return;
+  const r = draftEvent();
+  if (!r.ok) { backToForm(); renderAdd(r.error); return; }
+  addSending = true;
+  let answer: { status?: string; message?: string; error?: string } | null = null;
+  try {
+    answer = await postJson<{ status?: string; message?: string; error?: string }>(`${API}/add`,
+      { title: draft.title, start: r.start, end: r.end, allDay: draft.allDay, location: draft.where });
+  } catch { answer = null; }
+  addSending = false;
+  if (answer?.status === 'ok') {
+    closeAdd();
+    msg = answer.message ?? 'Added.';
+    await load(true);
+  } else {
+    backToForm();
+    renderAdd(answer?.error ?? 'Couldn’t add it. Try again in a moment.');
+  }
+}
+
 // ---------- settings (Settings > Apps > Calendar) ----------
 function settingRows(): SettingRow[] {
   const s = status;
@@ -330,6 +416,17 @@ const app: HubApp = {
     $('calPrev').addEventListener('click', () => step(-1));
     $('calNext').addEventListener('click', () => step(1));
     $('calToday').addEventListener('click', goToday);
+    $('calAddBtn').addEventListener('click', openAdd);
+    $('calAddCancel').addEventListener('click', closeAdd);
+    $('calAddTitle').addEventListener('click', () => editDraft('title'));
+    $('calAddDate').addEventListener('click', () => editDraft('date'));
+    $('calAddAllDay').addEventListener('click', () => { draft.allDay = !draft.allDay; renderAdd(''); });
+    $('calAddStart').addEventListener('click', () => editDraft('start'));
+    $('calAddEnd').addEventListener('click', () => editDraft('end'));
+    $('calAddWhere').addEventListener('click', () => editDraft('where'));
+    $('calAddReview').addEventListener('click', review);
+    $('calAddNo').addEventListener('click', backToForm);
+    $('calAddYes').addEventListener('click', () => void addEvent());
     for (const v of ['day', 'week', 'month', 'year'] as View[]) $(`calV-${v}`).addEventListener('click', () => setView(v));
     // a day, a week's header, a month cell, or a month name in the Year view
     $('calBody').addEventListener('click', e => {
