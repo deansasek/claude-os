@@ -1,4 +1,4 @@
-// Photos on the PC: hub/photos/YYYY-MM-DD/<id>.jpg, and nothing else is ever written there.
+// Photos on the PC: photos/YYYY-MM-DD/<id>.jpg under the repository root, and nothing else is ever written there.
 // Ids are short safe tokens made by the tablet (or the mock); anything else is refused, so a
 // name can never reach outside its day folder.
 import fs from 'node:fs';

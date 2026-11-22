@@ -57,4 +57,4 @@ The only allowed exception is the deliberate recovery path to Android Settings (
 ## Facts to keep
 
 - ClaudeOS is the tablet's **device owner** (`hub.kiosk/.AdminReceiver`) and runs in lock task mode. Don't change the Android package id `hub.kiosk`: device owner is tied to it.
-- The project folder is still `Claude Home` and the hub server runs from `` under `host/ClaudeHubHost.exe`. Restart the server with `node host/hubctl.ts restart`.
+- The project folder is still `Claude Home` and the hub server runs from the repository root under `host/ClaudeHubHost.exe`. Restart the server with `node host/hubctl.ts restart`.

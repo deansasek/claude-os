@@ -30,7 +30,7 @@ Created with defaults if missing. Runs the same command as the live server.
 |---|---|
 | `nodePath` | Path to node.exe. Empty = find `node.exe` on PATH. |
 | `args` | Arguments passed to node. Default runs `src\main.server.ts --port 8000 ...`; the host and cast device come from `config.json`. |
-| `workingDir` | Child working directory. Empty = the hub folder. |
+| `workingDir` | Child working directory. Empty = the repository root. |
 | `apiPort` | Control API port on 127.0.0.1. Default 47811. |
 | `autostart` | Start the server when the tray app launches. |
 | `cattPath` | Optional path to `catt.exe`, appended as `--catt <path>` only when set. Empty by default (the server then uses `catt` from PATH). |
@@ -76,7 +76,7 @@ This is separate from the older Claude app PIN in `.hub-pin` (read by `src\apps\
 
 ### If you forget the ClaudeOS PIN
 
-Run this on the PC from the `hub` folder (the hub must be running, since the tablet checks the PIN with it):
+Run this on the PC from the repository root (the hub must be running, since the tablet checks the PIN with it):
 
 ```powershell
 Remove-Item -LiteralPath .\claudeos-pin.json -Force
