@@ -246,6 +246,33 @@ public class Bridge {
     } catch (Exception e) { return err(e.toString()); }
   }
 
+  // ---------- Google account on the tablet: the names only (never a token); sign-in opens Google's own screen ----------
+  /** The Google accounts added to this tablet, by name. */
+  @JavascriptInterface public String googleAccounts() {
+    if (!allowed) return DENIED;
+    try {
+      android.accounts.Account[] list = android.accounts.AccountManager.get(act).getAccountsByType("com.google");
+      JSONArray arr = new JSONArray();
+      for (android.accounts.Account a : list) {
+        JSONObject o = new JSONObject();
+        o.put("name", a.name);
+        arr.put(o);
+      }
+      JSONObject out = new JSONObject();
+      out.put("accounts", arr);
+      return out.toString();
+    } catch (Exception e) { return err(e.toString()); }
+  }
+
+  /** Starts Google's sign-in for a new account. The page explains it first (Settings → Google account). */
+  @JavascriptInterface public String addGoogleAccount() {
+    if (!allowed) return DENIED;
+    try {
+      android.accounts.AccountManager.get(act).addAccount("com.google", null, null, null, act, null, null);
+      return OK;
+    } catch (Exception e) { return err(e.toString()); }
+  }
+
   @JavascriptInterface public String keepAwake(boolean on) {
     if (!allowed) return DENIED;
     act.runOnUiThread(() -> {

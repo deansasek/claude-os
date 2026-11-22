@@ -33,9 +33,9 @@ import { handlePluginSeg, initPlugins, loadPlugins, paintPlugins } from './plugi
 import { initPinSettings, paintPinRow } from './pin.ts';
 
 type Section = 'profile' | 'usage' | 'yourclaude' | 'sessions' | 'plugins' | 'voice' | 'notifications'
-  | 'wifi' | 'bluetooth' | 'display' | 'appearance' | 'sound' | 'battery' | 'keyboard' | 'apps' | 'storage' | 'datetime'
+  | 'wifi' | 'google' | 'bluetooth' | 'display' | 'appearance' | 'sound' | 'battery' | 'keyboard' | 'apps' | 'storage' | 'datetime'
   | 'privacy' | 'wellbeing' | 'security' | 'about' | 'developer';
-const SECTIONS: Section[] = ['profile', 'usage', 'yourclaude', 'sessions', 'plugins', 'voice', 'notifications', 'wifi', 'bluetooth', 'display',
+const SECTIONS: Section[] = ['profile', 'usage', 'yourclaude', 'sessions', 'plugins', 'voice', 'notifications', 'wifi', 'google', 'bluetooth', 'display',
   'appearance', 'sound', 'battery', 'keyboard', 'apps', 'storage', 'datetime', 'privacy', 'wellbeing', 'security', 'about', 'developer'];
 /** Older names other apps may still use: the Desk mode page is Security now. */
 const ALIAS: Record<string, Section> = { desk: 'security', kiosk: 'security' };
@@ -156,6 +156,7 @@ function paint(): void {
     case 'voice': paintVoice(); break;
     case 'notifications': paintAlerts(); paintNotes(); break;
     case 'wifi': paintWifi(); paintNetworks(); break;
+    case 'google': paintGoogle(); break;
     case 'bluetooth': paintBluetooth(); break;
     case 'display': paintDisplay(); break;
     case 'appearance': paintAppearance(); break;
@@ -720,6 +721,23 @@ const wifiIcon = (bars: number, secure: boolean): string => svg(
   + (secure ? '<rect x="22" y="21" width="7" height="6" rx="1.2" fill="currentColor" stroke="none"/><path d="M23.5 21v-1.5a2 2 0 0 1 4 0V21" stroke-width="1.6"/>' : ''));
 
 let wifiNow: WifiState | null = null;
+/** The Google accounts on this tablet, by name. Read on each open of the section. */
+function paintGoogle(): void {
+  const list = $('stGoogleList');
+  let accounts: { name: string }[] = [];
+  try { accounts = device.googleAccounts().accounts ?? []; }
+  catch (e) { list.innerHTML = `<div class="st-empty">${esc((e as Error).message)}</div>`; return; }
+  list.innerHTML = accounts.length
+    ? accounts.map(a => `<div class="st-row"><div class="st-txt"><b>${esc(a.name)}</b><span>Signed in on this tablet</span></div></div>`).join('')
+    : '<div class="st-empty">No Google account is on this tablet yet.</div>';
+}
+
+/** Starts Google's sign-in. Google's own screen takes over the tablet until the user finishes it. */
+function openGoogleSignIn(): void {
+  try { device.addGoogleAccount(); $('stGoogleNote').textContent = 'Finish signing in, then come back to this page.'; }
+  catch (e) { $('stGoogleNote').textContent = `Couldn’t open sign-in: ${(e as Error).message}`; }
+}
+
 function paintWifi(): void {
   try {
     const w = wifiNow = device.wifi();
@@ -1211,6 +1229,8 @@ function mount(context: AppContext): void {
   $('stPhotoPick').addEventListener('click', () => void openPhotoSheet());
   $('stPhotoRemove').addEventListener('click', () => confirmSheet('Remove your photo?',
     'The photo is deleted from the PC. Your initials show instead, until you pick another.', 'Remove', () => void removePhoto()));
+  $('stGoogleAdd').addEventListener('click', () => confirmSheet('Add a Google account?',
+    'Google’s own sign-in screen opens next, and it covers ClaudeOS until you finish. Sign in, then come back to this page.', 'Continue', () => openGoogleSignIn()));
   $('stPhotoGrid').addEventListener('click', e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-photo]');
     if (b) void usePhoto(b.dataset.photo!);
