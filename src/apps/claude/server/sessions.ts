@@ -180,6 +180,11 @@ export function userText(content: any): string {
     .replace(/<command-name>([\s\S]*?)<\/command-name>/g, '$1').trim();
 }
 
+/** The key of the transcript cached for a session (its log's size and mtime). Call transcriptFor first. */
+export function transcriptVersion(id: string): string {
+  return transcripts.get(id)?.key ?? '';
+}
+
 export function transcriptFor(id: string): TranscriptEntry[] {
   const s = details.get(id);
   if (!s) return [];

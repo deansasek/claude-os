@@ -15,7 +15,7 @@ import type { Approval, ContextUse, HubEffort, HubPermission, HubTurn, ModelChoi
 import { projectFolder, rememberHubSession, SCRATCH } from './hubsessions.ts';
 import { logAction } from './guard.ts';
 import { askFor, describeTool } from './describe.ts';
-import { lookupSession, transcriptFor } from './sessions.ts';
+import { lookupSession, transcriptFor, transcriptVersion } from './sessions.ts';
 import { pinnedIn } from './state.ts';
 import { MAX_PER_ASK, readPhoto } from '../../photos/server/store.ts';
 import { profileForPrompt } from '../../settings/server/profile.ts';
@@ -214,7 +214,7 @@ export function listTurns(): HubTurn[] {
 }
 
 /** Can the Hub reply to this session right now, and if not, why not. */
-export function sessionView(id: string): SessionView {
+export function sessionView(id: string, have = ''): SessionView {
   const s = lookupSession(id);
   const running = runningFor(id);
   const latest = running || [...turns.values()].filter(t => t.sessionId === id).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
@@ -228,7 +228,13 @@ export function sessionView(id: string): SessionView {
   const { settings, context } = s ? settingsOf(id) : { settings: undefined, context: null };
   const pinned = new Set(pinnedIn(id));
   const transcript = s ? transcriptFor(id).map(e => (e.id && pinned.has(e.id) ? { ...e, pinned: true } : e)) : [];
-  return { session: s?.live ?? null, transcript, lastText: s?.lastText ?? null, canReply: reason == null, reason, turn: latest ? view(latest) : null, settings, context };
+  // the version covers the log and the pins (a pin changes the entries), so a client with the same version has the same text
+  const version = s ? `${id}|${transcriptVersion(id)}|${[...pinned].sort().join(',')}` : '';
+  const unchanged = !!have && have === version;
+  return {
+    session: s?.live ?? null, transcript: unchanged ? [] : transcript, version, unchanged,
+    lastText: s?.lastText ?? null, canReply: reason == null, reason, turn: latest ? view(latest) : null, settings, context,
+  };
 }
 
 interface LaunchOptions {
