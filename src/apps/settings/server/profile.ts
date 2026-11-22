@@ -3,7 +3,7 @@
 // except as part of a Claude session's prompt, sent to Claude the same way the session's own messages are.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { HUB, readJson, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import { isJpeg } from '../../photos/server/store.ts';
 import { NAME_MAX, NICK_MAX, PHOTO_MAX, ROLES, type Profile } from '../api.ts';
 
@@ -17,7 +17,7 @@ let state: Profile = load();
 let welcomed = readJson<{ welcomed?: unknown }>(FILE)?.welcomed === true;
 
 function load(): Profile {
-  const s = readJson<Partial<Profile>>(FILE) ?? {};
+  const s = readJsonOrSetAside<Partial<Profile>>(FILE) ?? {};   // a bad file is set aside, not saved over
   return {
     name: clean(s.name, NAME_MAX),
     nickname: clean(s.nickname, NICK_MAX),

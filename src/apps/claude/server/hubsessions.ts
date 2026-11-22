@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Project } from '../api.ts';
-import { HOME, HUB, PROJECTS, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { HOME, HUB, PROJECTS, readJson, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 
 const FILE = path.join(HUB, 'hub-sessions.json');
 export const SCRATCH = path.join(HUB, 'workspace');
@@ -16,7 +16,7 @@ const RECENT_MS = 60 * 864e5;
 
 export interface HubSessionRecord { id: string; cwd: string; title: string; createdAt: string }
 
-let records: HubSessionRecord[] = readJson<{ sessions: HubSessionRecord[] }>(FILE)?.sessions || [];
+let records: HubSessionRecord[] = readJsonOrSetAside<{ sessions: HubSessionRecord[] }>(FILE)?.sessions || [];   // a bad file is set aside
 
 export const hubSessionIds = (): Set<string> => new Set(records.map(r => r.id));
 export const hubSession = (id: string): HubSessionRecord | undefined => records.find(r => r.id === id);
