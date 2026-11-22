@@ -27,6 +27,7 @@ import { tabletServer } from './tablet.ts';
 import { haServer } from '../../home-assistant/server/tools.ts';
 import { listsServer } from '../../lists/server/tools.ts';
 import { calendarServer } from '../../calendar/server/tools.ts';
+import { weatherServer } from '../../weather/server/tools.ts';
 import { routinesServer } from '../../routines/server/tools.ts';
 
 const APPROVAL_MS = 3 * 60e3;
@@ -306,7 +307,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
       // The Home Assistant tools (home-assistant/server/tools.ts) and the tablet tools (timers, alarms, reminders,
       // notices: server/tablet.ts), the family lists (lists/server/tools.ts) and the read-only calendar
       // (calendar/server/tools.ts) join the same way, under the same approvals.
-      mcpServers: { ...(pluginOpts.mcpServers ?? {}), claudeos_browser: browserServer, claudeos_ha: haServer, claudeos_tablet: tabletServer, claudeos_lists: listsServer, claudeos_calendar: calendarServer, claudeos_routines: routinesServer },
+      mcpServers: { ...(pluginOpts.mcpServers ?? {}), claudeos_browser: browserServer, claudeos_ha: haServer, claudeos_tablet: tabletServer, claudeos_lists: listsServer, claudeos_calendar: calendarServer, claudeos_weather: weatherServer, claudeos_routines: routinesServer },
       abortController: t.abort,
       ...(append ? { systemPrompt: { type: 'preset' as const, preset: 'claude_code' as const, append } } : {}),
       canUseTool: (tool, input, { signal }) => new Promise(resolve => {
