@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { query, type McpServerStatus, type Options, type Query } from '@anthropic-ai/claude-agent-sdk';
-import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
+import { HUB, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import type { McpInput, PluginItem, PluginStatus, PluginsView } from '../api.ts';
 
 const STATE_FILE = path.join(HUB, 'plugins-state.json');
@@ -48,7 +48,8 @@ const isStr = (v: unknown): v is string => typeof v === 'string';
 function loadState(): State {
   const empty: State = { off: [], custom: [], folders: [] };
   try {
-    const o = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')) as Partial<Record<keyof State, unknown>>;
+    const o = readJsonOrSetAside<Partial<Record<keyof State, unknown>>>(STATE_FILE);
+    if (!o) return empty;
     const custom = Array.isArray(o.custom) ? o.custom.filter((c): c is CustomMcp => !!c && typeof c === 'object'
       && isStr((c as CustomMcp).name) && ['stdio', 'http', 'sse'].includes((c as CustomMcp).type)) : [];
     return {

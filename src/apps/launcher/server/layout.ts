@@ -7,7 +7,7 @@
 // each save): which Android apps are allowed stays on the tablet (Launcher.java), because lock task depends on it.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, SRC, writeJsonFile } from '../../../core/server/paths.ts';
+import { HUB, SRC, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import { cleanLayout, isScreen, type LauncherLayout, type LauncherLayoutResult, type LauncherScreen } from '../api.ts';
 import { manifest } from '../manifest.ts';
 
@@ -29,10 +29,11 @@ const clean = (screen: LauncherScreen, raw: unknown, allowed?: ReadonlySet<strin
 
 function load(): Store {
   try {
-    const raw = JSON.parse(fs.readFileSync(FILE, 'utf8').replace(/^﻿/, '')) as Record<string, unknown>;
+    const raw = readJsonOrSetAside<Record<string, unknown>>(FILE);
+    if (!raw) return {};
     const s: Store = {};
     for (const screen of ['tablet', 'hub'] as const) {
-      const l = clean(screen, raw?.[screen]);
+      const l = clean(screen, raw[screen]);
       if (l) s[screen] = l;
     }
     return s;
