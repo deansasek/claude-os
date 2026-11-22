@@ -214,6 +214,8 @@
     wifiNetworks: () => j(networks()),
     wifiConnect: (ssid: string) => { setTimeout(() => { s.ssid = ssid; if (!s.saved.includes(ssid)) s.saved.push(ssid); save(); }, 1500); return ok(); },
     wifiForget: (ssid: string) => { s.saved = s.saved.filter(x => x !== ssid); if (s.ssid === ssid) s.ssid = ''; save(); return ok(); },
+    googleAccounts: () => j({ accounts: (JSON.parse(localStorage.getItem('mock.google') || '[]') as string[]).map(name => ({ name })) }),
+    addGoogleAccount: () => { localStorage.setItem('mock.google', JSON.stringify(['you@gmail.com'])); return ok(); },
     wifiEnable: (on: boolean) => { s.wifiOn = on; if (!on) s.ssid = ''; else if (!s.ssid && s.saved[0]) s.ssid = s.saved[0]; save(); panelPaint(); return ok(); },
     brightness: () => j({ value: s.brightness }),
     setBrightness: (v: number) => { s.brightness = Math.max(.01, Math.min(1, v)); save(); paintVeil(); return ok(); },

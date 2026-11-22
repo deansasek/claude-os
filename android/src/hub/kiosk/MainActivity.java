@@ -402,6 +402,7 @@ public class MainActivity extends Activity {
           "android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION",
           "android.permission.CAMERA", "android.permission.RECORD_AUDIO",
           "android.permission.BLUETOOTH_CONNECT", "android.permission.NEARBY_WIFI_DEVICES", "android.permission.POST_NOTIFICATIONS",
+          "android.permission.GET_ACCOUNTS",
       };
       for (String p : perms) {
         try {

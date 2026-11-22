@@ -26,6 +26,7 @@
 
       <div class="st-group">Device</div>
       <button data-sec="wifi"><span class="ic" data-icon="wifi"></span>Network</button>
+      <button data-sec="google"><span class="ic" data-icon="profile"></span>Google account</button>
       <button data-sec="bluetooth"><span class="ic" data-icon="bluetooth"></span>Bluetooth</button>
       <button data-sec="display"><span class="ic" data-icon="display"></span>Display</button>
       <button data-sec="appearance"><span class="ic" data-icon="appearance"></span>Appearance</button>
@@ -217,6 +218,15 @@
       </div>
       <h3 class="label">Recent <button class="st-btn hit ghost small" id="stNotesClear">Clear all</button></h3>
       <div id="stNotes"></div>
+    </section>
+
+    <!-- Google account: the names of the accounts on this tablet. Sign-in is Google's own screen, opened from here. -->
+    <section class="st-sec" data-sec="google">
+      <h2>Google account</h2>
+      <p class="st-note">The calendar and email apps on this tablet read from the Google account added here. The account stays on this tablet.</p>
+      <div id="stGoogleList"><div class="st-empty">Checking the tablet…</div></div>
+      <button class="st-btn hit" id="stGoogleAdd">Add a Google account</button>
+      <p class="st-note" id="stGoogleNote"></p>
     </section>
 
     <!-- Network (Wi-Fi) -->
