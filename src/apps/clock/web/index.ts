@@ -1068,6 +1068,13 @@ const clockApi: ClockApi = {
     const at = nextFire(a);
     return at == null ? null : { when: whenWord(at), at: at - offset };
   },
+  /** Switch off only the alarms and reminders Claude set (they stay in the list). Returns how many were on. */
+  cancelClaudeAlarms(): number {
+    let n = 0;
+    for (const a of alarms) { if (a.claude && (a.on || a.snooze)) { n++; a.on = false; a.snooze = null; } }
+    if (n) { saveAlarms(); renderAlarms(); renderNextPill(); }
+    return n;
+  },
   /** Switch every alarm off (they stay in the list). Returns how many were on. */
   alarmsOff(): number {
     let n = 0;

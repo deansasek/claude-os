@@ -12,7 +12,7 @@ import { getClock, getRoutines } from '../../../core/web/voice-commands.ts';
 import { call } from './sessions/pin.ts';
 import { cur, getControl } from '../../browser/web/state.ts';
 
-type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine';
+type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms';
 interface Job { id: string; op: Op; ref?: string; text?: string; args?: Record<string, unknown> }
 interface NextReply { ok: boolean; job?: Job | null; error?: string }
 type Answer = { ok: boolean; data: string };
@@ -50,8 +50,25 @@ async function loop(): Promise<void> {
 
 function run(job: Job): Promise<Answer> | Answer {
   if (job.op === 'routine') return runRoutine(job.args || {});
+  if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms') return runClock(job.op);
   if (job.op === 'timer' || job.op === 'alarm' || job.op === 'reminder' || job.op === 'notify') return runTablet(job.op, job.args || {});
   return runBrowser(job);
+}
+
+/** The Clock's status and cancels for Claude: the Clock's own state, read or changed here on the tablet. */
+function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms'): Answer {
+  const clock = getClock();
+  if (!clock) return { ok: false, data: 'The tablet’s Clock isn’t ready. Try again in a moment.' };
+  if (op === 'cancel_timer') return { ok: true, data: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.' };
+  if (op === 'cancel_alarms') {
+    const n = clock.cancelClaudeAlarms();
+    return { ok: true, data: n ? `Switched off ${n} alarm${n === 1 ? '' : 's'} and reminder${n === 1 ? '' : 's'} that Claude set. Your own alarms are unchanged.` : 'Claude has no alarms or reminders on.' };
+  }
+  const left = clock.timerLeft();
+  const mins = left == null ? 0 : Math.ceil(left / 60e3);
+  const timer = left == null ? 'No timer is running.' : `A timer has ${mins} minute${mins === 1 ? '' : 's'} left.`;
+  const on = clock.active();
+  return { ok: true, data: `${timer} ${on ? `${on} timer or alarm${on === 1 ? '' : 's'} on.` : 'No timers or alarms are on.'}` };
 }
 
 /** "17:05" for the answer, as Claude gave it (24-hour). */
