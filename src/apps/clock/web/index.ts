@@ -1052,6 +1052,14 @@ const clockApi: ClockApi = {
   active(): number { return (timer.end || timer.left != null ? 1 : 0) + alarms.filter(a => a.on || a.snooze).length; },
   /** True if there was a timer to cancel. */
   cancelTimer(): boolean { const had = !!timer.end || timer.left != null; timerReset(); return had; },
+  pauseTimer(): boolean { if (!timer.end) return false; timerPause(); return true; },
+  resumeTimer(): boolean { if (timer.end || timer.left == null) return false; timerStart(); return true; },
+  nudgeTimer(minutes: number): boolean {
+    if (!timer.end && timer.left == null) return false;
+    const steps = Math.min(60, Math.abs(Math.round(minutes)));
+    for (let i = 0; i < steps; i++) timerNudge(minutes > 0 ? 1 : -1);
+    return true;
+  },
   /** ms left on a running (or paused) timer, null when none is set. */
   timerLeft(): number | null { return timer.end ? Math.max(0, timer.end - Date.now()) : timer.left; },
   /** Add (or switch on) an alarm; days as Date.getDay() values, [] = once. Returns when it next rings. */

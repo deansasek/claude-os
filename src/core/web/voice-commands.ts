@@ -32,7 +32,7 @@ import type { ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
-import { alarmWord } from './voice-alarm.ts';
+import { alarmWord, timerWord } from './voice-alarm.ts';
 import { pickItem } from '../../apps/lists/web/voice-match.ts';
 import { parseDuration, parseTime, parseDays, DAY_WORDS, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
@@ -41,6 +41,12 @@ export interface ClockApi {
   /** label: shown when it rings (Claude's set_timer); the Clock's own controls set none. */
   startTimer(ms: number, label?: string): void;
   cancelTimer(): boolean;
+  /** Pause a running timer. False when none runs. */
+  pauseTimer(): boolean;
+  /** Resume a paused timer. False when none is paused. */
+  resumeTimer(): boolean;
+  /** Add (positive) or take off (negative) whole minutes. False when no timer is set. */
+  nudgeTimer(minutes: number): boolean;
   timerLeft(): number | null;
   addAlarm(h: number, m: number, days: number[]): { when: string; at: number } | null;
   /** A new one-off alarm with a label (Claude's set_alarm and set_reminder); never changes an alarm already there.
@@ -242,6 +248,15 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (word === 'snooze') return clock.snoozeRinging() ? { say: 'Okay. Nine more minutes.', react: 'hop' } : { say: 'Snooze is for alarms. Say stop for the timer.' };
     if (word === 'all-off') { const n = clock.alarmsOff(); return { say: n ? `Okay, ${n === 1 ? 'your alarm is' : `all ${n} alarms are`} off.` : 'You don’t have any alarms on.', react: 'look' }; }
     if (word === 'one-alarm') return { say: 'Nothing is ringing. To switch them all off, say turn off all my alarms.' };
+  }
+  // timer: pause, resume, add or take off minutes (core/web/voice-alarm.ts)
+  const tw = timerWord(t);
+  if (tw && clock) {
+    if (tw.op === 'pause') return clock.pauseTimer() ? { say: 'Timer paused.', react: 'look' } : { say: 'There’s no timer running.' };
+    if (tw.op === 'resume') return clock.resumeTimer() ? { say: 'Timer resumed.', react: 'hop' } : { say: 'There’s no paused timer.' };
+    if (!clock.nudgeTimer(tw.minutes)) return { say: 'There’s no timer running.' };
+    const n = Math.abs(tw.minutes);
+    return { say: tw.minutes > 0 ? `Added ${n} minute${n === 1 ? '' : 's'}.` : `Took off ${n} minute${n === 1 ? '' : 's'}.`, react: 'hop' };
   }
   if (/^(?:cancel|stop|delete|clear|end|reset|kill|turn off)(?: the| my)? timer$/.test(t)) {
     if (!clock) return null;
