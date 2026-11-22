@@ -108,7 +108,7 @@ function paintSidebar(force = false): void {
 // ---------- the conversation ----------
 function paintLog(v: SessionView, active: HubTurn | null, force = false): void {
   const log = $('svLog');
-  const tail = active ? `${active.status}|${active.progress[active.progress.length - 1] || ''}` : '';
+  const tail = active ? `${active.status}|${active.progress[active.progress.length - 1] || ''}` : (v.turn?.status === 'error' ? 'error' : '');
   const end = v.transcript[v.transcript.length - 1];
   const key = `${v.transcript.length}|${end?.at}|${end?.text.length}|${tail}`;
   if (key === drawnLog && !force) return;
@@ -120,6 +120,9 @@ function paintLog(v: SessionView, active: HubTurn | null, force = false): void {
   if (active) {
     const said = active.status === 'approval' ? 'Waiting for your OK' : (active.progress[active.progress.length - 1] || 'Working');
     html += `<div class="m-working">${SPARK}<span>${esc(said)}…</span></div>`;
+  } else if (v.turn?.status === 'error') {
+    // the last reply did not finish: say so, until the next reply starts
+    html += `<div class="m-note">${esc(v.turn.error || 'That reply didn’t finish. Try again.')}</div>`;
   }
   const keepTop = log.scrollTop;
   log.innerHTML = `<div class="m-col">${html}</div>`;

@@ -206,6 +206,12 @@ const view = (t: Live): HubTurn => ({
 const runningFor = (sessionId: string) => [...turns.values()].find(t => t.sessionId === sessionId && (t.status === 'running' || t.status === 'approval'));
 /** Is a reply from the Hub running in this session right now? */
 export const hubTurnRunning = (sessionId: string): boolean => !!runningFor(sessionId);
+/** What the screen says when a reply did not finish. The raw SDK reason goes to the console, not the screen. */
+export function failedText(subtype?: string): string {
+  if (subtype === 'error_max_turns') return 'Claude ran out of steps before it finished. Ask it to carry on.';
+  return 'That reply didn’t finish. Try again.';
+}
+
 const step = (t: Live, line: string) => { t.progress.push(line); if (t.progress.length > 20) t.progress.shift(); };
 
 export function listTurns(): HubTurn[] {
@@ -357,17 +363,17 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
           }
         } else if (m.type === 'result') {
           if (m.subtype === 'success') { t.reply = String(m.result || t.reply || '').slice(0, 1500); if (t.status !== 'stopped') t.status = 'done'; }
-          else if (t.status !== 'stopped') { t.status = 'error'; t.error = m.subtype; }
+          else if (t.status !== 'stopped') { t.status = 'error'; t.error = failedText(m.subtype); console.log('turn ended:', m.subtype); }
         }
       }
       if (t.status === 'running') t.status = 'done';
     } catch (e) {
-      if (t.status !== 'stopped') { t.status = 'error'; t.error = String((e as Error).message || e).slice(0, 200); }
+      if (t.status !== 'stopped') { t.status = 'error'; t.error = failedText(); console.log('turn failed:', e); }
     } finally {
       t.finishedAt = Date.now(); t.approval = null; t.answer = null; t.q = null;
       endInput();
       if (!t.sessionId) gotId('');
-      step(t, t.status === 'done' ? 'Finished' : t.status === 'stopped' ? 'Stopped' : `Failed: ${t.error}`);
+      step(t, t.status === 'done' ? 'Finished' : t.status === 'stopped' ? 'Stopped' : 'Failed');
       logAction('hub', `turn-${t.status}`, { session: t.sessionId, turn: t.id });
     }
   })();
