@@ -49,6 +49,19 @@ function take(r: ListsResult | null | undefined): void {
   if (!lists.some(l => l.id === current) && lists.length) current = lists[0].id;
 }
 
+// What the family often buys and is not on Shopping now (history.ts): tap to add it.
+let suggest: string[] = [];
+async function loadSuggest(): Promise<void> {
+  if (current !== 'shopping') { suggest = []; paintSuggest(); return; }
+  try { suggest = (await getJson<{ items: string[] }>(`${API}/suggest?list=shopping`)).items ?? []; } catch { suggest = []; }
+  paintSuggest();
+}
+function paintSuggest(): void {
+  const box = $('lsSuggest');
+  box.hidden = !suggest.length;
+  box.innerHTML = suggest.map(t => `<button class="ls-hbtn" data-sug="${esc(t)}">+ ${esc(t)}</button>`).join('');
+}
+
 async function refresh(): Promise<void> {
   const g = gen;
   try {
@@ -58,6 +71,7 @@ async function refresh(): Promise<void> {
     note = r.ok ? '' : r.error ?? '';
   } catch { if (g === gen) note = loaded ? '' : 'Couldn’t reach the PC. Trying again…'; }
   render();
+  void loadSuggest();
 }
 
 async function send(path: string, body: Record<string, unknown>): Promise<ListsResult | null> {
@@ -321,6 +335,13 @@ const app: HubApp = {
     $('lsClear').addEventListener('click', clearTicked);
     $('lsDelete').addEventListener('click', askDelete);
     $('lsUndoBtn').addEventListener('click', () => { void runUndo(); });
+    $('lsSuggest').addEventListener('click', ev => {
+      const t = (ev.target as Element).closest<HTMLElement>('[data-sug]')?.dataset.sug;
+      if (!t) return;
+      suggest = suggest.filter(x => x !== t);
+      paintSuggest();
+      void send('add', { list: 'shopping', text: t }).then(() => loadSuggest());
+    });
     $('lsSheet').addEventListener('click', onSheetClick);
     onBack(() => {
       if (!ctx.isVisible() || Keyboard.isOpen || !sheetOpen) return false;
