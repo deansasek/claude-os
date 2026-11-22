@@ -33,11 +33,22 @@ import { photoIdsFrom } from '../../photos/server/store.ts';
 
 const store = new Store();
 
-function usage(): Usage {
+/** How long a usage snapshot is reused. Usage polls come every few seconds from several screens. */
+const USAGE_TTL_MS = 1500;
+let usageMemo: { at: number; value: Usage } | null = null;
+
+/**
+ * The usage snapshot. It scans the session logs and the credentials file, so it is reused for
+ * USAGE_TTL_MS. Pass fresh = true when the caller needs the current session state (a reply does).
+ */
+function usage(fresh = false): Usage {
+  if (!fresh && usageMemo && Date.now() - usageMemo.at < USAGE_TTL_MS) return usageMemo.value;
   const { tokensBySession, ...s } = store.summary();
   let sessions: Usage['sessions'] = [];
   try { sessions = liveSessions(tokensBySession); } catch (e) { console.log('sessions error:', e); }
-  return { ...s, plan: readPlan(), limits: { ...LIMITS }, sessions, turns: listTurns() };
+  const value: Usage = { ...s, plan: readPlan(), limits: { ...LIMITS }, sessions, turns: listTurns() };
+  usageMemo = { at: Date.now(), value };
+  return value;
 }
 
 const locked = { ok: false, error: 'locked_out' } as const;   // token missing or expired: unlock again
@@ -48,13 +59,13 @@ const photoIdsOf = (body: Record<string, unknown>): string[] => photoIdsFrom(bod
 const app: ServerApp = {
   id: manifest.id,
   routes: [
-    { method: 'GET', path: 'usage', handle: usage },
+    { method: 'GET', path: 'usage', handle: () => usage() },
     { method: 'GET', path: 'session', handle: ({ query }) => { usage(); return sessionView(query.get('id') || ''); } },
     { method: 'POST', path: 'unlock', handle: ({ body, from }) => unlock(body.pin, from) },
     {
       method: 'POST', path: 'reply', handle: ({ body, from }) => {
         if (!checkToken(body.token)) return locked;
-        usage();   // refresh what we know about sessions before checking this one
+        usage(true);   // refresh what we know about sessions before checking this one
         return startTurn(String(body.id || ''), String(body.text || ''), from, settingsFrom(body), photoIdsOf(body));
       },
     },
@@ -103,7 +114,7 @@ const app: ServerApp = {
       method: 'POST', path: 'new', handle: async ({ body, from }) => {
         if (!checkToken(body.token)) return locked;
         const r = await startNew(String(body.project || ''), String(body.text || ''), from, body.voice === true, settingsFrom(body), photoIdsOf(body));
-        usage();   // pick up the new session's log straight away
+        usage(true);   // pick up the new session's log straight away
         return r;
       },
     },
