@@ -68,6 +68,8 @@ node android/build.ts
 
 `setup-tools.ts` accepts the Android SDK licence for you. Re-running any step is safe: finished parts are skipped.
 
+The tablet loads the hub from the address in `config.json`: `host` and `port`. Set `host` to this PC's address on your home network before you build (for example `192.168.1.20`). `0.0.0.0` won't work there, and the build stops with a message if it's set.
+
 To install the APK on a tablet connected over USB or Wi-Fi debugging:
 
 ```

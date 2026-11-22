@@ -51,11 +51,12 @@ import java.util.Locale;
  * - If the PC can't be reached it shows a small "looking for your PC" screen and keeps retrying.
  *
  * The server address can be changed from the PC:
- *   adb shell am start -n hub.kiosk/.MainActivity --es url http://192.168.1.20:8000/?device=tablet
+ *   adb shell am start -n hub.kiosk/.MainActivity --es url http://<PC address>:8000/?device=tablet
  */
 public class MainActivity extends Activity {
   static final String TAG = "HubKiosk";
-  static final String DEFAULT_URL = "http://192.168.1.20:8000/?device=tablet";
+  // the hub's address, from config.json (HubConfig is written by android/build.ts)
+  static final String DEFAULT_URL = HubConfig.DEFAULT_URL;
 
   private static volatile MainActivity live;   // for Guard, in the same process
   private WebView web;
