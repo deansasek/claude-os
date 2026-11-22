@@ -15,7 +15,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { query, type McpServerStatus, type Options, type Query } from '@anthropic-ai/claude-agent-sdk';
-import { HUB } from '../../../core/server/paths.ts';
+import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import type { McpInput, PluginItem, PluginStatus, PluginsView } from '../api.ts';
 
 const STATE_FILE = path.join(HUB, 'plugins-state.json');
@@ -60,7 +60,7 @@ function loadState(): State {
 }
 
 let state: State = loadState();
-function saveState(): void { fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2)); }
+function saveState(): void { writeJsonFile(STATE_FILE, state, { indent: 2 }); }
 
 // ---------- small helpers ----------
 /** Text of a file, without a byte-order mark (some editors write one). */

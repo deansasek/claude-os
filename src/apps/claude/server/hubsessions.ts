@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Project } from '../api.ts';
-import { HOME, HUB, PROJECTS, readJson } from '../../../core/server/paths.ts';
+import { HOME, HUB, PROJECTS, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 
 const FILE = path.join(HUB, 'hub-sessions.json');
 export const SCRATCH = path.join(HUB, 'workspace');
@@ -23,14 +23,14 @@ export const hubSession = (id: string): HubSessionRecord | undefined => records.
 
 export function rememberHubSession(r: HubSessionRecord): void {
   records = [r, ...records.filter(x => x.id !== r.id)].slice(0, 50);
-  fs.writeFileSync(FILE, JSON.stringify({ sessions: records }, null, 2));
+  writeJsonFile(FILE, { sessions: records }, { indent: 2 });
 }
 
 /** Forget a session the Hub started (after it is deleted). */
 export function forgetHubSession(id: string): void {
   if (!records.some(r => r.id === id)) return;
   records = records.filter(r => r.id !== id);
-  fs.writeFileSync(FILE, JSON.stringify({ sessions: records }, null, 2));
+  writeJsonFile(FILE, { sessions: records }, { indent: 2 });
 }
 
 // ---------- folders to start in ----------

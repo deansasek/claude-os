@@ -3,7 +3,7 @@
 // except as part of a Claude session's prompt, sent to Claude the same way the session's own messages are.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, readJson } from '../../../core/server/paths.ts';
+import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import { isJpeg } from '../../photos/server/store.ts';
 import { NAME_MAX, NICK_MAX, PHOTO_MAX, ROLES, type Profile } from '../api.ts';
 
@@ -26,7 +26,7 @@ function load(): Profile {
   };
 }
 
-const save = (): void => fs.writeFileSync(FILE, JSON.stringify({ ...state, welcomed }, null, 2));
+const save = (): void => writeJsonFile(FILE, { ...state, welcomed }, { indent: 2 });
 
 export const getProfile = (): Profile => ({ ...state });
 
