@@ -51,12 +51,27 @@ function serveStatic(req: http.IncomingMessage, res: http.ServerResponse, file: 
   res.end(entry.body);
 }
 
-function readBody(req: http.IncomingMessage, max = 8192): Promise<any> {
+/** A JSON body's size limit: a browser result can carry a whole screenshot (a base64 picture), so this is generous. */
+export const JSON_BODY_MAX = 8 * 1024 * 1024;
+
+/**
+ * Read a JSON body. Resolves null when it is over `max` (the rest is read and dropped, so the connection stays
+ * usable and the caller can answer 413); {} when it is missing or not JSON.
+ */
+export function readBody(req: http.IncomingMessage, max = JSON_BODY_MAX): Promise<any | null> {
   return new Promise(resolve => {
     let s = '';
-    req.on('data', c => { s += c; if (s.length > max) req.destroy(); });
-    req.on('end', () => { try { resolve(JSON.parse(s || '{}')); } catch { resolve({}); } });
-    req.on('error', () => resolve({}));
+    let big = false;
+    req.on('data', (c: Buffer | string) => {
+      if (big) return;
+      s += c;
+      if (s.length > max) { big = true; s = ''; }
+    });
+    req.on('end', () => {
+      if (big) return resolve(null);
+      try { resolve(JSON.parse(s || '{}')); } catch { resolve({}); }
+    });
+    req.on('error', () => resolve(big ? null : {}));
   });
 }
 
@@ -187,7 +202,11 @@ export function startServer(apps: ServerApp[]): void {
         if (req.method === 'POST' && route.rawMax) {
           raw = await readRaw(req, route.rawMax);
           if (!raw) return send(res, 413, 'too large', 'text/plain');
-        } else if (req.method === 'POST') body = await readBody(req);
+        } else if (req.method === 'POST') {
+          const json = await readBody(req);
+          if (json === null) return send(res, 413, 'too large', 'text/plain');
+          body = json;
+        }
         // a caller that disconnects before the answer aborts the signal (a long poll must then stop waiting)
         const gone = new AbortController();
         res.on('close', () => { if (!res.writableFinished) gone.abort(); });
