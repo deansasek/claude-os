@@ -79,7 +79,8 @@ async function doStep(s: Step, deadline: number): Promise<string> {
   switch (s.kind) {
     case 'say': return s.text;
     case 'weather': return (await until(weatherToday(), deadline, null))?.say ?? 'The weather didn’t come in time.';
-    case 'calendar': return (await until(calendarCommand(), deadline, null))?.say ?? 'The calendar didn’t answer in time.';
+    // cachedOnly: a timed routine never starts a Claude read of the connector (only the Calendar app and voice do)
+    case 'calendar': return (await until(calendarCommand('today', true), deadline, null))?.say ?? 'The calendar didn’t answer in time.';
     case 'scene': {
       const r = await until(postJson<HaResult & { name?: string }>('/api/home-assistant/scene', { entity_id: s.entity_id }), deadline, null);
       if (r?.ok) return '';   // the lights changing say it
