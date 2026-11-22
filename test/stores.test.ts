@@ -9,6 +9,9 @@ const list = (items: { id: string; text: string; done?: boolean }[]) => ({
   items: items.map(i => ({ id: i.id, text: i.text, done: !!i.done, at: '2026-11-22T10:00:00.000Z' })),
 });
 
+// findItem returns an item, undefined, or 'many': the id of an item, or the value itself
+const idOf = (x: unknown) => (x && typeof x === 'object' ? (x as { id: string }).id : x);
+
 test('itemText trims and refuses empty or very long text', () => {
   assert.deepEqual(itemText('  milk  '), { text: 'milk' });
   assert.ok('error' in itemText('   '));
@@ -18,15 +21,15 @@ test('itemText trims and refuses empty or very long text', () => {
 
 test('findItem matches by id, then exact text, then a single partial match', () => {
   const l = list([{ id: 'i1', text: 'Oat milk' }, { id: 'i2', text: 'Milk' }, { id: 'i3', text: 'Bread' }]);
-  assert.equal(findItem(l, { id: 'i3' })?.text, 'Bread');
-  assert.equal(findItem(l, { text: 'milk' })?.id, 'i2');        // exact beats partial
-  assert.equal(findItem(l, { text: 'bread' })?.id, 'i3');
+  assert.equal((findItem(l, { id: 'i3' }) as { text: string }).text, 'Bread');
+  assert.equal(idOf(findItem(l, { text: 'milk' })), 'i2');        // exact beats partial
+  assert.equal(idOf(findItem(l, { text: 'bread' })), 'i3');
   assert.equal(findItem(l, { text: 'cheese' }), undefined);
 });
 
 test('findItem prefers the one unticked match, and reports many when it cannot choose', () => {
   const l = list([{ id: 'a', text: 'Apple juice', done: true }, { id: 'b', text: 'Apple crumble' }]);
-  assert.equal(findItem(l, { text: 'apple' })?.id, 'b');
+  assert.equal(idOf(findItem(l, { text: 'apple' })), 'b');
   const two = list([{ id: 'c', text: 'Apple pie' }, { id: 'd', text: 'Apple tart' }]);
   assert.equal(findItem(two, { text: 'apple' }), 'many');
 });
