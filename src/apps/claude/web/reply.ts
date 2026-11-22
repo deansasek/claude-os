@@ -219,8 +219,11 @@ async function refresh(): Promise<void> {
   const id = openId;
   if (mode !== 'session' || !id) return;
   let v: SessionView;
-  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`); } catch { return; }
+  // send the version we hold: the Hub answers "unchanged" with no transcript when nothing changed
+  const have = view?.version ?? '';
+  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}&have=${encodeURIComponent(have)}`); } catch { return; }
   if (mode !== 'session' || openId !== id) return;   // switched away while it loaded
+  if (v.unchanged && view) v = { ...v, transcript: view.transcript };
   view = v;
   render();
 }

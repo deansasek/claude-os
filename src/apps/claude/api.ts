@@ -132,6 +132,8 @@ export interface TranscriptEntry {
 export interface SessionView {
   session: LiveSession | null;
   transcript: TranscriptEntry[];   // the latest part of the conversation, oldest first
+  version?: string;                // a key for this transcript and its pins; send it back as `have` to skip unchanged text
+  unchanged?: boolean;             // true: the transcript did not change since `have`, so `transcript` is empty
   lastText: string | null;
   canReply: boolean;
   reason: ReplyBlock | null;

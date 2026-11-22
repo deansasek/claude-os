@@ -60,7 +60,7 @@ const app: ServerApp = {
   id: manifest.id,
   routes: [
     { method: 'GET', path: 'usage', handle: () => usage() },
-    { method: 'GET', path: 'session', handle: ({ query }) => { usage(); return sessionView(query.get('id') || ''); } },
+    { method: 'GET', path: 'session', handle: ({ query }) => { usage(); return sessionView(query.get('id') || '', query.get('have') || ''); } },
     { method: 'POST', path: 'unlock', handle: ({ body, from }) => unlock(body.pin, from) },
     {
       method: 'POST', path: 'reply', handle: ({ body, from }) => {
