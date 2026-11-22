@@ -1,0 +1,8 @@
+// Temperature questions by voice: "how cold is it", "do I need a jacket", "is it hot outside". Pure, so Node tests load it.
+// Returns the day they are about (0 today, 1 tomorrow), or null when the phrase is not a temperature question.
+
+export function temperatureDay(t: string): 0 | 1 | null {
+  if (/^(?:what(?:'s| is) the temperature tomorrow|how (?:cold|hot|warm) (?:is it|will it be|is it going to be) tomorrow|is it going to be (?:hot|cold|warm|chilly) tomorrow|do i need a (?:jacket|coat|sweater|hoodie) tomorrow)$/.test(t)) return 1;
+  if (/^(?:what(?:'s| is) the temperature(?: today| now| right now| outside)?|how (?:cold|hot|warm) is it(?: today| now| right now| outside)?|is it (?:hot|cold|warm|chilly) (?:outside|today|right now)?|how warm is it|do i need a (?:jacket|coat|sweater|hoodie)(?: today| now| outside)?)$/.test(t)) return 0;
+  return null;
+}
