@@ -7,7 +7,7 @@
 // Being on the dashboard is not being allowed for Claude: that is only the allowlist in .ha-config.json (ha.ts).
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
+import { HUB, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import {
   ENTITY_ID, MAX_DEVICE_NAME, MAX_HOME_SCENES, MAX_ROOM_NAME, MAX_ROOMS, ROOM_ID, isDeniedDomain, isReadOnlyDomain, isSceneDomain, isShownDomain,
   type HaLayout, type HaRoom,
@@ -97,7 +97,8 @@ export function cleanLayout(raw: unknown, known?: Set<string>): HaLayout | null 
 
 function load(): Store {
   try {
-    const raw = JSON.parse(fs.readFileSync(FILE, 'utf8').replace(/^﻿/, '')) as Record<string, unknown>;
+    const raw = readJsonOrSetAside<Record<string, unknown>>(FILE);
+    if (!raw) return {};
     const s: Store = {};
     const demo = cleanLayout(raw.demo), real = cleanLayout(raw.real);
     if (demo) s.demo = demo;

@@ -44,6 +44,21 @@ export function readJson<T>(file: string): T | null {
   }
 }
 
+/**
+ * Read a JSON file that the hub may save over. A missing file gives null. A file that is there but can't be read is
+ * moved aside as <file>.corrupt (so the next save doesn't overwrite what was in it) and gives null.
+ */
+export function readJsonOrSetAside<T>(file: string): T | null {
+  if (!fs.existsSync(file)) return null;
+  const v = readJson<T>(file);
+  if (v !== null) return v;
+  try {
+    fs.renameSync(file, `${file}.corrupt`);
+    console.log(`${path.basename(file)} could not be read; it was kept as ${path.basename(file)}.corrupt`);
+  } catch { /* nothing more to do */ }
+  return null;
+}
+
 /** Write JSON through a .tmp file, so a crash never leaves a half-written file. Throws on failure, after removing the .tmp. */
 export function writeJsonFile(file: string, data: unknown, opts: { indent: number; mode?: number }): void {
   const tmp = `${file}.tmp`;
