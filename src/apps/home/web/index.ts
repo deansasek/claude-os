@@ -304,6 +304,25 @@ async function loadCalendar(force = false): Promise<void> {
   paintCalendar();
 }
 
+// The Shopping tile: how many items are still to get, and the first two of them.
+let lists: { items: { done: boolean; text: string }[] } | null = null, listsFailed = false;
+async function loadLists(): Promise<void> {
+  try {
+    const r = await getJson<{ lists: { id: string; items: { done: boolean; text: string }[] }[] }>('/api/lists/lists');
+    lists = r.lists.find(l => l.id === 'shopping') ?? null;
+    listsFailed = false;
+  } catch { listsFailed = true; }
+  paintLists();
+}
+function paintLists(): void {
+  const val = $('hmLsVal'), sub = $('hmLsSub');
+  if (!lists) { val.className = 'quiet'; val.textContent = '–'; sub.textContent = listsFailed ? 'Can’t reach the lists' : 'Loading…'; return; }
+  const open = lists.items.filter(i => !i.done);
+  val.className = 'num';
+  val.innerHTML = `${open.length}<small>to get</small>`;
+  sub.textContent = open.length ? open.slice(0, 2).map(i => i.text).join(', ') + (open.length > 2 ? '…' : '') : 'Nothing to get';
+}
+
 const calLine = (e: CalEvent): string => (e.allDay ? `${e.title} (all day)` : `${hm(new Date(e.start))} ${e.title}`);
 
 function paintCalendar(): void {
@@ -652,7 +671,7 @@ function refresh(): void {
 // the live parts, every 30 seconds while Home is on screen only
 let pollT: number | undefined;
 function poll(): void {
-  if (ctx.isVisible() && !document.hidden) { void loadUsage(); void loadWeather(); void loadCalendar(); paintDevice(); }
+  if (ctx.isVisible() && !document.hidden) { void loadUsage(); void loadWeather(); void loadCalendar(); void loadLists(); paintDevice(); }
 }
 function onShow(): void {
   refresh();
