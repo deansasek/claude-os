@@ -424,6 +424,18 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
       return { say: `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`, react: 'hop' };
     }
+    if (c.op === 'addMany') {
+      // one add per item, the same route the Lists app uses; the reply says what went on
+      let ok = 0;
+      for (const text of c.texts) {
+        const r = await postJson<ListsResult>('/api/lists/add', { list: c.list, text });
+        if (r?.ok) ok++;
+      }
+      if (!ok) return { say: `I couldn’t add those to ${name}.` };
+      const words = c.texts.map(t => t.replace(/^./, ch => ch.toLowerCase()));
+      const said = words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+      return { say: ok === words.length ? `Added ${said} to ${name}.` : `Added ${ok} of ${words.length} to ${name}.`, react: 'hop' };
+    }
     if (c.op === 'clear') {
       const r = await postJson<ListsResult>('/api/lists/clear-done', { list: c.list });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t clear ${name}.` };

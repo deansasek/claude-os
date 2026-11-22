@@ -6,7 +6,8 @@
 /** A list id: "shopping", "todo", or a list the family made (its id, as the Lists app keeps it). */
 export type VoiceList = string;
 export type ListCommand = { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string }
-  | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList };
+  | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList }
+  | { op: 'addMany'; list: VoiceList; texts: string[] };
 
 /** Find one item by its words: the exact text, or the only partial match. Never a guess between several.
  *  open: only items not yet ticked. ambiguous: more than one partial match and no exact one. */
@@ -35,15 +36,22 @@ function which(w: string, custom: { id: string; name: string }[]): VoiceList {
 /** The command in a phrase, or null. The item keeps the words as said (minus a leading "a", "some"...).
  *  custom: the family's own lists (id and name); their names are heard as list names too. */
 export function matchList(raw: string, custom: { id: string; name: string }[] = []): ListCommand | null {
-  const t = raw.toLowerCase().replace(/[’]/g, "'").replace(/[^a-z0-9' -]+/g, ' ').replace(/\s+/g, ' ').trim()
+  // commas become the word "comma" before the text is cleaned (the cleaning would drop them), so a list of items keeps its breaks
+  const hadComma = raw.includes(',');
+  const t = raw.replace(/\s*,[\s,]*/g, ' comma ').toLowerCase().replace(/[’]/g, "'").replace(/[^a-z0-9' -]+/g, ' ').replace(/\s+/g, ' ').trim()
     .replace(POLITE, '').trim().replace(POLITE, '').trim();
   const names = custom.map(c => norm(c.name)).filter(Boolean).map(esc);
   const LIST = `(?:the |my |our )?(${['shopping', 'grocery', 'groceries', 'to ?do', 'to-do', 'todo', ...names].join('|')}) list`;
   let m = t.match(new RegExp(`^(?:add|put|stick|write) (.+?) (?:to|on|onto|in|into) ${LIST}$`));
   if (m) {
-    const text = m[1].replace(/^(?:a|an|some|more) (?=\S)/, '').trim();
-    if (!text || text.length > 80 || /^(it|that|this|them)$/.test(text)) return null;
-    return { op: 'add', list: which(m[2], custom), text: text.charAt(0).toUpperCase() + text.slice(1) };
+    const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+    const clean = (s: string): string => s.replace(/^(?:a|an|some|more) (?=\S)/, '').trim();
+    // several items only when the words have a comma: "milk, eggs and bread". "milk and eggs" stays one item (and so does "mac and cheese").
+    const parts = hadComma ? m[1].split(/\s+comma\s+|\s+and\s+/).map(clean).filter(Boolean) : [clean(m[1])];
+    if (!parts.length || parts.length > 10 || parts.some(p => p.length > 80 || /^(it|that|this|them)$/.test(p))) return null;
+    const list = which(m[2], custom);
+    if (parts.length > 1) return { op: 'addMany', list, texts: parts.map(cap) };
+    return { op: 'add', list, text: cap(parts[0]) };
   }
   // "tick off milk on the shopping list": the item is looked up by its words on the tablet, not guessed here
   m = t.match(new RegExp(`^(?:tick off|cross off|check off|mark) (.+?) (?:from|on|in) ${LIST}$`));
