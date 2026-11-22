@@ -15,7 +15,13 @@ export function alarmWord(t: string, ringing: boolean): AlarmWord {
   return null;
 }
 
-export type TimerWord = { op: 'pause' } | { op: 'resume' } | { op: 'nudge'; minutes: number };
+/** The time phrase in "turn off my 7 am alarm" ("7 am"), or null when the phrase names no single alarm. */
+export function alarmTimePhrase(t: string): string | null {
+  const m = t.match(/^(?:turn off|cancel|disable|switch off|delete) (?:my |the )?(.+?) alarm$/);
+  return m && /\d/.test(m[1]) ? m[1] : null;   // a time has a digit: "my" or "all" is not a time
+}
+
+export type TimerWord ={ op: 'pause' } | { op: 'resume' } | { op: 'nudge'; minutes: number };
 const NUMBER_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, fifteen: 15, twenty: 20, thirty: 30 };
 
 /** Timer voice words: "pause the timer", "resume the timer", "add five minutes to the timer", "take 2 minutes off the timer". */
