@@ -38,7 +38,7 @@ function readLines(file: string, start: number, end: number, onLine: (line: Buff
 
 export class Store {
   private offsets = new Map<string, number>();
-  private seen = new Set<string>();
+  private seen = new Map<string, number>();   // dedupe key -> its timestamp; keys older than the kept window are pruned
   entries: Entry[] = [];
 
   scan(): number {
@@ -63,6 +63,8 @@ export class Store {
     if (fresh.length) {
       const keepAfter = Date.now() - KEEP_DAYS * 864e5;
       this.entries = this.entries.concat(fresh).filter(e => e.ts >= keepAfter).sort((a, b) => a.ts - b.ts);
+      // a key older than the window guards only an entry that was just dropped, so it can go
+      for (const [k, ts] of this.seen) if (ts < keepAfter) this.seen.delete(k);
     }
     return fresh.length;
   }
@@ -75,9 +77,9 @@ export class Store {
     if (!u || model === '<synthetic>') return null;
     const key = `${msg.id}:${o.requestId}`;
     if (this.seen.has(key)) return null;
-    this.seen.add(key);
     const ts = Date.parse(o.timestamp);
     if (Number.isNaN(ts)) return null;
+    this.seen.set(key, ts);
     return {
       ts, model,
       inp: u.input_tokens || 0, out: u.output_tokens || 0,
