@@ -60,6 +60,16 @@ export function parseDays(phrase: string): number[] | null {
   return null;
 }
 
+/** A duration with a name after it: "10 minute pasta" is 10 minutes, named pasta. The longest duration at the front wins. */
+export function durationAndLabel(phrase: string): { ms: number; label: string } | null {
+  const words = phrase.trim().split(/\s+/);
+  for (let i = words.length - 1; i >= 1; i--) {
+    const ms = parseDuration(words.slice(0, i).join(' '));
+    if (ms != null) return { ms, label: words.slice(i).join(' ') };
+  }
+  return null;
+}
+
 export function sayDuration(ms: number): string {
   const s = Math.round(ms / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
   const part = (n: number, w: string) => (n ? `${n} ${w}${n === 1 ? '' : 's'}` : '');
