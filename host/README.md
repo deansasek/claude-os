@@ -58,13 +58,12 @@ The token is created on first run at `%APPDATA%\ClaudeHubHost\token`, readable b
 ## hubctl
 
 ```powershell
-$hub = ".\host\hubctl.ps1"   # from the hub folder
-powershell -NoProfile -ExecutionPolicy Bypass -File $hub status
-powershell -NoProfile -ExecutionPolicy Bypass -File $hub restart
-powershell -NoProfile -ExecutionPolicy Bypass -File $hub stop
-powershell -NoProfile -ExecutionPolicy Bypass -File $hub start
-powershell -NoProfile -ExecutionPolicy Bypass -File $hub logs -Lines 50
-powershell -NoProfile -ExecutionPolicy Bypass -File $hub health
+node host/hubctl.ts status     # from the repository root
+node host/hubctl.ts restart
+node host/hubctl.ts stop
+node host/hubctl.ts start
+node host/hubctl.ts logs --lines 50
+node host/hubctl.ts health
 ```
 
 `health` exits 2 when the hub server does not answer.
