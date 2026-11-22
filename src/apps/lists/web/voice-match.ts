@@ -6,7 +6,7 @@
 /** A list id: "shopping", "todo", or a list the family made (its id, as the Lists app keeps it). */
 export type VoiceList = string;
 export type ListCommand = { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string }
-  | { op: 'remove'; list: VoiceList; text: string };
+  | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList };
 
 /** Find one item by its words: the exact text, or the only partial match. Never a guess between several.
  *  open: only items not yet ticked. ambiguous: more than one partial match and no exact one. */
@@ -59,6 +59,9 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
     if (!text || /^(it|that|this|them)$/.test(text)) return null;
     return { op: 'remove', list: which(m[2], custom), text: text.charAt(0).toUpperCase() + text.slice(1) };
   }
+  // "clear the ticked items off the shopping list": the same as the Clear ticked button
+  m = t.match(new RegExp(`^(?:clear|empty) (?:the |all |my )?(?:ticked|checked|done|crossed off)(?: off)? items? (?:off|from) ${LIST}$`));
+  if (m) return { op: 'clear', list: which(m[1], custom) };
   m = t.match(new RegExp(`^(?:what(?:'s| is) on|read(?: me)?|what do we have on|what do i have on|what(?:'s| is) in) ${LIST}$`));
   if (m) return { op: 'read', list: which(m[1], custom) };
   return null;
