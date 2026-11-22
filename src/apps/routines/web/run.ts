@@ -18,7 +18,7 @@ import { voice } from '../../../core/web/device.ts';
 import { calendarCommand, getClock, provideRoutines, weatherToday } from '../../../core/web/voice-commands.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
 import type { HaResult } from '../../home-assistant/api.ts';
-import { STEP_MAX_MS, type Routine, type RoutinesResult, type Step } from '../api.ts';
+import { AT_WINDOW_MIN, STEP_MAX_MS, dayKey, dueRoutines, type Routine, type RoutinesResult, type Step } from '../api.ts';
 
 const CACHE_MS = 60e3;
 let cache: Routine[] | null = null, cacheAt = 0;
@@ -122,6 +122,36 @@ export async function runRoutine(id: string): Promise<boolean> {
 
 /** End the routine that is running, if any (the speech it started is left to finish). */
 export function stopRoutine(): void { if (state) { token++; setState(null); } }
+
+// ---------- routines with a time: run by themselves, once a day, within AT_WINDOW_MIN of the time ----------
+// The tablet keeps the day each one last ran (this device's memory only), so a restart does not run it twice.
+const RAN_KEY = 'routines.ran';
+function ranDays(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(RAN_KEY) || '{}') as Record<string, string>; } catch { return {}; }
+}
+function markRan(id: string, day: string): void {
+  try { localStorage.setItem(RAN_KEY, JSON.stringify({ ...ranDays(), [id]: day })); } catch { /* not kept: it may run once more today */ }
+}
+
+async function schedulerTick(): Promise<void> {
+  if (state) return;   // one routine at a time: the next tick picks up anything else that is due
+  let list: Routine[];
+  try { list = await loadRoutines(); } catch { return; }
+  const now = new Date();
+  const due = dueRoutines(list, now, ranDays())[0];
+  if (!due) return;
+  markRan(due.id, dayKey(now));   // marked first, so a routine that fails is not tried again and again today
+  void runSteps(due);
+}
+
+let scheduler: number | undefined;
+/** Check the routines' times every 30 seconds, and once now. */
+export function startScheduler(): void {
+  if (scheduler !== undefined) return;
+  scheduler = window.setInterval(() => void schedulerTick(), 30e3);
+  void schedulerTick();
+}
+startScheduler();
 
 provideRoutines({
   list: () => loadRoutines(),

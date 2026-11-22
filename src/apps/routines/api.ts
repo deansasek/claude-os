@@ -91,6 +91,21 @@ export function cleanStep(raw: unknown): Step | { error: string } {
 }
 
 /** A routine's name, phrases and steps checked (not its id, nor scenes against Home): the clean parts, or why not. */
+/** The day a time falls on, as a key ("2026-11-22"); a routine's run is marked with it. */
+export const dayKey = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** The routines whose time has come: due today, not yet run today (ran: routine id → day key), and within AT_WINDOW_MIN of it. */
+export function dueRoutines(list: Routine[], now: Date, ran: Record<string, string>): Routine[] {
+  const today = dayKey(now), nowMin = now.getHours() * 60 + now.getMinutes();
+  return list.filter(r => {
+    if (!r.at) return false;
+    if (r.at.days.length && !r.at.days.includes(now.getDay())) return false;
+    if (ran[r.id] === today) return false;
+    const since = nowMin - (r.at.h * 60 + r.at.m);
+    return since >= 0 && since < AT_WINDOW_MIN;
+  });
+}
+
 /** A routine's time: HH:MM and its days, or null when it doesn't run by itself. */
 export function cleanTime(raw: unknown): RoutineTime | null | { error: string } {
   if (raw == null) return null;
