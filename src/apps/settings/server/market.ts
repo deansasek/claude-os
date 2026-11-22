@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { HUB } from '../../../core/server/paths.ts';
+import { HUB, readJson } from '../../../core/server/paths.ts';
 import { MARKETPLACE, type MarketError, type MarketPlugin, type MarketResult, type MarketView } from '../api.ts';
 import { partsOf } from './plugins.ts';
 
@@ -32,7 +32,7 @@ function cliPath(): string | null {
 
 // ---------- reading the marketplace (read only) ----------
 function readJsonFile(file: string): any {
-  try { return JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '')); } catch { return null; }
+  return readJson<any>(file);   // the same read as core/server/paths.ts: a missing or bad file gives null
 }
 
 /** The marketplace's plugin entries, or null when the marketplace isn't on this PC. */
