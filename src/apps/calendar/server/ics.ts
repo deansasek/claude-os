@@ -1,7 +1,7 @@
 // A small iCalendar (ICS) reader: just enough to list today's and tomorrow's events.
 //
 //   - VEVENTs only (VTIMEZONE, VALARM, VTODO... are skipped); folded lines are unfolded; text is unescaped.
-//   - DTSTART / DTEND as a date (all-day) or a date-time. "Z" times are UTC; a TZID, or no zone at all, is read as
+//   - DTSTART / DTEND as a date (all-day) or a date-time. "Z" times are UTC; a TZID is converted from its zone (IANA or common Windows names), and no zone at all is read as
 //     the PC's local time (the family's calendar is in the family's time zone). No DTEND: DURATION, else one day for
 //     an all-day event and no length for a timed one.
 //   - RRULE: FREQ DAILY, WEEKLY (BYDAY), MONTHLY (BYMONTHDAY, or BYDAY such as 2TU / -1FR) and YEARLY, with
@@ -9,7 +9,7 @@
 //   - STATUS:CANCELLED events are left out.
 // Anything it doesn't understand is skipped, never a crash.
 
-interface Stamp { y: number; mo: number; d: number; h: number; mi: number; s: number; utc: boolean; date: boolean }
+interface Stamp { y: number; mo: number; d: number; h: number; mi: number; s: number; utc: boolean; date: boolean; tz?: string }   // tz: the IANA zone of a TZID time
 
 export interface RawEvent {
   uid: string;
@@ -59,15 +59,48 @@ const unescapeText = (v: string, max = 200): string =>
     .replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 
 // ---------- dates ----------
+// Outlook writes Windows zone names. The common ones map to IANA zones; anything else is read as the PC's local time.
+const WINDOWS_ZONES: Record<string, string> = {
+  'GMT Standard Time': 'Europe/London', 'W. Europe Standard Time': 'Europe/Berlin', 'Romance Standard Time': 'Europe/Paris',
+  'Central European Standard Time': 'Europe/Warsaw', 'GTB Standard Time': 'Europe/Bucharest', 'E. Europe Standard Time': 'Europe/Bucharest',
+  'Eastern Standard Time': 'America/New_York', 'Central Standard Time': 'America/Chicago', 'Mountain Standard Time': 'America/Denver',
+  'Pacific Standard Time': 'America/Los_Angeles', 'Alaskan Standard Time': 'America/Anchorage', 'Hawaiian Standard Time': 'Pacific/Honolulu',
+  'Atlantic Standard Time': 'America/Halifax', 'E. Australia Standard Time': 'Australia/Brisbane', 'AUS Eastern Standard Time': 'Australia/Sydney',
+  'China Standard Time': 'Asia/Shanghai', 'Tokyo Standard Time': 'Asia/Tokyo', 'India Standard Time': 'Asia/Kolkata', 'UTC': 'UTC',
+};
+
+/** The IANA zone for a TZID (IANA or Windows name), or null if the runtime doesn't know it. */
+function ianaZone(tzid: string): string | null {
+  const name = WINDOWS_ZONES[tzid.trim()] ?? tzid.trim();
+  try { new Intl.DateTimeFormat('en-US', { timeZone: name }); return name; } catch { return null; }
+}
+
+/** How far a zone is ahead of UTC at a moment, in ms (east is positive). */
+function offsetMs(ms: number, zone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: zone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(new Date(ms));
+  const get = (t: string) => +(parts.find(p => p.type === t)?.value ?? 0);
+  const wallAsUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'));
+  return wallAsUtc - Math.floor(ms / 1000) * 1000;
+}
+
+/** A wall-clock time in its zone, as UTC ms. Two passes settle the hour either side of a clock change. */
+function wallToUtc(t: Stamp): number {
+  const wall = Date.UTC(t.y, t.mo, t.d, t.h, t.mi, t.s);
+  const first = wall - offsetMs(wall, t.tz!);
+  return wall - offsetMs(first, t.tz!);
+}
 function parseStamp(v: string, params: Record<string, string> = {}): Stamp | null {
   const m = v.trim().match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/i);
   if (!m) return null;
   const date = !m[4] || params.VALUE === 'DATE';
   const st: Stamp = { y: +m[1], mo: +m[2] - 1, d: +m[3], h: date ? 0 : +m[4], mi: date ? 0 : +m[5], s: date ? 0 : +(m[6] ?? 0), utc: !date && !!m[7], date };
+  if (!st.utc && !st.date && params.TZID) { const tz = ianaZone(params.TZID); if (tz) st.tz = tz; }
   return st.mo >= 0 && st.mo < 12 && st.d >= 1 && st.d <= 31 && st.h < 24 && st.mi < 60 && st.s < 61 ? st : null;
 }
 
-const toMs = (t: Stamp): number => (t.utc ? Date.UTC(t.y, t.mo, t.d, t.h, t.mi, t.s) : new Date(t.y, t.mo, t.d, t.h, t.mi, t.s).getTime());
+const toMs = (t: Stamp): number => (t.utc ? Date.UTC(t.y, t.mo, t.d, t.h, t.mi, t.s) : t.tz ? wallToUtc(t) : new Date(t.y, t.mo, t.d, t.h, t.mi, t.s).getTime());
 const dayNum = (t: Stamp): number => Math.floor(Date.UTC(t.y, t.mo, t.d) / DAY_MS);
 const dow = (t: Stamp): number => new Date(Date.UTC(t.y, t.mo, t.d)).getUTCDay();
 const daysIn = (y: number, mo: number): number => new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
