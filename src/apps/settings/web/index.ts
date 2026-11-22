@@ -22,6 +22,7 @@ import { showWelcome } from '../../../core/web/welcome.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
 import { appSettings, onAppSettingsChange } from '../../../core/web/app-settings.ts';
 import type { SettingRow } from '../../../core/web/app-settings.ts';
+import { hubReachable } from '../../../core/web/hub-link.ts';
 import type { HubPermission, Limits, LimitWindow, ModelChoice, Project, Usage } from '../../claude/api.ts';
 import type { Place, PlacesResponse, Weather } from '../../weather/api.ts';
 import { loadModels, modelChoices, newFolderPref, newPref, setNewFolderPref, setNewPref } from '../../claude/web/sessions/controls.ts';
@@ -1118,7 +1119,7 @@ function paintAbout(): void {
     $('stModel').textContent = `${i.maker} ${i.model}`;
   } catch { /* ignore */ }
   $('stScreen').textContent = `${Math.round(screen.width * devicePixelRatio)} × ${Math.round(screen.height * devicePixelRatio)}`;
-  $('stConn').textContent = navigator.onLine ? `Connected to ${location.host}` : 'Offline';
+  $('stConn').textContent = !navigator.onLine ? 'Offline' : hubReachable() ? `Connected to ${location.host}` : 'Wi-Fi is on, but the PC can’t be reached';
   $('stServer').textContent = `Your PC · ${location.host}`;
   try {
     const w = device.wifi();

@@ -11,6 +11,7 @@
 // no event for them; voice, downloads, notices and settings push their own changes, and the Clock app's timer writes
 // (the hub:store event) start or stop the countdown at once. Under low power the countdown moves every 15 seconds.
 import { onStore, store } from './dom.ts';
+import { hubReachable, onHubReachable } from './hub-link.ts';
 import { browser, device, onResume, onTablet, voice, type Battery, type BrowserEvent } from './device.ts';
 import { clock } from './format.ts';
 import { voiceUi } from './voice-ui.ts';
@@ -147,7 +148,8 @@ function paint(): void {
   for (const d of st.dl.values()) { bytes += d.bytes; total += d.total; }
   const frac = total > 0 ? Math.min(1, bytes / total) : -1;   // -1: no size yet, so the ring spins
   const cond = st.listening || st.speaking || st.ringing || st.timerEnd > 0 || st.dl.size > 0 || st.muted || st.low || st.unread > 0;
-  const label = `Status: ${time}${st.online ? '' : ', offline'}${b ? `, battery ${b.percent}%${b.charging ? ', charging' : ''}` : ''}. Open the control center.`;
+  const up = st.online && hubReachable();
+  const label = `Status: ${time}${st.online ? '' : ', offline'}${st.online && !hubReachable() ? ', PC not reached' : ''}${b ?`, battery ${b.percent}%${b.charging ? ', charging' : ''}` : ''}. Open the control center.`;
   for (const p of parts) {
     p.root.classList.toggle('has-cond', cond);
     p.root.setAttribute('aria-label', label);
@@ -162,7 +164,7 @@ function paint(): void {
     p.dnd.hidden = !st.muted;
     p.low.hidden = !st.low;
     p.unread.hidden = !st.unread;
-    setHtml(p.wifi, st.online ? wifiBars(st.bars) : I.wifiOff);
+    setHtml(p.wifi, up ? wifiBars(st.bars) : I.wifiOff);
     p.batt.hidden = !b;
     if (b) {
       setHtml(p.battIcon, batteryGlyph(b));
@@ -217,6 +219,7 @@ export function initStatus(): void {
   voice.on(e => { if (e.type !== 'level' && e.type !== 'partial') setTimeout(() => { readVoice(); paint(); }, 0); });   // after voice-ui has its state
   browser.on(onBrowser);
   onResume(() => { readDevice(); readClock(); readVoice(); recompute(); paint(); });
+  onHubReachable(() => paint());   // the PC went away or came back: the Wi-Fi icon and label follow
   // a toggle (Do Not Disturb, low power, Wi-Fi from its tile or Settings) repaints the cluster at once
   onSystemChange(() => { if (controlCenterOpen()) markSeen(); readDevice(); recompute(); paint(); });
   onNotificationsChange(() => { recompute(); paint(); });

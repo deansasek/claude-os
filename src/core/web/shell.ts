@@ -11,6 +11,7 @@ import { initSwitcher, type SwitcherCard } from './switcher.ts';
 import { lockShowing } from './lock.ts';
 import { closeControlCenter, initSystem, notify, wake } from './system.ts';
 import { initTheme } from './theme.ts';
+import { reportHubCheck } from './hub-link.ts';
 
 /** What the core hands an app when it mounts. */
 export interface AppContext {
@@ -247,9 +248,10 @@ function watchVersion(): void {
   const check = async (): Promise<void> => {
     try {
       const { version } = await getJson<{ version: number }>('/api/core/version');
+      reportHubCheck(true);
       if (seen === null) seen = version;
       else if (version !== seen) location.reload();
-    } catch { /* server restarting; try again */ }
+    } catch { reportHubCheck(false); /* server restarting; try again */ }
     // every 10 seconds on screen; once a minute with the page hidden or in low power
     setTimeout(check, document.hidden || document.documentElement.classList.contains('low-power') ? 60e3 : 10e3);
   };
