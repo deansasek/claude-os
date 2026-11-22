@@ -5,7 +5,7 @@
 // Install / update it:   node android/build.ts --install [--device <serial>]
 
 import {
-  cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync,
+  cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
 import { delimiter, dirname, join, relative, sep } from 'node:path';
 import {
@@ -26,6 +26,27 @@ function filesUnder(dir: string, ext: string): string[] {
   return readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((e) => e.isFile() && e.name.endsWith(ext))
     .map((e) => join(e.parentPath ?? (e as any).path, e.name));
+}
+
+/**
+ * Writes HubConfig.java with the hub's address, from config.json at the repository root: its host and port.
+ * The host must be this PC's address on the home network. 0.0.0.0 (listen on all) can't be used here.
+ */
+function writeHubConfig(genDir: string): void {
+  const file = join(here, '..', 'config.json');
+  if (!existsSync(file)) fail('config.json is missing. Run npm run setup and set the address the tablet should use.');
+  const cfg = JSON.parse(readFileSync(file, 'utf8')) as { host?: unknown; port?: unknown };
+  const host = typeof cfg.host === 'string' ? cfg.host.trim() : '';
+  if (!host || host === '0.0.0.0' || !/^[\w.\-:[\]]+$/.test(host)) {
+    fail('config.json needs "host" set to this PC\'s address on your home network (for example 192.168.1.20), not 0.0.0.0. The tablet loads its page from there.');
+  }
+  const port = Number.isInteger(cfg.port) ? cfg.port as number : 8000;
+  const url = `http://${host}:${port}/?device=tablet`;
+  const pkg = join(genDir, 'hub', 'kiosk');
+  mkdirSync(pkg, { recursive: true });
+  writeFileSync(join(pkg, 'HubConfig.java'),
+    `package hub.kiosk;\n\n// Written by android/build.ts from config.json. Do not edit.\nfinal class HubConfig {\n  static final String DEFAULT_URL = "${url}";\n  private HubConfig() {}\n}\n`);
+  console.log(`tablet loads ${url}`);
 }
 
 function main(): void {
@@ -55,6 +76,9 @@ function main(): void {
   // androidx.webkit 1.12.1 (tools/webkit, fetched from Google's Maven: WebSettingsCompat, the X-Requested-With allow-list)
   const webkitJar = join(tools, 'webkit', 'webkit-classes.jar');
   if (!existsSync(webkitJar)) fail('androidx.webkit missing: see tools/webkit (webkit-1.12.1.aar, classes.jar)');
+
+  // the hub's address for the tablet, from config.json (the Java reads it from HubConfig)
+  writeHubConfig(gen);
 
   // 1. resources and manifest
   run(aapt2, ['compile', '--dir', join(here, 'res'), '-o', join(out, 'res.zip')], 'aapt2 compile');
