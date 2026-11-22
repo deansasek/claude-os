@@ -33,6 +33,7 @@ import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
+import { temperatureDay } from './voice-weather.ts';
 import { pickItem } from '../../apps/lists/web/voice-match.ts';
 import { parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
@@ -288,6 +289,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   }
 
   // weather
+  const tempDay = temperatureDay(t);
+  if (tempDay !== null) return weather(tempDay, null);
   if (/^(?:what(?:'s| is| will be) the weather(?: like)?(?: today| now| right now| outside)?|how(?:'s| is) the weather(?: today)?|weather(?: today)?|what(?:'s| is) it like outside|what(?:'s| is) the forecast(?: today)?)$/.test(t)) return weather(0, null);
   if (/^(?:what(?:'s| is| will be) the weather(?: like)? tomorrow|what(?:'s| is) the forecast (?:for )?tomorrow|weather tomorrow|how(?:'s| is| will) the weather (?:be )?tomorrow)$/.test(t)) return weather(1, null);
   if ((r = t.match(/^(?:will it|is it going to|is it gonna|should i expect|do i need an umbrella|is there going to be)(?: (rain|snow))?(?: (today|tomorrow|later|tonight))?$/))) {
