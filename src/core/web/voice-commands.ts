@@ -367,21 +367,23 @@ export async function calendarCommand(day: 'today' | 'tomorrow' = 'today'): Prom
   try { r = await getJson<CalEvents>('/api/calendar/events'); } catch { return { say: 'I can’t reach the calendar right now.' }; }
   if (r?.status === 'not_set') return { say: 'There’s no calendar yet. Add yours in the Calendar app.', app: 'calendar' };
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
+  // the PC serves its last good copy when a read fails (up to 12 hours old): say so, never read it as current
+  const old = r.stale ? 'The calendar may be out of date. ' : '';
   const at = (e: CalEvent) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${new Date(e.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
   if (day === 'tomorrow') {
     const tmr = r.events.filter(e => e.day === 'tomorrow').slice(0, 3).map(at);
-    if (!tmr.length) return { say: 'Nothing on your calendar tomorrow.', react: 'hop' };
+    if (!tmr.length) return { say: `${old}Nothing on your calendar tomorrow.`, react: 'hop' };
     const w = tmr.length === 1 ? tmr[0] : `${tmr.slice(0, -1).join('; ')}; and ${tmr[tmr.length - 1]}`;
-    return { say: `Tomorrow: ${w}.`, react: 'look', app: 'calendar' };
+    return { say: `${old}Tomorrow: ${w}.`, react: 'look', app: 'calendar' };
   }
   const now = Date.now();
   const next = r.events.filter(e => e.day === 'today' && Date.parse(e.end) > now).slice(0, 3).map(at);
   if (!next.length) {
     const tmr = r.events.find(e => e.day === 'tomorrow');
-    return { say: `Nothing more on your calendar today.${tmr ? ` Tomorrow starts with ${at(tmr)}.` : ''}`, react: 'hop' };
+    return { say: `${old}Nothing more on your calendar today.${tmr ? ` Tomorrow starts with ${at(tmr)}.` : ''}`, react: 'hop' };
   }
   const words = next.length === 1 ? next[0] : `${next.slice(0, -1).join('; ')}; and ${next[next.length - 1]}`;
-  return { say: `${next.length === 1 ? 'Next up' : 'Coming up'}: ${words}.`, react: 'look', app: 'calendar' };
+  return { say: `${old}${next.length === 1 ? 'Next up' : 'Coming up'}: ${words}.`, react: 'look', app: 'calendar' };
 }
 
 // ---------- Lists: "add milk to the shopping list", "what's on the to-do list" ----------
