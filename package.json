@@ -11,7 +11,7 @@
     "setup": "node --disable-warning=ExperimentalWarning scripts/setup.ts",
     "start": "node --disable-warning=ExperimentalWarning src/main.server.ts",
     "dev": "node --watch src/main.server.ts",
-    "test": "node --test --disable-warning=ExperimentalWarning test/pure.test.ts test/browser-poll.test.ts test/hub-link.test.ts test/calendar-zones.test.ts test/stores.test.ts test/store-files.test.ts test/clock-tools.test.ts test/routines-files.test.ts test/body-limit.test.ts test/static-paths.test.ts test/routine-time.test.ts test/routine-due.test.ts"
+    "test": "node --test --disable-warning=ExperimentalWarning test/pure.test.ts test/browser-poll.test.ts test/hub-link.test.ts test/calendar-zones.test.ts test/stores.test.ts test/store-files.test.ts test/clock-tools.test.ts test/routines-files.test.ts test/body-limit.test.ts test/static-paths.test.ts test/routine-time.test.ts test/routine-due.test.ts test/voice-match.test.ts"
   },
   "type": "module",
   "devDependencies": {

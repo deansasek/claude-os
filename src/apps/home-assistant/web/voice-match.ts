@@ -30,7 +30,8 @@ export function parseOnOff(raw: string): { on: boolean; target: string } | null 
   else if ((m = t.match(/^(.+) (on|off)$/))) { on = m[2]; target = m[1]; }
   else return null;
   target = target.trim();
-  if (!target || target === 'it' || target === 'that' || target === 'this') return null;
+  // "turn on" on its own would otherwise read "turn" as the device: a verb or a pronoun is never a device
+  if (!target || ['it', 'that', 'this', 'turn', 'switch', 'put'].includes(target)) return null;
   return { on: on === 'on', target };
 }
 
