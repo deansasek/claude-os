@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { stripTypeScriptTypes } from 'node:module';
 import type { Binary, Route, ServerApp } from './app.ts';
 import { config } from './config.ts';
@@ -19,6 +20,36 @@ function send(res: http.ServerResponse, code: number, body: string | Buffer, typ
   res.end(body);
 }
 const json = (res: http.ServerResponse, obj: unknown) => send(res, 200, JSON.stringify(obj ?? null), 'application/json', 'no-store');
+
+/**
+ * A served file, with an ETag. The browser revalidates on each load (no-cache), so an unchanged file
+ * answers 304 with no body. A .ts file is stripped to plain JS once per change, not once per request.
+ */
+const staticCache = new Map<string, { key: string; body: Buffer | string; etag: string }>();
+function serveStatic(req: http.IncomingMessage, res: http.ServerResponse, file: string): void {
+  const st = fs.statSync(file);
+  const key = `${st.mtimeMs}:${st.size}`;
+  let entry = staticCache.get(file);
+  if (!entry || entry.key !== key) {
+    const ext = path.extname(file);
+    const body: Buffer | string = ext === '.ts'
+      ? stripTypeScriptTypes(fs.readFileSync(file, 'utf8'))   // browser gets plain JS
+      : fs.readFileSync(file);
+    const etag = `"${createHash('sha1').update(body).digest('base64url')}"`;
+    entry = { key, body, etag };
+    staticCache.set(file, entry);
+  }
+  const type = TYPES[path.extname(file)] || 'application/octet-stream';
+  if (req.headers['if-none-match'] === entry.etag) {
+    res.writeHead(304, { 'Cache-Control': 'no-cache', ETag: entry.etag });
+    res.end();
+    return;
+  }
+  res.writeHead(200, {
+    'Content-Type': type, 'Cache-Control': 'no-cache', ETag: entry.etag, 'Content-Length': Buffer.byteLength(entry.body),
+  });
+  res.end(entry.body);
+}
 
 function readBody(req: http.IncomingMessage, max = 8192): Promise<any> {
   return new Promise(resolve => {
@@ -153,9 +184,7 @@ export function startServer(apps: ServerApp[]): void {
 
       const file = resolveStatic(url.pathname);
       if (!file || !fs.existsSync(file) || !fs.statSync(file).isFile()) return send(res, 404, 'not found', 'text/plain');
-      const ext = path.extname(file);
-      if (ext === '.ts') return send(res, 200, stripTypeScriptTypes(fs.readFileSync(file, 'utf8')), TYPES['.ts']);   // browser gets plain JS
-      return send(res, 200, fs.readFileSync(file), TYPES[ext] || 'application/octet-stream');
+      return serveStatic(req, res, file);
     } catch (e) {
       console.log('request error:', e);
       if (!res.headersSent) send(res, 500, 'error', 'text/plain');
