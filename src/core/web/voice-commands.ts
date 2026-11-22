@@ -417,6 +417,21 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>): Promis
       if (!r?.ok) return { say: r?.error ?? `I couldn’t add that to ${name}.` };
       return { say: `Added ${c.text.replace(/^./, ch => ch.toLowerCase())} to ${name}.`, react: 'hop' };
     }
+    if (c.op === 'tick') {
+      // find the one unticked item by its words (exact, or the only partial match); never a guess between several
+      const lists = await getJson<ListsResult>('/api/lists/lists');
+      const l = lists?.lists?.find(x => x.id === c.list);
+      if (!l) return { say: `I can’t reach ${name} right now.` };
+      const want = c.text.toLowerCase();
+      const open = l.items.filter(i => !i.done);
+      const exact = open.find(i => i.text.toLowerCase() === want);
+      const partial = open.filter(i => i.text.toLowerCase().includes(want));
+      const hit = exact ?? (partial.length === 1 ? partial[0] : undefined);
+      if (!hit) return { say: partial.length > 1 ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
+      const r = await postJson<ListsResult>('/api/lists/tick', { list: c.list, id: hit.id, done: true });
+      if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
+      return { say: `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`, react: 'hop' };
+    }
     const r = await getJson<ListsResult>('/api/lists/lists');
     const l = r?.lists?.find(x => x.id === c.list);
     const open = l ? l.items.filter(i => !i.done).map(i => i.text) : [];

@@ -68,6 +68,9 @@ test('list commands: add an item, or read a list; anything else is left to Claud
   assert.deepEqual(matchList('add some milk to the shopping list'), { op: 'add', list: 'shopping', text: 'Milk' });
   assert.deepEqual(matchList('put bin day on my to-do list'), { op: 'add', list: 'todo', text: 'Bin day' });
   assert.deepEqual(matchList("what's on the shopping list"), { op: 'read', list: 'shopping' });
+  assert.deepEqual(matchList('tick off milk on the shopping list'), { op: 'tick', list: 'shopping', text: 'Milk' });
+  assert.deepEqual(matchList('cross off bin day from my to-do list'), { op: 'tick', list: 'todo', text: 'Bin day' });
+  assert.equal(matchList('tick off on the shopping list'), null);   // no item named
   assert.equal(matchList('add to shopping list'), null);          // no item
   assert.equal(matchList('add it to the shopping list'), null);   // "it" is not an item
   assert.equal(matchList('turn off the kitchen light'), null);
