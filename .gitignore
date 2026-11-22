@@ -7,6 +7,7 @@
 .ha-layout.json
 .launcher-layout.json
 .lists.json
+.lists-history.json
 .routines.json
 .limits-cache.json
 claude-state.json

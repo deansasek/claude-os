@@ -10,6 +10,8 @@
 import type { ServerApp } from '../../../core/server/app.ts';
 import { manifest } from '../manifest.ts';
 import { addItem, clearDone, deleteList, newList, readLists, removeItem, tickItem } from './store.ts';
+import { suggestions } from './history.ts';
+import { findList } from '../api.ts';
 
 const b = (body: unknown): Record<string, unknown> => (body && typeof body === 'object' ? body as Record<string, unknown> : {});
 
@@ -21,6 +23,12 @@ const app: ServerApp = {
     { method: 'POST', path: 'tick', handle: ({ body }) => tickItem(b(body).list, { id: b(body).id }, b(body).done !== false) },
     { method: 'POST', path: 'remove', handle: ({ body }) => removeItem(b(body).list, b(body).id) },
     { method: 'POST', path: 'clear-done', handle: ({ body }) => clearDone(b(body).list) },
+    // what the family often buys and is not on this list now (history.ts): offered as tap-to-add suggestions
+    { method: 'GET', path: 'suggest', handle: ({ query }) => {
+      const r = readLists();
+      const l = findList(r.lists, query.get('list') ?? '');
+      return { items: suggestions(l ? l.items.map(i => i.text) : []) };
+    } },
     { method: 'POST', path: 'new-list', handle: ({ body }) => newList(b(body).name) },
     { method: 'POST', path: 'delete-list', handle: ({ body }) => deleteList(b(body).list) },
   ],

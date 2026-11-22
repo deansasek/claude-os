@@ -9,6 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
+import { recordBought } from './history.ts';
 import {
   BUILT_IN, ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, isBuiltIn,
   type FamilyList, type ListItem, type ListKind, type ListsResult,
@@ -176,7 +177,9 @@ export function clearDone(listRef: unknown): ListsResult {
   return change(lists => {
     const l = findList(lists, listRef);
     if (!l) return NO_LIST;
-    const n = l.items.filter(i => i.done).length;
+    const done = l.items.filter(i => i.done);
+    const n = done.length;
+    recordBought(done.map(i => i.text));   // ticked means bought: counted for the suggestions
     l.items = l.items.filter(i => !i.done);
     return { removed: n };
   });
