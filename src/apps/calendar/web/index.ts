@@ -29,6 +29,24 @@ let timer: number | undefined;
 const hmFmt = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });
 const dateFmt = new Intl.DateTimeFormat([], { weekday: 'long', day: 'numeric', month: 'long' });
 
+// Removing the calendar forgets its secret address on the PC, so it asks twice (like clearing history does).
+let removeArmed = false;
+let removeTimer = 0;
+
+function disarmRemove(): void {
+  clearTimeout(removeTimer);
+  if (!removeArmed) return;
+  removeArmed = false;
+  appSettingsChanged();
+}
+
+function armRemove(): void {
+  removeArmed = true;
+  clearTimeout(removeTimer);
+  removeTimer = window.setTimeout(disarmRemove, 20000);
+  appSettingsChanged();
+}
+
 // ---------- talking to the PC ----------
 async function loadStatus(): Promise<void> {
   try { status = await getJson<CalStatus>(`${API}/status`); } catch { /* keep what we had */ }
@@ -118,8 +136,13 @@ function settingRows(): SettingRow[] {
       detail: d?.status === 'error' ? d.error : d?.stale ? d.error : undefined,
       value: () => (!d ? 'Not read yet' : d.status === 'error' ? 'Couldn’t read' : d.stale ? 'Out of date'
         : `${d.events.filter(e => e.day === 'today').length} today, ${d.events.filter(e => e.day === 'tomorrow').length} tomorrow`) });
-    rows.push({ kind: 'action', id: 'remove', title: 'Remove the calendar', detail: 'Forgets the address on the PC.', label: 'Remove',
-      run: () => { void saveAddress(''); } });
+    if (!removeArmed) {
+      rows.push({ kind: 'action', id: 'remove', title: 'Remove the calendar', detail: 'Forgets the address on the PC. You’d need to paste it again.', label: 'Remove', run: armRemove });
+    } else {
+      rows.push({ kind: 'action', id: 'remove', title: 'Remove the calendar?', detail: 'The address is forgotten on the PC. This can’t be undone.', label: 'Remove',
+        run: () => { disarmRemove(); void saveAddress(''); } });
+      rows.push({ kind: 'action', id: 'removeKeep', title: 'Keep the calendar', label: 'Keep', run: disarmRemove });
+    }
   }
   return rows;
 }
