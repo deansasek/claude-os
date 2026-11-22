@@ -16,7 +16,7 @@
 //     real scene may include locks or covers); Claude's calls also go through the approval card.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
+import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import {
   ENTITY_ID, isControlDomain, isDeniedDomain, isOn, isReadOnlyDomain, isSceneDomain, isShownDomain, isVoiceDomain, type ControlDomain, type HaConfigUpdate,
   type HaDashboard, type HaDevice, type HaDevices, type HaEntities, type HaEntity, type HaHomeScenesResult, type HaLayoutResult, type HaResult,
@@ -24,7 +24,8 @@ import {
 } from '../api.ts';
 import { getLayout, homeScenes, onDashboard, saveLayout as saveLayoutFile, setHomeScene as setHomeSceneFile, setOnDashboard } from './layout.ts';
 
-const FILE = path.join(HUB, '.ha-config.json');
+// CLAUDEOS_HA_CONFIG is for the tests only: a scratch file instead of the house's config (it holds the token).
+const FILE = process.env.CLAUDEOS_HA_CONFIG || path.join(HUB, '.ha-config.json');
 const TIMEOUT_MS = 5000;
 const MAX_DEVICES = 400;
 
@@ -38,16 +39,24 @@ interface Config {
 
 // ---------- config ----------
 function load(): Config {
-  try {
-    const c = JSON.parse(fs.readFileSync(FILE, 'utf8').replace(/^﻿/, '')) as Partial<Config>;
-    return {
-      address: typeof c.address === 'string' ? c.address : '',
-      token: typeof c.token === 'string' ? c.token : '',
-      demo: typeof c.demo === 'boolean' ? c.demo : undefined,
-      allow: Array.isArray(c.allow) ? c.allow.filter(x => typeof x === 'string') : [],
-      allowDemo: Array.isArray(c.allowDemo) ? c.allowDemo.filter(x => typeof x === 'string') : undefined,
-    };
-  } catch { return { address: '', token: '', allow: [] }; }
+  const empty: Config = { address: '', token: '', allow: [] };
+  if (!fs.existsSync(FILE)) return empty;
+  const c = readJson<Partial<Config>>(FILE);
+  if (!c) {
+    // a config that can't be read is moved aside, not kept as the next save's base: the token in it is not lost
+    try {
+      fs.renameSync(FILE, `${FILE}.corrupt`);
+      console.log(`home-assistant: the config could not be read; it was kept as ${path.basename(FILE)}.corrupt`);
+    } catch { /* nothing more to do */ }
+    return empty;
+  }
+  return {
+    address: typeof c.address === 'string' ? c.address : '',
+    token: typeof c.token === 'string' ? c.token : '',
+    demo: typeof c.demo === 'boolean' ? c.demo : undefined,
+    allow: Array.isArray(c.allow) ? c.allow.filter(x => typeof x === 'string') : [],
+    allowDemo: Array.isArray(c.allowDemo) ? c.allowDemo.filter(x => typeof x === 'string') : undefined,
+  };
 }
 let cfg = load();
 
