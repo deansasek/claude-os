@@ -22,13 +22,13 @@ Do not include code attribution (such as AI tool names, generator tags, or co-au
 
 Follow this exact structure:
 
-# Why:
+## Why
 [State the problem, requirement, or ticket reference in 1-3 short sentences.]
 
-# What:
+## What
 [List the concrete changes made. Do not repeat code line-by-line.]
 
-# Tests:
+## Tests
 [State the exact tests run or added, or write "None." with the reason.]
 
 ## Rule: no visible Android
