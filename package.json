@@ -11,7 +11,7 @@
     "setup": "node --disable-warning=ExperimentalWarning scripts/setup.ts",
     "start": "node --disable-warning=ExperimentalWarning src/main.server.ts",
     "dev": "node --watch src/main.server.ts",
-    "test": "node --test --disable-warning=ExperimentalWarning test/pure.test.ts"
+    "test": "node --test --disable-warning=ExperimentalWarning test/pure.test.ts test/browser-poll.test.ts"
   },
   "type": "module",
   "devDependencies": {

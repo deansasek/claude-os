@@ -67,14 +67,23 @@ export function sendJob(fields: Omit<BrowserJob, 'id'>): Promise<BrowserAnswer> 
 }
 
 /** The tablet's long poll: the next job, or null after POLL_MS with none. */
-export function nextJob(): Promise<BrowserJob | null> {
+export function nextJob(signal?: AbortSignal): Promise<BrowserJob | null> {
   lastPollAt = Date.now();
   const p = queued.shift();
   if (p) { sent.set(p.job.id, p); p.taken(); return Promise.resolve(p.job); }
+  if (signal?.aborted) return Promise.resolve(null);
   return new Promise<BrowserJob | null>(resolve => {
-    const wake = (job: BrowserJob | null) => { clearTimeout(t); resolve(job); };
-    const t = setTimeout(() => { pollers = pollers.filter(w => w !== wake); resolve(null); }, POLL_MS);
+    // the waiter leaves the queue when the poll ends, so no job is handed to a caller that has gone
+    const finish = (job: BrowserJob | null) => {
+      clearTimeout(t);
+      signal?.removeEventListener('abort', onAbort);
+      resolve(job);
+    };
+    const wake = (job: BrowserJob | null) => finish(job);
+    const onAbort = () => { pollers = pollers.filter(w => w !== wake); finish(null); };
+    const t = setTimeout(() => { pollers = pollers.filter(w => w !== wake); finish(null); }, POLL_MS);
     pollers.push(wake);
+    signal?.addEventListener('abort', onAbort, { once: true });
   });
 }
 

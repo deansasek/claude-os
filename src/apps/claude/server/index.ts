@@ -72,10 +72,10 @@ const app: ServerApp = {
     // Claude control (server/browser.ts): the tablet takes the browser jobs sessions ask for, and answers them
     // (the same relay carries the tablet tools' jobs, server/tablet.ts; each poll says how many timers and alarms are on)
     {
-      method: 'POST', path: 'browser/next', handle: ({ body }) => {
+      method: 'POST', path: 'browser/next', handle: ({ body, signal }) => {
         if (!checkToken(body.token)) return locked;
         noteTabletActive(body.active);
-        return nextJob().then(job => ({ ok: true, job }));
+        return nextJob(signal).then(job => ({ ok: true, job }));
       },
     },
     {

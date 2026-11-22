@@ -175,8 +175,11 @@ export function startServer(apps: ServerApp[]): void {
           raw = await readRaw(req, route.rawMax);
           if (!raw) return send(res, 413, 'too large', 'text/plain');
         } else if (req.method === 'POST') body = await readBody(req);
+        // a caller that disconnects before the answer aborts the signal (a long poll must then stop waiting)
+        const gone = new AbortController();
+        res.on('close', () => { if (!res.writableFinished) gone.abort(); });
         try {
-          const out = await route.handle({ query: url.searchParams, body, raw, headers: req.headers, from });
+          const out = await route.handle({ query: url.searchParams, body, raw, headers: req.headers, from, signal: gone.signal });
           if (out && typeof out === 'object' && (out as Binary).binary === true) {
             const b = out as Binary;
             return send(res, b.status ?? 200, b.body, b.contentType, b.cache ?? 'no-cache');
