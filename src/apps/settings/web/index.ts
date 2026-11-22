@@ -1209,7 +1209,8 @@ function mount(context: AppContext): void {
   $('stRolePick').addEventListener('click', e => { if (e.target === $('stRolePick')) $('stRolePick').hidden = true; });
   $('stAvatar').addEventListener('click', () => void openPhotoSheet());
   $('stPhotoPick').addEventListener('click', () => void openPhotoSheet());
-  $('stPhotoRemove').addEventListener('click', () => void removePhoto());
+  $('stPhotoRemove').addEventListener('click', () => confirmSheet('Remove your photo?',
+    'The photo is deleted from the PC. Your initials show instead, until you pick another.', 'Remove', () => void removePhoto()));
   $('stPhotoGrid').addEventListener('click', e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-photo]');
     if (b) void usePhoto(b.dataset.photo!);
