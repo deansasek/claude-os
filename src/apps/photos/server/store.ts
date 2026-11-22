@@ -14,7 +14,8 @@ export const MAX_PER_DELETE = 200;     // photos removed with one request (the s
 const ID = /^[A-Za-z0-9_-]{8,64}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-export const safeId = (v: unknown): string | null => (typeof v === 'string' && ID.test(v) ? v : null);
+/** An id is a photo's own name. An id ending in _thumb is another photo's thumbnail file, so it is refused. */
+export const safeId = (v: unknown): string | null => (typeof v === 'string' && ID.test(v) && !/_thumb$/.test(v) ? v : null);
 
 /** A list of photo ids from a request, or null if it isn't one. */
 export function photoIdsFrom(v: unknown): string[] | null {
