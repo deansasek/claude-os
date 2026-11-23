@@ -21,7 +21,8 @@ export type NativeEvent =
   | { type: 'limits'; limits: PlanLimit[] }   // plan limits the CLI reported (rate_limit_event, or a get_usage reply)
   | { type: 'usageChecked'; ok: boolean }     // a usage check ended (from the runner, ClaudeCli.usageCheck)
   | { type: 'exit'; code: number }       // the process ended (from the runner, not the CLI)
-  | { type: 'error'; message: string };  // the runner could not send (from the runner)
+  | { type: 'error'; message: string }   // the runner could not send (from the runner)
+  | { type: 'stop' };                    // the user asked to stop the running reply (native.ts nativeStop)
 
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj | null => (v && typeof v === 'object' && !Array.isArray(v) ? v as Obj : null);
@@ -133,13 +134,14 @@ export function parseStreamLine(line: string): NativeEvent | null {
 export interface NativeChat {
   sessionId: string | null; entries: TranscriptEntry[]; running: boolean; partial: string; error: string | null;
   tokens: TokenUse; last: TokenUse | null; window: number | null; limits: Record<string, SeenLimit>;
+  stopped: boolean;   // the user asked to stop the running reply: its end reads as "Stopped", not as an error
 }
 export const emptyChat = (): NativeChat =>
-  ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {} });
+  ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {}, stopped: false });
 
 /** Your message goes on screen and the reply starts. */
 export const userSent = (c: NativeChat, text: string, at = new Date().toISOString()): NativeChat =>
-  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null });
+  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false });
 
 const ERRORS: Record<string, string> = { start_failed: 'Claude couldn’t start on this tablet. Sign in under Settings → Apps → Claude, then try again.' };
 
@@ -158,6 +160,9 @@ function resetText(iso: string, now: number): string {
     : d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
+/** The kept part of a stopped reply, marked so the chat shows where it was cut. Empty when nothing streamed. */
+const stoppedText = (text: string): string => (text ? `${text} (stopped)` : '');
+
 /** One event folded into the chat. */
 export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOString()): NativeChat {
   const withReply = (text: string): TranscriptEntry[] => (text ? [...c.entries, { kind: 'assistant', text, at }] : c.entries);
@@ -165,8 +170,12 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
     case 'init': return { ...c, sessionId: e.sessionId };
     case 'delta': return c.running ? { ...c, partial: c.partial + e.text } : c;
     case 'text': return c.running ? { ...c, partial: e.text } : c;
+    case 'stop': return c.running ? { ...c, stopped: true } : c;
     case 'result':
-      // a failed result's text is the CLI's error, not Claude's words: it becomes a note (failedNote), not a reply
+      // a stopped reply keeps what streamed, marked; its end is not an error. A failed result's text is the CLI's error,
+      // not Claude's words: it becomes a note (failedNote), not a reply
+      if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial || (e.ok ? e.text : ''))), running: false, partial: '', stopped: false,
+        sessionId: e.sessionId || c.sessionId, error: 'Stopped', tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
       return { ...c, entries: e.ok ? withReply(e.text || c.partial) : withReply(c.partial), running: false, partial: '',
         sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at),
         tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
@@ -178,9 +187,11 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
     }
     case 'usageChecked': return c;
     case 'exit':
-      return c.running ? { ...c, entries: withReply(c.partial), running: false, partial: '', error: 'Claude on this tablet stopped before it finished.' } : c;
+      if (!c.running) return c;
+      if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial)), running: false, partial: '', stopped: false, error: 'Stopped' };
+      return { ...c, entries: withReply(c.partial), running: false, partial: '', error: 'Claude on this tablet stopped before it finished.' };
     case 'error':
-      return { ...c, running: false, partial: '', error: ERRORS[e.message] || 'That didn’t send. Try again.' };
+      return { ...c, running: false, partial: '', stopped: false, error: ERRORS[e.message] || 'That didn’t send. Try again.' };
   }
 }
 

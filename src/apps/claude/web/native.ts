@@ -87,7 +87,12 @@ export function nativeSend(text: string, fresh = false): void {
   changed();
 }
 
-export function nativeStop(): void { try { device.claudeStop(); } catch { /* older app build */ } }
+/** Stops the running reply. Its end then reads as "Stopped" (native-stream.ts), not as an error. */
+export function nativeStop(): void {
+  chat = applyEvent(chat, { type: 'stop' });
+  changed();
+  try { device.claudeStop(); } catch { /* older app build */ }
+}
 
 /** The native chat as a row of the Sessions list, or null when there is no chat yet. The hub's list never has it. */
 export const nativeListed = (): LiveSession | null => (chatListed(chat) ? nativeView().session : null);
