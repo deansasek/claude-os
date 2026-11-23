@@ -896,12 +896,14 @@ public class Bridge {
   }
   /**
    * SPIKE (native chat, apps/claude/web/native.ts): one message to the tablet's own Claude CLI. sessionId '' starts a
-   * new chat. Events come back as window.hubClaudeNative(line). The text is never logged.
+   * new chat. model: haiku, sonnet or opus (anything else is haiku). Events come back as window.hubClaudeNative(line).
+   * The text is never logged.
    */
-  @JavascriptInterface public String claudeSend(String text, String sessionId) {
+  @JavascriptInterface public String claudeSend(String text, String sessionId, String model) {
     if (!allowed) return DENIED;
     if (text == null || text.trim().isEmpty()) return err("empty");
-    hub.kiosk.node.NativeClaudeRunner.turn(act, text, sessionId);
+    String m = "sonnet".equals(model) || "opus".equals(model) ? model : "haiku";
+    hub.kiosk.node.NativeClaudeRunner.turn(act, text, sessionId, m);
     return OK;
   }
   /** SPIKE (native chat): stops the running chat process. */

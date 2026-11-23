@@ -265,7 +265,7 @@
       const words = 'On the tablet, this reply comes from the Claude CLI.'.split(' ');
       line({ type: 'system', subtype: 'init', session_id: 'mock-native' });
       words.forEach((w, i) => setTimeout(() => line({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: (i ? ' ' : '') + w } } }), 300 + i * 150));
-      setTimeout(() => line({ type: 'result', subtype: 'success', is_error: false, result: words.join(' '), session_id: 'mock-native', usage: {} }), 400 + words.length * 150);
+      setTimeout(() => line({ type: 'result', subtype: 'success', is_error: false, result: words.join(' '), session_id: 'mock-native', usage: { input_tokens: 12, output_tokens: words.length, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }, modelUsage: { mock: { contextWindow: 200000 } } }),400 + words.length * 150);
       return ok();
     },
     claudeStop: () => ok(),

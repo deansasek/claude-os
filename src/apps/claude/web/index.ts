@@ -13,7 +13,7 @@ import { initVoice, tapToStop } from './voice.ts';
 import { pace, toolWord } from './words.ts';
 import { loadModels, modelChoices, newPref, setNewPref, setVoicePref, voicePref } from './sessions/controls.ts';
 import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-settings.ts';
-import { nativeOn, setNativeOn } from './native.ts';
+import { NATIVE_MODELS, nativeModel, nativeOn, setNativeModel, setNativeOn } from './native.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -233,6 +233,8 @@ function registerClaudeSettings(): void {
     rows: () => [
       { kind: 'switch', id: 'native', title: 'Run Claude chats on this tablet', detail: 'Test: new chats use the Claude CLI signed in on this tablet (Haiku, no tools) instead of your PC.',
         get: nativeOn, set: v => setNativeOn(v) },
+      { kind: 'choice', id: 'nativeModel', title: 'Chats on this tablet · model', detail: 'The model a chat on this tablet runs on. Changing it keeps the chat and applies from the next reply.',
+        options: NATIVE_MODELS, get: nativeModel, set: v => setNativeModel(v) },
       { kind: 'choice', id: 'newModel', title: 'New sessions · model', detail: 'What a session started from ClaudeOS runs on. You can change it per session in the composer.',
         options: [{ value: '', label: 'Default' }, ...models()], get: () => newPref('model'), set: v => setNewPref('model', v) },
       { kind: 'choice', id: 'newMode', title: 'New sessions · permissions', detail: 'Manual asks before every change. Auto lets Claude decide what needs a yes.',

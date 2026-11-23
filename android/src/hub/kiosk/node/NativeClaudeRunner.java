@@ -336,20 +336,23 @@ public final class NativeClaudeRunner {
   // A new chat (no session id) or another session's id starts a new process; a known id with no process resumes it.
   // Logs carry event types and lengths only: never the prompt, the reply or the session id.
 
-  private static final String CHAT_MODEL = "haiku";
   private static final ExecutorService chatQueue = Executors.newSingleThreadExecutor(r -> new Thread(r, "native-chat"));
   private static final java.util.regex.Pattern TYPE = java.util.regex.Pattern.compile("\"type\":\"([a-z_]+)\"");
   private static final java.util.regex.Pattern SESSION = java.util.regex.Pattern.compile("\"session_id\":\"([^\"]+)\"");
   private static Process chat;            // the running chat process; null when none
   private static OutputStream chatIn;
   private static String chatSession;      // its session id (from system/init)
+  private static String chatModel;        // its model: haiku, sonnet or opus
 
-  /** Bridge.claudeSend: one user message, queued on the chat thread. sessionId '' or null: a new chat. */
-  public static void turn(Context c, String prompt, String sessionId) {
+  /**
+   * Bridge.claudeSend: one user message, queued on the chat thread. sessionId '' or null: a new chat. model: haiku,
+   * sonnet or opus. A different model, or another session, starts a new process; the same session resumes.
+   */
+  public static void turn(Context c, String prompt, String sessionId, String model) {
     Context app = c.getApplicationContext();
     chatQueue.execute(() -> {
       try {
-        new NativeClaudeRunner(app, "").sendTurn(prompt, sessionId == null ? "" : sessionId);
+        new NativeClaudeRunner(app, "").sendTurn(prompt, sessionId == null ? "" : sessionId, model);
       } catch (Throwable t) {
         Log.e(TAG, "chat: send failed: " + t.getClass().getSimpleName());
         chatEvent("{\"type\":\"error\",\"message\":\"start_failed\"}");
@@ -364,14 +367,14 @@ public final class NativeClaudeRunner {
     if (p != null) { Log.i(TAG, "chat: stop"); p.destroy(); }
   }
 
-  private void sendTurn(String prompt, String sessionId) throws Exception {
+  private void sendTurn(String prompt, String sessionId, String model) throws Exception {
     OutputStream in;
     synchronized (NativeClaudeRunner.class) {
-      boolean same = chat != null && chat.isAlive() && !sessionId.isEmpty() && sessionId.equals(chatSession);
+      boolean same = chat != null && chat.isAlive() && !sessionId.isEmpty() && sessionId.equals(chatSession) && model.equals(chatModel);
       if (!same && chat != null) { chat.destroy(); chat = null; chatIn = null; }   // replaced: its exit stays quiet
       in = same ? chatIn : null;
     }
-    if (in == null) in = startChat(sessionId);
+    if (in == null) in = startChat(sessionId, model);
     String line = new org.json.JSONObject().put("type", "user")
         .put("message", new org.json.JSONObject().put("role", "user").put("content", prompt)).toString();
     Log.i(TAG, "chat: user message, " + prompt.length() + " chars");
@@ -379,7 +382,7 @@ public final class NativeClaudeRunner {
     in.flush();
   }
 
-  private OutputStream startChat(String resume) throws Exception {
+  private OutputStream startChat(String resume, String model) throws Exception {
     String libDir = app.getApplicationInfo().nativeLibraryDir;
     File dir = new File(app.getFilesDir(), "claude");
     File bin = new File(dir, "claude");
@@ -388,7 +391,7 @@ public final class NativeClaudeRunner {
     bin.setExecutable(true, true);
     List<String> cmd = concat(List.of(new File(libDir, LOADER).getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath()),
         "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
-        "--include-partial-messages", "--permission-mode", "dontAsk", "--model", CHAT_MODEL, "--tools=");
+        "--include-partial-messages", "--permission-mode", "dontAsk", "--model", model, "--tools=");
     if (!resume.isEmpty()) cmd = concat(cmd, "--resume", resume);
     LoopbackProxy proxy = LoopbackProxy.start(l -> Log.i(TAG, l));
     File home = app.getFilesDir();
@@ -401,8 +404,8 @@ public final class NativeClaudeRunner {
         "HTTPS_PROXY", proxy.url(), "HTTP_PROXY", proxy.url(), "NO_PROXY", "localhost,127.0.0.1"));
     Process p;
     try { p = pb.start(); } catch (Exception e) { proxy.close(); throw e; }
-    Log.i(TAG, "chat: process started, " + (resume.isEmpty() ? "new session" : "resume"));
-    synchronized (NativeClaudeRunner.class) { chat = p; chatIn = p.getOutputStream(); chatSession = resume.isEmpty() ? null : resume; }
+    Log.i(TAG, "chat: process started, " + model + ", " + (resume.isEmpty() ? "new session" : "resume"));
+    synchronized (NativeClaudeRunner.class) { chat = p; chatIn = p.getOutputStream(); chatSession = resume.isEmpty() ? null : resume; chatModel = model; }
     new Thread(() -> {
       try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getErrorStream(), StandardCharsets.UTF_8))) {
         String l;
