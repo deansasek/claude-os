@@ -209,7 +209,7 @@ public class MainActivity extends Activity {
     root.addView(cover, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
     setContentView(root);
     if (Build.VERSION.SDK_INT >= 30) root.setOnApplyWindowInsetsListener(this::keepPageSizeFromKeyboard);
-    excludeSideEdges(root);   // no Android back arrow on a swipe in from the left or right edge (sideBackGestureOff)
+    excludeSideEdges(root);   // no Android back arrow on a swipe anywhere over the page (sideBackGestureOff)
     new BrowserView(this, root, web);   // the Browser app's native pages, laid over the content area (BrowserView.java)
     BrowserView.fromIntent(getIntent());   // a web link that opened Claude Home from another app (default browser)
     ui.postDelayed(this::hideCover, 12_000);   // never leave the cover up for good
@@ -788,16 +788,20 @@ public class MainActivity extends Activity {
   }
 
   /**
-   * Keep the left and right edge strips of the page, full height, from Android's back gesture. Android honours
-   * only the lowest 200dp of each edge (see sideBackGestureOff), so this is the fallback when the setting can't be
-   * written, and it also covers the edge's outermost pixel there.
+   * Keep the whole page from Android's back gesture, not only the side strips. This tablet's SystemUI runs the
+   * back gesture's ML model (device_config systemui use_back_gesture_ml_model=true), and its gesture log shows it
+   * allowing gestures that start 50-400 px in from the edge, even with the strip scaled to 0 (sideBackGestureOff).
+   * The exclusion region is the last check SystemUI makes (EdgeBackGestureHandler.isWithinTouchRegion), so a point
+   * inside it never starts the back arrow, whatever the model says.
+   *
+   * Android honours only the lowest 200dp of each side's gesture strip (system_gesture_exclusion_limit_dp). With
+   * the strip scaled to 0 there is no strip to limit, so the whole window counts; without WRITE_SECURE_SETTINGS
+   * this is the fallback, limited as before.
    */
   private void excludeSideEdges(View root) {
     if (Build.VERSION.SDK_INT < 29) return;
     root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
-      int w = r - l, h = b - t, strip = sideStripPx();
-      v.setSystemGestureExclusionRects(java.util.Arrays.asList(
-          new android.graphics.Rect(0, 0, strip, h), new android.graphics.Rect(w - strip, 0, w, h)));
+      v.setSystemGestureExclusionRects(java.util.Collections.singletonList(new android.graphics.Rect(0, 0, r - l, b - t)));
     });
   }
 
