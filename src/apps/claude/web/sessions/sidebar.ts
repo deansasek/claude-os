@@ -35,9 +35,9 @@ const CHEV = '<svg class="sb-chev" viewBox="0 0 12 12"><path d="M4 2.5 7.5 6 4 9
 
 const DOTS = '<svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="12.5" cy="8" r="1.4"/></svg>';
 
-function rowHtml(r: Row, openId: string | null): string {
+function rowHtml(r: Row, openId: string | null, waitingOk: ReadonlySet<string>): string {
   let cls = '', what: string;
-  if (r.live && (isLive(r.live) || !r.item)) ({ cls, what } = stateOf(r.live));
+  if (r.live && (isLive(r.live) || !r.item)) ({ cls, what } = stateOf(r.live, Date.now(), waitingOk));
   else {
     const i = r.item!;
     what = `${i.open ? 'On your PC · ' : ''}${when(r.at)}${i.messages ? ` · ${i.messages} message${i.messages === 1 ? '' : 's'}` : ''}`;
@@ -52,7 +52,7 @@ function rowHtml(r: Row, openId: string | null): string {
  * The sidebar's list. Groups are ordered by their most recent session; a folder holding the open
  * session is never folded away from view, and searching shows every match unfolded.
  */
-export function sidebarHtml(list: LiveSession[], openId: string | null): string {
+export function sidebarHtml(list: LiveSession[], openId: string | null, waitingOk: ReadonlySet<string> = new Set()): string {
   historyTick();
   const q = historyQuery(), now = Date.now();
   const gs = groups(list, now, historyNow(), q, historyArchivedView());
@@ -75,7 +75,7 @@ export function sidebarHtml(list: LiveSession[], openId: string | null): string 
     if (shut) continue;
     for (const r of g.rows) {
       if (rows >= MAX_ROWS && r.id !== openId) continue;
-      html += rowHtml(r, openId); rows++;
+      html += rowHtml(r, openId, waitingOk); rows++;
     }
     if (g.more && g.id && rows < MAX_ROWS) {
       const left = g.count - g.rows.length;

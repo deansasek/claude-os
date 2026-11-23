@@ -23,7 +23,9 @@ export function when(at: number, now = Date.now()): string {
 }
 
 /** Which dot a session gets, and the few words under its title, as of `now` (ms). */
-export function stateOf(s: LiveSession, now = Date.now()): { cls: string; what: string } {
+/** `waitingOk`: the ids of sessions whose Hub turn waits for your OK (from the usage turns): "Needs your OK" first. */
+export function stateOf(s: LiveSession, now = Date.now(), waitingOk: ReadonlySet<string> = new Set()): { cls: string; what: string } {
+  if (s.id && waitingOk.has(s.id)) return { cls: 'yours', what: 'Needs your OK' };
   if (s.state === 'thinking' || s.state === 'tool') return { cls: 'busy', what: s.state === 'tool' ? toolWord(s.tool) : 'Thinking' };
   if (s.state === 'waiting' && isLive(s)) return { cls: 'yours', what: s.open ? `Your turn · on your PC` : `Your turn · ${shortAge(s.age)}` };
   if (s.state === 'stalled' && isLive(s)) return { cls: 'stalled', what: `No word for ${shortAge(s.age)}` };
