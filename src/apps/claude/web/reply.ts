@@ -148,7 +148,7 @@ function updateJump(): void {
 }
 
 // ---------- the composer ----------
-interface ComposerState { ph: string; ready: boolean; folder: string; pick: boolean; ctl: ControlsView; stop: boolean; mic: boolean }
+interface ComposerState { ph: string; ready: boolean; folder: string; pick: boolean; noFolder?: boolean; ctl: ControlsView; stop: boolean; mic: boolean }
 const NO_CONTROLS: ControlsView = { settings: { model: null, effort: null, mode: null }, context: null, interactive: false, show: false };
 
 function paintComposer(c: ComposerState): void {
@@ -156,6 +156,7 @@ function paintComposer(c: ComposerState): void {
   $('svComposer').classList.toggle('off', !c.ready);
   $('svFolderName').textContent = c.folder;
   $('svFolderChip').classList.toggle('strong', c.pick);
+  $('svFolderChip').hidden = !!c.noFolder;   // a tablet chat has no folder to choose
   paintControls(ctx.root, c.ctl);
   if (!c.ctl.interactive) closeMenu();
   $('svStop').hidden = !c.stop;
@@ -343,21 +344,26 @@ function paintNewComposer(): void {
   const ready = (!!chosen || native) && !starting;
   paintComposer({
     ph: native ? 'Ask Claude on this tablet' : withPhotos(starting && chosen ? `Starting in ${chosen.name}…` : 'Describe a task or ask a question', ready),
-    ready, folder: chosen ? chosen.name : 'Choose folder', pick: true,
+    ready, noFolder: native, folder: chosen ? chosen.name : 'Choose folder', pick: true,
     ctl: { settings: newDefaults(), context: null, interactive: !starting, show: !native }, stop: false, mic: ready && !native,
   });
   paintStarters(ready);
 }
 
-/** Starters for the chosen folder: short, sentence-case first messages. Tap one to fill the composer. */
+/** Starters: short, sentence-case first messages. Tap one to fill the composer. A tablet chat has no tools, so its
+ *  starters need none; a folder session gets the folder starters. */
 const STARTERS = ['Summarise what changed today', 'Fix the failing tests', 'Explain how this folder is organised', 'Find loose ends and TODOs'];
-function paintStarters(show: boolean): void {
+const TABLET_STARTERS = ['Explain something in plain words', 'Help me write a message', 'Plan my week', 'Suggest something to cook tonight'];
+function paintStarters(ready: boolean): void {
   const box = $('nsStarts');
-  const key = show && chosen ? chosen.id : '';
+  const native = nativeOn();
+  const list = native ? TABLET_STARTERS : chosen ? STARTERS : [];
+  const show = ready && list.length > 0;
+  const key = show ? (native ? 'tablet' : chosen!.id) : '';
   box.hidden = !show;
   if (box.dataset.key === key) return;
   box.dataset.key = key;
-  box.innerHTML = key ? STARTERS.map(s => `<button class="ns-start" data-start="${esc(s)}">${esc(s)}</button>`).join('') : '';
+  box.innerHTML = show ? list.map(s => `<button class="ns-start" data-start="${esc(s)}">${esc(s)}</button>`).join('') : '';
 }
 
 /** What the chips show right now (the menus check marks against this). */
@@ -380,6 +386,7 @@ async function openNew(): Promise<void> {
   $('svState').className = 'live'; $('svStateText').textContent = nativeOn() ? 'On this tablet' : 'On this computer';
   $('svNudge').hidden = true;
   $('svApproval').hidden = true; $('svQuick').hidden = true; $('svBlocked').hidden = true;
+  $('nsFolders').hidden = nativeOn();   // a tablet chat needs no folder list
   $('nsFolders').innerHTML = '<div class="ns-row empty">Loading folders…</div>';
   paintNewComposer();
   report('new-session-open');
@@ -849,7 +856,7 @@ export function initReply(context: AppContext): void {
   // a starter fills the composer: the keyboard opens with it, ready to send or edit
   $('nsStarts').addEventListener('click', e => {
     const b = (e.target as Element).closest<HTMLElement>('[data-start]');
-    if (!b?.dataset.start || !chosen || starting) return;
+    if (!b?.dataset.start || !(chosen || nativeOn()) || starting) return;
     draft = b.dataset.start;
     report('new-session-starter');
     askFirstMessage();
