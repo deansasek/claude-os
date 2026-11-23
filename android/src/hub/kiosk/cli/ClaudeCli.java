@@ -340,6 +340,34 @@ public final class ClaudeCli {
   private static String chatModel;        // its model: haiku, sonnet or opus
   private static Process stopWaiting;     // a chat sent an interrupt: its result ends the wait, else the process is destroyed after 5 s
 
+  // ---------- ending an idle chat ----------
+  // A chat process ends after CHAT_IDLE_MS with no send, no output and no reply running. The next send resumes the saved
+  // session (startChat passes --resume). 10 min is the default; the idle time is a pending decision. Logs carry no text.
+  static final long CHAT_IDLE_MS = 10 * 60 * 1000L;
+  private static final java.util.concurrent.ScheduledExecutorService idleTimer = java.util.concurrent.Executors
+      .newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r, "claude-chat-idle"); t.setDaemon(true); return t; });
+  private static long chatActiveAt;       // the last send or output line of the chat process (ms)
+  private static boolean chatReplying;    // a reply runs: its result ends it
+
+  /** Checks chat process p after delayMs. Guarded by ClaudeCli.class where the check reads the chat. */
+  private static void scheduleIdleEnd(Process p, long delayMs) {
+    idleTimer.schedule(() -> endIdleChat(p), delayMs, TimeUnit.MILLISECONDS);
+  }
+
+  /** Ends p when it is still the chat, no reply runs, and it had no send or output for CHAT_IDLE_MS; else checks again. */
+  private static void endIdleChat(Process p) {
+    synchronized (ClaudeCli.class) {
+      if (chat != p) return;   // ended or replaced already
+      if (chatReplying) { scheduleIdleEnd(p, CHAT_IDLE_MS); return; }
+      long quiet = System.currentTimeMillis() - chatActiveAt;
+      if (quiet < CHAT_IDLE_MS) { scheduleIdleEnd(p, CHAT_IDLE_MS - quiet); return; }
+      log("chat: idle, ending the process");
+      p.destroy();   // its exit stays quiet: chat is cleared here
+      chat = null;
+      chatIn = null;
+    }
+  }
+
   /** Bridge.claudeSend: one user message, queued on the chat thread. sessionId '' or null: a new chat. */
   public static void turn(Context c, String prompt, String sessionId, String model) {
     Context app = c.getApplicationContext();
@@ -395,8 +423,18 @@ public final class ClaudeCli {
     String line = new org.json.JSONObject().put("type", "user")
         .put("message", new org.json.JSONObject().put("role", "user").put("content", prompt)).toString();
     log("chat: user message, " + prompt.length() + " chars");
-    in.write((line + "\n").getBytes(StandardCharsets.UTF_8));
-    in.flush();
+    synchronized (ClaudeCli.class) {   // the reply runs: no idle end until its result
+      chatReplying = true;
+      chatActiveAt = System.currentTimeMillis();
+      if (chat != null) scheduleIdleEnd(chat, CHAT_IDLE_MS);
+    }
+    try {
+      in.write((line + "\n").getBytes(StandardCharsets.UTF_8));
+      in.flush();
+    } catch (Exception e) {
+      synchronized (ClaudeCli.class) { chatReplying = false; }
+      throw e;
+    }
   }
 
   private static OutputStream startChat(Context app, String resume, String model) throws Exception {
@@ -423,6 +461,8 @@ public final class ClaudeCli {
           if (!"stream_event".equals(type)) log("chat: event " + type + ", " + l.length() + " chars");
           synchronized (ClaudeCli.class) {
             if (chat != p) continue;   // replaced by a newer chat
+            chatActiveAt = System.currentTimeMillis();
+            if ("result".equals(type)) { chatReplying = false; scheduleIdleEnd(p, CHAT_IDLE_MS); }
             if ("system".equals(type)) { java.util.regex.Matcher s = SESSION.matcher(l); if (s.find()) chatSession = s.group(1); }
             if ("result".equals(type) && stopWaiting == p) stopWaiting = null;   // the interrupted reply ended
           }
