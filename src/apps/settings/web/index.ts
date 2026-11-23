@@ -8,7 +8,7 @@
 // Only loaded inside the tablet app. Device things go through core/web/device.ts; the rest through the shared prefs in system.ts.
 import { esc, getJson, postJson, renderSparks, report, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
-import { androidApps, device, nativeHas, onResume, voice } from '../../../core/web/device.ts';
+import { androidApps, device, nativeHas, onResume, onTablet, voice } from '../../../core/web/device.ts';
 import type { AdbWifiState, AndroidApp, Battery, BluetoothInfo, ScreenState, Setup, StorageInfo, WifiNet, WifiState } from '../../../core/web/device.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import { applyProfile, initials, onProfile, profile, refreshProfile } from '../../../core/web/profile.ts';
@@ -26,6 +26,8 @@ import type { SettingRow } from '../../../core/web/app-settings.ts';
 import { hubReachable } from '../../../core/web/hub-link.ts';
 import type { HubPermission, Limits, LimitWindow, ModelChoice, Project, Usage } from '../../claude/api.ts';
 import type { Place, PlacesResponse, Weather } from '../../weather/api.ts';
+import { checkUsage, nativeLimits, usageCheck, usageCheckable } from '../../claude/web/native.ts';
+import { limitsUpdated, usageRows } from '../../claude/web/native-stream.ts';
 import { loadModels, modelChoices, newFolderPref, newPref, setNewFolderPref, setNewPref } from '../../claude/web/sessions/controls.ts';
 import { manifest } from '../manifest.ts';
 import { INSTRUCTIONS_MAX, NAME_MAX, NICK_MAX, ROLES } from '../api.ts';
@@ -327,7 +329,7 @@ function bindApps(): void {
     catch { confirmSheet('Couldn’t change it', 'Check the tablet app is up to date, then try again.', 'OK', () => {}); }
     paintTabApps();
   });
-  onAppSettingsChange(() => { if (section === 'apps') paintApps(); });
+  onAppSettingsChange(() => { if (section === 'apps') paintApps(); else if (section === 'usage' && onTablet) paintUsage(); });
 }
 
 /** Open Settings → Apps → one app's page (apps can link here, e.g. a gear in their header). */
@@ -424,14 +426,60 @@ async function removePhoto(): Promise<void> {
   catch { confirmSheet('Couldn’t remove it', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
 }
 
-// ---------- Usage: the plan's limits, as bars (from the Claude app's own usage check) ----------
+// ---------- Usage: the plan's limits, as bars ----------
+// On the tablet: from the tablet's own Claude CLI (apps/claude/web/native.ts), never the PC hub. The latest limits a
+// native chat saw are shown at once; when they are older than USAGE_MAX_AGE (or there are none), a short CLI check runs.
+// Off the tablet (a browser on the PC): the hub's usage check (apps/claude/server/limits.ts).
+const USAGE_MAX_AGE = 10 * 60e3;
 let usage: Usage | null = null;
 async function loadUsage(): Promise<void> {
+  if (onTablet) { checkUsage(USAGE_MAX_AGE); if (section === 'usage') paintUsage(); return; }
   try { usage = await getJson<Usage>('/api/claude/usage'); } catch { usage = null; }
   if (section === 'usage') paintUsage();
 }
 
+function resetText(iso: string | null): string {
+  const at = iso ? new Date(iso) : null;
+  return at && Number.isFinite(+at)
+    ? `Resets ${at.toDateString() === new Date().toDateString() ? clock(at) : whenText(at)} · in ${untilText(+at - Date.now())}`
+    : 'Starts with your next message';
+}
+
+function usageRowHtml(name: string, used: number | null, state: string, resetsAt: string | null): string {
+  if (used == null) {   // the CLI sent no utilization for this window: its status and reset time only
+    return `<div class="st-usage">
+      <div class="st-usage-top"><b>${esc(name)}</b><span class="num">${esc(state)}</span></div>
+      <div class="st-usage-sub">${esc(resetText(resetsAt))}</div>
+    </div>`;
+  }
+  const pct = Math.max(0, Math.min(100, Math.round(used)));
+  return `<div class="st-usage${pct >= 90 ? ' hot' : ''}">
+    <div class="st-usage-top"><b>${esc(name)}</b><span class="num">${pct}% used</span></div>
+    <div class="st-bar st-bar-usage"><i style="width:${pct}%"></i></div>
+    <div class="st-usage-sub">${esc(resetText(resetsAt))}</div>
+  </div>`;
+}
+
+function paintTabletUsage(): void {
+  const box = $('stUsageRows'), note = $('stUsageNote');
+  const limits = nativeLimits(), rows = usageRows(limits), check = usageCheck();
+  if (rows.length) box.innerHTML = rows.map(r => usageRowHtml(r.name, r.used, r.state, r.resetsAt)).join('');
+  else {
+    const msg = check.running ? 'Checking your usage on this tablet…'
+      : !usageCheckable() ? 'Update the ClaudeOS app to check your usage here.'
+      : device.cliAuthState().signedIn === 0 ? 'Sign in to Claude under Settings → Apps → Claude to see your usage here.'
+      : check.failed ? 'Couldn’t check your usage. Try again in a minute.'
+      : 'No usage to show yet.';
+    box.innerHTML = `<div class="st-empty">${esc(msg)}</div>`;
+  }
+  const updated = limitsUpdated(limits);
+  const upd = updated ? new Date(updated) : null;
+  note.textContent = [upd ? `Updated ${upd.toDateString() === new Date().toDateString() ? clock(upd) : whenText(upd)}` : '', rows.length && check.running ? 'Checking…' : '',
+    rows.length && !check.running && check.failed ? 'Couldn’t check again' : ''].filter(Boolean).join(' · ');
+}
+
 function paintUsage(): void {
+  if (onTablet) { paintTabletUsage(); return; }
   const box = $('stUsageRows'), note = $('stUsageNote');
   if (!usage) { box.innerHTML = '<div class="st-empty">Couldn’t reach your PC to check your usage.</div>'; note.textContent = ''; return; }
   const L: Limits = usage.limits;

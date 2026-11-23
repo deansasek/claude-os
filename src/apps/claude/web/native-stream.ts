@@ -18,7 +18,8 @@ export type NativeEvent =
   | { type: 'delta'; text: string }      // a piece of the reply as it streams (--include-partial-messages)
   | { type: 'text'; text: string }       // a whole assistant message
   | { type: 'result'; ok: boolean; text: string; sessionId: string | null; costUsd: number | null; usage: TokenUse; window: number | null }
-  | { type: 'limits'; limits: PlanLimit[] }   // plan limits the CLI reported (rate_limit_event)
+  | { type: 'limits'; limits: PlanLimit[] }   // plan limits the CLI reported (rate_limit_event, or a get_usage reply)
+  | { type: 'usageChecked'; ok: boolean }     // a usage check ended (from the runner, ClaudeCli.usageCheck)
   | { type: 'exit'; code: number }       // the process ended (from the runner, not the CLI)
   | { type: 'error'; message: string };  // the runner could not send (from the runner)
 
@@ -56,6 +57,27 @@ function planLimits(info: Obj): PlanLimit[] {
   return [...byType.values()];
 }
 
+// The get_usage control reply's windows (rate_limits). Here utilization is already a percent (0 to 100) and resets_at
+// an ISO time. model_scoped: per-model weekly windows, kept as type "model:<display name>".
+const USAGE_WINDOWS = ['five_hour', 'seven_day', 'seven_day_opus', 'seven_day_sonnet'];
+const usagePercent = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : null);
+const isoTime = (v: unknown): string | null => { const s = str(v); return s && Number.isFinite(Date.parse(s)) ? new Date(s).toISOString() : null; };
+function usageLimits(r: Obj): PlanLimit[] {
+  const out: PlanLimit[] = [];
+  for (const type of USAGE_WINDOWS) {
+    const w = obj(r[type]);
+    if (w) out.push({ type, status: '', used: usagePercent(w.utilization), resetsAt: isoTime(w.resets_at) });
+  }
+  for (const m of Array.isArray(r.model_scoped) ? r.model_scoped : []) {
+    const w = obj(m), name = str(w?.display_name);
+    if (w && name) out.push({ type: `model:${name}`, status: '', used: usagePercent(w.utilization), resetsAt: isoTime(w.resets_at) });
+  }
+  return out;
+}
+
+/** The request id of the runner's get_usage control request (ClaudeCli.usageCheck sends the same). */
+export const USAGE_REQUEST = 'claudeos-usage';
+
 /** One stream-json line to an event; null for lines the chat does not use (or that are not JSON). */
 export function parseStreamLine(line: string): NativeEvent | null {
   let o: Obj | null;
@@ -91,6 +113,14 @@ export function parseStreamLine(line: string): NativeEvent | null {
       const limits = info ? planLimits(info) : [];
       return limits.length ? { type: 'limits', limits } : null;
     }
+    case 'control_response': {
+      const r = obj(o.response);
+      if (r?.subtype !== 'success' || r.request_id !== USAGE_REQUEST) return null;
+      const rates = obj(obj(r.response)?.rate_limits);
+      const limits = rates ? usageLimits(rates) : [];
+      return limits.length ? { type: 'limits', limits } : null;
+    }
+    case 'usage_check': return { type: 'usageChecked', ok: o.ok === true };
     case 'exit': return { type: 'exit', code: num(o.code) };
     case 'error': return { type: 'error', message: str(o.message) || 'error' };
     default: return null;
@@ -126,9 +156,11 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
         tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
     case 'limits': {
       const limits = { ...c.limits };
-      for (const l of e.limits) limits[l.type] = { ...l, at };
+      // a get_usage reply has no status: keep the one the last rate_limit_event gave
+      for (const l of e.limits) limits[l.type] = { ...l, status: l.status || limits[l.type]?.status || '', at };
       return { ...c, limits };
     }
+    case 'usageChecked': return c;
     case 'exit':
       return c.running ? { ...c, entries: withReply(c.partial), running: false, partial: '', error: 'Claude on this tablet stopped before it finished.' } : c;
     case 'error':
@@ -149,10 +181,43 @@ export const limitList = (c: NativeChat): SeenLimit[] => Object.values(c.limits)
   return i(a.type) - i(b.type) || a.type.localeCompare(b.type);
 });
 /** A window's name for the screen (the CLI's type for a window this code does not know). */
-export const limitName = (type: string): string => LIMIT_NAMES[type] || type;
+export const limitName = (type: string): string =>
+  LIMIT_NAMES[type] || (type.startsWith('model:') ? `Weekly limit · ${type.slice(6)}` : type);
 /** A window's state without the reset time: the percent used when the CLI sent it, otherwise its status. */
 export const limitState = (l: PlanLimit): string =>
   l.used != null ? `${Math.round(l.used)}% used` : STATUS_TEXT[l.status] || l.status || 'No status';
+
+// ---------- Settings → Usage: the plan's windows from the tablet's own CLI ----------
+
+/** One row of the Usage page. used: percent, null when the CLI sent no utilization (then state is the status). */
+export interface UsageRow { type: string; name: string; used: number | null; state: string; resetsAt: string | null }
+const USAGE_NAMES: Record<string, string> = {
+  five_hour: 'Current session', seven_day: 'Weekly, all models', seven_day_opus: 'Weekly · Opus', seven_day_sonnet: 'Weekly · Sonnet',
+};
+
+/** The Usage page's rows: current session, weekly for all models, then weekly per model when the CLI reported one.
+ *  Other windows (extra usage) are left out. */
+export function usageRows(limits: SeenLimit[]): UsageRow[] {
+  const rank = (t: string) => { const n = LIMIT_ORDER.indexOf(t); return n < 0 ? LIMIT_ORDER.length : n; };
+  return limits
+    .filter(l => USAGE_NAMES[l.type] || l.type.startsWith('model:'))
+    .sort((a, b) => rank(a.type) - rank(b.type) || a.type.localeCompare(b.type))
+    .map(l => ({ type: l.type, name: USAGE_NAMES[l.type] || `Weekly · ${l.type.slice(6)}`, used: l.used == null ? null : Math.round(l.used),
+      state: limitState(l), resetsAt: l.resetsAt }));
+}
+
+/** When the newest of the limits was reported (ISO), or null when none has a time. */
+export function limitsUpdated(limits: SeenLimit[]): string | null {
+  let best = NaN, iso: string | null = null;
+  for (const l of limits) { const t = Date.parse(l.at || ''); if (Number.isFinite(t) && !(t <= best)) { best = t; iso = l.at; } }
+  return iso;
+}
+
+/** True when the Usage page should ask the CLI again: no limits yet, or the newest is older than maxAgeMs. */
+export function usageStale(limits: SeenLimit[], maxAgeMs: number, now = Date.now()): boolean {
+  const at = Date.parse(limitsUpdated(limits) || '');
+  return !Number.isFinite(at) || now - at > maxAgeMs;
+}
 
 /** Tokens the Sessions screen counts for the chat: input, output and cache, as the PC hub totals a session. */
 export const totalTokens = (t: TokenUse): number => t.input + t.output + t.cacheRead + t.cacheWrite;

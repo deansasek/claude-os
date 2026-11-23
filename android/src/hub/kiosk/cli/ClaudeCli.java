@@ -403,6 +403,90 @@ public final class ClaudeCli {
     return p.getOutputStream();
   }
 
+  // ---------- the usage check (Bridge.claudeUsageCheck, Settings → Usage) ----------
+  // The CLI answers the stream-json control request get_usage with the plan's windows (rate_limits: five_hour,
+  // seven_day, seven_day_opus, seven_day_sonnet, model_scoped). Before the first API request of the process the CLI has
+  // no limits yet (rate_limits is null), so the check first sends one short message: a new session that is not kept
+  // (--no-session-persistence), on Haiku, with a one-line system prompt and no tools (about 1,000 input tokens). Its
+  // rate_limit_event and the get_usage reply go to the page as chat lines (native-stream.ts reads both); a
+  // {"type":"usage_check","ok":bool} line ends it. Other lines (the reply, the result) do not go to the page. The CLI
+  // fetches the limits with its own sign-in: ClaudeOS reads no token. Logs carry event types only.
+
+  private static final long USAGE_MAX_SEC = 120;
+  private static final String USAGE_REQUEST = "claudeos-usage";   // native-stream.ts USAGE_REQUEST
+  private static boolean checkingUsage;   // guarded by ClaudeCli.class
+
+  /** Starts a usage check on a background thread; false when one already runs. */
+  public static boolean usageCheck(Context c) {
+    synchronized (ClaudeCli.class) {
+      if (checkingUsage) return false;
+      checkingUsage = true;
+    }
+    Context app = c.getApplicationContext();
+    new Thread(() -> {
+      boolean ok = false;
+      try (LoopbackProxy proxy = LoopbackProxy.start(ClaudeCli::log)) {
+        ok = runUsageCheck(app, proxy);
+      } catch (Throwable t) {
+        log("usage: failed: " + t.getClass().getSimpleName());
+      } finally {
+        synchronized (ClaudeCli.class) { checkingUsage = false; }
+        chatEvent("{\"type\":\"usage_check\",\"ok\":" + ok + "}");
+      }
+    }, "claude-usage").start();
+    return true;
+  }
+
+  private static boolean runUsageCheck(Context app, LoopbackProxy proxy) throws Exception {
+    List<String> cmd = concat(base(app), "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+        "--permission-mode", "dontAsk", "--model", "haiku", "--tools=", "--strict-mcp-config", "--no-session-persistence",
+        "--system-prompt", "Reply with the single word ok.");
+    Process p = builder(app, cmd, proxy).start();
+    log("usage: process started");
+    new Thread(() -> {   // stderr is read and dropped, so the CLI never blocks on it
+      byte[] buf = new byte[8192];
+      try (InputStream err = p.getErrorStream()) { while (err.read(buf) >= 0) { /* dropped */ } } catch (Exception e) { /* ended */ }
+    }, "claude-usage-err").start();
+    boolean ok = false;
+    try {
+      OutputStream in = p.getOutputStream();
+      String msg = new org.json.JSONObject().put("type", "user")
+          .put("message", new org.json.JSONObject().put("role", "user").put("content", "ok")).toString();
+      in.write((msg + "\n").getBytes(StandardCharsets.UTF_8));
+      in.flush();
+      long deadline = System.currentTimeMillis() + USAGE_MAX_SEC * 1000;
+      Thread watchdog = new Thread(() -> {
+        try { if (!p.waitFor(USAGE_MAX_SEC, TimeUnit.SECONDS)) { log("usage: no answer, stopping it"); p.destroyForcibly(); } }
+        catch (InterruptedException e) { /* done */ }
+      }, "claude-usage-watch");
+      watchdog.start();
+      try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+        String l;
+        while ((l = r.readLine()) != null && System.currentTimeMillis() < deadline) {
+          java.util.regex.Matcher t = TYPE.matcher(l);
+          String type = t.find() ? t.group(1) : "?";
+          if (!"stream_event".equals(type)) log("usage: event " + type);
+          if ("rate_limit_event".equals(type)) chatEvent(l);
+          else if ("result".equals(type)) {
+            String req = new org.json.JSONObject().put("type", "control_request").put("request_id", USAGE_REQUEST)
+                .put("request", new org.json.JSONObject().put("subtype", "get_usage").put("skip_behaviors", true)).toString();
+            in.write((req + "\n").getBytes(StandardCharsets.UTF_8));
+            in.flush();
+          } else if ("control_response".equals(type) && l.contains("\"" + USAGE_REQUEST + "\"")) {
+            chatEvent(l);
+            ok = l.contains("\"subtype\":\"success\"") && !l.contains("\"rate_limits\":null");
+            in.close();   // the CLI ends when its input ends
+            break;
+          }
+        }
+      }
+    } finally {
+      if (!p.waitFor(5, TimeUnit.SECONDS)) p.destroyForcibly();
+    }
+    log("usage: done, answered " + ok);
+    return ok;
+  }
+
   /** One stream-json line to the page, as a JS string (the page parses it). */
   private static void chatEvent(String line) {
     try { MainActivity.claudeNative(org.json.JSONObject.quote(line)); } catch (Throwable t) { Log.e(TAG, "chat: page event failed"); }

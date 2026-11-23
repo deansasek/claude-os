@@ -4,12 +4,12 @@
 // window.hubClaudeNative(line). One native chat at a time. The chat (its session id and entries) is kept in the store
 // and in the app's files folder, so a reload or an app restart resumes it; the screen shows it as the session NATIVE_ID.
 import { appSettingsChanged } from '../../../core/web/app-settings.ts';
-import { device } from '../../../core/web/device.ts';
+import { device, nativeHas } from '../../../core/web/device.ts';
 import { store } from '../../../core/web/dom.ts';
 import type { LiveSession, SessionView } from '../api.ts';
 import {
-  applyEvent, chatAge, chatListed, contextOf, emptyChat, limitList, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens, userSent,
-  type NativeChat, type SeenLimit,
+  applyEvent, chatAge, chatListed, contextOf, emptyChat, limitList, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens,
+  usageStale, userSent, type NativeChat, type SeenLimit,
 } from './native-stream.ts';
 
 const KEY = 'claude.native.on';
@@ -42,21 +42,41 @@ function save(): void {
   try { device.pageFileWrite(CHAT_FILE, s); } catch { /* older app build, or off the tablet: localStorage only */ }
 }
 
-/** Listen for the tablet's events; onChange runs after each one the chat uses. */
-export function initNative(onChange: () => void): void {
-  changed = onChange;
-  (window as unknown as { hubClaudeNative: (line: string) => void }).hubClaudeNative = line => {
-    const e = typeof line === 'string' ? parseStreamLine(line) : null;
-    if (!e) return;
-    chat = applyEvent(chat, e);
-    if (e.type !== 'delta' && e.type !== 'text') save();
-    changed();
-    if (e.type === 'limits') appSettingsChanged();   // Settings -> Apps -> Claude shows them
-  };
-}
+// The tablet's events, listened for from the start: the Settings app's usage check needs them also when the Claude
+// app has not been opened yet.
+(window as unknown as { hubClaudeNative: (line: string) => void }).hubClaudeNative = line => {
+  const e = typeof line === 'string' ? parseStreamLine(line) : null;
+  if (!e) return;
+  if (e.type === 'usageChecked') { checking = false; checkFailed = !e.ok; appSettingsChanged(); return; }
+  chat = applyEvent(chat, e);
+  if (e.type !== 'delta' && e.type !== 'text') save();
+  changed();
+  if (e.type === 'limits') appSettingsChanged();   // Settings (Usage, and Apps -> Claude) shows them
+};
 
-/** The plan limits from the tablet CLI's last chat (rate_limit_event), the newest per window. Not the hub's limits. */
+/** onChange runs after each tablet event the chat uses (the Claude app's Sessions screen). */
+export function initNative(onChange: () => void): void { changed = onChange; }
+
+/** The plan limits from the tablet CLI (rate_limit_event of a chat, or a usage check), the newest per window.
+ *  Not the hub's limits. */
 export const nativeLimits = (): SeenLimit[] => limitList(chat);
+
+// ---------- the usage check (Settings → Usage): a short CLI turn on Haiku, then the CLI's get_usage ----------
+let checking = false;
+let checkFailed = false;
+/** The tablet can run a usage check (a newer app build). */
+export const usageCheckable = (): boolean => nativeHas('claudeUsageCheck');
+/** The state of the last usage check: running now, or ended without an answer. */
+export const usageCheck = (): { running: boolean; failed: boolean } => ({ running: checking, failed: checkFailed });
+
+/** Asks the tablet's CLI for the plan limits when the newest are older than maxAgeMs (or there are none). The answer
+ *  comes back as tablet events; Settings repaints on appSettingsChanged. */
+export function checkUsage(maxAgeMs: number): void {
+  if (checking || !usageCheckable() || !usageStale(nativeLimits(), maxAgeMs)) return;
+  checking = true; checkFailed = false;
+  try { device.claudeUsageCheck(); } catch { checking = false; checkFailed = true; }
+  appSettingsChanged();
+}
 
 /** A message to the native chat (a fresh chat when `fresh`). The reply resumes the chat's session, on the chosen model. */
 export function nativeSend(text: string, fresh = false): void {

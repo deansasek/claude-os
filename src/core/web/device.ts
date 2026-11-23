@@ -17,6 +17,7 @@ interface HubDeviceApi {
   cliSigninStart?(): string; cliAuthState?(check: boolean): string;
   cliSigninCode?(code: string): string; cliSigninClipboard?(): string; cliSigninState?(): string;
   claudeSend?(text: string, sessionId: string, model: string): string; claudeStop?(): string;
+  claudeUsageCheck?(): string;   // newer app builds: the plan limits from the tablet's CLI (Settings → Usage)
   pageFileWrite?(name: string, text: string): string; pageFileRead?(name: string): string;
   setup(): string; fix(id: string): string; setKiosk(on: boolean): string;
   keyboardStatus?(): string; keyboardSetDefault?(): string; keyboardClearLearned?(): string;   // newer app builds
@@ -120,6 +121,9 @@ export const device = {
   claudeSend: (text: string, sessionId: string, model: string) => call<{ ok: boolean }>(a => a.claudeSend!(text, sessionId, model)),
   /** Stops the tablet's running chat. */
   claudeStop: () => call<{ ok: boolean }>(a => a.claudeStop!()),
+  /** Asks the tablet's CLI for the plan limits: a short turn on Haiku, then its get_usage. The answer comes back as
+   *  window.hubClaudeNative lines (apps/claude/web/native.ts). Throws on older builds or when a check already runs. */
+  claudeUsageCheck: () => call<{ ok: boolean }>(a => a.claudeUsageCheck!()),
   /** A small file in the app's files folder, on disk when this returns, so it survives the app being closed
    *  (localStorage writes land a few seconds late). Throws on older builds or off the tablet. */
   pageFileWrite: (name: 'native-chat', text: string) => call<{ ok: boolean }>(a => a.pageFileWrite!(name, text)),
