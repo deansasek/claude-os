@@ -15,10 +15,11 @@ export interface SeenLimit extends PlanLimit { at: string | null }
 export interface TokenUse { input: number; output: number; cacheRead: number; cacheWrite: number }
 
 export type NativeEvent =
-  | { type: 'init'; sessionId: string }
+  | { type: 'init'; sessionId: string; model?: string | null }   // model: the id the turn runs on (system/init)
   | { type: 'delta'; text: string }      // a piece of the reply as it streams (--include-partial-messages)
   | { type: 'text'; text: string }       // a whole assistant message
-  | { type: 'result'; ok: boolean; text: string; sessionId: string | null; costUsd: number | null; usage: TokenUse; window: number | null; reason?: string | null }
+  | { type: 'result'; ok: boolean; text: string; sessionId: string | null; costUsd: number | null; usage: TokenUse; window: number | null; reason?: string | null;
+      durationMs?: number | null }        // durationMs: how long the turn took (duration_ms)
   | { type: 'limits'; limits: PlanLimit[] }   // plan limits the CLI reported (rate_limit_event, or a get_usage reply)
   | { type: 'usageChecked'; ok: boolean }     // a usage check ended (from the runner, ClaudeCli.usageCheck)
   | { type: 'exit'; code: number }       // the process ended (from the runner, not the CLI)
@@ -92,7 +93,7 @@ export function parseStreamLine(line: string): NativeEvent | null {
   switch (o.type) {
     case 'system': {
       const id = str(o.session_id);
-      if (o.subtype === 'init') return id ? { type: 'init', sessionId: id } : null;
+      if (o.subtype === 'init') return id ? { type: 'init', sessionId: id, model: str(o.model) } : null;
       // the API is retried: "Retrying (2 of 10)" (attempt, max_retries). Compacting: the CLI's status is "compacting".
       if (o.subtype === 'api_retry') {
         const attempt = num(o.attempt), max = num(o.max_retries);
@@ -122,7 +123,7 @@ export function parseStreamLine(line: string): NativeEvent | null {
       return {
         type: 'result', ok, text: str(o.result) || '',
         sessionId: str(o.session_id), costUsd: typeof o.total_cost_usd === 'number' ? o.total_cost_usd : null,
-        usage: tokenUse(obj(o.usage)), window,
+        usage: tokenUse(obj(o.usage)), window, durationMs: typeof o.duration_ms === 'number' ? o.duration_ms : null,
         // why it failed: an API status the CLI sends (api_error_status), else the result subtype (failed.ts reads it)
         reason: ok ? null : STATUS_REASONS[num(o.api_error_status)] || str(o.subtype) || null,
       };
@@ -155,9 +156,11 @@ export interface NativeChat {
   stopped: boolean;   // the user asked to stop the running reply: its end reads as "Stopped", not as an error
   status: string | null;   // a retry or compacting while the reply runs ("Retrying (2 of 10)", "Compacting"); null otherwise
   turnStartedAt: string | null;   // when the running reply was sent (set once per turn, by userSent)
+  lastModel: string | null; lastMs: number | null;   // the model and the time of the latest turn (under the title)
 }
 export const emptyChat = (): NativeChat =>
-  ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {}, stopped: false, status: null, turnStartedAt: null });
+  ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {},
+    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null });
 
 /** Your message goes on screen and the reply starts. */
 export const userSent = (c: NativeChat, text: string, at = new Date().toISOString()): NativeChat =>
@@ -195,7 +198,7 @@ const stoppedText = (text: string): string => (text ? `${text} (stopped)` : '');
 export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOString()): NativeChat {
   const withReply = (text: string): TranscriptEntry[] => (text ? [...c.entries, { kind: 'assistant', text, at }] : c.entries);
   switch (e.type) {
-    case 'init': return { ...c, sessionId: e.sessionId };
+    case 'init': return { ...c, sessionId: e.sessionId, lastModel: e.model || c.lastModel };
     // a reply piece or the result is a normal event again: the retry or compacting line goes
     case 'delta': return c.running ? { ...c, partial: c.partial + e.text, status: null } : c;
     case 'text': return c.running ? { ...c, partial: e.text, status: null } : c;
@@ -208,7 +211,7 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
         sessionId: e.sessionId || c.sessionId, error: 'Stopped', tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
       return { ...c, entries: e.ok ? withReply(e.text || c.partial) : withReply(c.partial), running: false, partial: '', status: null,
         sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at, e.reason ?? null),
-        tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
+        tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window, lastMs: e.durationMs ?? c.lastMs };
     case 'limits': {
       const limits = { ...c.limits };
       // a get_usage reply has no status: keep the one the last rate_limit_event gave
@@ -231,6 +234,20 @@ const LIMIT_NAMES: Record<string, string> = {
   seven_day_overage_included: 'Weekly limit · with extra usage', overage: 'Extra usage',
 };
 const STATUS_TEXT: Record<string, string> = { allowed: 'Within limit', allowed_warning: 'Close to the limit', rejected: 'Limit reached' };
+
+/** A model's name for the screen: "Haiku", "Sonnet" or "Opus" for the ids that name one; any other id as it is. */
+export const modelName = (id: string | null): string | null => {
+  const m = /haiku|sonnet|opus/i.exec(id || '');
+  return m ? m[0][0]!.toUpperCase() + m[0].slice(1).toLowerCase() : id || null;
+};
+/** A turn's time for the screen: "8 s", or "2 min 5 s" from a minute. */
+export const durationText = (ms: number): string => {
+  const s = Math.round(ms / 1000);
+  return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`;
+};
+/** The latest turn's model and time, as the chat's subtitle shows them: "Haiku · 8 s". Empty before a turn. */
+export const lastTurnText = (c: NativeChat): string =>
+  [modelName(c.lastModel), c.lastMs == null ? null : durationText(c.lastMs)].filter(Boolean).join(' · ');
 
 /** The chat's plan limits: the session window first, then the weekly ones, then any other. */
 export const limitList = (c: NativeChat): SeenLimit[] => Object.values(c.limits).sort((a, b) => {
@@ -302,7 +319,8 @@ const SAVED_ENTRIES = 100;
 /** The chat as JSON for the store: the session, the entries and the token counts. Never the streaming reply.
  *  savedAt: when it was saved (ms), so the newer of two copies wins (newerSaved). */
 export function saveChat(c: NativeChat, savedAt = Date.now()): string {
-  return JSON.stringify({ v: 1, savedAt, sessionId: c.sessionId, entries: c.entries.slice(-SAVED_ENTRIES), tokens: c.tokens, last: c.last, window: c.window, limits: c.limits });
+  return JSON.stringify({ v: 1, savedAt, sessionId: c.sessionId, entries: c.entries.slice(-SAVED_ENTRIES), tokens: c.tokens, last: c.last, window: c.window, limits: c.limits,
+    lastModel: c.lastModel, lastMs: c.lastMs });
 }
 
 /** Of the copy in the app's file and the copy in localStorage, the one saved last (the file on a tie, or when the
@@ -335,6 +353,7 @@ export function loadChat(s: string | null): NativeChat {
         resetsAt: str(l.resetsAt), at: str(l.at) };
     }
     return { ...emptyChat(), sessionId: str(o.sessionId), entries: entries.slice(-SAVED_ENTRIES), tokens: tokenUse(obj(o.tokens)),
-      last: o.last ? tokenUse(obj(o.last)) : null, window: num(o.window) || null, limits };
+      last: o.last ? tokenUse(obj(o.last)) : null, window: num(o.window) || null, limits,
+      lastModel: str(o.lastModel), lastMs: typeof o.lastMs === 'number' && Number.isFinite(o.lastMs) ? o.lastMs : null };
   } catch { return emptyChat(); }
 }
