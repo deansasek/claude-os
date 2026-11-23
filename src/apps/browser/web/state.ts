@@ -5,6 +5,7 @@
 // Saved: browser.tabs (tabs + active), browser.history (last 1000), browser.bookmarks, browser.downloads (last 100),
 // browser.perms (per site: camera, microphone, location), browser.quick, browser.engine.
 import { store } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 
 /** A tab: its page's address ('' for the new-tab page). `past` holds the pages Home left behind, for Back (newest last). */
 export interface Tab { id: string; url: string; title: string; icon: string; priv?: boolean; desk?: boolean; past?: string[] }
@@ -190,7 +191,7 @@ export function dlByKey(id: number, uri: string): Dl | undefined {
 // ---------- icons (24-unit, stroke) ----------
 const svg = (body: string, sw = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 export const I = {
-  app: '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="16" cy="16" r="11"/><path d="M5 16h22M16 5c-3.4 3.2-5 6.9-5 11s1.6 7.8 5 11M16 5c3.4 3.2 5 6.9 5 11s-1.6 7.8-5 11"/></svg>',
+  app: appIcon('browser'),
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
   mask: svg('<path d="M4 9.5c0-1.7 1.3-3 3-3h10c1.7 0 3 1.3 3 3V15a4 4 0 0 1-4 4h-1.3l-1.9-2.2h-1.6L10.3 19H8a4 4 0 0 1-4-4z"/><circle cx="8.8" cy="12.6" r=".8"/><circle cx="15.2" cy="12.6" r=".8"/>'),
   star: svg('<path d="M12 3.8l2.5 5.1 5.6.8-4 3.9.9 5.6L12 16.6l-5 2.6.9-5.6-4-3.9 5.6-.8z"/>'),

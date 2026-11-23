@@ -10,6 +10,7 @@
 // The lists reload when the app comes on screen and every 20 s while it is there (someone else, or Claude, may have
 // changed them). Every change goes to the PC at once, which checks it again.
 import { esc, getJson, postJson } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack } from '../../../core/web/system.ts';
@@ -22,8 +23,7 @@ const UNDO_MS = 6000;
 const SWIPE_START_PX = 10;       // a row starts to slide once the finger has moved this far sideways
 const SWIPE_REMOVE_PX = 120;     // let go past this and it is removed
 
-const ICON = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">'
-  + '<path d="M5 9l2 2 3.5-3.5"/><path d="M5 17l2 2 3.5-3.5"/><path d="M5 25l2 2 3.5-3.5"/><path d="M14.5 9.5H27M14.5 17.5H27M14.5 25.5H23"/></svg>';
+const ICON = appIcon('lists');
 const TICK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7"/></svg>';
 const PEN = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4.5l3 3L7 16H4v-3z"/><path d="M11 6l3 3"/></svg>';
 const X = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>';

@@ -7,6 +7,7 @@
 // "+ Phrase" for ClaudeOS's keyboard; steps are added with the chips, moved with the arrows, and timers and pauses
 // set with − and +. Nothing is saved until Save. A change here sends hub:routines, so Home and voice read them again.
 import { esc, getJson, postJson } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack } from '../../../core/web/system.ts';
@@ -22,8 +23,7 @@ const API = `/api/${manifest.id}`;
 const TIMER_LADDER = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720];
 
 const svg = (d: string, w = 1.9) => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-const ICON = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">'
-  + '<path d="M6 9.5h3M6 16h3M6 22.5h3"/><path d="M13 9.5h13M13 16h13M13 22.5h8"/><path d="M24.5 20l3 2.5-3 2.5"/></svg>';
+const ICON = appIcon('routines');
 const X = svg('<path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/>');
 const UP = svg('<path d="M5 12l5-5 5 5"/>');
 const DOWN = svg('<path d="M5 8l5 5 5-5"/>');

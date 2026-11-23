@@ -10,6 +10,7 @@
 // The rail icon is a little clock showing the time; the rail label is the time, or the countdown while a timer runs.
 // For testing, ?hour=23 (and &min=59) shifts this app's clock.
 import { esc, onStore, params, report, store } from '../../../core/web/dom.ts';
+import { clockIcon } from '../../../core/web/app-icons.ts';
 import { INK, inkSay, inkedBlob, inkedShape, rng } from '../../../core/web/ink.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { provideClock, type ClockApi } from '../../../core/web/voice-commands.ts';
@@ -98,12 +99,8 @@ function lengthWords(ms: number): string {
 // ---------- icons ----------
 const rad = (deg: number) => (deg - 90) * Math.PI / 180;
 const at = (cx: number, cy: number, deg: number, r: number) => [(cx + r * Math.cos(rad(deg))).toFixed(2), (cy + r * Math.sin(rad(deg))).toFixed(2)];
-function railIcon(d: Date = now()): string {
-  const m = d.getMinutes(), h = ((d.getHours() % 12) + m / 60) * 30;
-  const [hx, hy] = at(16, 16, h, 5.6), [mx, my] = at(16, 16, m * 6, 8.2);
-  return `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">`
-    + `<circle cx="16" cy="16" r="11.5"/><path d="M16 16L${hx} ${hy}"/><path d="M16 16L${mx} ${my}"/></svg>`;
-}
+/** The rail icon: the shared hand-drawn clock face (core/web/app-icons.ts), its hands at time d. */
+const railIcon = (d: Date = now()): string => clockIcon(d);
 const CHEV = (up: boolean) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${up ? 'M6 14.5l6-6 6 6' : 'M6 9.5l6 6 6-6'}"/></svg>`;
 
 // ---------- touch controls: hold-to-repeat arrows and scrubbable numbers ----------

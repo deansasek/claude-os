@@ -7,6 +7,7 @@
 //             Developer (wireless debugging, so developer options are never opened)
 // Only loaded inside the tablet app. Device things go through core/web/device.ts; the rest through the shared prefs in system.ts.
 import { esc, getJson, postJson, renderSparks, report, store } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import { androidApps, device, nativeHas, onResume, voice } from '../../../core/web/device.ts';
 import type { AdbWifiState, AndroidApp, Battery, BluetoothInfo, ScreenState, Setup, StorageInfo, WifiNet, WifiState } from '../../../core/web/device.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
@@ -42,7 +43,7 @@ const ALIAS: Record<string, Section> = { desk: 'security', kiosk: 'security' };
 const SAMPLE = 'Hi, I’m Claude. This is how I sound.';
 
 const svg = (d: string) => `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-const ICON = svg('<path d="M6 10h11M23 10h3M6 22h3M15 22h11"/><circle cx="20" cy="10" r="3"/><circle cx="12" cy="22" r="3"/>');
+const ICON = appIcon('settings');
 const NAV_ICONS: Record<string, string> = {
   profile: svg('<circle cx="16" cy="11.5" r="5"/><path d="M6.5 27c1.5-5.2 5-8 9.5-8s8 2.8 9.5 8"/>'),
   usage: svg('<path d="M7 26V18M13 26V11M19 26V15M25 26V7"/>'),

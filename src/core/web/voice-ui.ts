@@ -17,6 +17,7 @@
 // #svMic (wired through its own hook) get the class `voice-live` while it is listening. Styles are injected from here (no shared CSS).
 import { voice, voiceOffReason, type VoiceEvent, type VoiceReason } from './device.ts';
 import { SPARK_SHAPE } from './dom.ts';
+import { appIcon } from './app-icons.ts';
 import { wake as wakeScreen } from './system.ts';
 
 interface VoiceAction {label: string; primary?: boolean; run: () => void }
@@ -134,7 +135,7 @@ function build(stage: HTMLElement): HTMLElement {
     dotEl.className = 'ri vx-rail'; dotEl.id = 'vxDot';
     dotEl.setAttribute('aria-label', 'Talk to Claude'); dotEl.setAttribute('aria-pressed', 'false');
     dotEl.innerHTML = '<span class="ri-icon">'
-      + '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="11.5" y="4" width="9" height="15" rx="4.5"/><path d="M7.5 14.5a8.5 8.5 0 0 0 17 0M16 23v4.5M12 27.5h8"/></svg>'
+      + appIcon('voice')
       + `<span class="vx-rail-wave">${'<i></i>'.repeat(5)}</span><i class="vx-badge"></i></span>`
       + '<span class="ri-label">Voice</span>';
     foot.appendChild(dotEl);

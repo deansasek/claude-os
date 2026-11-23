@@ -8,6 +8,7 @@
 // system's notifications. Live parts refresh every 30 seconds and whenever Home comes on screen.
 // For testing, ?hour=23 (and &min=59) shifts this app's clock, like the Clock app; &mock=waiting|working fakes Claude.
 import { esc, getJson, onStore, params, postJson, report, store } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import type { HaResult, HaScenes } from '../../home-assistant/api.ts';
 import type { CalEvent, CalEvents } from '../../calendar/api.ts';
 import { loadRoutines, onRunState, runRoutine, runState, stopRoutine } from '../../routines/web/run.ts';
@@ -70,7 +71,7 @@ const greeting = (h: number): string => (h < 5 ? 'Good night' : h < 12 ? 'Good m
 
 // ---------- icons (line glyphs at the rail's weight) ----------
 const svg = (d: string, w = 1.8) => `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-const HOME = svg('<path d="M5.5 14.5L16 6l10.5 8.5"/><path d="M8.5 12.5v13h15v-13"/><path d="M13.5 25.5V19h5v6.5"/>');
+const HOME = appIcon('home');
 const I = {
   plus: svg('<path d="M16 7v18M7 16h18"/>', 2),
   cloud: svg('<path d="M9 24h14a5.5 5.5 0 0 0 .6-11A7.5 7.5 0 0 0 9.2 15.2 4.4 4.4 0 0 0 9 24z"/>', 2),

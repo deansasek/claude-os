@@ -1,6 +1,7 @@
 // The Camera app: a live preview (the tablet draws it under the page), a shutter, front and back, the last
 // photo (opens Photos), and "Ask Claude about this" after each shot. Look (look.ts) is the full-screen mode.
 import { getJson, report } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithPhoto } from '../../claude/web/reply.ts';
@@ -15,8 +16,7 @@ const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let shotId: string | null = null;
 let flashTimer: number | undefined;
 
-const ICON = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">'
-  + '<path d="M5 11.5a2 2 0 0 1 2-2h3.2l2-3h7.6l2 3H25a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><circle cx="16" cy="17" r="4.6"/></svg>';
+const ICON = appIcon('camera');
 
 /** The preview's state, shown in the header pill and (when it isn't on) over the frame. */
 function paintState(state: cam.CamState, message?: string): void {
