@@ -479,3 +479,12 @@ test('system/init gives the tablet CLI version, which the chat keeps and Setting
   // a later init without a version keeps the one already seen
   assert.equal(applyEvent(c, { type: 'init', sessionId: 's1' }, AT).cliVersion, '2.1.4');
 });
+test('a model fallback reads as a note: Switched to <model> for this reply', () => {
+  const fallback = parseStreamLine(line({ type: 'system', subtype: 'model_refusal_fallback', trigger: 'refusal', direction: 'retry',
+    original_model: 'claude-opus-4-1', fallback_model: 'claude-sonnet-4-5', request_id: null }));
+  assert.deepEqual(fallback, { type: 'fallback', model: 'claude-sonnet-4-5' });
+  const c = applyEvent(userSent(emptyChat(), 'Hi', AT), fallback!, AT);
+  assert.deepEqual(c.entries.at(-1), { kind: 'note', text: 'Switched to Sonnet for this reply.', at: AT });
+  assert.equal(c.running, true);   // the reply goes on
+  assert.equal(parseStreamLine(line({ type: 'system', subtype: 'model_refusal_fallback' })), null);
+});

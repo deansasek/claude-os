@@ -26,7 +26,8 @@ export type NativeEvent =
   | { type: 'error'; message: string }   // the runner could not send (from the runner)
   | { type: 'stop' }                     // the user asked to stop the running reply (native.ts nativeStop)
   | { type: 'status'; text: string | null }   // a retry or compacting, as the CLI says it; null when it is over
-  | { type: 'compacted' };                    // the CLI summarised the earlier messages (system/compact_boundary)
+  | { type: 'compacted' }
+  | { type: 'fallback'; model: string };   // the CLI switched to a fallback model for this reply (system/model_refusal_fallback)                    // the CLI summarised the earlier messages (system/compact_boundary)
 
 /** The note in the chat when the CLI has summarised the earlier messages to keep going. */
 export const COMPACTED_TEXT = 'Earlier messages were summarised to keep going.';
@@ -103,6 +104,8 @@ export function parseStreamLine(line: string): NativeEvent | null {
       const id = str(o.session_id);
       if (o.subtype === 'init') return id ? { type: 'init', sessionId: id, model: str(o.model), version: str(o.claude_code_version) } : null;
       if (o.subtype === 'compact_boundary') return { type: 'compacted' };
+      // a refusal made the CLI retry on a fallback model: fallback_model is the one that answers
+      if (o.subtype === 'model_refusal_fallback') { const m = str(o.fallback_model); return m ? { type: 'fallback', model: m } : null; }
       // the API is retried: "Retrying (2 of 10)" (attempt, max_retries). Compacting: the CLI's status is "compacting".
       if (o.subtype === 'api_retry') {
         return { type: 'status', text: retryText(num(o.attempt), num(o.max_retries)) };
@@ -223,6 +226,9 @@ function resetText(iso: string, now: number): string {
 /** True when a reply that was running ended well (no error note, not stopped): the "Claude finished" alert fires then. */
 export const replyFinished = (prev: NativeChat, next: NativeChat): boolean => prev.running && !next.running && next.error == null;
 
+/** The note for a reply that a fallback model answered (the CLI's model_refusal_fallback). */
+export const fallbackText = (model: string): string => `Switched to ${modelName(model) || model} for this reply.`;
+
 /** The kept part of a stopped reply, marked so the chat shows where it was cut. Empty when nothing streamed. */
 const stoppedText = (text: string): string => (text ? `${text} (stopped)` : '');
 
@@ -241,6 +247,7 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
     case 'status': return c.running ? { ...c, status: e.text } : c;
     // the note stays in the chat; the compacting line ends with it
     case 'compacted': return { ...c, entries: [...c.entries, { kind: 'note', text: COMPACTED_TEXT, at }], status: null };
+    case 'fallback': return { ...c, entries: [...c.entries, { kind: 'note', text: fallbackText(e.model), at }] };
     case 'stop': return c.running ? { ...c, stopped: true } : c;
     case 'result':
       // a stopped reply keeps what streamed, marked; its end is not an error. A failed result's text is the CLI's error,
