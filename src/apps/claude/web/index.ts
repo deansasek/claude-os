@@ -8,7 +8,7 @@ import type { LimitWindow, LiveSession, Usage } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { callOver, celebrate, clearCall, critterScreen, flag, getMood, initCritter, pendingCall, setMood, type Mood } from './critter.ts';
 import { initMug } from './mug.ts';
-import { closeSession, currentSession, initReply, nudgeChip, onUsage, openSession } from './reply.ts';
+import { closeSession, currentSession, initReply, nudgeChip, onUsage, openNew, openSession } from './reply.ts';
 import { initVoice, tapToStop } from './voice.ts';
 import { pace, toolWord } from './words.ts';
 import { loadModels, modelChoices, newPref, setNewPref, setVoicePref, voicePref } from './sessions/controls.ts';
@@ -220,7 +220,10 @@ async function load(): Promise<void> {
     $('pill').className = 'live bad'; $('pillText').textContent = 'Offline';
     if (!data) {   // nothing to show yet: say why, instead of dashes and "Looking for sessions…" forever
       $('summary').innerHTML = 'Can’t reach your PC. <em>Your usage and sessions come from it. ClaudeOS keeps trying.</em>';
-      $('sess').innerHTML = '<div class="empty">Sessions show up once your PC answers.</div>';
+      // with tablet chats on, the tablet's own chat is the one thing that works without the PC
+      $('sess').innerHTML = '<div class="empty">Sessions show up once your PC answers.</div>'
+        + (nativeOn() ? '<button class="qr primary" id="offTablet" type="button">Chat on this tablet</button>' : '');
+      if (nativeOn()) $('offTablet').addEventListener('click', () => { report('offline-tablet-chat'); void openNew(); });
     }
     tick();
   }

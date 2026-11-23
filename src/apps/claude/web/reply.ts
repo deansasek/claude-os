@@ -384,7 +384,8 @@ function pickSetting(change: Partial<SessionSettings>): void {
   else if (mode === 'session' && openId && view?.canReply) { remember(openId, change); render(); }
 }
 
-async function openNew(): Promise<void> {
+/** The new-session screen (also "Chat on this tablet" on the offline Claude screen, index.ts). */
+export async function openNew(): Promise<void> {
   openId = null; view = null; picking = true; starting = false;
   showScreen('new');
   $('sv').classList.remove('readonly');
