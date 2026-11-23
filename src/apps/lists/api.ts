@@ -38,7 +38,7 @@ export interface ListsResult {
   ok: boolean;
   lists: FamilyList[];
   error?: string;
-  item?: ListItem;                     // add / tick: the item it touched
+  item?: ListItem;                     // add / tick / edit: the item it touched
   list?: string;                       // new-list: the new list's id
   removed?: number;                    // clear-done: how many went
 }

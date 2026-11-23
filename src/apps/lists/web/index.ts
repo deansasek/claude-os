@@ -1,8 +1,9 @@
 // The Lists app: the family's shared lists (Shopping, To-do, Notes, and any the family makes), kept on the PC
 // (.lists.json, server/store.ts) so everyone at home and Claude see the same ones.
 //
-// A row of tabs picks the list. Tap an item to tick it off (tap again to put it back); the x or a swipe to the left
-// removes it, with Undo for a few seconds. The bar at the bottom opens ClaudeOS's keyboard to add items (it stays up
+// A row of tabs picks the list. Tap an item to tick it off (tap again to put it back); the pencil (or a tap on a note)
+// opens the keyboard with its text to change it (Save or Cancel); the x or a swipe to the left removes it, with Undo
+// for a few seconds. The bar at the bottom opens ClaudeOS's keyboard to add items (it stays up
 // to add several). Clear ticked (header) takes the ticked items off. Notes are free text, one note per entry, not
 // ticked. New list makes another tick-off list; one the family made can be deleted (Shopping, To-do and Notes stay).
 //
@@ -24,6 +25,7 @@ const SWIPE_REMOVE_PX = 120;     // let go past this and it is removed
 const ICON = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">'
   + '<path d="M5 9l2 2 3.5-3.5"/><path d="M5 17l2 2 3.5-3.5"/><path d="M5 25l2 2 3.5-3.5"/><path d="M14.5 9.5H27M14.5 17.5H27M14.5 25.5H23"/></svg>';
 const TICK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 10.5l3.2 3.2L15 7"/></svg>';
+const PEN = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4.5l3 3L7 16H4v-3z"/><path d="M11 6l3 3"/></svg>';
 const X = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>';
 
 let ctx: AppContext;
@@ -96,10 +98,11 @@ function rowHtml(l: FamilyList, i: ListItem): string {
   const notes = l.kind === 'notes';
   const cls = `ls-row${i.done ? ' done' : ''}${notes ? ' note' : ''}${busy.has(i.id) ? ' busy' : ''}`;
   const main = notes
-    ? `<span class="ls-tick" data-act="none"><span class="ls-text">${esc(i.text)}</span></span>`
+    ? `<button class="ls-tick" data-act="edit" aria-label="Edit note: ${esc(i.text)}"><span class="ls-text">${esc(i.text)}</span></button>`
     : `<button class="ls-tick" data-act="tick" role="checkbox" aria-checked="${i.done}"><span class="ls-box">${TICK}</span><span class="ls-text">${esc(i.text)}</span></button>`;
   return `<li class="${cls}" data-id="${esc(i.id)}"><div class="ls-row-bg" aria-hidden="true">Remove</div>`
-    + `<div class="ls-row-fg">${main}<button class="ls-x hit" data-act="remove" aria-label="Remove ${esc(i.text)}">${X}</button></div></li>`;
+    + `<div class="ls-row-fg">${main}<button class="ls-ed hit" data-act="edit" aria-label="Edit ${esc(i.text)}">${PEN}</button>`
+    + `<button class="ls-x hit" data-act="remove" aria-label="Remove ${esc(i.text)}">${X}</button></div></li>`;
 }
 
 function render(): void {
@@ -191,6 +194,24 @@ function remove(id: string): void {
   render();
   showUndo({ list: l.id, items: [{ text: it.text, done: it.done }], label: `Removed ${it.text}` });
   void send('remove', { list: l.id, id });
+}
+
+/** Change an item's text: ClaudeOS's keyboard opens with the text in it; Save keeps the change, Cancel drops it. */
+function edit(id: string): void {
+  const l = listNow();
+  const it = l?.items.find(i => i.id === id);
+  if (!l || !it || busy.has(id)) return;
+  Keyboard.open({
+    value: it.text, placeholder: l.kind === 'notes' ? 'Edit the note' : 'Edit the item', done: 'Save', max: MAX_TEXT,
+    onDone: text => {
+      const t = cleanText(text);
+      if (!t || t === it.text) return;             // nothing typed, or no change: Save just closes
+      it.text = t;                                 // at once on screen; the PC's answer replaces it
+      busy.add(id);
+      render();
+      void send('edit', { list: l.id, id, text: t }).finally(() => { busy.delete(id); render(); });
+    },
+  });
 }
 
 function clearTicked(): void {
@@ -308,6 +329,7 @@ function onItemsClick(ev: Event): void {
   const id = b?.closest<HTMLElement>('.ls-row')?.dataset.id;
   if (!b || !id) return;
   if (b.dataset.act === 'tick') tick(id);
+  else if (b.dataset.act === 'edit') edit(id);
   else if (b.dataset.act === 'remove') remove(id);
 }
 

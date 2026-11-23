@@ -7,7 +7,14 @@
 export type VoiceList = string;
 export type ListCommand = { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string }
   | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList }
-  | { op: 'addMany'; list: VoiceList; texts: string[] };
+  | { op: 'addMany'; list: VoiceList; texts: string[] }
+  | { op: 'edit'; list: VoiceList | null; text: string; to: string };   // list null: no list was said (see findExact)
+
+/** Every item whose text is exactly these words (any case), on any list: for "change milk to oat milk" with no list said. */
+export function findExact<L extends { id: string; items: { id: string; text: string }[] }>(lists: L[], want: string): { list: L; item: L['items'][number] }[] {
+  const w = want.toLowerCase();
+  return lists.flatMap(list => list.items.filter(i => i.text.toLowerCase() === w).map(item => ({ list, item })));
+}
 
 /** Find one item by its words: the exact text, or the only partial match. Never a guess between several.
  *  open: only items not yet ticked. ambiguous: more than one partial match and no exact one. */
@@ -66,6 +73,16 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
     const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
     if (!text || /^(it|that|this|them)$/.test(text)) return null;
     return { op: 'remove', list: which(m[2], custom), text: text.charAt(0).toUpperCase() + text.slice(1) };
+  }
+  // "change milk to oat milk (on the shopping list)", "rename milk to oat milk": the old item is looked up on the tablet.
+  // With no list said, only an item with exactly those words on some list is changed (voice-commands.ts); else Claude gets it.
+  m = t.match(new RegExp(`^(?:change|rename) (.+?) to (.+?) (?:on|in) ${LIST}$`)) ?? t.match(/^(?:change|rename) (.+?) to (.+)$/);
+  if (m) {
+    const from = m[1].replace(/^(?:a|an|the|some|my|our) (?=\S)/, '').trim();
+    const to = m[2].replace(/^(?:a|an|some) (?=\S)/, '').trim();
+    if (!from || !to || to.length > 80 || /^(it|that|this|them)$/.test(from) || /\blist$/.test(from) || /\blist$/.test(to)) return null;
+    const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+    return { op: 'edit', list: m[3] ? which(m[3], custom) : null, text: cap(from), to: cap(to) };
   }
   // "clear the ticked items off the shopping list": the same as the Clear ticked button
   m = t.match(new RegExp(`^(?:clear|empty) (?:the |all |my )?(?:ticked|checked|done|crossed off)(?: off)? items? (?:off|from) ${LIST}$`));

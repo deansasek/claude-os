@@ -43,7 +43,7 @@
 #app-lists .ls-items { list-style: none; margin: 0; padding: 0 0 8px; }
 #app-lists .ls-sub { margin: 18px 0 4px; padding: 0 4px; font: 500 13px var(--sans); letter-spacing: .02em; color: var(--t4); }
 
-/* one row: at least 52px tall (over the 44px touch minimum); the whole row ticks, the x removes, a swipe left removes too */
+/* one row: at least 52px tall (over the 44px touch minimum); the whole row ticks, the pencil edits, the x removes, a swipe left removes too */
 #app-lists .ls-row { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
 #app-lists .ls-row-bg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px;
   background: var(--danger-fill); color: var(--paper); font: 500 14px var(--sans); }
@@ -65,7 +65,13 @@
   display: flex; align-items: center; justify-content: center; color: var(--t4); }
 #app-lists .ls-x svg { width: 18px; height: 18px; }
 #app-lists .ls-x:active { background: var(--card-2); color: var(--danger); }
-#app-lists .ls-x:focus-visible, #app-lists .ls-tick:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+/* the pencil: the same quiet 40px button as the x, just before it; it opens the keyboard with the item's text */
+#app-lists .ls-ed { all: unset; position: relative;   /* .hit (core): finger-sized */ box-sizing: border-box; cursor: pointer; flex: none;
+  width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--t4); }
+#app-lists .ls-ed svg { width: 18px; height: 18px; }
+#app-lists .ls-ed:active { background: var(--card-2); color: var(--text); }
+#app-lists .ls-ed + .ls-x { margin-left: -8px; }
+#app-lists .ls-ed:focus-visible, #app-lists .ls-x:focus-visible, #app-lists .ls-tick:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
 
 /* nothing on the list */
 #app-lists .ls-empty { margin: 56px auto 0; max-width: 440px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }

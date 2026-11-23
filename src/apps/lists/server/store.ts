@@ -172,6 +172,30 @@ export function removeItem(listRef: unknown, id: unknown): ListsResult {
   });
 }
 
+/** Change one item's text on a list (in place; pure, no file): the changed item, or why not.
+ *  The same text on another item is refused, so a list never holds the same thing twice. */
+export function renameItem(l: FamilyList, id: unknown, rawText: unknown): ListItem | string {
+  if (typeof id !== 'string' || !ITEM_ID.test(id)) return 'That isn’t an item.';
+  const it = l.items.find(i => i.id === id);
+  if (!it) return `That isn’t on ${l.name}.`;
+  const text = cleanText(rawText);
+  if (!text) return 'Type the new text.';
+  if (text.length > MAX_TEXT) return `That’s too long: ${MAX_TEXT} characters at most.`;
+  if (l.items.some(i => i.id !== id && i.text.toLowerCase() === text.toLowerCase())) return `${text} is already on ${l.name}.`;
+  it.text = text;
+  return it;
+}
+
+/** Change an item's text. Its id, tick and place on the list stay. */
+export function editItem(listRef: unknown, id: unknown, rawText: unknown): ListsResult {
+  return change(lists => {
+    const l = findList(lists, listRef);
+    if (!l) return NO_LIST;
+    const r = renameItem(l, id, rawText);
+    return typeof r === 'string' ? r : { item: clone(r) };
+  });
+}
+
 /** Remove every ticked item from a list. */
 export function clearDone(listRef: unknown): ListsResult {
   return change(lists => {
