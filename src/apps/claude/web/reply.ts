@@ -19,7 +19,7 @@ import { historyTitle, initSidebar, sidebarHtml, toggleFolder } from './sessions
 import { initManage, openSessionMenu } from './sessions/manage.ts';
 import { msgKey, type MsgUi, openClips, openGroups, quickReplies, relAgo, SPARK, SPARK_RAYS, transcriptHtml } from './sessions/transcript.ts';
 import { speakable } from './voice.ts';
-import { initNative, NATIVE_ID, nativeListed, nativeOn, nativeSend, nativeStop, nativeView } from './native.ts';
+import { initNative, NATIVE_ID, nativeListed, nativeMetaText, nativeOn, nativeSend, nativeStop, nativeView } from './native.ts';
 import { elapsedText } from './native-stream.ts';
 
 let ctx: AppContext;
@@ -259,7 +259,7 @@ function render(): void {
   const active = t && (t.status === 'running' || t.status === 'approval') ? t : null;
   const past = !active && !!s && !s.open && !s.hub && s.age > 30 * 60;   // an old session from the history: read only
   $('svTitle').textContent = s?.title || 'Session';
-  $('svSub').textContent = [s?.folder, s?.branch && s.branch !== 'HEAD' ? s.branch : null].filter(Boolean).join(' · ');
+  $('svSub').textContent = openId === NATIVE_ID ? nativeMetaText() : [s?.folder, s?.branch && s.branch !== 'HEAD' ? s.branch : null].filter(Boolean).join(' · ');
 
   const state = $('svState'), stateText = $('svStateText');
   // the dot means what it means everywhere: blue = your turn, clay = Claude working

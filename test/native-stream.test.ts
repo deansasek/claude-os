@@ -2,15 +2,15 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, contextOf, elapsedText, emptyChat, limitList, limitName, limitState, limitsUpdated, loadChat, newerSaved, parseStreamLine, saveChat,
-  totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
+  applyEvent, chatAge, chatListed, clearedChat, contextOf, durationText, elapsedText, emptyChat, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
+  newerSaved, parseStreamLine, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
 const AT = '2026-11-23T10:00:00.000Z';
 const line = (o: unknown) => JSON.stringify(o);
 
 test('system/init keeps the session id', () => {
-  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'init', session_id: 's1', model: 'haiku', tools: [] })), { type: 'init', sessionId: 's1' });
+  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'init', session_id: 's1', model: 'haiku', tools: [] })), { type: 'init', sessionId: 's1', model: 'haiku' });
   assert.equal(parseStreamLine(line({ type: 'system', subtype: 'compact_boundary' })), null);
 });
 
@@ -30,7 +30,7 @@ test('a result carries the text, cost, token counts and context window', () => {
     usage: { input_tokens: 9, output_tokens: 2, cache_read_input_tokens: 100, cache_creation_input_tokens: 40 },
     modelUsage: { 'claude-haiku-5-5': { contextWindow: 200000 } } });
   assert.deepEqual(parseStreamLine(l), { type: 'result', ok: true, text: 'Hello', sessionId: 's1', costUsd: 0.0012,
-    usage: { input: 9, output: 2, cacheRead: 100, cacheWrite: 40 }, window: 200000, reason: null });
+    usage: { input: 9, output: 2, cacheRead: 100, cacheWrite: 40 }, window: 200000, reason: null, durationMs: null });
   const noWindow = parseStreamLine(line({ type: 'result', subtype: 'success', is_error: false, result: 'x' }));
   assert.deepEqual(noWindow?.type === 'result' && noWindow.usage, { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   assert.equal(noWindow?.type === 'result' && noWindow.window, null);
@@ -90,6 +90,25 @@ test('the elapsed time of a reply: m:ss, then h:mm:ss past an hour; a bad start 
   // the start is kept with the turn: a new message sets it, and an empty chat has none
   assert.equal(userSent(emptyChat(), 'Hi', AT).turnStartedAt, AT);
   assert.equal(emptyChat().turnStartedAt, null);
+});
+
+test('the last turn shows its model and time: "Haiku · 8 s", kept across a restart', () => {
+  assert.equal(modelName('claude-haiku-4-5-20251001'), 'Haiku');
+  assert.equal(modelName('claude-sonnet-4-6'), 'Sonnet');
+  assert.equal(modelName('opus'), 'Opus');
+  assert.equal(modelName('some-other-model'), 'some-other-model');
+  assert.equal(modelName(null), null);
+  assert.equal(durationText(8000), '8 s');
+  assert.equal(durationText(125000), '2 min 5 s');
+  const init = parseStreamLine(line({ type: 'system', subtype: 'init', session_id: 's1', model: 'claude-haiku-4-5-20251001' }));
+  const done = parseStreamLine(line({ type: 'result', subtype: 'success', is_error: false, result: 'Hi', duration_ms: 8200 }));
+  assert.deepEqual(done, { type: 'result', ok: true, text: 'Hi', sessionId: null, costUsd: null, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, window: null, reason: null, durationMs: 8200 });
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), init!, AT);
+  assert.equal(lastTurnText(c), 'Haiku');
+  c = applyEvent(c, done!, AT);
+  assert.equal(lastTurnText(c), 'Haiku · 8 s');
+  assert.equal(lastTurnText(emptyChat()), '');
+  assert.equal(lastTurnText(loadChat(saveChat(c))), 'Haiku · 8 s');
 });
 
 test('lines that are not JSON or not used give null', () => {

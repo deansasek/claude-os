@@ -8,7 +8,7 @@ import { device, nativeHas } from '../../../core/web/device.ts';
 import { store } from '../../../core/web/dom.ts';
 import type { LiveSession, SessionView } from '../api.ts';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, limitList, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens,
+  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, lastTurnText, limitList, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens,
   usageStale, userSent, type NativeChat, type SeenLimit,
 } from './native-stream.ts';
 
@@ -108,6 +108,9 @@ export function nativeClear(): void {
 
 /** The native chat as a row of the Sessions list, or null when there is no chat yet. The hub's list never has it. */
 export const nativeListed = (): LiveSession | null => (chatListed(chat) ? nativeView().session : null);
+
+/** The subtitle under the chat's title: the latest turn's model and time ("Haiku · 8 s"). */
+export const nativeMetaText = (): string => lastTurnText(chat);
 
 /** The native chat as the Sessions screen draws a session. */
 export function nativeView(): SessionView {
