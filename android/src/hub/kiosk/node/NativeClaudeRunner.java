@@ -114,8 +114,9 @@ public final class NativeClaudeRunner {
 
   // ---------- CLI sign-in ----------
   // The flow: the CLI prints its sign-in address; the runner hands it to the page, which opens it in ClaudeOS's own
-  // Browser app. The user signs in on claude.ai. When claude.ai shows a code to copy (the CLI's manual flow, or its
-  // "Paste code" prompt), the page shows a ClaudeOS sheet; its Paste sends the code (Bridge.cliSigninCode), and
+  // Browser app. The user signs in on claude.ai. While the CLI takes a code (its manual flow, or its "Paste code"
+  // prompt), the Browser's bar shows "Enter sign-in code" with the time left; only a tap opens the ClaudeOS sheet. Its
+  // Paste reads the clipboard (Bridge.cliSigninClipboard), its Send sends the code (Bridge.cliSigninCode), and
   // sendCode() writes it plus a newline to the CLI's stdin, then closes stdin. The CLI, not ClaudeOS, exchanges the
   // code for the token and stores it itself.
   // ClaudeOS never reads files/claude/, ~/.claude or the CLI's credentials file, never stores the token or the code,
@@ -127,6 +128,33 @@ public final class NativeClaudeRunner {
   private static final java.util.regex.Pattern PROMPT = java.util.regex.Pattern.compile("(?i)paste.{0,20}code|code.{0,20}here");
   /** The waiting CLI's stdin while it may take a code; null otherwise. */
   private static volatile OutputStream loginIn;
+  /** When the runner stops the waiting login (System.currentTimeMillis()); 0 when no login runs. */
+  private static volatile long loginDeadline;
+
+  /** Seconds left for the running login, or -1 when no login takes a code (Bridge.cliSigninState). */
+  public static long secondsLeft() {
+    long d = loginDeadline;
+    if (loginIn == null || d == 0) return -1;
+    return Math.max(0, (d - System.currentTimeMillis()) / 1000);
+  }
+
+  /**
+   * The sheet's Paste (Bridge.cliSigninClipboard): the clipboard's text, read natively because the WebView's own
+   * clipboard read is blocked. Only while a login takes a code, so the page gets no general clipboard read. Puts the
+   * text in out and returns null, else returns a short reason. Never logs the text.
+   */
+  public static String clipboardCode(Context c, StringBuilder out) {
+    if (loginIn == null) return "no sign-in is waiting";
+    String text = "";
+    try {
+      android.content.ClipboardManager cm = c.getSystemService(android.content.ClipboardManager.class);
+      android.content.ClipData clip = cm == null ? null : cm.getPrimaryClip();
+      if (clip != null && clip.getItemCount() > 0) text = String.valueOf(clip.getItemAt(0).coerceToText(c)).trim();
+    } catch (Exception e) { /* no clipboard: the reason below */ }
+    if (text.isEmpty() || text.length() > 2048 || text.contains("\n")) return "no code to send";
+    out.append(text);
+    return null;
+  }
 
   /**
    * The sheet's code for the waiting CLI (Bridge.cliSigninCode): an empty code means the clipboard's text. Writes it
@@ -158,22 +186,24 @@ public final class NativeClaudeRunner {
     }
   }
 
-  /** The page's step: {"step":"open","url":...,"code":bool} | {"step":"code"} | {"step":"copied"} | {"step":"done","ok":bool}. */
+  /**
+   * The page's step: {"step":"open","code":bool,"left":s} | {"step":"code","left":s} | {"step":"done","ok":bool}.
+   * left: seconds until the runner stops the login. The page never opens the code sheet by itself (core/web/cli-signin.ts).
+   */
   private static void toPage(String json) {
     try { MainActivity.cliSignin(json); } catch (Throwable t) { Log.e(TAG, "native: page step failed", t); }
   }
 
+  private static long left() { return Math.max(0, (loginDeadline - System.currentTimeMillis()) / 1000); }
+
   private void login(List<String> base, Map<String, String> env) {
     post("native: login: exec auth login");
     android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
-    android.content.ClipboardManager cm = app.getSystemService(android.content.ClipboardManager.class);
-    android.content.ClipboardManager.OnPrimaryClipChangedListener copied = () -> toPage("{\"step\":\"copied\"}");
     boolean[] codeAsked = { false };
     Runnable askCode = () -> {
       synchronized (codeAsked) { if (codeAsked[0]) return; codeAsked[0] = true; }
-      post("native: login: the CLI takes a code now; the page shows the code sheet");
-      toPage("{\"step\":\"code\"}");
-      if (cm != null) ui.post(() -> cm.addPrimaryClipChangedListener(copied));   // a Copy on claude.ai brings the sheet up
+      post("native: login: the CLI takes a code now; the Browser shows Enter sign-in code");
+      toPage("{\"step\":\"code\",\"left\":" + left() + "}");
     };
     Process p = null;
     try {
@@ -185,6 +215,7 @@ public final class NativeClaudeRunner {
       pb.environment().put("TMPDIR", tmp.getAbsolutePath());
       pb.environment().putAll(env);
       long t0 = System.currentTimeMillis();
+      loginDeadline = t0 + LOGIN_MAX_SEC * 1000;
       p = pb.start();
       loginIn = p.getOutputStream();   // stdin stays open: the CLI may wait for a pasted code
       Thread out = loginReader(p.getInputStream(), "stdout", askCode, ui);
@@ -207,7 +238,7 @@ public final class NativeClaudeRunner {
       if (p != null) p.destroyForcibly();
     } finally {
       loginIn = null;
-      if (cm != null) ui.post(() -> cm.removePrimaryClipChangedListener(copied));
+      loginDeadline = 0;
     }
   }
 
@@ -269,7 +300,7 @@ public final class NativeClaudeRunner {
     boolean opened = MainActivity.cliSigninOpen(url);
     post("native: login: sign-in address found (" + url.length() + " chars, not logged), callback "
         + (local ? "on the tablet's loopback" : "a claude.ai code page") + "; Browser app " + (opened ? "opened it" : "REFUSED it"));
-    toPage("{\"step\":\"open\",\"code\":" + !local + "}");
+    toPage("{\"step\":\"open\",\"code\":" + !local + ",\"left\":" + left() + "}");
     if (!local) askCode.run();
   }
 

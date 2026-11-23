@@ -14,6 +14,7 @@ interface HubDeviceApi {
   reboot(): string; maintenance(): string;
   screenOff?(): string;   // newer app builds: the power menu's Turn off screen
   cliSigninCode?(code: string): string;   // SPIKE builds: the CLI sign-in sheet's code (cli-signin.ts)
+  cliSigninClipboard?(): string; cliSigninState?(): string;   // SPIKE builds: the sheet's Paste; the login's time left
   setup(): string; fix(id: string): string; setKiosk(on: boolean): string;
   keyboardStatus?(): string; keyboardSetDefault?(): string; keyboardClearLearned?(): string;   // newer app builds
   keyboardPrefs?(): string; keyboardSetPref?(name: string, on: boolean): string;   // newer app builds: suggestions, key sounds
@@ -101,6 +102,10 @@ export const device = {
   maintenance: () => call<{ ok: boolean }>(a => a.maintenance()),
   /** SPIKE: the code for the waiting `claude auth login` ('' = the clipboard's). Throws with the reason. */
   cliSigninCode: (code: string) => call<{ ok: boolean }>(a => a.cliSigninCode!(code)),
+  /** SPIKE: the clipboard's text for the sign-in sheet's Paste (read natively). Throws with the reason. */
+  cliSigninClipboard: () => call<{ text: string }>(a => a.cliSigninClipboard!()).text,
+  /** SPIKE: seconds left for a running CLI login that takes a code; -1 when none runs or on older builds. */
+  cliSigninState: (): number => { try { return call<{ left: number }>(a => a.cliSigninState!()).left; } catch { return -1; } },
   /** One-time Android settings that make the tablet a kiosk without device owner. Older app builds lack it. */
   setup: (): Setup | null => { try { return call<Setup>(a => a.setup()); } catch { return null; } },
   fix: (id: string) => call<{ ok: boolean }>(a => a.fix(id)),

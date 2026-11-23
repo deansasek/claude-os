@@ -887,6 +887,18 @@ public class Bridge {
     String r = hub.kiosk.node.NativeClaudeRunner.sendCode(act, code);
     return r == null ? OK : err(r);
   }
+  /** SPIKE (CLI sign-in sheet): the sheet's Paste, {"text":...}. Only while a login takes a code. Never logged or kept. */
+  @JavascriptInterface public String cliSigninClipboard() {
+    if (!allowed) return DENIED;
+    StringBuilder text = new StringBuilder();
+    String r = hub.kiosk.node.NativeClaudeRunner.clipboardCode(act, text);
+    return r == null ? "{\"text\":" + JSONObject.quote(text.toString()) + "}" : err(r);
+  }
+  /** SPIKE (CLI sign-in): {"left":s}, the seconds left for a login that takes a code, or -1 when none runs. */
+  @JavascriptInterface public String cliSigninState() {
+    if (!allowed) return DENIED;
+    return "{\"left\":" + hub.kiosk.node.NativeClaudeRunner.secondsLeft() + "}";
+  }
   /** The page's answer to a Browser page's alert, confirm or prompt (a ClaudeOS sheet): ok, and the typed text. */
   @JavascriptInterface public String browserDialog(String dialogId, boolean ok, String text) { return browser(b -> b.answerDialog(dialogId, ok, text)); }
   /** The Google sign-in panel's Done: finishes Chrome's side sheet (Claude Home comes back to the front). */

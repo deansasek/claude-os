@@ -259,6 +259,8 @@
     reboot: () => { setTimeout(() => location.reload(), 600); return ok(); },
     screenOff: () => { console.info('[mock] On the tablet the screen turns off now.'); return ok(); },
     cliSigninCode: () => { console.info('[mock] On the tablet the code goes to the waiting claude auth login.'); return ok(); },
+    cliSigninClipboard: () => j({ text: 'mock-code#mock-state' }),
+    cliSigninState: () => j({ left: -1 }),
     maintenance: () => { alert('On the tablet this opens Android’s Settings (Desk mode pauses until you come back).'); resume(); return ok(); },
     // voice
     voice: () => j({ permission: true, wake: s.wake, mode, speaking: mode === 'speaking' }),

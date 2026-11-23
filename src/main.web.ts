@@ -35,9 +35,8 @@ void startHub(onTablet
     maybeWelcome();
     initPowerSheet({ reboot: device.reboot, screenOff: device.screenOff, onBack });   // a long press of the power button
     initCliSignin({   // SPIKE: the Claude Code CLI's sign-in (the tablet's login_spike)
-      sendCode: device.cliSigninCode, onBack,
-      appOnScreen: id => !!document.getElementById(`app-${id}`)?.classList.contains('on'),
-      keyboard: o => Keyboard.open(o),
+      sendCode: device.cliSigninCode, paste: device.cliSigninClipboard, secondsLeft: device.cliSigninState, onBack,
+      keyboard: o => Keyboard.open(o), keyboardClose: () => Keyboard.close(),
       notify: (title, body) => notify({ title, body: body || undefined, app: 'browser' }),
     });
     if (mockDevice) setTimeout(checkHitAreas, 400);   // dev: tap areas after boot (hit-guard.ts)
