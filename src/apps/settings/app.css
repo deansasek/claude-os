@@ -60,6 +60,7 @@
   background: var(--card-2); border: 1px solid var(--line); text-align: center; white-space: nowrap; }
 #app-settings .st-btn:active { transform: scale(.96); }
 #app-settings .st-btn[hidden] { display: none; }
+#app-settings .st-btn:disabled { opacity: .45; cursor: default; }
 #app-settings .st-btn.ghost { background: transparent; color: var(--t2); }
 #app-settings .st-btn.small { padding: 4px 11px; font-size: 12px; text-transform: none; letter-spacing: 0; }
 #app-settings .st-btn.primary { background: var(--text); border-color: var(--text); color: var(--bg); }   /* ink, like the other apps' primary buttons: clay is kept for what needs attention */
