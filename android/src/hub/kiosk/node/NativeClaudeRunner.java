@@ -38,6 +38,8 @@ import java.util.zip.GZIPInputStream;
  * Trigger:  adb shell am start -n hub.kiosk/.MainActivity --ez node_spike true
  *           add --ez login_spike true to also sign the CLI in: `claude auth login` with ClaudeOS's Browser and code
  *           sheet (up to 10 minutes; see login()), then `claude auth status`.
+ *           add --ez run_prompt true [--es prompt "<text>"] to run one `claude -p <prompt> --model haiku
+ *           --output-format text` session with the stored sign-in (up to 3 minutes; default prompt TEST_PROMPT).
  * Result:   every line is POSTed to the hub (POST /api/spike/node, header X-Spike: node), which appends it to
  *           host/logs/spike-node.log on the PC. Logcat tag NodeSpike has the same lines.
  */
@@ -57,7 +59,7 @@ public final class NativeClaudeRunner {
   }
 
   /** The test hook (MainActivity, intent extra node_spike): runs the test once on a background thread. */
-  public static void start(Context c, String hubPageUrl, boolean login) {
+  public static void start(Context c, String hubPageUrl, boolean login, String prompt) {
     synchronized (NativeClaudeRunner.class) {
       if (running) { Log.i(TAG, "native: already running"); return; }
       running = true;
@@ -65,7 +67,7 @@ public final class NativeClaudeRunner {
     NativeClaudeRunner r = new NativeClaudeRunner(c.getApplicationContext(), NodeRunner.origin(hubPageUrl));
     new Thread(() -> {
       try {
-        r.run(login);
+        r.run(login, prompt);
       } catch (Throwable t) {
         r.post("native: failed: " + Log.getStackTraceString(t));
       } finally {
@@ -76,7 +78,7 @@ public final class NativeClaudeRunner {
     }, "native-claude").start();
   }
 
-  private void run(boolean login) throws Exception {
+  private void run(boolean login, String prompt) throws Exception {
     String libDir = app.getApplicationInfo().nativeLibraryDir;
     File loader = new File(libDir, LOADER);
     post("native: start, pid " + android.os.Process.myPid() + ", sdk " + android.os.Build.VERSION.SDK_INT
@@ -104,20 +106,36 @@ public final class NativeClaudeRunner {
     //    See login() for the flow. BROWSER=echo stops the CLI from trying to open a browser on Android.
     //    musl has no DNS config on Android (no /etc/resolv.conf), so the CLI cannot resolve names itself: its
     //    requests go through LoopbackProxy, which resolves each host with Android's resolver.
-    if (login) {
+    //
+    // 5. PROMPT (intent extra run_prompt, optional string extra prompt): one `claude -p` session with Haiku, through
+    //    the same proxy and environment as the sign-in. Uses the sign-in the CLI stored; ClaudeOS never reads it.
+    if (login || prompt != null) {
       List<String> base = List.of(loader.getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath());
       try (LoopbackProxy proxy = LoopbackProxy.start(this::post)) {
         post("native: proxy: listening on " + proxy.url());
         Map<String, String> env = Map.of("DISABLE_AUTOUPDATER", "1", "BROWSER", "echo",
             "HTTPS_PROXY", proxy.url(), "HTTP_PROXY", proxy.url(), "NO_PROXY", "localhost,127.0.0.1");
-        login(base, env);
-        // the status, as the CLI reports it; only these fields reach the hub log (not the email or the organization)
-        exec("status", concat(base, "auth", "status"), env, 60, true,
-            l -> l.matches("\\s*\"(loggedIn|authMethod|subscriptionType)\".*") ? l : null);
+        if (login) {
+          login(base, env);
+          // the status, as the CLI reports it; only these fields reach the hub log (not the email or the organization)
+          exec("status", concat(base, "auth", "status"), env, 60, true,
+              l -> l.matches("\\s*\"(loggedIn|authMethod|subscriptionType)\".*") ? l : null);
+        }
+        if (prompt != null) {
+          // the prompt is an argument (no shell); the log shows at most its first 60 characters
+          String shown = prompt.length() > 60 ? prompt.substring(0, 60) + "..." : prompt;
+          exec("prompt", concat(base, "-p", prompt, "--model", "haiku", "--output-format", "text"), env,
+              PROMPT_MAX_SEC, true, NativeClaudeRunner::redact,
+              "claude -p \"" + shown + "\" --model haiku --output-format text");
+        }
       }
       post("native: proxy: stopped");
     }
   }
+
+  /** The prompt when the intent has run_prompt but no prompt extra. */
+  public static final String TEST_PROMPT = "Reply with the word hello and nothing else";
+  private static final int PROMPT_MAX_SEC = 180;   // the prompt session may run up to 3 minutes
 
   // ---------- CLI sign-in ----------
   // The flow: the CLI prints its sign-in address; the runner hands it to the page, which opens it in ClaudeOS's own
@@ -390,7 +408,13 @@ public final class NativeClaudeRunner {
   /** As above; show maps each output line to the text posted (null: the line is not posted). */
   private void exec(String what, List<String> cmd, Map<String, String> env, int timeoutSec, boolean closeStdin,
                     java.util.function.UnaryOperator<String> show) {
-    post("native: " + what + ": exec " + String.join(" ", cmd) + (env.isEmpty() ? "" : ", env " + env));
+    exec(what, cmd, env, timeoutSec, closeStdin, show, String.join(" ", cmd));
+  }
+
+  /** As above; shownCmd is the command as logged (e.g. with the prompt shortened). */
+  private void exec(String what, List<String> cmd, Map<String, String> env, int timeoutSec, boolean closeStdin,
+                    java.util.function.UnaryOperator<String> show, String shownCmd) {
+    post("native: " + what + ": exec " + shownCmd + (env.isEmpty() ? "" : ", env " + env));
     try {
       File home = app.getFilesDir();
       File tmp = new File(home, "tmp");
