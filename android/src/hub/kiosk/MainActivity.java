@@ -427,6 +427,7 @@ public class MainActivity extends Activity {
       // ClaudeOS itself never prompts: its own permissions are granted per permission above.
       try { d.setPermissionPolicy(admin, DevicePolicyManager.PERMISSION_POLICY_PROMPT); }
       catch (RuntimeException e) { Log.w(TAG, "permission policy", e); }
+      taskbarHidden(true);                                    // no stock dock on a swipe up (taskbarHidden)
       Kiosk.ownerSetup(this, d, admin);                       // Desk mode's helper on, and only Claude Keyboard allowed
       hub.kiosk.ime.ImeSettings.ensureDefault(this);          // Claude Keyboard as the default keyboard
     } catch (Exception e) {
@@ -492,9 +493,55 @@ public class MainActivity extends Activity {
     return am.getLockTaskModeState() != ActivityManager.LOCK_TASK_MODE_NONE;
   }
 
-  /** Recovery: unpin and open Android's Settings. Coming back Home pins it again. */
+  /**
+   * Recovery: unpin and open Android's Settings, with Android's Taskbar and its gestures back (taskbarHidden), so
+   * the device can always be driven the stock way from here. Coming back Home pins it again and hides the Taskbar.
+   */
   void maintenance() {
+    taskbarHidden(false);
     openAndroid(new Intent(Settings.ACTION_SETTINGS));
+  }
+
+  /**
+   * The package that draws Android's Taskbar (the white dock) and the stock bottom-edge gestures: the system's
+   * recents component (config_recentsComponentName; Launcher3 Quickstep on this tablet). Null if it can't be found
+   * or is one that must never be hidden.
+   */
+  private String taskbarPackage() {
+    String pkg = "com.android.launcher3";
+    try {
+      int id = android.content.res.Resources.getSystem().getIdentifier("config_recentsComponentName", "string", "android");
+      ComponentName cn = id > 0 ? ComponentName.unflattenFromString(android.content.res.Resources.getSystem().getString(id)) : null;
+      if (cn != null) pkg = cn.getPackageName();
+    } catch (Exception e) { Log.w(TAG, "recents component", e); }
+    if (pkg.equals(getPackageName()) || pkg.equals("android") || pkg.equals("com.android.systemui")) return null;
+    return pkg;
+  }
+
+  /**
+   * As device owner, hide (true) or bring back (false) the Taskbar's package (taskbarPackage).
+   *
+   * Why: with gesture navigation the bottom edge belongs to Launcher's Taskbar window. A swipe up there makes
+   * Android show the navigation bar over Claude Home (DisplayPolicy.requestTransientBars); that bar is the
+   * Taskbar, and Launcher can leave it unstashed, so the full white dock slides in. Hiding the bars again
+   * afterwards (rehide) is too late: the dock is already on screen. With the package hidden there is no Taskbar
+   * window, so no bottom gesture host and nothing to show, and the swipe reaches the page (switcher.ts).
+   *
+   * Inside Claude Home nothing is lost: lock task (LOCK_TASK_FEATURE_NONE) already turns off Android's home and
+   * recents. An allowed app is left with BackButton. The back gesture stays (it is SystemUI's, not Launcher's).
+   * maintenance() brings the package back for the stock Settings path; lockdown() hides it again on return.
+   * The package stays installed: hidden only, and undone by this call with false.
+   */
+  void taskbarHidden(boolean hide) {
+    if (!isOwner()) return;
+    String pkg = taskbarPackage();
+    if (pkg == null) return;
+    ComponentName admin = AdminReceiver.component(this);
+    try {
+      if (dpm().isApplicationHidden(admin, pkg) == hide) return;
+      boolean ok = dpm().setApplicationHidden(admin, pkg, hide);
+      trace("taskbar " + pkg + (hide ? " hidden" : " shown") + (ok ? "" : " (refused)"));
+    } catch (RuntimeException e) { Log.w(TAG, "taskbar hidden " + hide, e); }
   }
 
   /**
@@ -643,7 +690,8 @@ public class MainActivity extends Activity {
    * Device px at the bottom of the screen where Android watches for its swipe up (the navigation bar's height or its
    * mandatory gesture inset, whichever is larger, plus a little). As at the top, a swipe up that starts here is taken
    * by Android's gesture host (Taskbar), so the page gets a cancel. The page puts the switcher's handle above this
-   * (Bridge.bottomGestureInset).
+   * (Bridge.bottomGestureInset). With the Taskbar hidden (taskbarHidden) there is no such band: it measures 0 and
+   * the page gets the whole swipe.
    */
   private static volatile int bottomBandPx = 0;
   static int bottomBandPx() { return bottomBandPx; }
