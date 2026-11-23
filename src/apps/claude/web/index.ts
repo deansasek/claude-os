@@ -92,7 +92,8 @@ function renderSessions(S: LiveSession[]): void {
     const cls = s.state === 'thinking' || s.state === 'tool' ? 'busy' : s.state === 'waiting' ? 'yours' : '';
     const what = s.state === 'tool' ? toolWord(s.tool) : s.state === 'thinking' ? 'Thinking'
       : s.state === 'waiting' ? `Your turn · ${shortAge(s.age)}` : `Quiet · ${shortAge(s.age)}`;
-    const sub = [s.folder, s.branch && s.branch !== 'HEAD' ? s.branch : null, s.subagents ? `${s.subagents} helper${s.subagents > 1 ? 's' : ''}` : null]
+    const helpers = s.working ? `${s.working} subagent${s.working > 1 ? 's' : ''} working` : s.subagents ? `${s.subagents} helper${s.subagents > 1 ? 's' : ''}` : null;
+    const sub = [s.folder, s.branch && s.branch !== 'HEAD' ? s.branch : null, helpers]
       .filter(Boolean).join(' · ');
     const attrs = s.id ? ` data-id="${esc(s.id)}"` : '';
     return `<div class="${cls}"${attrs}><i class="dot"></i><div class="name">${esc(s.title)}<span>${esc(sub)}</span></div><div class="what">${esc(what)}${s.id ? '<span class="chev">›</span>' : ''}</div></div>`;
@@ -188,9 +189,9 @@ function demoize(d: Usage): void {
     seven_day: { used: 51, resets_at: new Date(Date.now() + 98 * h).toISOString() },
   } };
   if (params.has('sessions')) {
-    const base = { id: null, tokens: 0, surface: 'cli', subagents: 0, branch: null as string | null, open: false, hub: false };
+    const base = { id: null, tokens: 0, surface: 'cli', subagents: 0, working: 0, branch: null as string | null, open: false, hub: false };
     d.sessions = [
-      { ...base, title: 'Refactor checkout flow', folder: 'storefront', branch: 'feat/checkout', model: 'claude-opus-5-5', state: 'tool', tool: 'Bash', age: 4, subagents: 2 },
+      { ...base, title: 'Refactor checkout flow', folder: 'storefront', branch: 'feat/checkout', model: 'claude-opus-5-5', state: 'tool', tool: 'Bash', age: 4, subagents: 2, working: 1 },
       { ...base, title: 'HTML casting to Google Nest Hub', folder: 'No folder', model: 'claude-opus-5-5', state: 'waiting', tool: null, age: 180 },
       { ...base, title: 'Fix flaky upload test', folder: 'eBay Cards', branch: 'main', model: 'claude-sonnet-5-5', state: 'stalled', tool: null, age: 1500 },
     ];

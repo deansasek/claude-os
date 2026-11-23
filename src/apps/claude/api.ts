@@ -39,6 +39,7 @@ export interface LiveSession {
   tool: string | null;
   age: number;                  // seconds since the last entry
   subagents: number;
+  working: number;              // subagents running right now, from the session log
   tokens: number;               // today, this session
   surface: string | null;       // cli | claude-desktop | sdk …
   open: boolean;                // open in a Claude Code window on the PC right now
