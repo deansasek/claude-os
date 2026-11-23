@@ -405,14 +405,14 @@ public final class ClaudeCli {
 
   // ---------- the usage check (Bridge.claudeUsageCheck, Settings → Usage) ----------
   // The CLI answers the stream-json control request get_usage with the plan's windows (rate_limits: five_hour,
-  // seven_day, seven_day_opus, seven_day_sonnet, model_scoped). Before the first API request of the process the CLI has
-  // no limits yet (rate_limits is null), so the check first sends one short message: a new session that is not kept
-  // (--no-session-persistence), on Haiku, with a one-line system prompt and no tools (about 1,000 input tokens). Its
-  // rate_limit_event and the get_usage reply go to the page as chat lines (native-stream.ts reads both); a
-  // {"type":"usage_check","ok":bool} line ends it. Other lines (the reply, the result) do not go to the page. The CLI
-  // fetches the limits with its own sign-in: ClaudeOS reads no token. Logs carry event types only.
+  // seven_day, seven_day_opus, seven_day_sonnet, model_scoped). The check sends no user message, so the CLI makes no
+  // model request and spends no usage: it reads the windows from its plan-usage endpoint (GET /api/oauth/usage, the same
+  // read as its /usage command), or from its own saved copy (up to an hour old) when that endpoint does not answer.
+  // rate_limits is null when neither has the windows. The get_usage reply goes to the page as a chat line
+  // (native-stream.ts reads it); a {"type":"usage_check","ok":bool} line ends the check. The CLI reads the limits with
+  // its own sign-in: ClaudeOS reads no token. Logs carry event types only.
 
-  private static final long USAGE_MAX_SEC = 120;
+  private static final long USAGE_MAX_SEC = 60;
   private static final String USAGE_REQUEST = "claudeos-usage";   // native-stream.ts USAGE_REQUEST
   private static boolean checkingUsage;   // guarded by ClaudeCli.class
 
@@ -439,8 +439,7 @@ public final class ClaudeCli {
 
   private static boolean runUsageCheck(Context app, LoopbackProxy proxy) throws Exception {
     List<String> cmd = concat(base(app), "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
-        "--permission-mode", "dontAsk", "--model", "haiku", "--tools=", "--strict-mcp-config", "--no-session-persistence",
-        "--system-prompt", "Reply with the single word ok.");
+        "--permission-mode", "dontAsk", "--tools=", "--strict-mcp-config", "--no-session-persistence");
     Process p = builder(app, cmd, proxy).start();
     log("usage: process started");
     new Thread(() -> {   // stderr is read and dropped, so the CLI never blocks on it
@@ -449,10 +448,10 @@ public final class ClaudeCli {
     }, "claude-usage-err").start();
     boolean ok = false;
     try {
-      OutputStream in = p.getOutputStream();
-      String msg = new org.json.JSONObject().put("type", "user")
-          .put("message", new org.json.JSONObject().put("role", "user").put("content", "ok")).toString();
-      in.write((msg + "\n").getBytes(StandardCharsets.UTF_8));
+      OutputStream in = p.getOutputStream();   // one control request and no user message: no model request
+      String req = new org.json.JSONObject().put("type", "control_request").put("request_id", USAGE_REQUEST)
+          .put("request", new org.json.JSONObject().put("subtype", "get_usage").put("skip_behaviors", true)).toString();
+      in.write((req + "\n").getBytes(StandardCharsets.UTF_8));
       in.flush();
       long deadline = System.currentTimeMillis() + USAGE_MAX_SEC * 1000;
       Thread watchdog = new Thread(() -> {
@@ -465,14 +464,8 @@ public final class ClaudeCli {
         while ((l = r.readLine()) != null && System.currentTimeMillis() < deadline) {
           java.util.regex.Matcher t = TYPE.matcher(l);
           String type = t.find() ? t.group(1) : "?";
-          if (!"stream_event".equals(type)) log("usage: event " + type);
-          if ("rate_limit_event".equals(type)) chatEvent(l);
-          else if ("result".equals(type)) {
-            String req = new org.json.JSONObject().put("type", "control_request").put("request_id", USAGE_REQUEST)
-                .put("request", new org.json.JSONObject().put("subtype", "get_usage").put("skip_behaviors", true)).toString();
-            in.write((req + "\n").getBytes(StandardCharsets.UTF_8));
-            in.flush();
-          } else if ("control_response".equals(type) && l.contains("\"" + USAGE_REQUEST + "\"")) {
+          log("usage: event " + type);
+          if ("control_response".equals(type) && l.contains("\"" + USAGE_REQUEST + "\"")) {
             chatEvent(l);
             ok = l.contains("\"subtype\":\"success\"") && !l.contains("\"rate_limits\":null");
             in.close();   // the CLI ends when its input ends

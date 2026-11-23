@@ -121,7 +121,7 @@ export const device = {
   claudeSend: (text: string, sessionId: string, model: string) => call<{ ok: boolean }>(a => a.claudeSend!(text, sessionId, model)),
   /** Stops the tablet's running chat. */
   claudeStop: () => call<{ ok: boolean }>(a => a.claudeStop!()),
-  /** Asks the tablet's CLI for the plan limits: a short turn on Haiku, then its get_usage. The answer comes back as
+  /** Asks the tablet's CLI for the plan limits: its get_usage control request, with no prompt. The answer comes back as
    *  window.hubClaudeNative lines (apps/claude/web/native.ts). Throws on older builds or when a check already runs. */
   claudeUsageCheck: () => call<{ ok: boolean }>(a => a.claudeUsageCheck!()),
   /** A small file in the app's files folder, on disk when this returns, so it survives the app being closed

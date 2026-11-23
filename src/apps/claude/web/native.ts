@@ -61,7 +61,7 @@ export function initNative(onChange: () => void): void { changed = onChange; }
  *  Not the hub's limits. */
 export const nativeLimits = (): SeenLimit[] => limitList(chat);
 
-// ---------- the usage check (Settings → Usage): a short CLI turn on Haiku, then the CLI's get_usage ----------
+// ---------- the usage check (Settings → Usage): the CLI's get_usage, with no prompt (no usage spent) ----------
 let checking = false;
 let checkFailed = false;
 /** The tablet can run a usage check (a newer app build). */
