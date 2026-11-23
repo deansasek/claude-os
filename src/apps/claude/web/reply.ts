@@ -160,7 +160,7 @@ function paintComposer(c: ComposerState): void {
   if (!c.ctl.interactive) closeMenu();
   $('svStop').hidden = !c.stop;
   // photos ready to go: the ink Send takes the mic's place (nothing typed is needed to send a photo)
-  const sendable = c.ready && photos.length > 0;
+  const sendable = c.ready && photos.length > 0 && !tabletTarget();
   $('svSend').hidden = !sendable;
   $('svMic').hidden = !c.mic || !micAvailable() || sendable;
   paintPhotos();
@@ -169,11 +169,16 @@ function paintComposer(c: ComposerState): void {
 /** The composer's placeholder while photos wait: say what the Send button will do. */
 const withPhotos = (ph: string, ready: boolean): string => (ready && photos.length ? 'Add a note, or just send the photo' : ph);
 
+/** A tablet chat is the target (the new-chat screen with tablet chats on, or the tablet's own chat open). It takes words only. */
+const tabletTarget = (): boolean => (mode === 'new' && nativeOn()) || (mode === 'session' && openId === NATIVE_ID);
+/** Said when photos cannot go, so they are never dropped without a sign. */
+const PHOTO_REFUSED = { title: 'Photo not sent', body: 'Chats on this tablet take words only. Send photos from a session on your PC.', app: 'claude' };
+
 /** The photos waiting to go with the next message: a thumbnail each, with × to take it off. */
 function paintPhotos(): void {
   const box = $('svPhotos');
   const key = photos.join(',');
-  box.hidden = photos.length === 0;
+  box.hidden = photos.length === 0 || tabletTarget();
   if (box.dataset.key === key) return;
   box.dataset.key = key;
   box.innerHTML = photos.map(id => `<span class="cp-photo"><img src="/api/photos/file?id=${encodeURIComponent(id)}" alt="Photo to send" onerror="this.closest('.cp-photo').classList.add('gone')"><button class="hit hit-abs" data-rm="${esc(id)}" aria-label="Take this photo off">×</button></span>`).join('');
@@ -461,7 +466,12 @@ function send(text: string): void {
   if (mode !== 'session' || !openId) return;
   const id = openId;
   sendNote = '';
-  if (id === NATIVE_ID) { if (text) nativeSend(text); report('reply-native'); return; }   // the tablet's own chat
+  if (id === NATIVE_ID) {   // the tablet's own chat: words only (photos queued for a PC session are not sent, and say so)
+    if (photos.length) { photos = []; notify(PHOTO_REFUSED, false); }
+    if (text) nativeSend(text);
+    report('reply-native');
+    return;
+  }
   $('svPh').textContent = 'Sending…';   // shown until the next refresh repaints the composer (every 2 s)
   void withPin(async () => {
     const r = await call<{ ok: boolean; error?: string; turn?: HubTurn }>('reply', { id, text, photoIds: photos, ...wantFor(id) });
@@ -537,8 +547,15 @@ export const refreshView = refresh;
  * is attached to that reply; otherwise the new-session composer opens with it. `text` is a draft to start the keyboard with.
  */
 export function askWithPhoto(photoId: string, text = ''): void {
-  if (!photos.includes(photoId)) photos = [...photos, photoId].slice(-MAX_PHOTOS);
   draft = text;
+  if (tabletTarget()) {   // words only here: the photo is not attached, and the user is told
+    notify(PHOTO_REFUSED, false);
+    report('photo-tablet-refused');
+    if (mode === 'session' && openId && view?.canReply) { render(); return; }
+    void openNew();
+    return;
+  }
+  if (!photos.includes(photoId)) photos = [...photos, photoId].slice(-MAX_PHOTOS);
   if (mode === 'session' && openId && view?.canReply) { render(); return; }
   void openNew();
 }
