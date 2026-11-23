@@ -144,6 +144,19 @@ test('a failed start says to sign in, or says to check the network, by the sign-
   assert.equal(parseStreamLine(line({ type: 'error', message: 'start_failed' }))?.type, 'error');
 });
 
+test('the failure or Stopped note stays after a reload, and a new message clears it', () => {
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const failed = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'error', message: 'start_failed' }, AT);
+  const back = loadChat(saveChat(failed));
+  assert.equal(back.error, 'Couldn’t start Claude on this tablet. Check the network and try again.');
+  assert.equal(back.running, false);
+  const stopped = applyEvent(applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'stop' }, AT),
+    { type: 'result', ok: true, text: '', sessionId: null, costUsd: null, usage, window: null }, AT);
+  assert.equal(loadChat(saveChat(stopped)).error, 'Stopped');
+  assert.equal(userSent(loadChat(saveChat(stopped)), 'Again', AT).error, null);
+  assert.equal(loadChat(saveChat(emptyChat())).error, null);
+});
+
 test('lines that are not JSON or not used give null', () => {
   assert.equal(parseStreamLine('not json'), null);
   assert.equal(parseStreamLine('[1,2]'), null);
