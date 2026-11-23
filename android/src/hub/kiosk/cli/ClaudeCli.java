@@ -327,6 +327,7 @@ public final class ClaudeCli {
   private static OutputStream chatIn;
   private static String chatSession;      // its session id (from system/init)
   private static String chatModel;        // its model: haiku, sonnet or opus
+  private static Process stopWaiting;     // a chat sent an interrupt: its result ends the wait, else the process is destroyed after 5 s
 
   /** Bridge.claudeSend: one user message, queued on the chat thread. sessionId '' or null: a new chat. */
   public static void turn(Context c, String prompt, String sessionId, String model) {
@@ -341,11 +342,32 @@ public final class ClaudeCli {
     });
   }
 
-  /** Bridge.claudeStop: ends the running chat process (the page gets an exit event; the next send resumes the session). */
+  /** Bridge.claudeStop: asks the running reply to stop with an interrupt control request on stdin. When no result
+   *  comes within 5 s, the process is destroyed. The next send resumes the session (the page gets an exit event then). */
   public static void stopChat() {
     Process p;
-    synchronized (ClaudeCli.class) { p = chat; }
-    if (p != null) { log("chat: stop"); p.destroy(); }
+    OutputStream in;
+    synchronized (ClaudeCli.class) { p = chat; in = chatIn; }
+    if (p == null) return;
+    log("chat: stop, interrupt");
+    try {
+      String req = new org.json.JSONObject().put("type", "control_request").put("request_id", "claudeos-interrupt")
+          .put("request", new org.json.JSONObject().put("subtype", "interrupt")).toString();
+      synchronized (ClaudeCli.class) { stopWaiting = p; }
+      in.write((req + "\n").getBytes(StandardCharsets.UTF_8));
+      in.flush();
+    } catch (Exception e) {
+      log("chat: interrupt not sent, destroy");
+      synchronized (ClaudeCli.class) { stopWaiting = null; }
+      p.destroy();
+      return;
+    }
+    new Thread(() -> {
+      try { Thread.sleep(5000); } catch (InterruptedException e) { return; }
+      synchronized (ClaudeCli.class) { if (stopWaiting != p) return; stopWaiting = null; }
+      log("chat: no result after interrupt, destroy");
+      p.destroy();
+    }, "claude-chat-stop").start();
   }
 
   private static void sendTurn(Context app, String prompt, String sessionId, String model) throws Exception {
@@ -388,6 +410,7 @@ public final class ClaudeCli {
           synchronized (ClaudeCli.class) {
             if (chat != p) continue;   // replaced by a newer chat
             if ("system".equals(type)) { java.util.regex.Matcher s = SESSION.matcher(l); if (s.find()) chatSession = s.group(1); }
+            if ("result".equals(type) && stopWaiting == p) stopWaiting = null;   // the interrupted reply ended
           }
           chatEvent(l);
         }
