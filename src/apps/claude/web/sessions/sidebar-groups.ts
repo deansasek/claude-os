@@ -52,10 +52,13 @@ export function groups(list: LiveSession[], now: number, h: History | null, q: s
     }
     out.push(grp); byKey.set(g.id, grp); byKey.set('n:' + g.name, grp);
   }
-  // live sessions the history hasn't caught up with yet (or before it has loaded); not while searching or in the archive
-  if (!q && !archived) {
+  // live sessions the history hasn't caught up with yet (or before it has loaded); not in the archive. While searching,
+  // only the tablet chat, and only when its title matches: the history search cannot find a chat it does not hold.
+  if (!archived) {
+    const needle = q.trim().toLowerCase();
     for (const s of live.values()) {
       if (placed.has(s.id!)) continue;
+      if (needle && (s.surface !== 'tablet' || !s.title.toLowerCase().includes(needle))) continue;
       let grp = (s.folderId && byKey.get(s.folderId)) || byKey.get('n:' + s.folder);
       if (!grp) {
         grp = { key: s.folder, id: null, name: s.folder, count: 0, more: false, latest: 0, rows: [] };

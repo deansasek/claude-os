@@ -34,7 +34,7 @@ test('the dot and the words of a session', () => {
 });
 
 test('the native row: the tablet chat is a group of its own, with its live state', () => {
-  const native = session({ id: 'native', title: 'Tell me a joke', folder: 'On this tablet', state: 'waiting', age: 5, hub: true });
+  const native = session({ id: 'native', title: 'Tell me a joke', folder: 'On this tablet', state: 'waiting', age: 5, hub: true, surface: 'tablet' });
   const gs = groups([native], NOW, null, '', false);
   assert.equal(gs.length, 1);
   assert.equal(gs[0]!.name, 'On this tablet');
@@ -42,8 +42,12 @@ test('the native row: the tablet chat is a group of its own, with its live state
   assert.equal(gs[0]!.rows[0]!.id, 'native');
   assert.equal(gs[0]!.rows[0]!.at, NOW - 5000);
   assert.deepEqual(stateOf(native, NOW), { cls: 'yours', what: 'Your turn · now' });
-  // the tablet chat is not added while searching or in the archive
-  assert.deepEqual(groups([native], NOW, null, 'joke', false), []);
+  // a search keeps the tablet chat when its title matches, and a PC session that is not in the history stays out
+  const found = groups([native], NOW, null, 'JOKE', false);
+  assert.deepEqual(found.map(g => g.rows.map(r => r.id)), [['native']]);
+  assert.deepEqual(groups([native], NOW, null, 'weather', false), []);
+  assert.deepEqual(groups([session({ id: 'p1', title: 'Tell me a joke', folder: 'proj', open: true })], NOW, null, 'joke', false), []);
+  // the tablet chat is not added in the archive
   assert.deepEqual(groups([native], NOW, null, '', true), []);
 });
 
