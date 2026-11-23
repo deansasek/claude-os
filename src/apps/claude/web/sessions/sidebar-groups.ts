@@ -82,3 +82,6 @@ export function folderLive(g: Group): string {
   const working = live.filter(s => s === 'thinking' || s === 'tool').length, waiting = live.filter(s => s === 'waiting').length;
   return [working ? `${working} working` : '', waiting ? `${waiting} waiting` : ''].filter(Boolean).join(' · ');
 }
+
+/** The line for an empty sessions list: "Can’t reach your PC" when the history fetch failed, else "No sessions yet". */
+export const emptyText = (failed: boolean): string => (failed ? 'Can’t reach your PC' : 'No sessions yet');

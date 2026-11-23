@@ -6,6 +6,7 @@ import type { History, HistoryGroup } from '../../api.ts';
 const STALE_MS = 30e3;
 let data: History | null = null;
 let fetchedAt = 0, loading = false, gen = 0;
+let failed = false;                  // the last history fetch failed (the PC did not answer)
 let query = '';
 let archivedView = false;            // the sidebar shows the archived sessions instead of the rest
 let onChange: () => void = () => {};
@@ -13,6 +14,7 @@ let onChange: () => void = () => {};
 export const historyNow = (): History | null => data;
 export const historyQuery = (): string => query;
 export const historyLoading = (): boolean => loading;
+export const historyFailed = (): boolean => failed;
 export const historyArchivedView = (): boolean => archivedView;
 export const historyArchivedCount = (): number => data?.archived ?? 0;
 export function onHistoryChange(fn: () => void): void { onChange = fn; }
@@ -34,7 +36,8 @@ export async function loadHistory(): Promise<void> {
   const my = ++gen, q = query;
   loading = true;
   let fresh: History;
-  try { fresh = await getJson<History>(url({ q, ...scope() })); } catch { loading = false; return; } finally { fetchedAt = Date.now(); }
+  try { fresh = await getJson<History>(url({ q, ...scope() })); } catch { failed = true; loading = false; return; } finally { fetchedAt = Date.now(); }
+  failed = false;
   if (my !== gen) return;   // a newer search went out meanwhile
   loading = false;
   if (data && data.q === fresh.q) {
