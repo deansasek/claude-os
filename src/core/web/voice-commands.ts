@@ -15,7 +15,8 @@
 //   Apps     "open weather / clock / settings / sessions / home"
 //   Home     "turn off the kitchen light", "lights on", "switch on the fan" (dashboard devices only; see
 //            apps/home-assistant/web/voice-match.ts); "set movie night", "activate good morning" (scenes)
-//   Lists    "add milk to the shopping list", "put bin day on my to-do list", "what's on the shopping list"
+//   Lists    "add milk to the shopping list", "put bin day on my to-do list", "what's on the shopping list",
+//            "change milk to oat milk"
 //            (Shopping and To-do only; see apps/lists/web/voice-match.ts)
 //   Calendar "what's on today", "what's on my calendar": the next three events today (read-only);
 //            "what's on tomorrow": the first three events tomorrow
@@ -34,7 +35,7 @@ import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay } from './voice-weather.ts';
-import { pickItem } from '../../apps/lists/web/voice-match.ts';
+import { findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 
@@ -214,7 +215,11 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // the family's own lists are heard by name too; the lists are read only when the words mention a list
   const customs = /\blist\b/.test(t) ? await voiceCustomLists() : [];
   const list = matchList(raw, customs);
-  if (list) return listCommand(list, customs.find(c => c.id === list.list)?.name);
+  if (list?.op === 'edit' && list.list === null) {
+    // "change milk to oat milk" with no list said: only an item with exactly those words; else the phrase goes on (timers, Claude...)
+    const r = await editAnywhere(list.text, list.to);
+    if (r) return r;
+  } else if (list) return listCommand(list, customs.find(c => c.id === list.list)?.name);
 
   // timers: the first of these shapes whose duration parses wins
   for (const re of [/^(?:set|start|make|put on|give me)(?: me)?(?: a| an| the)? timer (?:for |of )?(.+)$/, /^timer (?:for )?(.+)$/,
@@ -466,15 +471,48 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       if (!r?.ok) return { say: r?.error ?? `I couldn’t remove that from ${name}.` };
       return { say: `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`, react: 'hop' };
     }
+    if (c.op === 'edit') {
+      // same rule as remove: one item by its words, never a guess between several; POST /api/lists/edit checks the new text
+      const lists = await getJson<ListsResult>('/api/lists/lists');
+      const l = lists?.lists?.find(x => x.id === c.list);
+      if (!l) return { say: `I can’t reach ${name} right now.` };
+      const { hit, ambiguous } = pickItem(l.items, c.text, false);
+      if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
+      return editSay(l.id, hit.id, hit.text, c.to, name);
+    }
     const r = await getJson<ListsResult>('/api/lists/lists');
     const l = r?.lists?.find(x => x.id === c.list);
-    const open = l ? l.items.filter(i => !i.done).map(i => i.text) : [];
+    const open =l ? l.items.filter(i => !i.done).map(i => i.text) : [];
     if (!open.length) return { say: `There’s nothing on ${name}.` };
     const shown = open.slice(0, 8);
     const more = open.length - shown.length;
     const words = shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
     return { say: `On ${name}: ${words}${more ? `, and ${more} more` : ''}.`, react: 'look', app: 'lists' };
   } catch { return { say: `I can’t reach ${name} right now.` }; }
+}
+
+const lower = (s: string): string => s.replace(/^./, ch => ch.toLowerCase());
+const spokenName = (l: { id: string; name: string }): string =>
+  (l.id === 'shopping' ? 'the shopping list' : l.id === 'todo' ? 'the to-do list' : `the ${l.name.toLowerCase()} list`);
+
+/** POST /api/lists/edit and the reply to say. */
+async function editSay(list: string, id: string, was: string, to: string, name: string): Promise<CommandResult> {
+  const r = await postJson<ListsResult>('/api/lists/edit', { list, id, text: to });
+  if (!r?.ok) return { say: r?.error ?? `I couldn’t change that on ${name}.` };
+  return { say: `Changed ${lower(was)} to ${lower(r.item?.text ?? to)} on ${name}.`, react: 'hop' };
+}
+
+/** "change milk to oat milk" with no list said: the one item with exactly those words on any list.
+ *  null when there is none (or the PC can't be reached), so the phrase is left to the other commands and Claude. */
+async function editAnywhere(text: string, to: string): Promise<CommandResult | null> {
+  let r: ListsResult;
+  try { r = await getJson<ListsResult>('/api/lists/lists'); } catch { return null; }
+  const hits = findExact(r?.lists ?? [], text);
+  if (!hits.length) return null;
+  if (hits.length > 1) return { say: `${text} is on more than one list. Say which list.` };
+  const { list, item } = hits[0];
+  const name = spokenName(list);
+  try { return await editSay(list.id, item.id, item.text, to, name); } catch { return { say: `I can’t reach ${name} right now.` }; }
 }
 
 // ---------- Home Assistant: "turn off the kitchen light", "lights on" ----------
