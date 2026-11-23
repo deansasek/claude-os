@@ -8,6 +8,7 @@ import hub.kiosk.MainActivity;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -71,6 +72,17 @@ public final class ClaudeCli {
     if (bin == null) throw new IllegalStateException("no CLI binary");
     bin.setExecutable(true, true);
     return List.of(new File(libDir, LOADER).getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath());
+  }
+
+  /** Starts a CLI process. An IOException here means the install is broken: version.txt goes, so the next sign-in
+   *  installs the CLI again. A wrong match here also means a new download of about 365 MB. */
+  private static Process startCli(Context app, ProcessBuilder pb) throws IOException {
+    try { return pb.start(); }
+    catch (IOException e) {
+      log("cli: start failed, the install is marked for repair");
+      new File(new File(app.getFilesDir(), "claude"), "version.txt").delete();
+      throw e;
+    }
   }
 
   /** A process builder with HOME and TMPDIR in the app's files folder and the proxy env. */
@@ -158,7 +170,7 @@ public final class ClaudeCli {
 
   /** `claude auth status`: true when it reports loggedIn. Reads only that field; nothing of the output is logged. */
   private static boolean status(Context app, List<String> base, LoopbackProxy proxy) throws Exception {
-    Process p = builder(app, concat(base, "auth", "status"), proxy).redirectErrorStream(true).start();
+    Process p = startCli(app, builder(app, concat(base, "auth", "status"), proxy).redirectErrorStream(true));
     p.getOutputStream().close();
     String out;
     try (InputStream in = p.getInputStream()) { out = new String(in.readAllBytes(), StandardCharsets.UTF_8); }
@@ -247,7 +259,7 @@ public final class ClaudeCli {
     try {
       long t0 = System.currentTimeMillis();
       loginDeadline = t0 + LOGIN_MAX_SEC * 1000;
-      p = builder(app, concat(base, "auth", "login"), proxy).start();
+      p = startCli(app, builder(app, concat(base, "auth", "login"), proxy));
       loginIn = p.getOutputStream();   // stdin stays open: the CLI may wait for a pasted code
       Thread out = loginReader(p.getInputStream(), askCode, ui);
       Thread err = loginReader(p.getErrorStream(), askCode, ui);
@@ -443,7 +455,7 @@ public final class ClaudeCli {
     if (!resume.isEmpty()) cmd = concat(cmd, "--resume", resume);
     LoopbackProxy proxy = LoopbackProxy.start(ClaudeCli::log);
     Process p;
-    try { p = builder(app, cmd, proxy).start(); } catch (Exception e) { proxy.close(); throw e; }
+    try { p = startCli(app, builder(app, cmd, proxy)); } catch (Exception e) { proxy.close(); throw e; }
     log("chat: process started, " + model + ", " + (resume.isEmpty() ? "new session" : "resume"));
     synchronized (ClaudeCli.class) { chat = p; chatIn = p.getOutputStream(); chatSession = resume.isEmpty() ? null : resume; chatModel = model; }
     new Thread(() -> {
@@ -517,7 +529,7 @@ public final class ClaudeCli {
   private static boolean runUsageCheck(Context app, LoopbackProxy proxy) throws Exception {
     List<String> cmd = concat(base(app), "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
         "--permission-mode", "dontAsk", "--tools=", "--strict-mcp-config", "--no-session-persistence");
-    Process p = builder(app, cmd, proxy).start();
+    Process p = startCli(app, builder(app, cmd, proxy));
     log("usage: process started");
     new Thread(() -> {   // stderr is read and dropped, so the CLI never blocks on it
       byte[] buf = new byte[8192];
