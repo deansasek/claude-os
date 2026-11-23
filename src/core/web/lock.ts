@@ -2,7 +2,8 @@
 // full-screen pad asks for it before anything shows. Not on app switches. The PIN is checked on the PC
 // (/api/settings/pin/check), which keeps the PIN file. If the PC can't be reached the lock says so and waits for
 // "Try again": it never opens on its own. Back does not close it (system.ts), and nothing can open behind it (shell.ts).
-import { store } from './dom.ts';
+import { critterSvg } from './critter-svg.ts';
+import { esc, stageHeight, store } from './dom.ts';
 import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from './pin-pad.ts';
 
 interface Status { set: boolean; lockedFor: number }
@@ -32,6 +33,8 @@ export const lockBusy = (): boolean => shown;
 
 const $ = <T extends Element = HTMLElement>(sel: string): T => el!.querySelector(sel) as T;
 
+// The lock is a full page in two columns: the time, the date and the critter on the left, the PIN pad on the right.
+// It stays role="dialog" with aria-modal: it covers everything and nothing behind it can be reached until it closes.
 function build(): void {
   if (el) return;
   el = document.createElement('div');
@@ -41,18 +44,67 @@ function build(): void {
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-modal', 'true');
   el.setAttribute('aria-label', 'ClaudeOS is locked');
-  el.innerHTML = `<div class="pin-card">
-    <div class="lock-title">ClaudeOS is locked</div>
-    <div class="lock-sub">Enter your PIN to continue</div>
-    <div class="pin-dots"></div>
-    <div class="pin-msg"></div>
-    <div class="pin-keys">${padKeysHtml()}</div>
-    <button type="button" class="pin-done" disabled>Unlock</button>
+  el.innerHTML = `<div class="lock-in">
+    <div class="lock-face">
+      <div class="lock-time num"></div>
+      <div class="lock-date"></div>
+      ${critterSvg('lock-crit')}
+      <div class="lock-caption">ClaudeOS is locked</div>
+    </div>
+    <div class="lock-pad">
+      <div class="pin-dots"></div>
+      <div class="pin-msg" aria-live="polite"></div>
+      <div class="pin-keys">${padKeysHtml()}</div>
+      <button type="button" class="pin-done" disabled>Unlock</button>
+    </div>
   </div>`;
   $('.pin-keys').addEventListener('click', e => press(padKey(e)));
   $<HTMLButtonElement>('.pin-done').addEventListener('click', () => void done());
+  addEventListener('resize', fit);
+  window.visualViewport?.addEventListener('resize', fit);
   document.body.appendChild(el);
 }
+
+/** Scale the 1024-wide page to the whole screen, the same way dom.ts fits the stage (the lock covers any inset too). */
+function fit(): void {
+  if (!el || !shown) return;
+  const vv = window.visualViewport;
+  const vw = vv ? vv.width * vv.scale : innerWidth;
+  const vh = vv ? vv.height * vv.scale : innerHeight;
+  const h = stageHeight(vw, vh);
+  el.style.setProperty('--lock-h', `${h}px`);
+  el.style.setProperty('--lock-s', String(Math.min(vw / 1024, vh / h)));
+}
+
+// ---------- the clock: ticks on each new minute, only while the lock is up ----------
+let clockTimer: number | undefined;
+const timeFmt = (): Intl.DateTimeFormat => {
+  const h24 = store.get('os.clock24');   // Settings → Date & time; unset follows the tablet's locale (format.ts clock())
+  return new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit', ...(h24 == null ? {} : { hour12: h24 !== '1' }) });
+};
+
+function paintClock(): void {
+  if (!el) return;
+  const d = new Date();
+  let hour = '', minute = '', period = '';
+  for (const p of timeFmt().formatToParts(d)) {
+    if (p.type === 'hour') hour = p.value; else if (p.type === 'minute') minute = p.value; else if (p.type === 'dayPeriod') period = p.value;
+  }
+  $('.lock-time').innerHTML = `${esc(hour)}:${esc(minute)}${period ? `<small>${esc(period)}</small>` : ''}`;
+  $('.lock-date').textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function startClock(): void {
+  stopClock();
+  fit();
+  paintClock();
+  const next = (): void => {
+    clockTimer = window.setTimeout(() => { paintClock(); next(); }, 60_000 - Date.now() % 60_000 + 50);
+  };
+  next();
+}
+
+function stopClock(): void { clearTimeout(clockTimer); clockTimer = undefined; }
 
 function cooldownText(): string {
   const secs = Math.max(1, Math.ceil((until - Date.now()) / 1000));
@@ -81,6 +133,7 @@ function close(): void {
   shown = false;
   typed = ''; msg = ''; phase = 'checking';
   clearInterval(tickTimer);
+  stopClock();
   if (el) el.hidden = true;
   preview = false;
 }
@@ -93,6 +146,7 @@ export function previewLock(p: Phase, secs = 25): void {
   build();
   shown = true; preview = true;
   el!.hidden = false;
+  startClock();
   if (p === 'cooldown') cooldown(secs);
   else if (p === 'retry') retry();
   else { phase = p; typed = p === 'pin' ? '12' : ''; msg = p === 'pin' ? 'That’s not it. 2 tries left before a 30-second wait.' : ''; paint(); }
@@ -173,5 +227,6 @@ export function requireUnlock(): void {
   build();
   shown = true;
   el!.hidden = store.get(KNOWN_KEY) !== '1';
+  startClock();
   void checkStatus();
 }
