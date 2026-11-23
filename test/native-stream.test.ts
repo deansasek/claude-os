@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, COMPACTED_TEXT, COMPACTING_TEXT, stalled, STALL_MS, STALLED_TEXT, contextOf, durationText, elapsedText, emptyChat, retryText, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
+  applyEvent, chatAge, chatListed, clearedChat, COMPACTED_TEXT, COMPACTING_TEXT, stalled, STALL_MS, STALLED_TEXT, contextOf, durationText, elapsedText, emptyChat, glanceOf, retryText, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
   newerSaved, parseStreamLine, replyFinished, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
@@ -510,4 +510,26 @@ test('a plan window close to its limit adds one note per window, and no note whe
   assert.equal(notes(c).length, 2);
   assert.equal(notes(applyEvent(emptyChat(), warn(40, RESET, 'allowed'), AT)).length, 0);   // within limit: no note
   assert.equal(notes(applyEvent(emptyChat(), warn(null as unknown as number, null), AT))[0], 'Close to the session limit');
+});
+
+test('glanceOf gives the running state, a short last reply with its time, and any error', () => {
+  const NOW = Date.parse('2026-11-23T10:02:00.000Z');
+  const long = 'Here is the plan. ' + 'word '.repeat(40);
+  // a reply finished 2 minutes ago: the reply is cut to a short line, with its time and age
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'text', text: long }, AT);
+  c = applyEvent(c, { type: 'result', ok: true, text: '', sessionId: 's1', costUsd: null, usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, window: null }, AT);
+  const g = glanceOf(c, NOW);
+  assert.equal(g.running, false);
+  assert.equal(g.reply!.length, 80);
+  assert.ok(g.reply!.endsWith('…'));
+  assert.ok(g.reply!.startsWith('Here is the plan.'));
+  assert.deepEqual([g.at, g.ago, g.error], [AT, 120, null]);
+  // a reply that runs: running, and the reply before it still shows
+  const running = userSent(c, 'Again', AT);
+  assert.deepEqual(glanceOf(running, NOW).running, true);
+  assert.equal(glanceOf(running, NOW).reply, g.reply);
+  // a failed reply: the error shows; a chat with no reply yet has no reply, time or age
+  const failedChat = { ...emptyChat(), error: 'That didn’t send. Try again.' };
+  assert.deepEqual(glanceOf(failedChat, NOW), { running: false, reply: null, at: null, ago: null, error: 'That didn’t send. Try again.' });
+  assert.equal(glanceOf(emptyChat(), NOW).error, null);
 });
