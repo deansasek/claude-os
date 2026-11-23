@@ -64,6 +64,21 @@ test('a failed result names its reason: an expired login, a busy API, a turn out
   assert.equal(applyEvent(userSent(emptyChat(), 'Hi', AT), failed({ api_error_status: 500 })!, AT).error, 'That reply didn’t finish. Try again.');
 });
 
+test('a retry or compacting line shows while the reply runs; the next reply piece clears it', () => {
+  const retry = parseStreamLine(line({ type: 'system', subtype: 'api_retry', attempt: 2, max_retries: 10, retry_delay_ms: 1000, error_status: 529, error: 'overloaded' }));
+  assert.deepEqual(retry, { type: 'status', text: 'Retrying (2 of 10)' });
+  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'status', status: 'compacting' })), { type: 'status', text: 'Compacting' });
+  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'status', status: null })), { type: 'status', text: null });
+  assert.equal(parseStreamLine(line({ type: 'system', subtype: 'status', status: 'requesting' })), null);
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), retry!, AT);
+  assert.equal(c.status, 'Retrying (2 of 10)');
+  assert.equal(applyEvent(c, { type: 'status', text: null }, AT).status, null);
+  c = applyEvent(applyEvent(c, { type: 'status', text: 'Compacting' }, AT), { type: 'delta', text: 'Hel' }, AT);
+  assert.equal(c.status, null);
+  // outside a reply a status changes nothing
+  assert.equal(applyEvent(emptyChat(), { type: 'status', text: 'Compacting' }, AT).status, null);
+});
+
 test('lines that are not JSON or not used give null', () => {
   assert.equal(parseStreamLine('not json'), null);
   assert.equal(parseStreamLine('[1,2]'), null);
