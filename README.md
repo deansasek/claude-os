@@ -6,63 +6,84 @@
 </p>
 
 <p align="center">
-  A home screen for the kitchen wall, run by Claude Code on your PC.
+  A home screen for the kitchen wall, powered by Claude Code.
 </p>
 
 <p align="center">
-  <a href="docs/SETUP.md">Set up</a> ·
+  <a href="#get-started">Get started</a> ·
+  <a href="docs/SETUP.md">Setup guide</a> ·
   <a href="docs/SECURITY.md">Security</a> ·
-  <a href="https://github.com/deansasek/claude-os/pulls">Pull requests</a>
+  <a href="#contributing">Contributing</a>
+</p>
+
+<p align="center">
+  <img src="docs/media/tablet-clock.png" alt="The ClaudeOS clock screen, with the time, date, weather and battery" width="46%">
+  &nbsp;
+  <img src="docs/media/tablet-browser.png" alt="The ClaudeOS Browser app with the Claude side panel open" width="46%">
 </p>
 
 ---
 
-ClaudeOS shows the time, the weather, your calendar, your photos and your family lists. A small hub server on your PC runs the page. The hub also talks to Claude Code, so you can follow and answer your Claude sessions from across the room.
+## About
+
+ClaudeOS shows your day on one shared screen: the time, the weather, your calendar, your photos and your family's lists. A small hub on your PC serves the page and connects it to Claude Code, so you can follow and answer your Claude sessions from anywhere in the room.
+
+## Apps
+
+| App | Description |
+|---|---|
+| Home | A greeting, the time and an overview of the day. |
+| Claude | Your Claude Code sessions. Read, reply, approve tools and start new ones. |
+| Weather | The forecast for your location. |
+| Calendar | Day, week, month and year views, from ICS links or the Claude calendar connector. |
+| Photos | A photo frame of the pictures you add. |
+| Lists | Shared family lists that Claude can read and change. |
+| Routines | Named sequences of steps, started by voice, a Home tile or Claude. |
+| Home Assistant | Lights, scenes and devices, if you run Home Assistant. |
+| Clock | Clock, timer, stopwatch and alarm. |
+| Browser | Web tabs with a Claude side panel. Tablet only. |
+| Camera | Photos and "Ask Claude about this." Tablet only. |
+| Apps | The app launcher. |
+| Settings | Profile, PINs, plugins and more. |
+
+## Screens
 
 <p align="center">
-  <img src="docs/media/tablet-clock.png" alt="ClaudeOS clock screen with the time, date, weather and battery" width="46%">
-  &nbsp;
-  <img src="docs/media/tablet-browser.png" alt="ClaudeOS Browser app with the Claude side panel open" width="46%">
+  <img src="docs/media/tablet-timer.png" alt="The ClaudeOS Clock app on the Timer tab, with quick timers" width="70%">
 </p>
-
-## What it does
-
-Ask by voice or tap the screen. ClaudeOS handles:
-
-- **Home**: a greeting, the time and an overview of the day.
-- **Claude**: your Claude Code sessions. Read them, reply, approve tools and start new ones.
-- **Weather**: the forecast for your place.
-- **Calendar**: day, week, month and year views. Reads ICS links and your Claude calendar connector.
-- **Photos**: a photo frame of pictures you add.
-- **Lists**: shared family lists that Claude can read and change.
-- **Routines**: named lists of steps, run by voice, a Home tile or Claude.
-- **Home Assistant**: lights, scenes and devices, if you run Home Assistant.
-- **Clock**: clock, timer, stopwatch and alarm.
-- **Browser**: web tabs with a Claude side panel (tablet).
-- **Camera**: photos, and "Ask Claude about this" (tablet).
-- **Apps**: the launcher.
-- **Settings**: profile, PINs, plugins and the rest.
 
 ## Requirements
 
 - Node.js 22.18 or newer.
 - The Claude Code CLI, signed in to your Claude account.
-- A PC on your home network to run the hub. Leave it on.
-- Optional: an Android tablet to run ClaudeOS full screen. This comes in a later release.
-- Optional: a Nest Hub or Chromecast and [`catt`](https://github.com/skorokithakis/catt), to keep the page cast to it.
+- A PC on your home network to run the hub. Keep it on.
+- Optional: a Nest Hub or Chromecast, with [`catt`](https://github.com/skorokithakis/catt), to cast the page.
+- Optional: an Android tablet. A full-screen tablet app comes in a later release.
 
 ## Get started
 
-1. Read [docs/SETUP.md](docs/SETUP.md) to install and run the hub.
-2. Read [docs/SECURITY.md](docs/SECURITY.md) before you put the tablet somewhere shared.
-3. Open the hub address from any browser on your home network.
+```
+npm install
+npm run setup
+npm start
+```
 
-The hub code is in the repository root. The Windows tray app that keeps it running is in [`host/`](host/).
+1. `npm start` runs the hub. Open `http://<your PC's address>:8000` in a browser on your home network.
+2. In **Settings**, open **Security** and set a PIN before you put the screen somewhere shared.
 
-## Contribute
+The full guide, including the `config.json` options and the tablet build, is in [docs/SETUP.md](docs/SETUP.md). On Windows, the tray app in [`host/`](host/) keeps the hub running.
+
+## Security
+
+The hub trusts your home network. It serves plain HTTP with no sign-in. Do not expose it to the internet. See [docs/SECURITY.md](docs/SECURITY.md) for the trust model, PINs and the files to keep private.
+
+## Contributing
 
 Every change goes through a branch and a pull request into `main`.
 
-- Write commits in the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format, for example `feat(voice): name a timer`.
-- Read [CLAUDE.md](CLAUDE.md) for the code rules, the web import rules and the no-visible-Android rule.
-- Run `npm run check` and `npm test` before you open a pull request.
+1. Create a branch from `main`.
+2. Write commits in the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format, for example `feat(voice): name a timer`.
+3. Run `npm run check` and `npm test`.
+4. Open a pull request with the sections **Why**, **What** and **Tests**.
+
+See [CLAUDE.md](CLAUDE.md) for the code rules, the web import rules and the no-visible-Android rule.
