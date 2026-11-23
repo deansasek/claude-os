@@ -102,13 +102,20 @@ public final class NativeClaudeRunner {
 
     // 4. CLI SIGN-IN (intent extra login_spike): the official `claude auth login`, then `claude auth status`.
     //    See login() for the flow. BROWSER=echo stops the CLI from trying to open a browser on Android.
+    //    musl has no DNS config on Android (no /etc/resolv.conf), so the CLI cannot resolve names itself: its
+    //    requests go through LoopbackProxy, which resolves each host with Android's resolver.
     if (login) {
       List<String> base = List.of(loader.getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath());
-      Map<String, String> env = Map.of("DISABLE_AUTOUPDATER", "1", "BROWSER", "echo");
-      login(base, env);
-      // the status, as the CLI reports it; only these fields reach the hub log (not the email or the organization)
-      exec("status", concat(base, "auth", "status"), env, 60, true,
-          l -> l.matches("\\s*\"(loggedIn|authMethod|subscriptionType)\".*") ? l : null);
+      try (LoopbackProxy proxy = LoopbackProxy.start(this::post)) {
+        post("native: proxy: listening on " + proxy.url());
+        Map<String, String> env = Map.of("DISABLE_AUTOUPDATER", "1", "BROWSER", "echo",
+            "HTTPS_PROXY", proxy.url(), "HTTP_PROXY", proxy.url(), "NO_PROXY", "localhost,127.0.0.1");
+        login(base, env);
+        // the status, as the CLI reports it; only these fields reach the hub log (not the email or the organization)
+        exec("status", concat(base, "auth", "status"), env, 60, true,
+            l -> l.matches("\\s*\"(loggedIn|authMethod|subscriptionType)\".*") ? l : null);
+      }
+      post("native: proxy: stopped");
     }
   }
 
