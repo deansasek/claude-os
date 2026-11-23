@@ -5,7 +5,7 @@
 import { esc, SPARK_SHAPE } from '../../../../core/web/dom.ts';
 import { markdown } from '../../../../core/web/markdown.ts';
 import type { SessionView, TranscriptEntry } from '../../api.ts';
-import { quickChips } from './quick-chips.ts';
+import { quickChips, retryChip } from './quick-chips.ts';
 
 export const SPARK = '<svg viewBox="-50 -50 100 100" class="m-spark"><g fill="var(--clay)" class="spark-rays"></g></svg>';
 export const SPARK_RAYS = SPARK_SHAPE;   // the shared Claude spark (core/web/dom.ts)
@@ -109,5 +109,10 @@ export function transcriptHtml(entries: TranscriptEntry[], active: boolean, ui: 
 export function quickReplies(v: SessionView): [string, string][] {
   if (v.next?.choices.length) return v.next.choices;
   const last = [...v.transcript].reverse().find(e => e.kind === 'assistant' || e.kind === 'user');
-  return quickChips(last?.kind === 'assistant' ? last.text : '');
+  const chips = quickChips(last?.kind === 'assistant' ? last.text : '');
+  // a reply that failed or was stopped (a PC turn's status, or a tablet chat's note at the end): "Try again" first
+  const ended = v.turn?.status === 'error' || v.turn?.status === 'stopped' || v.transcript[v.transcript.length - 1]?.kind === 'note';
+  const sent = [...v.transcript].reverse().find(e => e.kind === 'user')?.text ?? null;
+  const again = ended ? retryChip(sent) : null;
+  return again ? [again, ...chips] : chips;
 }
