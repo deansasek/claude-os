@@ -6,7 +6,7 @@ import type { History, HistoryItem, LiveSession } from '../src/apps/claude/api.t
 
 // The modules read the page's location when they load (via dom.ts); node has none, so give it one first.
 Object.assign(globalThis, { location: { search: '' } });
-const { emptyText, folderLive, groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
+const { emptyText, folded, folderLive, groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
 
 const NOW = Date.parse('2026-11-23T12:00:00.000Z');
 const HOUR = 3600;
@@ -109,6 +109,17 @@ test('a folder header counts its working and waiting sessions', () => {
   assert.equal(folderLive(g!), '2 working · 2 waiting');
   assert.equal(folderLive(groups([session({ id: 'q', folder: 'quiet', state: 'waiting', age: 5 * HOUR })], NOW, null, '', false)[0]!), '');
   assert.equal(folderLive(groups([session({ id: 'w', folder: 'only', state: 'thinking', age: 10 })], NOW, null, '', false)[0]!), '1 working');
+});
+
+test('a folder folds by its id, and an older choice by name still applies', () => {
+  const hist: History = { q: '', total: 1, archived: 0, groups: [{ id: 'f1', name: 'proj', count: 1, latest: '2026-11-23T08:00:00.000Z', more: false,
+    items: [item('s1', 'Old title', '2026-11-23T08:00:00.000Z', { messages: 4 })] }] };
+  const [g] = groups([], NOW, hist, '', false);
+  assert.equal(g!.key, 'f1');
+  assert.equal(folded(new Map([['proj', true]]), g!, false), true);   // an older name-keyed choice
+  assert.equal(folded(new Map([['f1', false], ['proj', true]]), g!, true), false);   // the id's own choice wins
+  assert.equal(folded(new Map(), g!, true), true);   // no choice: quiet folders start folded
+  assert.equal(folded(new Map(), g!, false), false);
 });
 
 test('an empty sessions list says why it is empty', () => {

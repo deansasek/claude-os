@@ -7,7 +7,7 @@
 import { $, esc, report, store } from '../../../../core/web/dom.ts';
 import { Keyboard } from '../../../../core/web/keyboard.ts';
 import type { LiveSession } from '../../api.ts';
-import { emptyText, folderLive, groups, isLive, stateOf, when, type Row } from './sidebar-groups.ts';
+import { emptyText, folded, folderLive, groups, isLive, stateOf, when, type Row } from './sidebar-groups.ts';
 import { historyArchivedView, historyFailed, historyLoading, historyNow, historyQuery, historyTick, loadOlder, onHistoryChange, setQuery } from './history.ts';
 
 export { historyTitle } from './history.ts';
@@ -26,8 +26,8 @@ const choice = new Map<string, boolean>((() => {
 })());
 
 let shutNow = new Map<string, boolean>();   // as last drawn, so a tap flips what you see
-export function toggleFolder(name: string): void {
-  choice.set(name, !(shutNow.get(name) ?? false));
+export function toggleFolder(key: string): void {
+  choice.set(key, !(shutNow.get(key) ?? false));
   store.set(KEY, JSON.stringify([...choice]));
 }
 
@@ -67,7 +67,7 @@ export function sidebarHtml(list: LiveSession[], openId: string | null): string 
   for (const g of gs) {
     const has = g.rows.some(r => r.id === openId);
     const quiet = now - g.latest > QUIET_FOLD_DAYS * 864e5;
-    const shut = !q && !has && (choice.get(g.key) ?? quiet);
+    const shut = !q && !has && folded(choice, g, quiet);
     shutNow.set(g.key, shut);
     const live = folderLive(g);   // "2 working · 1 waiting"
     html += `<button class="sb-folder${shut ? ' shut' : ''}" data-folder="${esc(g.key)}">${CHEV}<span class="label">${esc(g.name)}</span>`
