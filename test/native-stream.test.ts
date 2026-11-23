@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, COMPACTED_TEXT, COMPACTING_TEXT, contextOf, durationText, elapsedText, emptyChat, retryText, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
+  applyEvent, chatAge, chatListed, clearedChat, COMPACTED_TEXT, COMPACTING_TEXT, stalled, STALL_MS, STALLED_TEXT, contextOf, durationText, elapsedText, emptyChat, retryText, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
   newerSaved, parseStreamLine, replyFinished, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
@@ -440,4 +440,18 @@ test('a compacted chat keeps a note in the chat and ends the compacting line', (
   assert.equal(c.status, null);
   assert.deepEqual(c.entries[c.entries.length - 1], { kind: 'note', text: 'Earlier messages were summarised to keep going.', at: AT });
   assert.equal(COMPACTED_TEXT, 'Earlier messages were summarised to keep going.');
+});
+
+test('stalled: true after 3 minutes with no event, never with no event time', () => {
+  const last = Date.parse(AT);
+  assert.equal(stalled(last + 3 * 60e3 - 1, last), false);
+  assert.equal(stalled(last + 3 * 60e3, last), true);
+  assert.equal(stalled(last + 10 * 60e3, last), true);
+  assert.equal(stalled(last + 10 * 60e3, null), false);
+  assert.equal(STALL_MS, 180000);
+  assert.equal(STALLED_TEXT, 'No word from Claude for 3 min');
+  // a running reply records the time it was sent; an event moves it on
+  const sent = userSent(emptyChat(), 'Hi', AT);
+  assert.equal(sent.lastEventAt, last);
+  assert.equal(emptyChat().lastEventAt, null);
 });
