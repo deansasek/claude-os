@@ -209,6 +209,7 @@ public class MainActivity extends Activity {
     root.addView(cover, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
     setContentView(root);
     if (Build.VERSION.SDK_INT >= 30) root.setOnApplyWindowInsetsListener(this::keepPageSizeFromKeyboard);
+    excludeSideEdges(root);   // no Android back arrow on a swipe in from the left or right edge (sideBackGestureOff)
     new BrowserView(this, root, web);   // the Browser app's native pages, laid over the content area (BrowserView.java)
     BrowserView.fromIntent(getIntent());   // a web link that opened Claude Home from another app (default browser)
     ui.postDelayed(this::hideCover, 12_000);   // never leave the cover up for good
@@ -714,6 +715,7 @@ public class MainActivity extends Activity {
    * (window.hubSwipeUp); the bars are hidden again straight away.
    */
   @Override public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+    if (sideSwipe(ev)) return true;   // a swipe in from the left or right edge: ClaudeOS's Back (sideSwipe)
     int act = ev.getActionMasked();
     if (act == android.view.MotionEvent.ACTION_DOWN) {
       float y = ev.getRawY();
@@ -736,6 +738,110 @@ public class MainActivity extends Activity {
       edgeDownBottom = false;
     }
     return super.dispatchTouchEvent(ev);
+  }
+
+  // ---------- Android's side back gesture: off over ClaudeOS, ClaudeOS's own edge swipe instead ----------
+  /** Settings.Secure keys that scale SystemUI's back gesture strip on each side (1 by default; 0: no strip). */
+  private static final String[] BACK_INSET_KEYS = { "back_gesture_inset_scale_left", "back_gesture_inset_scale_right" };
+
+  /**
+   * Turn Android's side back gesture off (true, onResume) or back on (false, onPause).
+   *
+   * Why: with gesture navigation a swipe in from the left or right edge makes SystemUI draw its round back arrow
+   * over the page (EdgeBackGestureHandler). Gesture exclusion (excludeSideEdges) cannot stop that on its own:
+   * Android honours only the lowest 200dp of each edge (system_gesture_exclusion_limit_dp), 150 px of the 800 px
+   * on this tablet. The limit is lifted only for a window that hides the navigation bar with
+   * BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE, and Claude Home uses BEHAVIOR_DEFAULT (hideBars). With the strip scaled
+   * to 0, SystemUI starts no back gesture and draws no arrow; sideSwipe gives the swipe to ClaudeOS's Back instead.
+   *
+   * Needs WRITE_SECURE_SETTINGS (granted once from the PC, as for AdbWifi); without it only excludeSideEdges
+   * applies. The scale that was set before is kept in prefs and put back when another app or maintenance()'s
+   * Settings comes to the front (onPause), so Android's own back gesture works there.
+   */
+  private void sideBackGestureOff(boolean off) {
+    if (checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+    android.content.ContentResolver r = getContentResolver();
+    SharedPreferences p = getSharedPreferences("hub", MODE_PRIVATE);
+    for (String k : BACK_INSET_KEYS) {
+      try {
+        String now = Settings.Secure.getString(r, k);
+        if (off == "0".equals(now)) continue;   // already as wanted
+        if (off) {
+          p.edit().putString("saved_" + k, now == null ? "" : now).apply();
+          Settings.Secure.putString(r, k, "0");
+        } else {
+          String saved = p.getString("saved_" + k, "");
+          Settings.Secure.putString(r, k, saved.isEmpty() || saved.equals("0") ? null : saved);   // null: Android's default
+        }
+        trace("side back gesture " + k + (off ? " off" : " on"));
+      } catch (RuntimeException e) { Log.w(TAG, "side back gesture " + k, e); }
+    }
+  }
+
+  /** Device px of each side strip where a swipe in is Back: Android's own back strip width, at least 20dp. */
+  private int sideStripPx() {
+    float d = getResources().getDisplayMetrics().density;
+    int px = Math.round(20 * d);
+    int id = getResources().getIdentifier("config_backGestureInset", "dimen", "android");
+    if (id > 0) { try { px = Math.max(px, getResources().getDimensionPixelSize(id)); } catch (Exception ignored) { } }
+    return px;
+  }
+
+  /**
+   * Keep the left and right edge strips of the page, full height, from Android's back gesture. Android honours
+   * only the lowest 200dp of each edge (see sideBackGestureOff), so this is the fallback when the setting can't be
+   * written, and it also covers the edge's outermost pixel there.
+   */
+  private void excludeSideEdges(View root) {
+    if (Build.VERSION.SDK_INT < 29) return;
+    root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+      int w = r - l, h = b - t, strip = sideStripPx();
+      v.setSystemGestureExclusionRects(java.util.Arrays.asList(
+          new android.graphics.Rect(0, 0, strip, h), new android.graphics.Rect(w - strip, 0, w, h)));
+    });
+  }
+
+  /** A touch that began in a side strip (sideSwipe): where it began, -1 when none. */
+  private float sideDownX = -1, sideDownY = 0;
+  private boolean sideFromLeft = false, sideTaken = false;
+
+  /**
+   * ClaudeOS's own back swipe, in place of Android's (sideBackGestureOff): a one-finger swipe that starts in the
+   * left or right strip (sideStripPx) and moves inwards, mostly sideways. Once it has moved 24dp the page gets a
+   * cancel and the rest of the touch is ours (as Android's gesture took it before); on release past 40dp it is
+   * Back (goBack). True when the event is used here.
+   */
+  private boolean sideSwipe(android.view.MotionEvent ev) {
+    int act = ev.getActionMasked();
+    float d = getResources().getDisplayMetrics().density;
+    if (act == android.view.MotionEvent.ACTION_DOWN) {
+      float x = ev.getRawX();
+      int strip = sideStripPx(), w = getResources().getDisplayMetrics().widthPixels;
+      sideTaken = false;
+      sideFromLeft = x <= strip;
+      sideDownX = sideFromLeft || x >= w - strip ? x : -1;
+      sideDownY = ev.getRawY();
+      return false;
+    }
+    if (sideDownX < 0) return false;
+    if (act == android.view.MotionEvent.ACTION_POINTER_DOWN && !sideTaken) { sideDownX = -1; return false; }   // two fingers: not Back
+    float in = (ev.getRawX() - sideDownX) * (sideFromLeft ? 1 : -1), dy = Math.abs(ev.getRawY() - sideDownY);
+    if (act == android.view.MotionEvent.ACTION_MOVE && !sideTaken && in > 24 * d && in > 2 * dy) {
+      sideTaken = true;
+      edgeDownY = -1;            // the top and bottom edge swipes (dispatchTouchEvent) don't apply to this touch
+      edgeDownBottom = false;
+      android.view.MotionEvent c = android.view.MotionEvent.obtain(ev);
+      c.setAction(android.view.MotionEvent.ACTION_CANCEL);
+      try { super.dispatchTouchEvent(c); } finally { c.recycle(); }   // the page lets go of the touch
+    }
+    if (act == android.view.MotionEvent.ACTION_UP || act == android.view.MotionEvent.ACTION_CANCEL) {
+      boolean taken = sideTaken, back = taken && act == android.view.MotionEvent.ACTION_UP && in > 40 * d;
+      sideDownX = -1;
+      sideTaken = false;
+      if (back) { trace("side swipe: back"); goBack(); }
+      return taken;
+    }
+    return sideTaken;
   }
 
   /**
@@ -923,6 +1029,7 @@ public class MainActivity extends Activity {
     AdbWifi.reapply(this);
     pin();     // enter lock task first (first start after a reboot too), then hide the bars for good
     hideBars();
+    sideBackGestureOff(true);   // no Android back arrow over ClaudeOS (sideBackGestureOff)
     web.onResume();
     web.evaluateJavascript("window.hubResume && window.hubResume()", null);   // e.g. a setup step just finished
   }
@@ -932,6 +1039,7 @@ public class MainActivity extends Activity {
     inFront = false;
     Guard.refreshStrip();
     resumed = false;
+    sideBackGestureOff(false);  // another app or Android's Settings in front: Android's back gesture is back there
     web.onPause();
     CameraView.stopForPause();   // the camera is released while Claude Home isn't in front
   }
@@ -960,6 +1068,11 @@ public class MainActivity extends Activity {
   /** Back does nothing to Android; the page can listen for it (window.hubBack). */
   @SuppressWarnings("deprecation")
   @Override public void onBackPressed() {
+    goBack();
+  }
+
+  /** Back, from Android's back event or ClaudeOS's own side swipe (sideSwipe). */
+  private void goBack() {
     if (BrowserView.get() != null && BrowserView.get().goBack()) return;   // a browser page on screen goes back first
     web.evaluateJavascript("window.hubBack && window.hubBack()", null);
   }
