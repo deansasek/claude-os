@@ -46,12 +46,11 @@ ClaudeOS shows your day on one shared screen: the time, the weather, your calend
 | Apps | The app launcher. |
 | Settings | Profile, PINs, plugins and more. |
 
-<!--
 ## Screens
 
-Product screenshots go here once they are captured.
-Add each image under docs/media/ and reference it with a short alt text.
--->
+<p align="center">
+  <img src="docs/media/tablet-timer.png" alt="The ClaudeOS Clock app on the Timer tab, with quick timers" width="70%">
+</p>
 
 ## Requirements
 
