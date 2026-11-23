@@ -20,8 +20,14 @@ export interface PowerDeps {
 }
 
 const TEXT: Record<PowerStage, { title: string; text: string; restart: string }> = {
-  menu: { title: 'Power', text: 'Restart the tablet or turn the screen off.', restart: 'Restart' },
+  menu: { title: 'Power', text: '', restart: 'Restart' },
   confirm: { title: 'Restart the tablet?', text: 'It takes about a minute and comes straight back to ClaudeOS.', restart: 'Restart now' },
+};
+
+// line icons drawn like the control center's (22px, currentColor); inline so this module stays import-free
+const ICON = {
+  restart: '<svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4.5h-4.5"/></svg>',
+  screenOff: '<svg viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg>',
 };
 
 export function initPowerSheet(d: PowerDeps): void {
@@ -36,9 +42,12 @@ export function initPowerSheet(d: PowerDeps): void {
   const paint = () => {
     const t = TEXT[stage];
     root!.querySelector('h3')!.textContent = t.title;
-    root!.querySelector('p')!.textContent = t.text;
-    root!.querySelector<HTMLElement>('[data-b="restart"]')!.textContent = t.restart;
+    const p = root!.querySelector('p')!;
+    p.textContent = t.text;
+    p.hidden = !t.text;
+    root!.querySelector<HTMLElement>('[data-b="restart"] b')!.textContent = t.restart;
     root!.querySelector<HTMLElement>('[data-b="screen-off"]')!.hidden = stage === 'confirm';
+    root!.dataset.stage = stage;
   };
   const press = (b: PowerButton) => {
     const s = powerStep(stage, b);
@@ -52,10 +61,13 @@ export function initPowerSheet(d: PowerDeps): void {
     if (!root) {
       root = document.createElement('div');
       root.className = 'pw';
-      root.innerHTML = '<div class="pw-card" role="dialog" aria-modal="true"><h3></h3><p></p><div class="pw-actions">'
-        + '<button class="pw-btn hit" data-b="restart"></button>'
-        + '<button class="pw-btn hit" data-b="screen-off">Turn off screen</button>'
-        + '<button class="pw-btn hit ghost" data-b="cancel">Cancel</button></div></div>';
+      // a bottom sheet like the control center turned upside down: the grab handle, a serif title and one helper
+      // line, the actions in one rounded group, and Cancel on its own below
+      root.innerHTML = '<div class="pw-card" role="dialog" aria-modal="true"><div class="cc-grab"></div><h3></h3><p></p>'
+        + '<div class="pw-group">'
+        + `<button class="pw-btn hit" data-b="restart"><i class="cc-ic">${ICON.restart}</i><b></b></button>`
+        + `<button class="pw-btn hit" data-b="screen-off"><i class="cc-ic">${ICON.screenOff}</i><b>Turn off screen</b></button>`
+        + '</div><button class="pw-btn pw-cancel hit" data-b="cancel"><b>Cancel</b></button></div>';
       root.addEventListener('click', e => {
         const b = (e.target as HTMLElement).closest<HTMLElement>('[data-b]');
         if (b) press(b.dataset.b as PowerButton);
