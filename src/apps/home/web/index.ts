@@ -19,7 +19,8 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { ago, batteryGlyph, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
-import { nativeLimits } from '../../claude/web/native.ts';
+import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
+import { shortAge } from '../../../core/web/format.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -219,6 +220,14 @@ function tabletLimits(): { s: number | null; w: number | null; resetMs: number |
   return { s, w, resetMs: five?.resetsAt ? Date.parse(five.resetsAt) : null };
 }
 
+/** The tablet chat's line on the Claude tile: working, or when it last replied. The reply text stays out (the kiosk is
+ *  shared). Null when the tablet has no reply yet. */
+function nativeLine(): string | null {
+  const g = nativeGlance();
+  if (g.running) return 'Claude is working on this tablet';
+  return g.at && g.ago != null ? `Claude replied on this tablet · ${shortAge(g.ago)}` : null;
+}
+
 function paintClaude(): void {
   const waiting = waitingSessions(), busy = busySessions();
   ctx.root.classList.toggle('hm-waiting', waiting.length > 0);
@@ -252,6 +261,8 @@ function paintClaude(): void {
     if (tab) lines.push('On this tablet');
     subLines(sub, lines);
   }
+  const nat = nativeLine();
+  if (nat) sub.insertAdjacentHTML('beforeend', `<span class="hm-l">${esc(nat)}</span>`);
   paintLine();
   paintStatus();
 }
@@ -437,6 +448,13 @@ function paintLine(): void {
   el.innerHTML = html;
   el.classList.toggle('go', !!lineTarget);
   (el as HTMLButtonElement).disabled = !lineTarget;   // only a sentence about a waiting session is a button
+}
+
+/** Open the tablet's own chat in the Claude app: its session is NATIVE_ID (the Claude app listens for hub:open-session). */
+function openTabletChat(): void {
+  openApp('claude');
+  dispatchEvent(new CustomEvent('hub:open-session', { detail: NATIVE_ID }));
+  report('home:tablet-chat');
 }
 
 /** Open a session in the Claude app (the Claude app listens for hub:open-session). */
@@ -762,6 +780,7 @@ function mount(context: AppContext): void {
     report(`home:tile:${go}`);
     if (go === 'notes') { openControlCenter(); return; }
     if (go === 'claude') { const w = waitingSessions()[0]; if (w?.id) { openSession(w.id); return; } }
+    if (go === 'claude' && nativeLine()) { openTabletChat(); return; }
     openApp(go);
   });
   $('hmLine').addEventListener('click', () => { if (lineTarget) openSession(lineTarget); });

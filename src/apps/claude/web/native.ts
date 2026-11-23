@@ -9,8 +9,8 @@ import { store } from '../../../core/web/dom.ts';
 import { alertFor } from '../../../core/web/system.ts';
 import type { LiveSession, SessionView } from '../api.ts';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, lastTurnText, limitList, loadChat, newerSaved, parseStreamLine, replyFinished,
-  saveChat, STALLED_TEXT, stalled, totalTokens, usageStale, userSent, type NativeChat, type SeenLimit,
+  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, glanceOf, lastTurnText, limitList, loadChat, newerSaved, parseStreamLine, replyFinished,
+  saveChat, STALLED_TEXT, stalled, totalTokens, usageStale, userSent, type NativeChat, type NativeGlance, type SeenLimit,
 } from './native-stream.ts';
 
 const KEY = 'claude.native.on';
@@ -67,6 +67,8 @@ export function initNative(onChange: () => void): void { changed = onChange; }
 /** The plan limits from the tablet CLI (rate_limit_event of a chat, or a usage check), the newest per window.
  *  Not the hub's limits. */
 export const nativeLimits = (): SeenLimit[] => limitList(chat);
+/** The tablet chat at a glance (running, the last reply's time, any error) for Home. Never the reply text. */
+export const nativeGlance = (): NativeGlance => glanceOf(chat);
 /** The tablet CLI's version as its last chat reported it (system/init), or null before the first chat. */
 export const nativeCliVersion = (): string | null => chat.cliVersion;
 
