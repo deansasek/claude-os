@@ -187,7 +187,7 @@ export function userText(content: any): string {
   // a tablet reply sits inside a system reminder that the stripping below would remove: take it out first
   const reply = tabletReplyIn(raw);
   if (reply !== null) return reply;
-  return raw.replace(/<(system-reminder|local-command-stdout|local-command-stderr|command-message|command-args)>[\s\S]*?<\/\1>/g, '')
+  return raw.replace(/<(system-reminder|task-notification|local-command-stdout|local-command-stderr|command-message|command-args)>[\s\S]*?<\/\1>/g, '')
     .replace(/<command-name>([\s\S]*?)<\/command-name>/g, '$1').trim();
 }
 
