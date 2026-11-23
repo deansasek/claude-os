@@ -89,3 +89,11 @@ export function folderLive(g: Group): string {
 
 /** The line for an empty sessions list: "Can’t reach your PC" when the history fetch failed, else "No sessions yet". */
 export const emptyText = (failed: boolean): string => (failed ? 'Can’t reach your PC' : 'No sessions yet');
+
+/** The archive's empty view: a failed history fetch says so first (else the view would sit on "Loading…" for ever).
+ *  `head` is the first line; `tip` is the second line, empty when there is none. */
+export const archiveEmpty = (failed: boolean, loaded: boolean): { head: string; tip: string } => {
+  if (failed) return { head: `${emptyText(true)}.`, tip: '' };
+  if (loaded) return { head: 'Nothing archived.', tip: 'Archive a session from its ⋯ menu to tuck it away here.' };
+  return { head: 'Loading…', tip: '' };
+};
