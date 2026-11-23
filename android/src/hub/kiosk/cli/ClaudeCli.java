@@ -51,6 +51,17 @@ public final class ClaudeCli {
 
   // ---------- the CLI binary and how it runs ----------
 
+  /** The CLI is installed when its binary and version.txt are here. A chat send checks this first, so no download starts on the chat thread. */
+  private static boolean installed(Context app) {
+    File dir = new File(app.getFilesDir(), "claude");
+    return new File(dir, "claude").exists() && new File(dir, "version.txt").exists();
+  }
+
+  /** Thrown when a chat is sent before the CLI is installed: the page then says to sign in under Settings. */
+  private static final class NotInstalled extends Exception {
+    NotInstalled() { super("cli not installed"); }
+  }
+
   /** The loader and the binary as a command (downloads the binary on first use). Throws when the binary is missing. */
   private static List<String> base(Context app) throws Exception {
     String libDir = app.getApplicationInfo().nativeLibraryDir;
@@ -336,7 +347,7 @@ public final class ClaudeCli {
         sendTurn(app, prompt, sessionId == null ? "" : sessionId, model);
       } catch (Throwable t) {
         Log.e(TAG, "chat: send failed: " + t.getClass().getSimpleName());
-        chatEvent("{\"type\":\"error\",\"message\":\"start_failed\"}");
+        chatEvent("{\"type\":\"error\",\"message\":\"" + (t instanceof NotInstalled ? "not_signed_in" : "start_failed") + "\"}");
       }
     });
   }
@@ -355,7 +366,10 @@ public final class ClaudeCli {
       if (!same && chat != null) { chat.destroy(); chat = null; chatIn = null; }   // replaced: its exit stays quiet
       in = same ? chatIn : null;
     }
-    if (in == null) in = startChat(app, sessionId, model);
+    if (in == null) {
+      if (!installed(app)) throw new NotInstalled();   // no download on the chat thread: the page says to sign in
+      in = startChat(app, sessionId, model);
+    }
     String line = new org.json.JSONObject().put("type", "user")
         .put("message", new org.json.JSONObject().put("role", "user").put("content", prompt)).toString();
     log("chat: user message, " + prompt.length() + " chars");
