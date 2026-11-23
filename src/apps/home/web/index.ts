@@ -159,11 +159,11 @@ function paintWeather(): void {
   $('hmWxTemp').className = 'num';
   $('hmWxTemp').textContent = `${Math.round(c.temperature_2m)}°`;
   const hi = d?.temperature_2m_max?.[0], lo = d?.temperature_2m_min?.[0], rain = d?.precipitation_probability_max?.[0];
-  const parts = [wxWord(c.weather_code)];
-  if (hi != null && lo != null) parts.push(`H ${Math.round(hi)}° L ${Math.round(lo)}°`);
+  // two short lines: the sky, then the high/low and the rain. The glance column is narrow (app.css), so each line stays short.
+  const hiLo = hi != null && lo != null ? `H ${Math.round(hi)}° L ${Math.round(lo)}°` : '';
   const later = rainLater(f);
-  const rainText = later ? `Rain likely ${later}` : rain != null ? `${Math.round(rain)}% chance of rain` : '';
-  subLines($('hmWxSub'), [parts.join(' · '), rainText]);
+  const rainShort = later ? `Rain ${later}` : rain != null ? `${Math.round(rain)}% rain` : '';
+  subLines($('hmWxSub'), [wxWord(c.weather_code), [hiLo, rainShort].filter(Boolean).join(' · ')]);
   setSky(skyOf(c.weather_code));
 }
 
