@@ -61,6 +61,8 @@ let photos: string[] = [];
 let draft = '';
 // a send that didn't go: the composer says why until you type or send again (shown in place of the placeholder)
 let sendNote = '';
+// refreshes of the open session that failed in a row (the PC did not answer); two or more shows "Can’t reach your PC"
+let refreshFails = 0;
 const SEND_NOTE: Record<string, string> = {
   too_many_photos: 'Too many photos for one message. Take one off.',
   photos_on_pc: 'Photos can’t go to a session open on your PC. Send words only.',
@@ -204,7 +206,7 @@ function repaintComposer(): void {
 export function openSession(id: string): void {
   const same = mode === 'session' && openId === id;
   openId = id;
-  if (!same) { view = null; drawnLog = ''; openMsg = null; pinIdx = 0; sendNote = ''; }
+  if (!same) { view = null; drawnLog = ''; openMsg = null; pinIdx = 0; sendNote = ''; refreshFails = 0; }
   if ($('svNudge').dataset.id === id) $('svNudge').hidden = true;
   showScreen('session');
   if (!same) {
@@ -247,8 +249,15 @@ async function refresh(): Promise<void> {
   let v: SessionView;
   // send the version we hold: the Hub answers "unchanged" with no transcript when nothing changed
   const have = view?.version ?? '';
-  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}&have=${encodeURIComponent(have)}`); } catch { return; }
+  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}&have=${encodeURIComponent(have)}`); }
+  catch {
+    // the PC did not answer: after two tries the state line says so (the next poll tries again)
+    refreshFails++;
+    if (refreshFails >= 2 && mode === 'session' && openId === id) render();
+    return;
+  }
   if (mode !== 'session' || openId !== id) return;   // switched away while it loaded
+  refreshFails = 0;
   if (v.unchanged && view) v = { ...v, transcript: view.transcript };
   view = v;
   render();
@@ -270,6 +279,7 @@ function render(): void {
   else if (past) { state.className = 'live'; stateText.textContent = 'Past session'; }
   else if (s?.state === 'waiting') { state.className = 'live wait'; stateText.textContent = 'Your turn'; }
   else { state.className = 'live'; stateText.textContent = !s ? 'Gone' : s.state === 'thinking' || s.state === 'tool' ? 'Working on your PC' : 'Quiet'; }
+  if (refreshFails >= 2) stateText.textContent = 'Can’t reach your PC. Trying again.';
 
   paintSidebar();
   paintPins();
