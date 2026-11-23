@@ -17,7 +17,7 @@ export interface TokenUse { input: number; output: number; cacheRead: number; ca
 export type NativeEvent =
   | { type: 'init'; sessionId: string; model?: string | null }   // model: the id the turn runs on (system/init)
   | { type: 'delta'; text: string }      // a piece of the reply as it streams (--include-partial-messages)
-  | { type: 'text'; text: string }       // a whole assistant message
+  | { type: 'text'; text: string; error?: string }   // a whole assistant message; error: the SDK's error code when the reply failed (text then is the CLI's error, not a reply)
   | { type: 'result'; ok: boolean; text: string; sessionId: string | null; costUsd: number | null; usage: TokenUse; window: number | null; reason?: string | null;
       durationMs?: number | null }        // durationMs: how long the turn took (duration_ms)
   | { type: 'limits'; limits: PlanLimit[] }   // plan limits the CLI reported (rate_limit_event, or a get_usage reply)
@@ -113,6 +113,9 @@ export function parseStreamLine(line: string): NativeEvent | null {
     case 'assistant': {
       const content = obj(o.message)?.content;
       const text = Array.isArray(content) ? content.map(b => (obj(b)?.type === 'text' ? str(obj(b)!.text) || '' : '')).join('') : '';
+      // the SDK's error code (authentication_failed, rate_limit, ...) on a failed reply; its text is not a reply
+      const error = str(o.error);
+      if (error) return { type: 'text', text: '', error };
       return text ? { type: 'text', text } : null;
     }
     case 'result': {
@@ -158,14 +161,16 @@ export interface NativeChat {
   turnStartedAt: string | null;   // when the running reply was sent (set once per turn, by userSent)
   lastModel: string | null; lastMs: number | null;   // the model and the time of the latest turn (under the title)
   resuming: boolean;   // the reply resumes a saved session and the CLI has not yet sent its init (the session is live)
+  replyError: string | null;   // the SDK's error code for the running reply (an assistant message's error), else null
 }
 export const emptyChat = (): NativeChat =>
   ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {},
-    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null, resuming: false });
+    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null, resuming: false, replyError: null });
 
 /** Your message goes on screen and the reply starts. A reply to a saved session is a resume until its init comes. */
 export const userSent = (c: NativeChat, text: string, at = new Date().toISOString()): NativeChat =>
-  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false, status: null, turnStartedAt: at, resuming: !!c.sessionId });
+  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false, status: null, turnStartedAt: at, resuming: !!c.sessionId,
+    replyError: null });
 
 /** How long a reply has run, as the chat shows it: '0:42', or '1:02:05' past an hour. */
 export function elapsedText(startedAt: string, now = Date.now()): string {
@@ -212,7 +217,11 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
     case 'init': return { ...c, sessionId: e.sessionId, lastModel: e.model || c.lastModel, resuming: false };
     // a reply piece or the result is a normal event again: the retry or compacting line goes
     case 'delta': return c.running ? { ...c, partial: c.partial + e.text, status: null } : c;
-    case 'text': return c.running ? { ...c, partial: e.text, status: null } : c;
+    case 'text':
+      if (!c.running) return c;
+      // a failed reply keeps its code for the result (failedSentence); its text is left out of the chat
+      if (e.error) return { ...c, replyError: e.error, status: null };
+      return { ...c, partial: e.text, status: null };
     case 'status': return c.running ? { ...c, status: e.text } : c;
     case 'stop': return c.running ? { ...c, stopped: true } : c;
     case 'result':
@@ -225,7 +234,7 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
         return { ...c, entries: withReply(c.partial), running: false, partial: '', sessionId: null, resuming: false, status: null, error: DEAD_RESUME,
           tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
       return { ...c, entries: e.ok ? withReply(e.text || c.partial) : withReply(c.partial), running: false, partial: '', status: null,
-        sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at, e.reason ?? null),
+        sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at, c.replyError || e.reason || null),
         tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window, lastMs: e.durationMs ?? c.lastMs };
     case 'limits': {
       const limits = { ...c.limits };

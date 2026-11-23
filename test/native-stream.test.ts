@@ -401,3 +401,27 @@ test('replyFinished: a reply that ends well, and no other end', () => {
   assert.equal(replyFinished(running, applyEvent(applyEvent(running, { type: 'stop' }, AT), ok, AT)), false);
   assert.equal(replyFinished(emptyChat(), applyEvent(emptyChat(), ok, AT)), false);
 });
+
+test('an assistant message with an error code is not a reply; the result names the reason', () => {
+  const failedText = parseStreamLine(line({ type: 'assistant', error: 'authentication_failed', message: { content: [{ type: 'text', text: 'API Error: 401' }] } }));
+  assert.deepEqual(failedText, { type: 'text', text: '', error: 'authentication_failed' });
+  const failedResult = parseStreamLine(line({ type: 'result', subtype: 'success', is_error: true, result: 'API Error: 401' }));
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), failedText!, AT);
+  c = applyEvent(c, failedResult!, AT);
+  assert.equal(c.error, 'Sign in again under Settings → Apps → Claude.');
+  assert.equal(c.entries.some(e => e.kind === 'assistant'), false);
+  // a rate limit and an overloaded API read the same way as the PC turn (failed.ts)
+  const limited = applyEvent(applyEvent(userSent(emptyChat(), 'Hi', AT), parseStreamLine(line({ type: 'assistant', error: 'rate_limit', message: { content: [] } }))!, AT),
+    failedResult!, AT);
+  assert.equal(limited.error, 'Claude hit a limit. Wait a while, then try again.');
+  const busy = applyEvent(applyEvent(userSent(emptyChat(), 'Hi', AT), parseStreamLine(line({ type: 'assistant', error: 'overloaded', message: {} }))!, AT),
+    failedResult!, AT);
+  assert.equal(busy.error, 'Claude is busy right now. Try again in a minute.');
+  // a status code from the API still wins when no assistant error came
+  assert.equal(applyEvent(userSent(emptyChat(), 'Hi', AT), parseStreamLine(line({ type: 'result', subtype: 'success', is_error: true, api_error_status: 429 }))!, AT).error,
+    'Claude hit a limit. Wait a while, then try again.');
+  // a reply without an error code is still a reply
+  const plain = applyEvent(userSent(emptyChat(), 'Hi', AT), parseStreamLine(line({ type: 'assistant', message: { content: [{ type: 'text', text: 'Hello' }] } }))!, AT);
+  assert.equal(plain.partial, 'Hello');
+  assert.equal(plain.replyError, null);
+});
