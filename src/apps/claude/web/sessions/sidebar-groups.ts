@@ -36,6 +36,10 @@ export interface Group { key: string; id: string | null; name: string; rows: Row
 /** The folder groups, newest first. The history's groups come first, each session shown with its live state when it is
  *  live. Live sessions the history has not caught up with are added (not while searching, or in the archive).
  *  `now` is the clock (ms); `h` the history as last loaded; `q` the search; `archived` the archive view. */
+/** Whether a folder starts folded: its own choice by key (the folder id), else the older choice by name, else `quiet`. */
+export const folded = (choices: Map<string, boolean>, g: Pick<Group, 'key' | 'name'>, quiet: boolean): boolean =>
+  choices.get(g.key) ?? choices.get(g.name) ?? quiet;
+
 export function groups(list: LiveSession[], now: number, h: History | null, q: string, archived: boolean): Group[] {
   const live = new Map<string, LiveSession>();
   for (const s of list) if (s.id) live.set(s.id, s);
@@ -43,7 +47,7 @@ export function groups(list: LiveSession[], now: number, h: History | null, q: s
   const byKey = new Map<string, Group>();
   const placed = new Set<string>();
   for (const g of h?.groups || []) {
-    const grp: Group = { key: g.name, id: g.id, name: g.name, count: g.count, more: g.more, latest: Date.parse(g.latest), rows: [] };
+    const grp: Group = { key: g.id || g.name, id: g.id, name: g.name, count: g.count, more: g.more, latest: Date.parse(g.latest), rows: [] };
     for (const i of g.items) {
       const l = live.get(i.id) || null;
       const at = l && isLive(l) ? now - l.age * 1000 : Date.parse(i.at);
@@ -61,7 +65,7 @@ export function groups(list: LiveSession[], now: number, h: History | null, q: s
       if (needle && (s.surface !== 'tablet' || !s.title.toLowerCase().includes(needle))) continue;
       let grp = (s.folderId && byKey.get(s.folderId)) || byKey.get('n:' + s.folder);
       if (!grp) {
-        grp = { key: s.folder, id: null, name: s.folder, count: 0, more: false, latest: 0, rows: [] };
+        grp = { key: s.folderId || s.folder, id: null, name: s.folder, count: 0, more: false, latest: 0, rows: [] };
         out.push(grp); byKey.set('n:' + s.folder, grp); if (s.folderId) byKey.set(s.folderId, grp);
       }
       grp.rows.push({ id: s.id!, title: s.title, at: now - s.age * 1000, live: s, item: null });
