@@ -135,6 +135,15 @@ test('a saved session that cannot be resumed is dropped: the next message starts
   assert.equal(fresh.error, 'Claude on this tablet stopped before it finished.');
 });
 
+test('a failed start says to sign in, or says to check the network, by the sign-in state (native.ts picks the key)', () => {
+  const notSignedIn = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'error', message: 'not_signed_in' }, AT);
+  assert.equal(notSignedIn.error, 'Sign in under Settings → Apps → Claude.');
+  assert.equal(notSignedIn.running, false);
+  const network = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'error', message: 'start_failed' }, AT);
+  assert.equal(network.error, 'Couldn’t start Claude on this tablet. Check the network and try again.');
+  assert.equal(parseStreamLine(line({ type: 'error', message: 'start_failed' }))?.type, 'error');
+});
+
 test('lines that are not JSON or not used give null', () => {
   assert.equal(parseStreamLine('not json'), null);
   assert.equal(parseStreamLine('[1,2]'), null);

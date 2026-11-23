@@ -178,7 +178,11 @@ export function elapsedText(startedAt: string, now = Date.now()): string {
 /** The note when the saved session cannot be resumed; the saved id is dropped, so the next message starts a fresh chat. */
 const DEAD_RESUME = 'That chat can’t be picked up again. Your next message starts a fresh chat.';
 
-const ERRORS: Record<string, string> = { start_failed: 'Claude couldn’t start on this tablet. Sign in under Settings → Apps → Claude, then try again.' };
+/** The note for an error event. not_signed_in and start_failed are chosen by native.ts (from the sign-in state). */
+const ERRORS: Record<string, string> = {
+  not_signed_in: 'Sign in under Settings → Apps → Claude.',
+  start_failed: 'Couldn’t start Claude on this tablet. Check the network and try again.',
+};
 
 /** The note for a reply that failed. A plan limit still rejected at `at` reads "Limit reached, resets <time>". */
 function failedNote(c: NativeChat, text: string, at: string, reason: string | null): string {
