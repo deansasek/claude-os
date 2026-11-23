@@ -32,6 +32,7 @@ import { routinesServer } from '../../routines/server/tools.ts';
 import { PcInbox, rewakeText, type PcDecision, type WaitAnswer } from './pclink.ts';
 import { openSessions } from './registry.ts';
 import { failedSentence } from '../web/failed.ts';
+import { COMPACTING_TEXT, retryText } from '../web/native-stream.ts';
 
 const APPROVAL_MS = 3 * 60e3;
 const MAX_RUNNING = 2;
@@ -384,6 +385,12 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
           if (pm) modeNow.set(t.sessionId, pm);
         }
         if (m.type === 'result') for (const [id, u] of Object.entries(m.modelUsage || {})) if (u.contextWindow > 0) windows.set(id, u.contextWindow);
+        // a retry or compacting: the same progress wording as the tablet chat (native-stream.ts)
+        if (m.type === 'system') {
+          const s = m as { subtype?: string; attempt?: number; max_retries?: number; status?: string | null };
+          if (s.subtype === 'api_retry') step(t, retryText(Number(s.attempt) || 0, Number(s.max_retries) || 0));
+          else if (s.subtype === 'status' && s.status === 'compacting') step(t, COMPACTING_TEXT);
+        }
         if (m.type === 'assistant') {
           failReason = (m as { error?: string }).error || failReason;
           for (const b of m.message.content) {
