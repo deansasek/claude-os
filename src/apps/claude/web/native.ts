@@ -10,7 +10,7 @@ import { alertFor } from '../../../core/web/system.ts';
 import type { LiveSession, SessionView } from '../api.ts';
 import {
   applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, lastTurnText, limitList, loadChat, newerSaved, parseStreamLine, replyFinished,
-  saveChat, totalTokens, usageStale, userSent, type NativeChat, type SeenLimit,
+  saveChat, STALLED_TEXT, stalled, totalTokens, usageStale, userSent, type NativeChat, type SeenLimit,
 } from './native-stream.ts';
 
 const KEY = 'claude.native.on';
@@ -55,6 +55,7 @@ function save(): void {
     ? { type: 'error', message: device.cliAuthState().signedIn === 0 ? 'not_signed_in' : 'start_failed' } : e);
   // a reply that ends well raises "Claude finished", as a PC turn does (reply.ts onUsage)
   if (replyFinished(before, chat)) alertFor('done', { title: 'Claude finished', body: nativeView().session?.title, app: 'claude' });
+  chat = { ...chat, lastEventAt: Date.now() };   // the stall line (nativeView) counts from the last event
   if (e.type !== 'delta' && e.type !== 'text') save();
   changed();
   if (e.type === 'limits') appSettingsChanged();   // Settings (Usage, and Apps -> Claude) shows them
@@ -130,7 +131,7 @@ export function nativeView(): SessionView {
     session: { id: NATIVE_ID, title, folder: 'On this tablet', branch: null, model: nativeModel(), state: c.running ? 'thinking' : 'waiting', tool: null,
       age: chatAge(c), subagents: 0, working: 0, tokens: totalTokens(c.tokens), surface: 'tablet', open: false, hub: true },
     transcript, lastText: null, canReply: !c.running, reason: null, context: contextOf(c),
-    turn: c.running ? { id: NATIVE_ID, sessionId: NATIVE_ID, title, status: 'running', startedAt: c.turnStartedAt || now, progress: [c.status || (c.partial ? 'Writing' : 'Thinking')],
+    turn: c.running ? { id: NATIVE_ID, sessionId: NATIVE_ID, title, status: 'running', startedAt: c.turnStartedAt || now, progress: [stalled(Date.now(), c.lastEventAt) ? STALLED_TEXT : c.status || (c.partial ? 'Writing' : 'Thinking')],
       approval: null, reply: null, error: null } : null,
   };
 }

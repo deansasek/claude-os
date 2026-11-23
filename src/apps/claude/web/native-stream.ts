@@ -170,15 +170,22 @@ export interface NativeChat {
   lastModel: string | null; lastMs: number | null;   // the model and the time of the latest turn (under the title)
   resuming: boolean;   // the reply resumes a saved session and the CLI has not yet sent its init (the session is live)
   replyError: string | null;   // the SDK's error code for the running reply (an assistant message's error), else null
+  lastEventAt: number | null;  // when the last event of the running reply came (ms); stalled() reads it
 }
 export const emptyChat = (): NativeChat =>
   ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {},
-    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null, resuming: false, replyError: null });
+    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null, resuming: false, replyError: null, lastEventAt: null });
 
 /** Your message goes on screen and the reply starts. A reply to a saved session is a resume until its init comes. */
 export const userSent = (c: NativeChat, text: string, at = new Date().toISOString()): NativeChat =>
   ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false, status: null, turnStartedAt: at, resuming: !!c.sessionId,
-    replyError: null });
+    replyError: null, lastEventAt: Date.parse(at) || null });
+
+/** The progress line while the CLI has sent nothing for STALL_MS (native.ts shows it while the reply runs). */
+export const STALLED_TEXT = 'No word from Claude for 3 min';
+export const STALL_MS = 3 * 60e3;
+/** True when the running reply has had no event for STALL_MS. Both times are in ms; no lastEventAt means no stall. */
+export const stalled = (now: number, lastEventAt: number | null): boolean => lastEventAt != null && now - lastEventAt >= STALL_MS;
 
 /** How long a reply has run, as the chat shows it: '0:42', or '1:02:05' past an hour. */
 export function elapsedText(startedAt: string, now = Date.now()): string {
