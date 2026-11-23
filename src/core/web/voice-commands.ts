@@ -12,7 +12,8 @@
 //   Time     "what time is it", "what's the date", "what day is it"
 //   Screen   "dim the screen", "brighter", "brightness 50 percent", "dark mode", "light mode"
 //   Sound    "volume up/down", "louder", "quieter", "mute", "volume 30 percent"
-//   Apps     "open weather / clock / settings / sessions / home"
+//   Apps     "open photos", "show the calendar", "go to home assistant", "open the settings app", "go home"
+//            (exactly one app name; see voice-open.ts)
 //   Home     "turn off the kitchen light", "lights on", "switch on the fan" (dashboard devices only; see
 //            apps/home-assistant/web/voice-match.ts); "set movie night", "activate good morning" (scenes)
 //   Lists    "add milk to the shopping list", "put bin day on my to-do list", "what's on the shopping list",
@@ -38,6 +39,7 @@ import { temperatureDay } from './voice-weather.ts';
 import { findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
+import { matchOpenApp } from './voice-open.ts';
 
 export interface ClockApi {
   /** label: shown when it rings (Claude's set_timer); the Clock's own controls set none. */
@@ -183,16 +185,13 @@ function volume(to: number | 'up' | 'down' | 'mute' | 'unmute'): CommandResult {
   return { say: to === 'up' ? (v >= 1 ? 'That’s as loud as it goes.' : 'Louder.') : to === 'down' ? 'Quieter.' : `Volume ${pct(v)}.` };
 }
 
-const APPS: Record<string, string> = {
-  weather: 'weather', forecast: 'weather', clock: 'clock', timer: 'clock', timers: 'clock', alarm: 'clock', alarms: 'clock', stopwatch: 'clock',
-  settings: 'settings', setting: 'settings', sessions: 'claude', session: 'claude', claude: 'claude', usage: 'claude', home: 'home',
-  lists: 'lists', list: 'lists', calendar: 'calendar', diary: 'calendar', routines: 'routines', routine: 'routines',
-};
-function open(word: string): CommandResult | null {
-  const id = APPS[word];
-  if (!id || !document.querySelector(`.ri[data-app="${id}"]`)) return null;   // e.g. no Home app yet: let Claude have it
-  openApp(id);
-  return { say: 'Okay.', react: 'hop', app: id };
+/** "open photos", "show the calendar", "go to home assistant" (core/web/voice-open.ts). An app this screen doesn't
+ *  have (Camera, Browser and Settings are tablet-only, as on the Apps screen) is not opened: null, and the phrase goes on. */
+function open(t: string): CommandResult | null {
+  const app = matchOpenApp(t);
+  if (!app || !document.querySelector(`.ri[data-app="${app.id}"]`)) return null;
+  openApp(app.id);
+  return { say: `Opening ${app.name}.`, react: 'hop', app: app.id };
 }
 
 // ---------- the commands ----------
@@ -330,8 +329,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if ((r = t.match(/^(?:set )?(?:the )?volume (?:to )?(\d{1,3})(?: percent| %)?$/))) return +r[1] <= 100 ? volume(+r[1] / 100) : null;
 
   // apps
-  if ((r = t.match(/^(?:open|show(?: me)?|go to|switch to|take me to)(?: the| my)? ([a-z]+)(?: app| screen| page)?$/))) return open(r[1]);
-  if (t === 'go home' || t === 'home screen') return open('home');
+  // exactly one app name, else the phrase goes on ("open the lights" is Home Assistant's)
+  const opened = open(t);
+  if (opened) return opened;
 
   // Home Assistant on/off, then scenes: last, so "turn off the timer" / "set a timer" are still the ones above
   return (await homeOnOff(raw)) ?? sceneCommand(raw);
