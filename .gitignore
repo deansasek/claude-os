@@ -45,8 +45,9 @@ android/assets/model-en-us/
 *.aab
 *.log
 
-# Local Claude Code settings.
-.claude/
+# Local Claude Code settings. Project skills in .claude/skills/ are shared.
+.claude/*
+!.claude/skills/
 
 # Old prototypes at the project root, kept locally for now (candidates for removal).
 /usage_server.py
