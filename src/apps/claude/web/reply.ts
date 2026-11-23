@@ -395,7 +395,7 @@ function askFirstMessage(): void {
   if (nativeOn() && !starting) {   // a new chat on the tablet's own Claude CLI: text only, no folder, no PIN
     Keyboard.open({
       value: takeDraft(), placeholder: 'Ask Claude on this tablet', autoCap: true, max: 300, done: 'Send',
-      onDone: text => { if (!text.trim()) return; nativeSend(text.trim(), true); picking = false; photos = []; openSession(NATIVE_ID); report('new-native-chat'); },
+      onDone: startNativeChat,
     });
     return;
   }
@@ -406,6 +406,17 @@ function askFirstMessage(): void {
     onDone: text => { if (text.trim() || photos.length) startNewSession(p, text.trim()); },
   });
 }
+
+/** A new chat on the tablet's own Claude CLI with its first message, then the chat opens (the new-chat composer's Send). */
+export function startNativeChat(text: string): void {
+  if (!text.trim()) return;
+  nativeSend(text.trim(), true); picking = false; photos = []; openSession(NATIVE_ID); report('new-native-chat');
+}
+
+/** The new-session screen (the sidebar's New session). */
+export const openNewScreen = (): Promise<void> => openNew();
+/** The sidebar's HTML as last drawn (empty while the Sessions screen is closed). For the ui_test check (ui-test.ts). */
+export const sidebarDrawn = (): string => drawnSide;
 
 function startNewSession(p: Project, text: string): void {
   void withPin(async () => {

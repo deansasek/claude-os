@@ -163,6 +163,7 @@ public class MainActivity extends Activity {
   @Override protected void onCreate(Bundle saved) {
     super.onCreate(saved);
     nodeSpike(getIntent(), "onCreate");   // first, so nothing later in onCreate can stop the test from starting
+    uiTest(getIntent(), false);           // the page's check runs once the page has loaded (Client.onPageFinished)
     SharedPreferences prefs = getSharedPreferences("hub", MODE_PRIVATE);
     String fromIntent = getIntent() != null ? getIntent().getStringExtra("url") : null;
     if (fromIntent != null && fromIntent.startsWith("http")) prefs.edit().putString("url", fromIntent).apply();
@@ -280,6 +281,23 @@ public class MainActivity extends Activity {
     }
   }
 
+  /**
+   * TEST hook: adb shell am start -n hub.kiosk/.MainActivity --ez ui_test true. With the extra (and only then), each
+   * Hub page load in this activity runs the page's scripted check (apps/claude/web/ui-test.ts) through
+   * window.hubTestRun; the run id lets the page resume the same check after its own reload. Results go to the PC log.
+   */
+  private String uiTestRun = null;
+  private void uiTest(Intent i, boolean pageLoaded) {
+    if (i == null || !i.getBooleanExtra("ui_test", false)) return;
+    uiTestRun = String.valueOf(System.currentTimeMillis());
+    Log.i(TAG, "uitest: run " + uiTestRun);
+    if (pageLoaded) runUiTest();
+  }
+  private void runUiTest() {
+    if (uiTestRun == null || web == null || bridge == null || !bridge.isAllowed()) return;
+    web.evaluateJavascript("window.hubUiTest='" + uiTestRun + "';window.hubTestRun&&window.hubTestRun()", null);
+  }
+
   /** Cream with the spark, the same as the splash screen before it. */
   private View coverView() {
     FrameLayout f = new FrameLayout(this);
@@ -337,6 +355,7 @@ public class MainActivity extends Activity {
     }
     @Override public void onPageFinished(WebView v, String u) {
       hideCover();
+      runUiTest();   // only after a ui_test launch (uiTest)
       v.evaluateJavascript("innerWidth+'x'+innerHeight+' dpr '+devicePixelRatio+' screen '+screen.width+'x'+screen.height",
           r -> Log.i(TAG, "viewport " + r));
     }
@@ -1127,6 +1146,7 @@ public class MainActivity extends Activity {
   @Override protected void onNewIntent(Intent i) {
     super.onNewIntent(i);
     nodeSpike(i, "onNewIntent");
+    uiTest(i, true);   // ClaudeOS already running: the page's check starts now (or on the next page load)
     if (BrowserView.fromIntent(i) && web != null) web.evaluateJavascript("window.hubBrowserIncoming && window.hubBrowserIncoming()", null);
     if (VOICE_ASSIST.equals(i.getAction())) showPowerMenu();
     String u = i.getStringExtra("url");

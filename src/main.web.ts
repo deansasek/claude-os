@@ -29,6 +29,16 @@ import { initPowerSheet } from './core/web/power-sheet.ts';
 // Camera needs the tablet's camera (Photos works anywhere, it only shows what the PC has; Home Assistant too, its
 // devices are switched by the PC). The first-run welcome shows once the app has mounted (startHub resolves after that),
 // if the PC hasn't recorded it.
+// Test only: the tablet app's ui_test launch (MainActivity) sets window.hubUiTest to a run id and calls
+// window.hubTestRun after each page load. The check (apps/claude/web/ui-test.ts) loads only then, once per run and page.
+let hubReady = false, uiTestStarted = '';
+const testHook = window as unknown as { hubUiTest?: unknown; hubTestRun?: () => void };
+testHook.hubTestRun = () => {
+  const run = testHook.hubUiTest;
+  if (!hubReady || typeof run !== 'string' || !run || run === uiTestStarted) return;
+  uiTestStarted = run;
+  import('./apps/claude/web/ui-test.ts').then(m => m.runUiTest(run)).catch(e => console.log(`uitest: could not load the check: ${String(e)}`));
+};
 void startHub(onTablet
   ? [home, launcher, claude, weather, clock, browserApp, camera, photos, homeAssistant, lists, calendar, routines, settings]
   : [home, launcher, claude, weather, clock, photos, homeAssistant, lists, calendar, routines]).then(() => {
@@ -40,6 +50,8 @@ void startHub(onTablet
       notify: (title, body) => notify({ title, body: body || undefined, app: 'browser' }),
     });
     if (mockDevice) setTimeout(checkHitAreas, 400);   // dev: tap areas after boot (hit-guard.ts)
+    hubReady = true;
+    testHook.hubTestRun?.();   // the tablet app may have asked before the apps were up
   });
 
 // Dev only: on the PC stand-in (?device=mock) the hard-to-reach surfaces can be shown from the console, as window.__dev
