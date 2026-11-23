@@ -90,6 +90,34 @@ test('a failed reply is a note, not Claude’s reply; a rejected plan limit says
   assert.equal(past.error, 'That reply didn’t finish. Try again.');
 });
 
+test('a stop the user asked for reads as stopped: the kept part is marked, and the exit is not an error', () => {
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'delta', text: 'Part' }, AT);
+  c = applyEvent(c, { type: 'stop' }, AT);
+  c = applyEvent(c, { type: 'exit', code: 143 }, AT);
+  assert.equal(c.running, false);
+  assert.equal(c.stopped, false);
+  assert.deepEqual(c.entries[1], { kind: 'assistant', text: 'Part (stopped)', at: AT });
+  assert.equal(c.error, 'Stopped');
+});
+
+test('a stopped reply whose result comes back as a failure keeps the streamed text, marked, with no limit note', () => {
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'delta', text: 'Part' }, AT);
+  c = applyEvent(c, { type: 'stop' }, AT);
+  c = applyEvent(c, { type: 'result', ok: false, text: 'Error: interrupted', sessionId: 's1', costUsd: null, usage, window: null }, AT);
+  assert.equal(c.entries[1]?.text, 'Part (stopped)');
+  assert.equal(c.error, 'Stopped');
+  // a stop before anything streamed adds no reply, only the note
+  let d = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'stop' }, AT);
+  d = applyEvent(d, { type: 'exit', code: 143 }, AT);
+  assert.deepEqual(d.entries.map(e => e.kind), ['user']);
+  assert.equal(d.error, 'Stopped');
+  // a new message clears the stop
+  assert.equal(userSent(c, 'Again', AT).stopped, false);
+  // a stop while idle changes nothing
+  assert.equal(applyEvent(emptyChat(), { type: 'stop' }, AT).stopped, false);
+});
+
 test('an exit mid-reply keeps what streamed and says it stopped', () => {
   let c = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'delta', text: 'Part' }, AT);
   c = applyEvent(c, { type: 'exit', code: 143 }, AT);
