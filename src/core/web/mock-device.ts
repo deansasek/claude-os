@@ -273,6 +273,16 @@
       return ok();
     },
     claudeStop: () => ok(),
+    claudeUsageCheck: () => {   // made-up plan limits, as the CLI's rate_limit_event and get_usage reply
+      const line = (o: Json) => (window as unknown as { hubClaudeNative?: (l: string) => void }).hubClaudeNative?.(JSON.stringify(o));
+      const at = (h: number) => new Date(Date.now() + h * 3600e3).toISOString();
+      setTimeout(() => line({ type: 'rate_limit_event', rate_limit_info: { status: 'allowed', rateLimitType: 'five_hour', resetsAt: Math.floor(Date.now() / 1000) + 7200 } }), 600);
+      setTimeout(() => line({ type: 'control_response', response: { subtype: 'success', request_id: 'claudeos-usage', response: { rate_limits: {
+        five_hour: { utilization: 15, resets_at: at(2) }, seven_day: { utilization: 21, resets_at: at(100) },
+        model_scoped: [{ display_name: 'Opus', utilization: 8, resets_at: at(100) }] } } } }), 1200);
+      setTimeout(() => line({ type: 'usage_check', ok: true }), 1300);
+      return ok();
+    },
     // the app's files folder: here localStorage (on the tablet a file, written at once)
     pageFileWrite: (name: string, text: string) => { try { localStorage.setItem(`mock.page.${name}`, text); } catch { /* ignore */ } return ok(); },
     pageFileRead: (name: string) => { try { return j({ text: localStorage.getItem(`mock.page.${name}`) }); } catch { return j({ text: null }); } },

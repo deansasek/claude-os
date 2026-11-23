@@ -926,6 +926,14 @@ public class Bridge {
     hub.kiosk.cli.ClaudeCli.stopChat();
     return OK;
   }
+  /**
+   * Settings → Usage: asks the tablet's own Claude CLI for the plan limits (ClaudeCli.usageCheck). The answer comes back
+   * as window.hubClaudeNative lines. ClaudeOS reads no token: the CLI fetches the limits with its own sign-in.
+   */
+  @JavascriptInterface public String claudeUsageCheck() {
+    if (!allowed) return DENIED;
+    return hub.kiosk.cli.ClaudeCli.usageCheck(act) ? OK : err("a usage check already runs");
+  }
 
   // ---------- small files the page keeps in the app's own files folder (files/page/<name>.json) ----------
   // The WebView's localStorage writes reach disk a few seconds late, and are lost when the app is closed before that.

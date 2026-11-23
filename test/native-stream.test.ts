@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  applyEvent, chatAge, chatListed, contextOf, emptyChat, limitList, limitName, limitState, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens, userSent,
-  type NativeEvent,
+  applyEvent, chatAge, chatListed, contextOf, emptyChat, limitList, limitName, limitState, limitsUpdated, loadChat, newerSaved, parseStreamLine, saveChat,
+  totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
 const AT = '2026-11-23T10:00:00.000Z';
@@ -183,4 +183,62 @@ test('a limit reads as the percent used, or its status when there is no utilizat
   assert.equal(limitState({ type: 'five_hour', status: 'rejected', used: null, resetsAt: null }), 'Limit reached');
   assert.equal(limitName('five_hour'), 'Session limit');
   assert.equal(limitName('something_new'), 'something_new');
+});
+
+// the get_usage control reply, as the CLI sends it: utilization is a percent, resets_at an ISO time (CLI 2.1.318)
+const usageLine = (rate_limits: unknown, request_id = USAGE_REQUEST, subtype = 'success') =>
+  line({ type: 'control_response', response: { subtype, request_id, response: { subscription_type: 'max', rate_limits_available: true, rate_limits, behaviors: null } } });
+
+test('a get_usage reply gives the session, weekly and per-model windows', () => {
+  const e = parseStreamLine(usageLine({
+    five_hour: { utilization: 15, resets_at: '2026-11-24T00:00:00.000Z' }, seven_day: { utilization: 21, resets_at: '2026-11-28T20:00:00.000Z' },
+    seven_day_opus: null, seven_day_oauth_apps: { utilization: 3, resets_at: null },
+    model_scoped: [{ display_name: 'Fable', utilization: 140, resets_at: null }, { utilization: 1 }],
+    extra_usage: { is_enabled: false, monthly_limit: null, used_credits: null, utilization: null },
+  }));
+  assert.deepEqual(e, { type: 'limits', limits: [
+    { type: 'five_hour', status: '', used: 15, resetsAt: '2026-11-24T00:00:00.000Z' },
+    { type: 'seven_day', status: '', used: 21, resetsAt: '2026-11-28T20:00:00.000Z' },
+    { type: 'model:Fable', status: '', used: 100, resetsAt: null },
+  ] });
+});
+
+test('a get_usage reply with no limits, an error, or another request id is dropped', () => {
+  assert.equal(parseStreamLine(usageLine(null)), null);
+  assert.equal(parseStreamLine(usageLine({ five_hour: { utilization: 1, resets_at: null } }, 'other')), null);
+  assert.equal(parseStreamLine(usageLine({ five_hour: { utilization: 1, resets_at: null } }, USAGE_REQUEST, 'error')), null);
+});
+
+test('the runner end-of-check line', () => {
+  assert.deepEqual(parseStreamLine(line({ type: 'usage_check', ok: true })), { type: 'usageChecked', ok: true });
+  assert.deepEqual(parseStreamLine(line({ type: 'usage_check' })), { type: 'usageChecked', ok: false });
+  const c = emptyChat();
+  assert.equal(applyEvent(c, { type: 'usageChecked', ok: true }), c);
+});
+
+test('a get_usage window keeps the status the last rate_limit_event gave', () => {
+  let c = applyEvent(emptyChat(), { type: 'limits', limits: [{ type: 'five_hour', status: 'allowed_warning', used: null, resetsAt: null }] }, AT);
+  c = applyEvent(c, { type: 'limits', limits: [{ type: 'five_hour', status: '', used: 82, resetsAt: RESET_ISO }] }, AT);
+  assert.deepEqual(c.limits.five_hour, { type: 'five_hour', status: 'allowed_warning', used: 82, resetsAt: RESET_ISO, at: AT });
+});
+
+const seen = (type: string, used: number | null, at: string | null, status = 'allowed'): SeenLimit => ({ type, status, used, resetsAt: RESET_ISO, at });
+
+test('the Usage page rows: session, weekly, then per model; extra usage left out', () => {
+  const rows = usageRows([seen('overage', 5, AT), seen('model:Fable', 8.6, AT), seen('seven_day', null, AT, 'allowed_warning'), seen('five_hour', 15, AT), seen('seven_day_opus', 2, AT)]);
+  assert.deepEqual(rows.map(r => [r.name, r.used, r.state]), [
+    ['Current session', 15, '15% used'], ['Weekly, all models', null, 'Close to the limit'], ['Weekly · Opus', 2, '2% used'], ['Weekly · Fable', 9, '9% used'],
+  ]);
+  assert.equal(rows[0]!.resetsAt, RESET_ISO);
+  assert.equal(limitName('model:Fable'), 'Weekly limit · Fable');
+});
+
+test('the Usage page asks the CLI again only when the newest limit is old or missing', () => {
+  const now = Date.parse(AT), later = '2026-11-23T10:08:00.000Z';
+  assert.equal(limitsUpdated([seen('five_hour', 1, AT), seen('seven_day', 1, later), seen('seven_day_opus', 1, null)]), later);
+  assert.equal(limitsUpdated([seen('five_hour', 1, null)]), null);
+  assert.equal(usageStale([], 600e3, now), true);
+  assert.equal(usageStale([seen('five_hour', 1, null)], 600e3, now), true);
+  assert.equal(usageStale([seen('five_hour', 1, AT)], 600e3, now + 599e3), false);
+  assert.equal(usageStale([seen('five_hour', 1, AT)], 600e3, now + 601e3), true);
 });
