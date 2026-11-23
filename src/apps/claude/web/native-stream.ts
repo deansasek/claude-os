@@ -242,6 +242,9 @@ export const totalTokens = (t: TokenUse): number => t.input + t.output + t.cache
 export const contextOf = (c: NativeChat): { used: number; window: number } | null =>
   c.last && c.window ? { used: c.last.input + c.last.cacheRead + c.last.cacheWrite, window: c.window } : null;
 
+/** The chat emptied for the list and the screen: no entries, no session. The plan limits stay (they belong to the account). */
+export const clearedChat = (c: NativeChat): NativeChat => ({ ...emptyChat(), limits: c.limits });
+
 /** The Sessions list shows the chat while it has a message or a reply is running, also when the chat is not open. */
 export const chatListed = (c: NativeChat): boolean => c.running || c.entries.length > 0;
 
