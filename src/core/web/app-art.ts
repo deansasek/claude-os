@@ -4,13 +4,11 @@
 //
 //   appArt('claude')              → the drawn icon for a Claude Home app, or null if it has none
 import { SPARK_PATH } from './dom.ts';
-import { blob, rng } from './ink.ts';
 
 const DRAW: Record<string, () => string> = {
-  // the logo stays clay: the spark in clay over a pale clay blob (no ink loop around it)
+  // the logo stays clay: the spark alone, sized to the other app icons (about 22 of 32 units, no blob behind it)
   claude: () =>
-    `<svg viewBox="0 0 32 32" class="ic ic-spot ic-art"><path d="${blob(17.5, 17.5, 12, 11, rng(222), 8, .1)}" fill="var(--clay)" opacity=".22"/>`
-    + `<g transform="translate(16 16) scale(.19)"><path d="${SPARK_PATH}" fill="var(--clay)"/></g></svg>`,
+    `<svg viewBox="0 0 32 32" class="ic ic-spot ic-art"><g transform="translate(16 16) scale(.22)"><path d="${SPARK_PATH}" fill="var(--clay)"/></g></svg>`,
 };
 
 const cache = new Map<string, string>();
