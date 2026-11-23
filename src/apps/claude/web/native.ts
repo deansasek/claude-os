@@ -6,10 +6,11 @@
 import { appSettingsChanged } from '../../../core/web/app-settings.ts';
 import { device, nativeHas } from '../../../core/web/device.ts';
 import { store } from '../../../core/web/dom.ts';
+import { alertFor } from '../../../core/web/system.ts';
 import type { LiveSession, SessionView } from '../api.ts';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, lastTurnText, limitList, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens,
-  usageStale, userSent, type NativeChat, type SeenLimit,
+  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, lastTurnText, limitList, loadChat, newerSaved, parseStreamLine, replyFinished,
+  saveChat, totalTokens, usageStale, userSent, type NativeChat, type SeenLimit,
 } from './native-stream.ts';
 
 const KEY = 'claude.native.on';
@@ -49,8 +50,11 @@ function save(): void {
   if (!e) return;
   if (e.type === 'usageChecked') { checking = false; checkFailed = !e.ok; appSettingsChanged(); return; }
   // a start that failed reads as a sign-in problem when the sign-in state says so, else as a network or start problem
+  const before = chat;
   chat = applyEvent(chat, e.type === 'error' && e.message === 'start_failed'
     ? { type: 'error', message: device.cliAuthState().signedIn === 0 ? 'not_signed_in' : 'start_failed' } : e);
+  // a reply that ends well raises "Claude finished", as a PC turn does (reply.ts onUsage)
+  if (replyFinished(before, chat)) alertFor('done', { title: 'Claude finished', body: nativeView().session?.title, app: 'claude' });
   if (e.type !== 'delta' && e.type !== 'text') save();
   changed();
   if (e.type === 'limits') appSettingsChanged();   // Settings (Usage, and Apps -> Claude) shows them
