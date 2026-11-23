@@ -6,7 +6,7 @@
 //   Actions  New session, then quiet buttons: a 5-minute timer, the rest screen, up to two routines or scenes, Settings.
 // Everything is read-only: the Weather and Claude apps' server routes, the Clock app's saved state, and the
 // system's notifications. Live parts refresh every 30 seconds and whenever Home comes on screen.
-// For testing, ?hour=23 (and &min=59) shifts this app's clock, like the Clock app; &mock=waiting|working fakes Claude.
+// For testing, ?hour=23 (and &min=59) shifts this app's clock, like the Clock app; &mock=waiting|working|approval fakes Claude.
 import { esc, getJson, onStore, params, postJson, report, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { HaResult, HaScenes } from '../../home-assistant/api.ts';
@@ -19,6 +19,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { ago, batteryGlyph, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
+import { busyOf, needsYou, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
 
@@ -187,6 +188,7 @@ interface Session { id: string | null; title: string; folder: string; state: 'th
 interface Usage {
   limits: { status: string; limits: Record<string, LimitWindow> };
   sessions: Session[];
+  turns?: NeedTurn[];   // the Hub's turns: one waiting for your OK counts as needs you
   last_activity: string | null;
 }
 const MOCK = params.get('mock');
@@ -200,12 +202,13 @@ async function loadUsage(): Promise<void> {
     if (MOCK === 'waiting') usage.sessions = [{ ...base, id: 'mock', title: 'Refactor checkout flow', state: 'waiting' }];
     if (MOCK === 'working') usage.sessions = [{ ...base, id: 'mock', title: 'Fix flaky upload test', state: 'tool', age: 3 }];
     if (MOCK === 'quiet') usage.sessions = [];
+    if (MOCK === 'approval') { usage.sessions = [{ ...base, id: 'mock', title: 'Deploy staging', state: 'tool', age: 3 }]; usage.turns = [{ sessionId: 'mock', status: 'approval' }]; }
   }
   paintClaude();
 }
 
-const waitingSessions = (): Session[] => (usage?.sessions || []).filter(s => s.state === 'waiting' && s.age < 15 * 60 && s.id);
-const busySessions = (): Session[] => (usage?.sessions || []).filter(s => s.state === 'thinking' || s.state === 'tool');
+const waitingSessions = (): Session[] => needsYou(usage?.sessions || [], usage?.turns || []);
+const busySessions = (): Session[] => busyOf(usage?.sessions || [], usage?.turns || []);
 const left = (w: LimitWindow | undefined): number | null => (w && w.used != null ? Math.round(100 - Math.min(100, Math.max(0, w.used))) : null);
 const shortTitle = (t: string, n = 40) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
