@@ -488,3 +488,19 @@ test('a model fallback reads as a note: Switched to <model> for this reply', () 
   assert.equal(c.running, true);   // the reply goes on
   assert.equal(parseStreamLine(line({ type: 'system', subtype: 'model_refusal_fallback' })), null);
 });
+
+test('a plan window close to its limit adds one note per window, and no note when within limit', () => {
+  const RESET = '2026-11-23T16:30:00.000Z';
+  const warn = (used: number, resetsAt: string | null, status = 'allowed_warning'): NativeEvent =>
+    ({ type: 'limits', limits: [{ type: 'five_hour', status, used, resetsAt }] });
+  const notes = (c: { entries: { kind: string; text: string }[] }) => c.entries.filter(e => e.kind === 'note').map(e => e.text);
+  let c = applyEvent(emptyChat(), warn(90, RESET), AT);
+  assert.equal(notes(c).length, 1);
+  assert.match(notes(c)[0]!, /^90% of session limit used, resets .+$/);
+  c = applyEvent(c, warn(92, RESET), AT);   // the same window again: no second note
+  assert.equal(notes(c).length, 1);
+  c = applyEvent(c, warn(95, '2026-11-23T21:00:00.000Z'), AT);   // a new window: a note for it
+  assert.equal(notes(c).length, 2);
+  assert.equal(notes(applyEvent(emptyChat(), warn(40, RESET, 'allowed'), AT)).length, 0);   // within limit: no note
+  assert.equal(notes(applyEvent(emptyChat(), warn(null as unknown as number, null), AT))[0], 'Close to the session limit');
+});
