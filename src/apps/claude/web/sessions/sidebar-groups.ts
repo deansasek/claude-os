@@ -74,3 +74,11 @@ export function groups(list: LiveSession[], now: number, h: History | null, q: s
   }
   return out.sort((a, b) => b.latest - a.latest);
 }
+
+/** A folder header's live counts: "2 working · 1 waiting" (the live sessions thinking or running a tool, then those
+ *  waiting for you). Empty when none of them is live. */
+export function folderLive(g: Group): string {
+  const live = g.rows.filter(r => r.live && isLive(r.live)).map(r => r.live!.state);
+  const working = live.filter(s => s === 'thinking' || s === 'tool').length, waiting = live.filter(s => s === 'waiting').length;
+  return [working ? `${working} working` : '', waiting ? `${waiting} waiting` : ''].filter(Boolean).join(' · ');
+}

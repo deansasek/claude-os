@@ -6,7 +6,7 @@ import type { History, HistoryItem, LiveSession } from '../src/apps/claude/api.t
 
 // The modules read the page's location when they load (via dom.ts); node has none, so give it one first.
 Object.assign(globalThis, { location: { search: '' } });
-const { groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
+const { folderLive, groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
 
 const NOW = Date.parse('2026-11-23T12:00:00.000Z');
 const HOUR = 3600;
@@ -95,4 +95,18 @@ test('a search shows only what the history matched: live sessions the history la
   const live = [session({ id: 'z', folder: 'proj', age: 5 })];
   assert.deepEqual(groups(live, NOW, null, 'x', false), []);
   assert.equal(groups(live, NOW, null, '', false).length, 1);
+});
+
+test('a folder header counts its working and waiting sessions', () => {
+  const sessions = [
+    session({ id: 'a', folder: 'proj', state: 'thinking', age: 10 }),
+    session({ id: 'b', folder: 'proj', state: 'tool', tool: 'Bash', age: 20 }),
+    session({ id: 'c', folder: 'proj', state: 'waiting', age: 30 }),
+    session({ id: 'd', folder: 'proj', state: 'waiting', age: 40 }),
+    session({ id: 'e', folder: 'proj', state: 'waiting', age: 5 * HOUR }),   // not live: not counted
+  ];
+  const [g] = groups(sessions, NOW, null, '', false);
+  assert.equal(folderLive(g!), '2 working · 2 waiting');
+  assert.equal(folderLive(groups([session({ id: 'q', folder: 'quiet', state: 'waiting', age: 5 * HOUR })], NOW, null, '', false)[0]!), '');
+  assert.equal(folderLive(groups([session({ id: 'w', folder: 'only', state: 'thinking', age: 10 })], NOW, null, '', false)[0]!), '1 working');
 });

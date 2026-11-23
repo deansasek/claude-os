@@ -7,7 +7,7 @@
 import { $, esc, report, store } from '../../../../core/web/dom.ts';
 import { Keyboard } from '../../../../core/web/keyboard.ts';
 import type { LiveSession } from '../../api.ts';
-import { groups, isLive, stateOf, when, type Row } from './sidebar-groups.ts';
+import { folderLive, groups, isLive, stateOf, when, type Row } from './sidebar-groups.ts';
 import { historyArchivedView, historyLoading, historyNow, historyQuery, historyTick, loadOlder, onHistoryChange, setQuery } from './history.ts';
 
 export { historyTitle } from './history.ts';
@@ -68,9 +68,9 @@ export function sidebarHtml(list: LiveSession[], openId: string | null): string 
     const quiet = now - g.latest > QUIET_FOLD_DAYS * 864e5;
     const shut = !q && !has && (choice.get(g.key) ?? quiet);
     shutNow.set(g.key, shut);
-    const waiting = g.rows.filter(r => r.live && isLive(r.live) && r.live.state === 'waiting').length;
+    const live = folderLive(g);   // "2 working · 1 waiting"
     html += `<button class="sb-folder${shut ? ' shut' : ''}" data-folder="${esc(g.key)}">${CHEV}<span class="label">${esc(g.name)}</span>`
-      + `<em>${shut || g.count > 1 ? g.count : ''}${waiting ? ` · ${waiting} waiting` : ''}</em></button>`;
+      + `<em>${shut || g.count > 1 ? g.count : ''}${live ? ` · ${live}` : ''}</em></button>`;
     if (shut) continue;
     for (const r of g.rows) {
       if (rows >= MAX_ROWS && r.id !== openId) continue;
