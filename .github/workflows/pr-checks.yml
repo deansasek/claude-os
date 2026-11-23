@@ -1,0 +1,55 @@
+name: PR checks
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    # Dependabot PRs have no Why/What/Tests body, so skip them.
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check title and body
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # BEGIN hygiene
+          fail=0
+          types='feat|fix|refactor|perf|test|docs|chore|style|ci|revert'
+          if ! printf '%s' "$TITLE" | grep -Eq "^($types)(\([a-z0-9-]+\))?!?: [^ ].*$"; then
+            echo "::error::PR title is not Conventional Commits: $TITLE"; fail=1
+          fi
+          for h in Why What Tests; do
+            if ! printf '%s\n' "$BODY" | tr -d '\r' | grep -Eq "^## $h[[:space:]]*$"; then
+              echo "::error::PR body lacks the heading: ## $h"; fail=1
+            fi
+          done
+          exit $fail
+          # END hygiene
+
+  size:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Warn on large PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # Count added plus deleted lines. Skip deleted files and lockfiles (CLAUDE.md "PR size").
+          read -r files lines < <(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/files" \
+            --jq '.[] | select(.status != "removed" and (.filename | endswith("package-lock.json") | not)) | "\(.additions + .deletions)"' \
+            | awk '{n++; s+=$1} END {print n+0, s+0}')
+          echo "Counted $files files and $lines changed lines."
+          if [ "$lines" -gt 300 ] || [ "$files" -gt 10 ]; then
+            echo "::warning::PR changes $lines lines in $files files. CLAUDE.md soft limit is about 300 lines and 10 files. Split the PR or say why in ## What."
+          fi
+          exit 0
