@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   applyEvent, chatAge, chatListed, clearedChat, COMPACTED_TEXT, COMPACTING_TEXT, stalled, STALL_MS, STALLED_TEXT, contextOf, durationText, elapsedText, emptyChat, glanceOf, retryText, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
-  newerSaved, parseStreamLine, replyFinished, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
+  newerSaved, OLDER_DROPPED_TEXT, parseStreamLine, replyFinished, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
 const AT = '2026-11-23T10:00:00.000Z';
@@ -532,4 +532,25 @@ test('glanceOf gives the running state, a short last reply with its time, and an
   const failedChat = { ...emptyChat(), error: 'That didn’t send. Try again.' };
   assert.deepEqual(glanceOf(failedChat, NOW), { running: false, reply: null, at: null, ago: null, error: 'That didn’t send. Try again.' });
   assert.equal(glanceOf(emptyChat(), NOW).error, null);
+});
+
+test('a saved entry is cut at 20k characters, so one long reply cannot fill the store', () => {
+  const c = { ...emptyChat(), entries: [{ kind: 'assistant' as const, text: 'x'.repeat(50_000), at: AT }] };
+  assert.equal(loadChat(saveChat(c)).entries[0].text.length, 20_000);
+});
+
+test('when older entries are dropped, the latest 100 stay and a note comes first', () => {
+  const entries = Array.from({ length: 105 }, (_, i) => ({ kind: 'user' as const, text: `m${i}`, at: AT }));
+  const back = loadChat(saveChat({ ...emptyChat(), entries }));
+  assert.equal(back.entries.length, 100);
+  assert.deepEqual(back.entries[0], { kind: 'note', text: OLDER_DROPPED_TEXT, at: null });
+  assert.equal(back.entries[1].text, 'm6');
+  assert.equal(back.entries[99].text, 'm104');
+});
+
+test('a chat of 100 entries or fewer keeps every entry and no note', () => {
+  const entries = Array.from({ length: 100 }, (_, i) => ({ kind: 'user' as const, text: `m${i}`, at: AT }));
+  const back = loadChat(saveChat({ ...emptyChat(), entries }));
+  assert.equal(back.entries.length, 100);
+  assert.equal(back.entries[0].text, 'm0');
 });
