@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { relayIfEnabled } from './session-relay.ts';
 import { PERMISSION_HOOK_TIMEOUT_S, STOP_HOOK_TIMEOUT_S, permissionOutput, withBridgeHooks, withoutBridgeHooks, type WaitAnswer } from '../src/apps/claude/server/pclink.ts';
 
 const SCRIPT = fileURLToPath(import.meta.url);
@@ -49,6 +50,7 @@ async function stopHook(): Promise<number> {
   const input = await stdinJson();
   const session = typeof input.session_id === 'string' ? input.session_id : '';
   if (!session) return 0;
+  await relayIfEnabled(input);   // prototype; does nothing unless host/logs/session-relay.enabled exists
   const waiter = crypto.randomUUID(), until = Date.now() + (STOP_HOOK_TIMEOUT_S - 60) * 1000;
   let fresh = true, downSince = 0;
   while (Date.now() < until) {
