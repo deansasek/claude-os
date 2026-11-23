@@ -14,7 +14,7 @@ import { device, onResume, onTablet } from '../../../core/web/device.ts';
 import { INK, inkSay, inkedBlob, inkedShape, rng } from '../../../core/web/ink.ts';
 import { nickname } from '../../../core/web/profile.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
-import { ago, batteryGlyph, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
+import { ago, batteryGlyph, critterSpeak, notifications, onBack, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
 
 let ctx: AppContext;
@@ -79,6 +79,7 @@ const I = {
   gear: svg('<path d="M6 10h11M23 10h3M6 22h3M15 22h11"/><circle cx="20" cy="10" r="3"/><circle cx="12" cy="22" r="3"/>', 2),
   scene: svg('<path d="M13 6.5l1.9 5.6 5.6 1.9-5.6 1.9L13 21.5l-1.9-5.6L5.5 14l5.6-1.9z"/><path d="M23 18.5l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/>', 2),
   routine: svg('<path d="M7 9.5h3M7 16h3M7 22.5h3"/><path d="M14 9.5h11M14 16h11M14 22.5h7"/><path d="M24 20.5l2.5 2-2.5 2"/>', 2),
+  more: svg('<circle cx="8" cy="16" r="1.2"/><circle cx="16" cy="16" r="1.2"/><circle cx="24" cy="16" r="1.2"/>', 2.4),
 };
 function wifiGlyph(bars: number, on: boolean): string {
   const s = (n: number) => (on && bars >= n ? 'currentColor' : 'var(--t5)');
@@ -597,10 +598,28 @@ function paintActs(): void {
   // A scene with the same name as a routine is skipped (it looked like a duplicate button).
   const routineNames = new Set(routineActs.map(r => r.name));
   const extras = [...routineActs.map(routine), ...sceneActs.filter(s => !routineNames.has(s.name)).map(scene)].slice(0, 2);
-  // more than six buttons don't fit side by side as icon + label: the row then stacks each label under its icon (app.css)
-  $('hmActs').classList.toggle('hm-dense', ACTIONS.length + extras.length > 6);
-  $('hmActs').innerHTML = ACTIONS.map(a => `<button class="hm-act${a.primary ? ' primary' : ''}" data-act="${a.id}">${a.icon}<span>${esc(a.label)}</span></button>`).join('')
-    + (extras.length ? `<span class="hm-scenes">${extras.join('')}</span>` : '');
+  // five buttons fit side by side as icon + label (app.css). With routines or scenes in the row, All apps and Settings
+  // move into the More menu: both have another way in (the rail's Apps, the pull-down's Settings).
+  const menu = extras.length ? ACTIONS.filter(a => IN_MENU.has(a.id)) : [];
+  const inline = ACTIONS.filter(a => !menu.includes(a));
+  if (!menu.length) menuOpen = false;
+  const btn = (a: QuickAction) => `<button class="hm-act${a.primary ? ' primary' : ''}" data-act="${a.id}">${a.icon}<span>${esc(a.label)}</span></button>`;
+  $('hmActs').innerHTML = inline.map(btn).join('')
+    + (extras.length ? `<span class="hm-scenes">${extras.join('')}</span>` : '')
+    + (menu.length ? `<button class="hm-act hm-more" data-more aria-label="More" aria-haspopup="menu" aria-expanded="${menuOpen}">${I.more}</button>`
+      + `<div class="hm-menu" role="menu"${menuOpen ? '' : ' hidden'}>`
+      + menu.map(a => `<button class="hm-mrow" role="menuitem" data-act="${a.id}">${a.icon}<span>${esc(a.label)}</span></button>`).join('')
+      + '</div>' : '');
+}
+
+// ---------- the More menu (All apps, Settings) when routines or scenes take their places in the row ----------
+const IN_MENU = new Set(['apps', 'settings']);
+let menuOpen = false;
+function setMenu(open: boolean): void {
+  if (menuOpen === open) return;
+  menuOpen = open;
+  document.querySelector('#hmActs .hm-menu')?.toggleAttribute('hidden', !open);
+  document.querySelector('#hmActs [data-more]')?.setAttribute('aria-expanded', String(open));
 }
 
 // ---------- routines: the first four (the Routines app has them all); a tap runs one, a tap while it runs stops it ----------
@@ -708,6 +727,7 @@ function onShow(): void {
 function onHide(): void {
   clearInterval(pollT); pollT = undefined;
   clearTimeout(actT); actT = undefined;
+  setMenu(false);
   arm();
 }
 
@@ -716,6 +736,8 @@ function mount(context: AppContext): void {
   drawSky();
   paintActs();
   $('hmActs').addEventListener('click', e => {
+    if ((e.target as HTMLElement).closest('[data-more]')) { setMenu(!menuOpen); return; }
+    setMenu(false);
     const sc = (e.target as HTMLElement).closest<HTMLElement>('[data-scene]')?.dataset.scene;
     if (sc) { report('home:scene'); void setScene(sc); return; }
     const rt = (e.target as HTMLElement).closest<HTMLElement>('[data-routine]')?.dataset.routine;
@@ -724,6 +746,11 @@ function mount(context: AppContext): void {
     const a = ACTIONS.find(x => x.id === id);
     if (a) { report(`home:${a.id}`); a.run(); }
   });
+  // the More menu closes on a tap anywhere else, on Back, and when Home goes off screen (onHide)
+  document.addEventListener('pointerdown', e => {
+    if (menuOpen && !(e.target as HTMLElement).closest?.('#hmActs .hm-menu, #hmActs [data-more]')) setMenu(false);
+  }, true);
+  onBack(() => { if (!menuOpen || !ctx.isVisible()) return false; setMenu(false); return true; }, 20);
   ctx.root.querySelector('.hm-tiles')!.addEventListener('click', e => {
     const go = (e.target as HTMLElement).closest<HTMLElement>('[data-go]')?.dataset.go;
     if (!go) return;
