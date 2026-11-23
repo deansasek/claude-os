@@ -14,7 +14,7 @@ import { pace, toolWord } from './words.ts';
 import { loadModels, modelChoices, newPref, setNewPref, setVoicePref, voicePref } from './sessions/controls.ts';
 import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-settings.ts';
 import { device } from '../../../core/web/device.ts';
-import { NATIVE_MODELS, nativeCliVersion, nativeLimits, nativeModel, nativeOn, setNativeModel, setNativeOn } from './native.ts';
+import { NATIVE_MODELS, nativeBusy, nativeCliVersion, nativeClear, nativeLimits, nativeModel, nativeOn, setNativeModel, setNativeOn } from './native.ts';
 import { limitName, limitState } from './native-stream.ts';
 
 let ctx: AppContext;
@@ -246,6 +246,8 @@ function registerClaudeSettings(): void {
         { kind: 'action' as const, id: 'nativeSignin', title: 'Chats on this tablet · sign-in', detail: 'Sign in with your Claude account once. The first time, Claude Code downloads to the tablet (about 365 MB).',
           value: signinText, label: device.cliAuthState().signedIn === 1 ? 'Sign in again' : 'Sign in',
           disabled: () => device.cliAuthState().busy, run: startSignin },
+        { kind: 'action' as const, id: 'nativeClear', title: 'Chats on this tablet · clear', detail: 'Removes the tablet chat from the list and the screen. The next message starts a fresh chat. The CLI keeps its session files.',
+          label: 'Clear', disabled: () => nativeBusy(), run: nativeClear },
         ...nativeLimitRows(),
       ] : []),
       { kind: 'choice', id: 'newModel', title: 'New sessions · model', detail: 'What a session started from ClaudeOS runs on. You can change it per session in the composer.',
