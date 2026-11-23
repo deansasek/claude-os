@@ -22,7 +22,7 @@ interface ChoiceRow extends RowBase {
   set(v: string): void | Promise<void>;
 }
 interface SwitchRow extends RowBase { kind: 'switch'; get(): boolean; set(v: boolean): void | Promise<void> }
-interface ActionRow extends RowBase { kind: 'action'; label: string; value?(): string; run(): void }
+interface ActionRow extends RowBase { kind: 'action'; label: string; value?(): string; disabled?(): boolean; run(): void }
 interface InfoRow extends RowBase { kind: 'info'; value(): string }
 export type SettingRow = ChoiceRow | SwitchRow | ActionRow | InfoRow;
 

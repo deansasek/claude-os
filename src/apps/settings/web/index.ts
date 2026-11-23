@@ -248,7 +248,7 @@ function rowHtml(r: SettingRow): string {
   }
   if (r.kind === 'action') {
     return `<div class="st-row">${txt}<div class="st-rowbtns">${r.value ? `<span class="st-val">${esc(r.value())}</span>` : ''}`
-      + `<button class="st-btn hit" data-action="${esc(r.id)}">${esc(r.label)}</button></div></div>`;
+      + `<button class="st-btn hit" data-action="${esc(r.id)}"${r.disabled?.() ? ' disabled' : ''}>${esc(r.label)}</button></div></div>`;
   }
   return `<div class="st-row">${txt}<span class="st-val">${esc(r.value())}</span></div>`;
 }
