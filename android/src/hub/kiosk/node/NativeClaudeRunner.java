@@ -17,6 +17,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +34,7 @@ import java.util.zip.GZIPInputStream;
  * The binary itself is not changed.
  *
  * Trigger:  adb shell am start -n hub.kiosk/.MainActivity --ez node_spike true
+ *           add --ez login_spike true to also run `claude auth login` (up to 180 s; see run()).
  * Result:   every line is POSTed to the hub (POST /api/spike/node, header X-Spike: node), which appends it to
  *           host/logs/spike-node.log on the PC. Logcat tag NodeSpike has the same lines.
  */
@@ -52,7 +54,7 @@ public final class NativeClaudeRunner {
   }
 
   /** The test hook (MainActivity, intent extra node_spike): runs the test once on a background thread. */
-  public static void start(Context c, String hubPageUrl) {
+  public static void start(Context c, String hubPageUrl, boolean login) {
     synchronized (NativeClaudeRunner.class) {
       if (running) { Log.i(TAG, "native: already running"); return; }
       running = true;
@@ -60,7 +62,7 @@ public final class NativeClaudeRunner {
     NativeClaudeRunner r = new NativeClaudeRunner(c.getApplicationContext(), NodeRunner.origin(hubPageUrl));
     new Thread(() -> {
       try {
-        r.run();
+        r.run(login);
       } catch (Throwable t) {
         r.post("native: failed: " + Log.getStackTraceString(t));
       } finally {
@@ -71,7 +73,7 @@ public final class NativeClaudeRunner {
     }, "native-claude").start();
   }
 
-  private void run() throws Exception {
+  private void run(boolean login) throws Exception {
     String libDir = app.getApplicationInfo().nativeLibraryDir;
     File loader = new File(libDir, LOADER);
     post("native: start, pid " + android.os.Process.myPid() + ", sdk " + android.os.Build.VERSION.SDK_INT
@@ -82,7 +84,7 @@ public final class NativeClaudeRunner {
     post("native: nativeLibraryDir files " + (libs == null ? "(cannot list)" : String.join(" ", libs)));
 
     // 1. the loader alone: shows whether the app may execute it at all (musl prints its usage and version)
-    exec("loader-only", List.of(loader.getAbsolutePath()));
+    exec("loader-only", List.of(loader.getAbsolutePath()), Map.of(), 60, true);
 
     // 2. the binary from the npm registry
     File dir = new File(app.getFilesDir(), "claude");
@@ -92,7 +94,19 @@ public final class NativeClaudeRunner {
     post("native: binary " + bin + ", size " + bin.length() + ", canExecute " + bin.canExecute());
 
     // 3. the binary through the loader
-    exec("claude", List.of(loader.getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath(), "--version"));
+    exec("claude", List.of(loader.getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath(), "--version"),
+        Map.of(), 60, true);
+
+    // 4. LOGIN SPIKE (intent extra login_spike): the official `claude auth login`, to see the sign-in address it
+    //    prints and whether it waits for the browser callback on the tablet's loopback.
+    //    The spike never reads files/claude/, ~/.claude or any .credentials file, and never sends their content
+    //    anywhere: it only forwards the CLI's own stdout and stderr lines. The CLI writes its sign-in result itself.
+    //    BROWSER=echo stops the CLI from trying to open a browser on Android. stdin stays open, so the CLI does not
+    //    see end-of-input while it waits.
+    if (login) {
+      exec("login", List.of(loader.getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath(), "auth", "login"),
+          Map.of("DISABLE_AUTOUPDATER", "1", "BROWSER", "echo"), 180, false);
+    }
   }
 
   /** Downloads and unpacks the latest package into dir (skipped when that version is already there). */
@@ -147,9 +161,12 @@ public final class NativeClaudeRunner {
     return bin;
   }
 
-  /** Runs a command with HOME and TMPDIR in the app's files folder; posts its output lines and exit code. */
-  private void exec(String what, List<String> cmd) {
-    post("native: " + what + ": exec " + String.join(" ", cmd));
+  /**
+   * Runs a command with HOME and TMPDIR in the app's files folder plus extra env; posts its output lines and exit
+   * code. Kills it after timeoutSec and reports whether it exited by itself or was still running.
+   */
+  private void exec(String what, List<String> cmd, Map<String, String> env, int timeoutSec, boolean closeStdin) {
+    post("native: " + what + ": exec " + String.join(" ", cmd) + (env.isEmpty() ? "" : ", env " + env));
     try {
       File home = app.getFilesDir();
       File tmp = new File(home, "tmp");
@@ -157,13 +174,18 @@ public final class NativeClaudeRunner {
       ProcessBuilder pb = new ProcessBuilder(new ArrayList<>(cmd)).directory(home);
       pb.environment().put("HOME", home.getAbsolutePath());
       pb.environment().put("TMPDIR", tmp.getAbsolutePath());
+      pb.environment().putAll(env);
+      long t0 = System.currentTimeMillis();
       Process p = pb.start();
-      p.getOutputStream().close();
+      if (closeStdin) p.getOutputStream().close();
       Thread out = pipe(p.getInputStream(), what + " stdout");
       Thread err = pipe(p.getErrorStream(), what + " stderr");
-      if (!p.waitFor(60, TimeUnit.SECONDS)) {
-        post("native: " + what + ": still running after 60 s, killing");
+      if (p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
+        post("native: " + what + ": exited by itself after " + (System.currentTimeMillis() - t0) / 1000 + " s");
+      } else {
+        post("native: " + what + ": STILL RUNNING (waiting) after " + timeoutSec + " s, killing");
         p.destroyForcibly();
+        p.waitFor(5, TimeUnit.SECONDS);
       }
       out.join(2000);
       err.join(2000);
@@ -177,7 +199,10 @@ public final class NativeClaudeRunner {
     Thread t = new Thread(() -> {
       try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
         String line;
-        while ((line = r.readLine()) != null) post("native: " + label + ": " + line);
+        while ((line = r.readLine()) != null) {
+          // mark lines with an address (the sign-in URL), so they stand out in the log; the spike never opens them
+          post("native: " + label + ": " + (line.contains("http") ? "[URL LINE] " : "") + line);
+        }
       } catch (Exception e) {
         post("native: " + label + " read failed: " + e);
       }
