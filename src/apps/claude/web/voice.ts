@@ -324,7 +324,13 @@ export function initVoice(context: AppContext): void {
       const reason = r.reason ?? 'no_mic';   // (an older tablet app gives no reason: it's the microphone)
       const mic = reason === 'no_mic' || reason === 'mic_busy';
       voiceUi.notice(mic ? 'The microphone isn’t available' : 'Voice isn’t working right now', voiceUi.reasonLine(reason), 4000);
+      return;
     }
+    // the tablet said ok, but when its speech model is still loading it starts nothing and sends no event:
+    // if listening has not begun a moment later, say so instead of doing nothing
+    setTimeout(() => {
+      if (!voiceUi.isListening() && !voiceUi.isSpeaking()) voiceUi.notice('Voice is still starting', 'Try again in a moment', 4000);
+    }, 2500);
   };
   voiceUi.onTalk(() => { micTarget = null; talk(); });
   // the session composer's mic (#svMic): a toggle; the words go where it points
