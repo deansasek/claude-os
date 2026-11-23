@@ -226,7 +226,7 @@ public class MainActivity extends Activity {
     try {
       if (i == null || !i.getBooleanExtra("node_spike", false)) return;
       Log.i(hub.kiosk.node.NodeRunner.TAG, "hook: node_spike extra seen in " + from);
-      hub.kiosk.node.NodeRunner.start(this);
+      hub.kiosk.node.NodeRunner.start(this, DEFAULT_URL);
     } catch (Throwable t) {
       Log.e(hub.kiosk.node.NodeRunner.TAG, "hook failed in " + from, t);
     }

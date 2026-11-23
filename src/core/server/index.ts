@@ -10,6 +10,7 @@ import { gzipSync } from 'node:zlib';
 import type { Binary, Route, ServerApp } from './app.ts';
 import { config } from './config.ts';
 import { HUB, PUBLIC, SRC } from './paths.ts';
+import { spikeNodeRoute } from './spike-node.ts';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -198,6 +199,7 @@ export function startServer(apps: ServerApp[]): void {
       return { ok: true };
     },
   });
+  add('spike', spikeNodeRoute(path.join(HUB, 'host', 'logs', 'spike-node.log')));   // SPIKE: the tablet's Node test result
   for (const app of apps) {
     for (const r of app.routes) add(app.id, r);
     app.start?.();

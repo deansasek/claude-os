@@ -27,7 +27,9 @@ import java.nio.file.Files;
  *
  * Trigger:  adb shell am start -n hub.kiosk/.MainActivity --ez node_spike true
  * Result:   adb logcat -s NodeSpike   (both processes log every step and files/node/result.txt: lines from
- *           the ":node" process start "node: ", lines from the main process start "main: ")
+ *           the ":node" process start "node: ", lines from the main process start "main: ").
+ *           The main process also POSTs result.txt and its log lines to the hub (POST /api/spike/node), which
+ *           appends them to host/logs/spike-node.log on the PC; the :node process POSTs its own failure.
  *
  * The service runs in its own process (":node", see AndroidManifest.xml) because:
  *   - node::Start can run only once per process;
@@ -42,12 +44,75 @@ public final class NodeRunner extends Service {
   private static Memory argvBytes;  // kept alive: Node keeps pointers into argv
   private static Memory argvPtrs;
 
+  private static final int SEND_MAX = 60 * 1024;   // the hub's route takes up to 64 KB
+  private static final StringBuilder steps = new StringBuilder();   // this process's log lines, sent to the hub
+  private static String hub = "";   // the hub's origin, e.g. http://10.0.0.246:8000 (from HubConfig, via MainActivity)
+
+  /** Logs one line under TAG and keeps it for the report to the hub. */
+  static void step(String msg) {
+    Log.i(TAG, msg);
+    synchronized (steps) { steps.append(msg).append('\n'); }
+  }
+
+  static void stepError(String msg, Throwable t) {
+    Log.e(TAG, msg, t);
+    synchronized (steps) { steps.append(msg).append(": ").append(Log.getStackTraceString(t)).append('\n'); }
+  }
+
+  /** The origin (scheme, host, port) of a page URL such as http://10.0.0.246:8000/?device=tablet; "" when it is not a URL. */
+  static String origin(String pageUrl) {
+    try {
+      java.net.URI u = java.net.URI.create(pageUrl);
+      if (u.getScheme() == null || u.getHost() == null) return "";
+      return u.getScheme() + "://" + u.getHost() + (u.getPort() == -1 ? "" : ":" + u.getPort());
+    } catch (Exception e) {
+      return "";
+    }
+  }
+
+  /**
+   * POSTs the result text and this process's log lines to the hub (POST /api/spike/node, logged on the PC in
+   * host/logs/spike-node.log) on a background thread. The device log and the app's files can't be read on this
+   * build, so this is how the result reaches the user. Logcat keeps the same lines.
+   */
+  static void sendToHub(String what, String result) {
+    final String base = hub;
+    String log;
+    synchronized (steps) { log = steps.toString(); }
+    String head = what + " (pid " + android.os.Process.myPid() + ")\n----- result.txt -----\n"
+        + (result.isEmpty() ? "(empty or missing)" : result) + "\n----- log lines -----\n";
+    int room = Math.max(0, SEND_MAX / 4 - head.length());   // UTF-8 is at most 4 bytes a char: stays under SEND_MAX bytes
+    if (log.length() > room) log = "(earlier lines cut)\n" + log.substring(log.length() - room);
+    final byte[] body = (head + log).getBytes(StandardCharsets.UTF_8);
+    Thread t = new Thread(() -> {
+      if (base.isEmpty()) { Log.e(TAG, "send: no hub address"); return; }
+      java.net.HttpURLConnection c = null;
+      try {
+        c = (java.net.HttpURLConnection) java.net.URI.create(base + "/api/spike/node").toURL().openConnection();
+        c.setRequestMethod("POST");
+        c.setConnectTimeout(10_000);
+        c.setReadTimeout(10_000);
+        c.setDoOutput(true);
+        c.setFixedLengthStreamingMode(body.length);
+        c.setRequestProperty("Content-Type", "text/plain; charset=utf-8");
+        c.setRequestProperty("X-Spike", "node");
+        try (OutputStream out = c.getOutputStream()) { out.write(body); }
+        Log.i(TAG, "send: " + what + " to " + base + " answered " + c.getResponseCode());
+      } catch (Throwable e) {
+        Log.e(TAG, "send: " + what + " to " + base + " failed", e);
+      } finally {
+        if (c != null) c.disconnect();
+      }
+    }, "node-send");
+    t.start();
+  }
+
   /** Logs text under TAG, one logcat line per text line, long lines split into LINE-sized parts. */
   static void logText(String prefix, String text) {
     for (String line : text.split("\n", -1)) {
       if (line.isEmpty()) continue;
       for (int i = 0; i < line.length(); i += LINE) {
-        Log.i(TAG, prefix + line.substring(i, Math.min(line.length(), i + LINE)));
+        step(prefix + line.substring(i, Math.min(line.length(), i + LINE)));
       }
     }
   }
@@ -66,16 +131,18 @@ public final class NodeRunner extends Service {
    * The test hook (MainActivity, intent extra node_spike), in the main process: start the service, then log
    * each new line of the result file ("main: ") and, when the probe finishes or after 180 s, the full file.
    */
-  public static void start(Context c) {
+  public static void start(Context c, String hubPageUrl) {
+    hub = origin(hubPageUrl);
     Context app = c.getApplicationContext();
     File result = new File(new File(app.getFilesDir(), "node"), "result.txt");
-    Log.i(TAG, "main: hook started, deleting old " + result + " (existed: " + result.exists() + ")");
+    step("main: hook started, deleting old " + result + " (existed: " + result.exists() + ")");
     result.delete();
     try {
-      app.startService(new Intent(app, NodeRunner.class));
-      Log.i(TAG, "main: startService sent for :node");
+      app.startService(new Intent(app, NodeRunner.class).putExtra("hub", hub));
+      step("main: startService sent for :node, reporting to " + hub);
     } catch (Throwable t) {
-      Log.e(TAG, "main: startService failed", t);
+      stepError("main: startService failed", t);
+      sendToHub("main: startService failed", "");
       return;
     }
     Handler ui = new Handler(Looper.getMainLooper());
@@ -93,21 +160,24 @@ public final class NodeRunner extends Service {
           }
           if (finished(text) || at == 180) {
             done[0] = true;
-            Log.i(TAG, "main: ===== result.txt after " + at + " s (" + (finished(text) ? "finished" : "timed out") + ") =====");
+            step("main: ===== result.txt after " + at + " s (" + (finished(text) ? "finished" : "timed out") + ") =====");
             logText("main: | ", text.isEmpty() ? "(empty or missing)" : text);
-            Log.i(TAG, "main: ===== end =====");
+            step("main: ===== end =====");
+            sendToHub("main: result after " + at + " s (" + (finished(text) ? "finished" : "timed out") + ")", text);
           }
         } catch (Throwable t) {
-          Log.e(TAG, "main: reading result.txt failed", t);
+          stepError("main: reading result.txt failed", t);
+          if (!done[0]) { done[0] = true; sendToHub("main: reading result.txt failed", ""); }
         }
       }, s * 1000L);
     }
   }
 
   @Override public int onStartCommand(Intent intent, int flags, int startId) {
-    Log.i(TAG, "node: service onStartCommand, pid " + android.os.Process.myPid());
+    if (intent != null && intent.getStringExtra("hub") != null) hub = intent.getStringExtra("hub");
+    step("node: service onStartCommand, pid " + android.os.Process.myPid());
     synchronized (NodeRunner.class) {
-      if (started) { Log.i(TAG, "node: Node already ran in this process (force-stop the app to run again)"); return START_NOT_STICKY; }
+      if (started) { step("node: Node already ran in this process (force-stop the app to run again)"); return START_NOT_STICKY; }
       started = true;
     }
     // V8 needs a large stack; Android's default thread stack is about 1 MB
@@ -119,13 +189,14 @@ public final class NodeRunner extends Service {
     File dir = new File(getFilesDir(), "node");
     File result = new File(dir, "result.txt");
     Thread tail = null;
+    boolean failed = false;
     try {
       dir.mkdirs();
       copyAsset(getAssets(), "node/claude-code/cli.js", new File(dir, "claude-code/cli.js"));
       copyAsset(getAssets(), "node/claude-code/package.json", new File(dir, "claude-code/package.json"));
       File probe = new File(dir, "probe.cjs");
       Files.write(probe.toPath(), PROBE.getBytes(StandardCharsets.UTF_8));
-      Log.i(TAG, "node: wrote " + probe);
+      step("node: wrote " + probe);
 
       // cli.js may call process.exit, which ends this process inside node::Start: a tail thread logs result.txt
       // as it grows, so the lines reach logcat even if the code after node::Start never runs.
@@ -134,26 +205,30 @@ public final class NodeRunner extends Service {
       tail.start();
 
       System.loadLibrary("c++_shared");
-      Log.i(TAG, "node: loaded libc++_shared.so");
+      step("node: loaded libc++_shared.so");
       System.loadLibrary("node");
-      Log.i(TAG, "node: loaded libnode.so");
+      step("node: loaded libnode.so");
       Function start = NativeLibrary.getInstance("node").getFunction("_ZN4node5StartEiPPc");  // int node::Start(int, char**)
-      Log.i(TAG, "node: found node::Start");
+      step("node: found node::Start");
       String[] args = { "node", probe.getAbsolutePath(), dir.getAbsolutePath(), getCacheDir().getAbsolutePath() };
-      Log.i(TAG, "node: starting node " + probe);
+      step("node: starting node " + probe);
       int code = start.invokeInt(new Object[] { args.length, argv(args) });
-      Log.i(TAG, "node: node::Start returned " + code);
+      step("node: node::Start returned " + code);
     } catch (Throwable t) {
-      Log.e(TAG, "node: failed", t);
+      stepError("node: failed", t);
+      failed = true;
     }
     if (tail != null) tail.interrupt();
     try {
       String text = read(result);
-      Log.i(TAG, "node: ===== result.txt =====");
+      step("node: ===== result.txt =====");
       logText("node: | ", text.isEmpty() ? "(empty or missing)" : text);
-      Log.i(TAG, "node: ===== end =====");
+      step("node: ===== end =====");
+      // the main process sends the result when the probe finishes; this process sends only its own failure,
+      // with the exception text, because cli.js can end this process before the code here runs
+      if (failed) sendToHub("node: failed", text);
     } catch (Throwable t) {
-      Log.e(TAG, "node: reading result.txt failed", t);
+      stepError("node: reading result.txt failed", t);
     }
     stopSelf();
   }
@@ -172,7 +247,7 @@ public final class NodeRunner extends Service {
       } catch (InterruptedException e) {
         return;
       } catch (Throwable t) {
-        Log.e(TAG, "node: tail failed", t);
+        stepError("node: tail failed", t);
         return;
       }
     }
@@ -207,9 +282,9 @@ public final class NodeRunner extends Service {
         int n;
         while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
       }
-      Log.i(TAG, "node: copied asset " + name + " (" + to.length() + " bytes)");
+      step("node: copied asset " + name + " (" + to.length() + " bytes)");
     } catch (Exception e) {
-      Log.e(TAG, "node: asset " + name + " missing (build with --node after setup-node.ts)", e);
+      stepError("node: asset " + name + " missing (build with --node after setup-node.ts)", e);
     }
   }
 
