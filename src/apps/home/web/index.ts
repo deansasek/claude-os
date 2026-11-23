@@ -593,11 +593,14 @@ function paintActs(): void {
     const label = on ? `${r.name} · ${run.step}/${run.of}` : r.name;
     return `<button class="hm-act hm-scene hm-routine${on ? ' busy' : ''}" data-routine="${esc(r.id)}" title="${esc(r.name)}" aria-label="${esc(on ? `Stop the routine ${r.name}` : `Run the routine ${r.name}`)}">${I.routine}<span>${esc(label)}</span></button>`;
   };
+  // the row holds the quick actions plus at most two routines or scenes: more crowd the labels into the serif wrap.
+  // A scene with the same name as a routine is skipped (it looked like a duplicate button).
+  const routineNames = new Set(routineActs.map(r => r.name));
+  const extras = [...routineActs.map(routine), ...sceneActs.filter(s => !routineNames.has(s.name)).map(scene)].slice(0, 2);
   // more than six buttons don't fit side by side as icon + label: the row then stacks each label under its icon (app.css)
-  $('hmActs').classList.toggle('hm-dense', ACTIONS.length + routineActs.length + sceneActs.length > 6);
+  $('hmActs').classList.toggle('hm-dense', ACTIONS.length + extras.length > 6);
   $('hmActs').innerHTML = ACTIONS.map(a => `<button class="hm-act${a.primary ? ' primary' : ''}" data-act="${a.id}">${a.icon}<span>${esc(a.label)}</span></button>`).join('')
-    + (routineActs.length || sceneActs.length
-      ? `<span class="hm-scenes">${routineActs.map(routine).join('')}${sceneActs.map(scene).join('')}</span>` : '');
+    + (extras.length ? `<span class="hm-scenes">${extras.join('')}</span>` : '');
 }
 
 // ---------- routines: the first four (the Routines app has them all); a tap runs one, a tap while it runs stops it ----------
