@@ -22,10 +22,17 @@ export function when(at: number, now = Date.now()): string {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(d.getFullYear() !== n.getFullYear() ? { year: 'numeric' } : {}) });
 }
 
+/** "1 subagent working" while the session runs subagents (as the desktop app shows), else ''. Only while the session
+ *  wrote in the last 30 minutes, so a launch whose end never reached the log does not count for ever. */
+export const subagentsWorking = (s: LiveSession): string =>
+  s.working > 0 && s.age < LIVE_S ? `${s.working} subagent${s.working > 1 ? 's' : ''} working` : '';
+
 /** Which dot a session gets, and the few words under its title, as of `now` (ms). */
 /** `waitingOk`: the ids of sessions whose Hub turn waits for your OK (from the usage turns): "Needs your OK" first. */
 export function stateOf(s: LiveSession, now = Date.now(), waitingOk: ReadonlySet<string> = new Set()): { cls: string; what: string } {
   if (s.id && waitingOk.has(s.id)) return { cls: 'yours', what: 'Needs your OK' };
+  const subs = subagentsWorking(s);
+  if (subs) return { cls: 'busy', what: subs };
   if (s.state === 'thinking' || s.state === 'tool') return { cls: 'busy', what: s.state === 'tool' ? toolWord(s.tool) : 'Thinking' };
   if (s.state === 'waiting' && isLive(s)) return { cls: 'yours', what: s.open ? `Your turn · on your PC` : `Your turn · ${shortAge(s.age)}` };
   if (s.state === 'stalled' && isLive(s)) return { cls: 'stalled', what: `No word for ${shortAge(s.age)}` };
@@ -82,10 +89,10 @@ export function groups(list: LiveSession[], now: number, h: History | null, q: s
   return out.sort((a, b) => b.latest - a.latest);
 }
 
-/** A folder header's live counts: "2 working · 1 waiting" (the live sessions thinking or running a tool, then those
- *  waiting for you). Empty when none of them is live. */
+/** A folder header's live counts: "2 working · 1 waiting" (the live sessions thinking, running a tool or running
+ *  subagents, then those waiting for you). Empty when none of them is live. */
 export function folderLive(g: Group): string {
-  const live = g.rows.filter(r => r.live && isLive(r.live)).map(r => r.live!.state);
+  const live = g.rows.filter(r => r.live && isLive(r.live)).map(r => (subagentsWorking(r.live!) ? 'tool' : r.live!.state));
   const working = live.filter(s => s === 'thinking' || s === 'tool').length, waiting = live.filter(s => s === 'waiting').length;
   return [working ? `${working} working` : '', waiting ? `${waiting} waiting` : ''].filter(Boolean).join(' · ');
 }
