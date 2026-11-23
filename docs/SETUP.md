@@ -77,7 +77,11 @@ node android/build.ts --install
 node android/build.ts --install --device <serial>
 ```
 
-The APK is written to `android/build/claude-hub.apk`. The signing key `android/hub.keystore` is made on the first build. Keep it: an update must be signed with the same key.
+The APK is written to `android/build/claude-hub.apk`. The build signs the APK with `android/hub.keystore` and stops if that file is missing. It never makes a new key, because Android refuses an update signed with a different key. Keep a backup copy of the keystore. For a first install on a new tablet only, make the key once with the JDK's keytool:
+
+```
+tools/jdk/bin/keytool -genkeypair -keystore android/hub.keystore -alias hub -storepass hubkiosk -keypass hubkiosk -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Claude Hub"
+```
 
 ## The tablet
 

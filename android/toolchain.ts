@@ -20,6 +20,18 @@ export function fail(message: string): never {
   process.exit(1);
 }
 
+/** The app's signing key. Every update must be signed with this same key. */
+export const keystorePath = join(here, 'hub.keystore');
+
+/**
+ * Returns the message to stop the build with when the signing keystore is missing, or null when it exists.
+ * The build never makes a new key: Android refuses an update signed with a different key.
+ */
+export function keystoreProblem(ks: string = keystorePath): string | null {
+  if (existsSync(ks)) return null;
+  return 'android/hub.keystore is missing. Restore the backup copy. A new key would make Android refuse every update.';
+}
+
 // ---- tool locations ----
 
 /**
