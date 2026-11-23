@@ -72,6 +72,24 @@ test('a turn folds into the chat: deltas stream, the result ends it', () => {
   assert.deepEqual(c.entries, [{ kind: 'user', text: 'Say hello', at: AT }, { kind: 'assistant', text: 'Hello', at: AT }]);
 });
 
+test('a failed reply is a note, not Claude’s reply; a rejected plan limit says when it resets', () => {
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const failed = (text: string): NativeEvent => ({ type: 'result', ok: false, text, sessionId: 's1', costUsd: null, usage, window: null });
+  // no limit known: the general line, and the CLI's error text is not kept as a reply
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), failed('API Error: 500 internal'), AT);
+  assert.deepEqual(c.entries, [{ kind: 'user', text: 'Hi', at: AT }]);
+  assert.equal(c.error, 'That reply didn’t finish. Try again.');
+  // a limit the CLI rejected, still in force: the note names the reset time
+  const resetAt = '2026-11-23T15:00:00.000Z';
+  c = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'limits', limits: [{ type: 'five_hour', status: 'rejected', used: 100, resetsAt: resetAt }] }, AT);
+  c = applyEvent(userSent(c, 'Again', AT), failed('Claude AI usage limit reached'), AT);
+  assert.deepEqual(c.entries.map(e => e.kind), ['user', 'user']);
+  assert.match(c.error ?? '', /^Limit reached, resets \S/);
+  // a rejected limit whose reset time has passed no longer counts
+  const past = applyEvent(userSent(applyEvent(emptyChat(), { type: 'limits', limits: [{ type: 'five_hour', status: 'rejected', used: 100, resetsAt: '2026-11-23T09:00:00.000Z' }] }, AT), 'Hi', AT), failed('boom'), AT);
+  assert.equal(past.error, 'That reply didn’t finish. Try again.');
+});
+
 test('an exit mid-reply keeps what streamed and says it stopped', () => {
   let c = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'delta', text: 'Part' }, AT);
   c = applyEvent(c, { type: 'exit', code: 143 }, AT);

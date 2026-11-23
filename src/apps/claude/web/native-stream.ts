@@ -143,6 +143,21 @@ export const userSent = (c: NativeChat, text: string, at = new Date().toISOStrin
 
 const ERRORS: Record<string, string> = { start_failed: 'Claude couldn’t start on this tablet. Sign in under Settings → Apps → Claude, then try again.' };
 
+/** The note for a reply that failed. A plan limit still rejected at `at` reads "Limit reached, resets <time>". */
+function failedNote(c: NativeChat, text: string, at: string): string {
+  const now = Date.parse(at);
+  const rejected = Object.values(c.limits).filter(l => l.status === 'rejected' && (!l.resetsAt || Date.parse(l.resetsAt) > now));
+  if (!rejected.length && !/usage limit|limit reached/i.test(text)) return 'That reply didn’t finish. Try again.';
+  const latest = rejected.map(l => l.resetsAt).filter((r): r is string => !!r).sort().pop();
+  return latest ? `Limit reached, resets ${resetText(latest, now)}` : 'Limit reached';
+}
+/** A reset time for the note: the clock time today, else the weekday and the clock time. */
+function resetText(iso: string, now: number): string {
+  const d = new Date(iso), sameDay = d.toDateString() === new Date(now).toDateString();
+  return sameDay ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+}
+
 /** One event folded into the chat. */
 export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOString()): NativeChat {
   const withReply = (text: string): TranscriptEntry[] => (text ? [...c.entries, { kind: 'assistant', text, at }] : c.entries);
@@ -151,8 +166,9 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
     case 'delta': return c.running ? { ...c, partial: c.partial + e.text } : c;
     case 'text': return c.running ? { ...c, partial: e.text } : c;
     case 'result':
-      return { ...c, entries: withReply(e.text || c.partial), running: false, partial: '', sessionId: e.sessionId || c.sessionId,
-        error: e.ok ? null : 'That reply didn’t finish. Try again.',
+      // a failed result's text is the CLI's error, not Claude's words: it becomes a note (failedNote), not a reply
+      return { ...c, entries: e.ok ? withReply(e.text || c.partial) : withReply(c.partial), running: false, partial: '',
+        sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at),
         tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
     case 'limits': {
       const limits = { ...c.limits };
