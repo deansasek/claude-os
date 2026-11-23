@@ -11,7 +11,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { query, type ModelInfo, type PermissionMode, type Query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
-import type { Approval, ContextUse, HubEffort, HubPermission, HubTurn, ModelChoice, ModelList, NewSessionResult, ReplyBlock, SessionSettings, SessionView } from '../api.ts';
+import type { Approval, ContextUse, HubEffort, HubPermission, HubTurn, ModelChoice, ModelList, NewSessionResult, ReplyBlock, SessionSettings, SessionView, TurnStatus } from '../api.ts';
 import { projectFolder, rememberHubSession, SCRATCH } from './hubsessions.ts';
 import { logAction } from './guard.ts';
 import { askFor, describeTool } from './describe.ts';
@@ -32,7 +32,7 @@ import { routinesServer } from '../../routines/server/tools.ts';
 import { PcInbox, rewakeText, type PcDecision, type WaitAnswer } from './pclink.ts';
 import { openSessions } from './registry.ts';
 import { failedSentence } from '../web/failed.ts';
-import { COMPACTING_TEXT, retryText } from '../web/native-stream.ts';
+import { COMPACTING_TEXT, retryText, STALLED_TEXT, stalled } from '../web/native-stream.ts';
 
 const APPROVAL_MS = 3 * 60e3;
 const MAX_RUNNING = 2;
@@ -203,20 +203,29 @@ interface Live extends HubTurn {
   finishedAt: number | null;
   /** A reply sent into a session open on the PC (pclink.ts): the PC process runs it, not the Hub. */
   pc?: boolean;
+  /** When the turn last got an event (ms). The stalled line shows in view after STALL_MS with none. */
+  lastEventAt?: number;
 }
 const turns = new Map<string, Live>();
 /** Replies on their way to sessions open on the PC, and the PC hooks waiting for them (pclink.ts). */
 const inbox = new PcInbox();
 
+/** The steps a turn shows: the latest six, then the stalled line once a running Hub turn has had no event for STALL_MS.
+ *  The line is added here only; it is not kept as a step. Turns that run on the PC are left out. */
+export function progressFor(progress: string[], status: TurnStatus, onPc: boolean, lastEventAt: number | undefined, now = Date.now()): string[] {
+  const shown = progress.slice(-6);
+  return status === 'running' && !onPc && stalled(now, lastEventAt ?? null) ? [...shown, STALLED_TEXT] : shown;
+}
+
 const view = (t: Live): HubTurn => ({
   id: t.id, sessionId: t.sessionId, title: t.title, status: t.status, startedAt: t.startedAt,
-  progress: t.progress.slice(-6), approval: t.approval, reply: t.reply, error: t.error,
+  progress: progressFor(t.progress, t.status, !!t.pc, t.lastEventAt), approval: t.approval, reply: t.reply, error: t.error,
 });
 const runningFor = (sessionId: string) => [...turns.values()].find(t => t.sessionId === sessionId && (t.status === 'running' || t.status === 'approval'));
 /** Is a reply from the Hub running in this session right now? */
 export const hubTurnRunning = (sessionId: string): boolean => !!runningFor(sessionId);
 
-const step = (t: Live, line: string) => { t.progress.push(line); if (t.progress.length > 20) t.progress.shift(); };
+const step = (t: Live, line: string) => { t.progress.push(line); if (t.progress.length > 20) t.progress.shift(); t.lastEventAt = Date.now(); };
 
 /** End a PC turn (the session finished its turn, or closed). */
 function endPcTurn(t: Live, status: 'done' | 'error', reply: string | null, error: string | null = null): void {
@@ -303,7 +312,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
   const t: Live = {
     id: crypto.randomUUID(), sessionId: o.resume || '', title: o.title, status: 'running', startedAt: new Date().toISOString(),
     progress: [o.firstStep], approval: null, reply: null, error: null,
-    q: null, abort: new AbortController(), answer: null, finishedAt: null,
+    q: null, abort: new AbortController(), answer: null, finishedAt: null, lastEventAt: Date.now(),
   };
   turns.set(t.id, t);
   let gotId!: (id: string) => void;
