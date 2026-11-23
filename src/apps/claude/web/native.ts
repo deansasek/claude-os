@@ -8,7 +8,7 @@ import { device, nativeHas } from '../../../core/web/device.ts';
 import { store } from '../../../core/web/dom.ts';
 import type { LiveSession, SessionView } from '../api.ts';
 import {
-  applyEvent, chatAge, chatListed, contextOf, emptyChat, limitList, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens,
+  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, limitList, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens,
   usageStale, userSent, type NativeChat, type SeenLimit,
 } from './native-stream.ts';
 
@@ -92,6 +92,18 @@ export function nativeStop(): void {
   chat = applyEvent(chat, { type: 'stop' });
   changed();
   try { device.claudeStop(); } catch { /* older app build */ }
+}
+
+/** True while a reply runs. The chat cannot be cleared then. */
+export const nativeBusy = (): boolean => chat.running;
+
+/** Clears the tablet chat from the list and the screen. The CLI's session files stay, and no new chat starts: the next
+ *  message starts a fresh chat. Only when no reply runs (nativeBusy). */
+export function nativeClear(): void {
+  if (chat.running) return;
+  chat = clearedChat(chat);
+  save();
+  changed();
 }
 
 /** The native chat as a row of the Sessions list, or null when there is no chat yet. The hub's list never has it. */

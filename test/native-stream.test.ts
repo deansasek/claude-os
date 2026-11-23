@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  applyEvent, chatAge, chatListed, contextOf, emptyChat, limitList, limitName, limitState, limitsUpdated, loadChat, newerSaved, parseStreamLine, saveChat,
+  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, limitList, limitName, limitState, limitsUpdated, loadChat, newerSaved, parseStreamLine, saveChat,
   totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
@@ -272,6 +272,17 @@ test('the runner end-of-check line', () => {
   assert.deepEqual(parseStreamLine(line({ type: 'usage_check' })), { type: 'usageChecked', ok: false });
   const c = emptyChat();
   assert.equal(applyEvent(c, { type: 'usageChecked', ok: true }), c);
+});
+
+test('clearing the chat empties the list and the session, and keeps the plan limits', () => {
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'init', sessionId: 's1' }, AT);
+  c = applyEvent(c, { type: 'limits', limits: [{ type: 'five_hour', status: 'allowed', used: 10, resetsAt: null }] }, AT);
+  c = applyEvent(c, { type: 'result', ok: true, text: 'Hello', sessionId: 's1', costUsd: null, usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, window: null }, AT);
+  const cleared = clearedChat(c);
+  assert.deepEqual(cleared.entries, []);
+  assert.equal(cleared.sessionId, null);
+  assert.equal(chatListed(cleared), false);
+  assert.deepEqual(cleared.limits, c.limits);
 });
 
 test('a get_usage window keeps the status the last rate_limit_event gave', () => {

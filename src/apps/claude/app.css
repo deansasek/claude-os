@@ -509,6 +509,7 @@
 .sm-row svg { flex: none; width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .sm-row:active { background: var(--card-2); }
 .sm-row.danger { color: var(--hot); }
+.sm-row[hidden] { display: none; }
 .sm-ask { margin: 4px 8px 6px; font: 500 16px/1.4 var(--sans); color: var(--text); }
 .sm-msg { margin: 0 8px; font-size: 13px; line-height: 1.4; color: var(--hot); }
 .sm-msg:empty { display: none; }

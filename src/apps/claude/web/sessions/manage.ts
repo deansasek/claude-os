@@ -1,15 +1,17 @@
 // A session's actions, from the ⋯ on its row in the sidebar: Archive (or Unarchive), and Delete. Delete asks
 // once more before it goes. Both go to the server behind the PIN (pin.ts), and the screen is told what changed
 // so it can move on (reply.ts: back to the new-session screen if the open session was the one touched).
+// The tablet's own chat (NATIVE_ID) has no server session: its ⋯ offers only Clear this chat (native.ts), local.
 import { report } from '../../../../core/web/dom.ts';
 import type { AppContext } from '../../../../core/web/shell.ts';
 import { onBack } from '../../../../core/web/system.ts';
+import { nativeBusy, nativeClear, NATIVE_ID } from '../native.ts';
 import { call, withPin } from './pin.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 
-type ManageDone ='archived' | 'unarchived' | 'deleted';
+type ManageDone ='archived' | 'unarchived' | 'deleted' | 'cleared';
 let target: { id: string; title: string; archived: boolean } | null = null;
 let done: (id: string, what: ManageDone) => void = () => {};
 
@@ -33,8 +35,13 @@ function say(text: string): void { $('smMsg').textContent = text; }
 /** Open the menu for one session (from its row's ⋯). */
 export function openSessionMenu(id: string, title: string, archived: boolean): void {
   target = { id, title, archived };
+  const tablet = id === NATIVE_ID;
   $('smTitle').textContent = title;
+  $('smArchive').hidden = tablet;
   $('smArchiveText').textContent = archived ? 'Unarchive' : 'Archive';
+  $('smDeleteText').textContent = tablet ? 'Clear this chat' : 'Delete';
+  $('smAsk').textContent = tablet ? 'Clear this chat? It leaves this screen and the list. The tablet keeps its session files.' : 'Delete this session? This can’t be undone.';
+  $('smGone').textContent = tablet ? 'Clear' : 'Delete';
   say('');
   show(true);
   $('svSessMenu').hidden = false;
@@ -43,7 +50,7 @@ export function openSessionMenu(id: string, title: string, archived: boolean): v
 
 async function changeState(on: boolean): Promise<void> {
   const t = target;
-  if (!t) return;
+  if (!t || t.id === NATIVE_ID) return;
   const act = async (): Promise<void> => {
     const r = await call<{ ok: boolean; error?: string }>('archive', { id: t.id, archived: on });
     if (!r.ok) { say(MESSAGES[r.error || ''] || 'Nothing was changed. Try again.'); return; }
@@ -57,6 +64,14 @@ async function changeState(on: boolean): Promise<void> {
 async function remove(): Promise<void> {
   const t = target;
   if (!t) return;
+  if (t.id === NATIVE_ID) {   // the tablet's chat: cleared here only, nothing goes to the hub or the PIN
+    if (nativeBusy()) { say(MESSAGES.running); return; }
+    close();
+    nativeClear();
+    done(t.id, 'cleared');
+    report('native-clear');
+    return;
+  }
   const act = async (): Promise<void> => {
     const r = await call<{ ok: boolean; error?: string }>('delete', { id: t.id });
     if (!r.ok) {
