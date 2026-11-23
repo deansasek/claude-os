@@ -91,7 +91,18 @@ export const USAGE_REQUEST = 'claudeos-usage';
 const STATUS_REASONS: Record<number, string> = { 401: 'authentication_failed', 404: 'model_not_found', 429: 'rate_limit', 529: 'overloaded' };
 
 /** The progress wording for a retry and for compacting. Shared by the tablet chat and the PC turn (server/turns.ts). */
-export const retryText = (attempt: number, max: number): string => (attempt ? `Retrying (${attempt} of ${max})` : 'Retrying');
+/** The cause of a retry in plain words, from the API status the CLI sends (api_retry's error_status); null when unknown. */
+export function retryCause(status: unknown): string | null {
+  if (status === 429) return 'Claude hit a limit';
+  if (status === 529) return 'Claude is busy';
+  if (typeof status === 'number' && status >= 500 && status <= 599) return 'Claude had a server error';
+  return null;
+}
+/** The retry line. With a known cause: "Claude is busy · retrying (2 of 10)"; without one: "Retrying (2 of 10)". */
+export const retryText = (attempt: number, max: number, status: unknown = null): string => {
+  const cause = retryCause(status), count = attempt ? ` (${attempt} of ${max})` : '';
+  return cause ? `${cause} · retrying${count}` : attempt ? `Retrying${count}` : 'Retrying';
+};
 export const COMPACTING_TEXT = 'Compacting';
 
 /** One stream-json line to an event; null for lines the chat does not use (or that are not JSON). */
@@ -108,7 +119,7 @@ export function parseStreamLine(line: string): NativeEvent | null {
       if (o.subtype === 'model_refusal_fallback') { const m = str(o.fallback_model); return m ? { type: 'fallback', model: m } : null; }
       // the API is retried: "Retrying (2 of 10)" (attempt, max_retries). Compacting: the CLI's status is "compacting".
       if (o.subtype === 'api_retry') {
-        return { type: 'status', text: retryText(num(o.attempt), num(o.max_retries)) };
+        return { type: 'status', text: retryText(num(o.attempt), num(o.max_retries), o.error_status) };
       }
       if (o.subtype === 'status') {
         if (o.status === 'compacting') return { type: 'status', text: COMPACTING_TEXT };
