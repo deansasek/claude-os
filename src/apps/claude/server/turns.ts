@@ -32,7 +32,7 @@ import { routinesServer } from '../../routines/server/tools.ts';
 import { PcInbox, rewakeText, type PcDecision, type WaitAnswer } from './pclink.ts';
 import { openSessions } from './registry.ts';
 import { failedSentence } from '../web/failed.ts';
-import { COMPACTING_TEXT, retryText, STALLED_TEXT, stalled } from '../web/native-stream.ts';
+import { COMPACTING_TEXT, durationText, retryText, STALLED_TEXT, stalled } from '../web/native-stream.ts';
 
 const APPROVAL_MS = 3 * 60e3;
 const MAX_RUNNING = 2;
@@ -205,10 +205,18 @@ interface Live extends HubTurn {
   pc?: boolean;
   /** When the turn last got an event (ms). The stalled line shows in view after STALL_MS with none. */
   lastEventAt?: number;
+  /** How long the turn took (ms), from the SDK's result message. */
+  durationMs?: number | null;
 }
 const turns = new Map<string, Live>();
 /** Replies on their way to sessions open on the PC, and the PC hooks waiting for them (pclink.ts). */
 const inbox = new PcInbox();
+
+/** The last step of a Hub turn: "Finished in 2 min 5 s" when it is done and the SDK gave its time (ms). */
+export function finishLine(status: TurnStatus, ms: number | null): string {
+  if (status === 'done') return ms == null ? 'Finished' : `Finished in ${durationText(ms)}`;
+  return status === 'stopped' ? 'Stopped' : 'Failed';
+}
 
 /** The line for a PC turn whose reply has waited this long for the PC hook to pick it up. */
 export const PC_PICKUP_TEXT = 'Waiting for your PC to pick it up';
@@ -435,6 +443,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
             else if (b.type === 'text' && b.text.trim()) t.reply = b.text.trim().slice(0, 1500);
           }
         } else if (m.type === 'result') {
+          t.durationMs = typeof m.duration_ms === 'number' ? m.duration_ms : null;
           if (m.subtype === 'success') { t.reply = String(m.result || t.reply || '').slice(0, 1500); if (t.status !== 'stopped') t.status = 'done'; }
           else if (t.status !== 'stopped') { t.status = 'error'; t.error = failedSentence(failReason || m.subtype); console.log('turn ended:', m.subtype, failReason); }
         }
@@ -446,7 +455,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
       t.finishedAt = Date.now(); t.approval = null; t.answer = null; t.q = null;
       endInput();
       if (!t.sessionId) gotId('');
-      step(t, t.status === 'done' ? 'Finished' : t.status === 'stopped' ? 'Stopped' : 'Failed');
+      step(t, finishLine(t.status, t.durationMs ?? null));
       logAction('hub', `turn-${t.status}`, { session: t.sessionId, turn: t.id });
     }
   })();
