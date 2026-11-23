@@ -374,6 +374,18 @@ export const totalTokens = (t: TokenUse): number => t.input + t.output + t.cache
 export const contextOf = (c: NativeChat): { used: number; window: number } | null =>
   c.last && c.window ? { used: c.last.input + c.last.cacheRead + c.last.cacheWrite, window: c.window } : null;
 
+/** A chat at a glance: whether a reply runs, the latest reply cut to a short line, when it came (ISO) and how long ago
+ *  (seconds, as of now), and the error the chat ends with. */
+export interface NativeGlance { running: boolean; reply: string | null; at: string | null; ago: number | null; error: string | null }
+const GLANCE_MAX = 80;
+export function glanceOf(c: NativeChat, now = Date.now()): NativeGlance {
+  const last = [...c.entries].reverse().find(e => e.kind === 'assistant') || null;
+  const line = last ? last.text.replace(/\s+/g, ' ').trim() : '';
+  const reply = line ? (line.length > GLANCE_MAX ? line.slice(0, GLANCE_MAX - 1).trimEnd() + '…' : line) : null;
+  const t = last?.at ? Date.parse(last.at) : NaN;
+  return { running: c.running, reply, at: last?.at ?? null, ago: Number.isFinite(t) ? Math.max(0, Math.floor((now - t) / 1000)) : null, error: c.error };
+}
+
 /** The chat emptied for the list and the screen: no entries, no session. The plan limits stay (they belong to the account). */
 export const clearedChat = (c: NativeChat): NativeChat => ({ ...emptyChat(), limits: c.limits });
 
