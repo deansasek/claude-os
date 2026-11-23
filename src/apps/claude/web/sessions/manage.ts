@@ -21,6 +21,7 @@ const MESSAGES: Record<string, string> = {
   open_on_pc: 'It is open in a Claude Code window on your PC. Close it there first.',
   not_found: 'That session is already gone.',
   not_this_session: 'Nothing was deleted: the file did not look like this session’s.',
+  delete_failed: "Couldn't delete: the file is in use on your PC.",
 };
 
 function show(acts: boolean): void {
