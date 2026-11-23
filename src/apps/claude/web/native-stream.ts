@@ -26,8 +26,8 @@ export type NativeEvent =
   | { type: 'error'; message: string }   // the runner could not send (from the runner)
   | { type: 'stop' }                     // the user asked to stop the running reply (native.ts nativeStop)
   | { type: 'status'; text: string | null }   // a retry or compacting, as the CLI says it; null when it is over
-  | { type: 'compacted' }
-  | { type: 'fallback'; model: string };   // the CLI switched to a fallback model for this reply (system/model_refusal_fallback)                    // the CLI summarised the earlier messages (system/compact_boundary)
+  | { type: 'compacted' }                // the CLI summarised the earlier messages (system/compact_boundary)
+  | { type: 'fallback'; model: string };   // the CLI switched to a fallback model for this reply (system/model_refusal_fallback)
 
 /** The note in the chat when the CLI has summarised the earlier messages to keep going. */
 export const COMPACTED_TEXT = 'Earlier messages were summarised to keep going.';
@@ -401,11 +401,24 @@ export function chatAge(c: NativeChat, now = Date.now()): number {
 // ---------- keeping the chat across page reloads and app restarts (native.ts keeps the JSON in the store and in a
 // file in the app's files folder) ----------
 const SAVED_ENTRIES = 100;
+/** The longest text kept per saved entry, so one long reply cannot fill the store. */
+const SAVED_CHARS = 20_000;
+/** The note kept first when older entries are dropped from the saved chat. */
+export const OLDER_DROPPED_TEXT = "Older messages aren't kept on this tablet.";
+
+/** The entries to save: the latest SAVED_ENTRIES, each text cut to SAVED_CHARS. When older entries are dropped, a note
+ *  takes the first place, so the saved list stays SAVED_ENTRIES long. */
+function entriesToSave(entries: TranscriptEntry[]): TranscriptEntry[] {
+  const dropped = entries.length > SAVED_ENTRIES;
+  const kept = entries.slice(-(dropped ? SAVED_ENTRIES - 1 : SAVED_ENTRIES))
+    .map(e => (e.text.length > SAVED_CHARS ? { ...e, text: e.text.slice(0, SAVED_CHARS) } : e));
+  return dropped ? [{ kind: 'note', text: OLDER_DROPPED_TEXT, at: null }, ...kept] : kept;
+}
 
 /** The chat as JSON for the store: the session, the entries and the token counts. Never the streaming reply.
  *  savedAt: when it was saved (ms), so the newer of two copies wins (newerSaved). */
 export function saveChat(c: NativeChat, savedAt = Date.now()): string {
-  return JSON.stringify({ v: 1, savedAt, sessionId: c.sessionId, entries: c.entries.slice(-SAVED_ENTRIES), error: c.running ? null : c.error, tokens: c.tokens, last: c.last, window: c.window,
+  return JSON.stringify({ v: 1, savedAt, sessionId: c.sessionId, entries: entriesToSave(c.entries), error: c.running ? null : c.error, tokens: c.tokens, last: c.last, window: c.window,
     limits: c.limits, lastModel: c.lastModel, lastMs: c.lastMs, cliVersion: c.cliVersion });
 }
 
