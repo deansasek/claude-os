@@ -2,6 +2,7 @@
 // (android/.../cli/ClaudeCli.java forwards each stdout line as is). Pure: parses a line into an event, and
 // folds events into the chat on screen. No DOM, so it runs in node (test/native-stream.test.ts).
 import type { TranscriptEntry } from '../api.ts';
+import { failedSentence } from './failed.ts';
 
 /** One plan-limit window as the CLI reported it in a rate_limit_event. type: five_hour, seven_day, seven_day_opus, ...
  *  status: allowed, allowed_warning or rejected ('' when the CLI did not say). used: percent of the window used
@@ -17,7 +18,7 @@ export type NativeEvent =
   | { type: 'init'; sessionId: string }
   | { type: 'delta'; text: string }      // a piece of the reply as it streams (--include-partial-messages)
   | { type: 'text'; text: string }       // a whole assistant message
-  | { type: 'result'; ok: boolean; text: string; sessionId: string | null; costUsd: number | null; usage: TokenUse; window: number | null }
+  | { type: 'result'; ok: boolean; text: string; sessionId: string | null; costUsd: number | null; usage: TokenUse; window: number | null; reason?: string | null }
   | { type: 'limits'; limits: PlanLimit[] }   // plan limits the CLI reported (rate_limit_event, or a get_usage reply)
   | { type: 'usageChecked'; ok: boolean }     // a usage check ended (from the runner, ClaudeCli.usageCheck)
   | { type: 'exit'; code: number }       // the process ended (from the runner, not the CLI)
@@ -79,6 +80,9 @@ function usageLimits(r: Obj): PlanLimit[] {
 /** The request id of the runner's get_usage control request (ClaudeCli.usageCheck sends the same). */
 export const USAGE_REQUEST = 'claudeos-usage';
 
+/** The API's HTTP status (api_error_status on a failed result) to the reason failed.ts says for it. */
+const STATUS_REASONS: Record<number, string> = { 401: 'authentication_failed', 404: 'model_not_found', 429: 'rate_limit', 529: 'overloaded' };
+
 /** One stream-json line to an event; null for lines the chat does not use (or that are not JSON). */
 export function parseStreamLine(line: string): NativeEvent | null {
   let o: Obj | null;
@@ -103,10 +107,13 @@ export function parseStreamLine(line: string): NativeEvent | null {
       // modelUsage is keyed by model id; its contextWindow is the window size the CLI used for the turn
       let window: number | null = null;
       for (const m of Object.values(obj(o.modelUsage) || {})) window = num(obj(m)?.contextWindow) || window;
+      const ok = o.is_error !== true && o.subtype === 'success';
       return {
-        type: 'result', ok: o.is_error !== true && o.subtype === 'success', text: str(o.result) || '',
+        type: 'result', ok, text: str(o.result) || '',
         sessionId: str(o.session_id), costUsd: typeof o.total_cost_usd === 'number' ? o.total_cost_usd : null,
         usage: tokenUse(obj(o.usage)), window,
+        // why it failed: an API status the CLI sends (api_error_status), else the result subtype (failed.ts reads it)
+        reason: ok ? null : STATUS_REASONS[num(o.api_error_status)] || str(o.subtype) || null,
       };
     }
     case 'rate_limit_event': {
@@ -146,10 +153,10 @@ export const userSent = (c: NativeChat, text: string, at = new Date().toISOStrin
 const ERRORS: Record<string, string> = { start_failed: 'Claude couldn’t start on this tablet. Sign in under Settings → Apps → Claude, then try again.' };
 
 /** The note for a reply that failed. A plan limit still rejected at `at` reads "Limit reached, resets <time>". */
-function failedNote(c: NativeChat, text: string, at: string): string {
+function failedNote(c: NativeChat, text: string, at: string, reason: string | null): string {
   const now = Date.parse(at);
   const rejected = Object.values(c.limits).filter(l => l.status === 'rejected' && (!l.resetsAt || Date.parse(l.resetsAt) > now));
-  if (!rejected.length && !/usage limit|limit reached/i.test(text)) return 'That reply didn’t finish. Try again.';
+  if (!rejected.length && !/usage limit|limit reached/i.test(text)) return failedSentence(reason);
   const latest = rejected.map(l => l.resetsAt).filter((r): r is string => !!r).sort().pop();
   return latest ? `Limit reached, resets ${resetText(latest, now)}` : 'Limit reached';
 }
@@ -177,7 +184,7 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
       if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial || (e.ok ? e.text : ''))), running: false, partial: '', stopped: false,
         sessionId: e.sessionId || c.sessionId, error: 'Stopped', tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
       return { ...c, entries: e.ok ? withReply(e.text || c.partial) : withReply(c.partial), running: false, partial: '',
-        sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at),
+        sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at, e.reason ?? null),
         tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
     case 'limits': {
       const limits = { ...c.limits };

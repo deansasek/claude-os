@@ -31,6 +31,7 @@ import { weatherServer } from '../../weather/server/tools.ts';
 import { routinesServer } from '../../routines/server/tools.ts';
 import { PcInbox, rewakeText, type PcDecision, type WaitAnswer } from './pclink.ts';
 import { openSessions } from './registry.ts';
+import { failedSentence } from '../web/failed.ts';
 
 const APPROVAL_MS = 3 * 60e3;
 const MAX_RUNNING = 2;
@@ -213,11 +214,6 @@ const view = (t: Live): HubTurn => ({
 const runningFor = (sessionId: string) => [...turns.values()].find(t => t.sessionId === sessionId && (t.status === 'running' || t.status === 'approval'));
 /** Is a reply from the Hub running in this session right now? */
 export const hubTurnRunning = (sessionId: string): boolean => !!runningFor(sessionId);
-/** What the screen says when a reply did not finish. The raw SDK reason goes to the console, not the screen. */
-export function failedText(subtype?: string): string {
-  if (subtype === 'error_max_turns') return 'Claude ran out of steps before it finished. Ask it to carry on.';
-  return 'That reply didn’t finish. Try again.';
-}
 
 const step = (t: Live, line: string) => { t.progress.push(line); if (t.progress.length > 20) t.progress.shift(); };
 
@@ -378,6 +374,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
   if (Date.now() - modelsAt > 3600e3) q.supportedModels().then(takeModels, () => { /* keep the list we have */ });
 
   void (async () => {
+    let failReason: string | null = null;   // the assistant error code, when the SDK sent one (failed.ts)
     try {
       for await (const m of q) {
         if (!t.sessionId && 'session_id' in m && m.session_id) { t.sessionId = m.session_id; gotId(m.session_id); }
@@ -388,18 +385,19 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
         }
         if (m.type === 'result') for (const [id, u] of Object.entries(m.modelUsage || {})) if (u.contextWindow > 0) windows.set(id, u.contextWindow);
         if (m.type === 'assistant') {
+          failReason = (m as { error?: string }).error || failReason;
           for (const b of m.message.content) {
             if (b.type === 'tool_use') step(t, describeTool(b.name, b.input as Record<string, any>).summary);
             else if (b.type === 'text' && b.text.trim()) t.reply = b.text.trim().slice(0, 1500);
           }
         } else if (m.type === 'result') {
           if (m.subtype === 'success') { t.reply = String(m.result || t.reply || '').slice(0, 1500); if (t.status !== 'stopped') t.status = 'done'; }
-          else if (t.status !== 'stopped') { t.status = 'error'; t.error = failedText(m.subtype); console.log('turn ended:', m.subtype); }
+          else if (t.status !== 'stopped') { t.status = 'error'; t.error = failedSentence(failReason || m.subtype); console.log('turn ended:', m.subtype, failReason); }
         }
       }
       if (t.status === 'running') t.status = 'done';
     } catch (e) {
-      if (t.status !== 'stopped') { t.status = 'error'; t.error = failedText(); console.log('turn failed:', e); }
+      if (t.status !== 'stopped') { t.status = 'error'; t.error = failedSentence(failReason); console.log('turn failed:', e); }
     } finally {
       t.finishedAt = Date.now(); t.approval = null; t.answer = null; t.q = null;
       endInput();

@@ -30,7 +30,7 @@ test('a result carries the text, cost, token counts and context window', () => {
     usage: { input_tokens: 9, output_tokens: 2, cache_read_input_tokens: 100, cache_creation_input_tokens: 40 },
     modelUsage: { 'claude-haiku-5-5': { contextWindow: 200000 } } });
   assert.deepEqual(parseStreamLine(l), { type: 'result', ok: true, text: 'Hello', sessionId: 's1', costUsd: 0.0012,
-    usage: { input: 9, output: 2, cacheRead: 100, cacheWrite: 40 }, window: 200000 });
+    usage: { input: 9, output: 2, cacheRead: 100, cacheWrite: 40 }, window: 200000, reason: null });
   const noWindow = parseStreamLine(line({ type: 'result', subtype: 'success', is_error: false, result: 'x' }));
   assert.deepEqual(noWindow?.type === 'result' && noWindow.usage, { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
   assert.equal(noWindow?.type === 'result' && noWindow.window, null);
@@ -50,6 +50,18 @@ test('tokens add up over turns; the last turn and the window give the context', 
   assert.deepEqual(c.last, { input: 2, output: 4, cacheRead: 25, cacheWrite: 0 });
   assert.deepEqual(contextOf(c), { used: 27, window: 200000 });
   assert.equal(contextOf(emptyChat()), null);
+});
+
+test('a failed result names its reason: an expired login, a busy API, a turn out of steps', () => {
+  const failed = (o: Record<string, unknown>) => parseStreamLine(line({ type: 'result', subtype: 'success', is_error: true, result: 'API Error', ...o }));
+  const expired = failed({ api_error_status: 401 });
+  assert.equal(expired?.type === 'result' && expired.reason, 'authentication_failed');
+  assert.equal(applyEvent(userSent(emptyChat(), 'Hi', AT), expired!, AT).error, 'Sign in again under Settings → Apps → Claude.');
+  assert.equal(applyEvent(userSent(emptyChat(), 'Hi', AT), failed({ api_error_status: 529 })!, AT).error, 'Claude is busy right now. Try again in a minute.');
+  const steps = parseStreamLine(line({ type: 'result', subtype: 'error_max_turns', is_error: true }));
+  assert.equal(applyEvent(userSent(emptyChat(), 'Hi', AT), steps!, AT).error, 'Claude ran out of steps before it finished. Ask it to carry on.');
+  // an unknown status or subtype keeps the general line
+  assert.equal(applyEvent(userSent(emptyChat(), 'Hi', AT), failed({ api_error_status: 500 })!, AT).error, 'That reply didn’t finish. Try again.');
 });
 
 test('lines that are not JSON or not used give null', () => {
