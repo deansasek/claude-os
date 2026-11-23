@@ -11,6 +11,7 @@ import { initMug } from './mug.ts';
 import { closeSession, currentSession, initReply, nudgeChip, onUsage, openNew, openSession } from './reply.ts';
 import { initVoice, tapToStop } from './voice.ts';
 import { pace, toolWord } from './words.ts';
+import { subagentsWorking } from './sessions/sidebar-groups.ts';
 import { loadModels, modelChoices, newPref, setNewPref, setVoicePref, voicePref } from './sessions/controls.ts';
 import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-settings.ts';
 import { device } from '../../../core/web/device.ts';
@@ -95,7 +96,7 @@ function renderSessions(S: LiveSession[]): void {
     const cls = s.state === 'thinking' || s.state === 'tool' ? 'busy' : s.state === 'waiting' ? 'yours' : '';
     const what = s.state === 'tool' ? toolWord(s.tool) : s.state === 'thinking' ? 'Thinking'
       : s.state === 'waiting' ? `Your turn · ${shortAge(s.age)}` : `Quiet · ${shortAge(s.age)}`;
-    const helpers = s.working ? `${s.working} subagent${s.working > 1 ? 's' : ''} working` : s.subagents ? `${s.subagents} helper${s.subagents > 1 ? 's' : ''}` : null;
+    const helpers = subagentsWorking(s) || (s.subagents ? `${s.subagents} helper${s.subagents > 1 ? 's' : ''}` : null);
     const sub = [s.folder, s.branch && s.branch !== 'HEAD' ? s.branch : null, helpers]
       .filter(Boolean).join(' · ');
     const attrs = s.id ? ` data-id="${esc(s.id)}"` : '';
