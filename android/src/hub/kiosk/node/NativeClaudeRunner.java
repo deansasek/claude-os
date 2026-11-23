@@ -329,6 +329,116 @@ public final class NativeClaudeRunner {
     if (!local) askCode.run();
   }
 
+  // ---------- native chat (milestone 1: Bridge.claudeSend / claudeStop, apps/claude/web/native.ts) ----------
+  // One long-lived `claude -p` in stream-json mode per chat, through the loader and LoopbackProxy (the same env as the
+  // prompt test). Each user message is one stream-json line on its stdin; each stdout line goes to the page as a string
+  // (window.hubClaudeNative), which parses it (native-stream.ts). No tools (--tools=), no permission prompts (dontAsk).
+  // A new chat (no session id) or another session's id starts a new process; a known id with no process resumes it.
+  // Logs carry event types and lengths only: never the prompt, the reply or the session id.
+
+  private static final String CHAT_MODEL = "haiku";
+  private static final ExecutorService chatQueue = Executors.newSingleThreadExecutor(r -> new Thread(r, "native-chat"));
+  private static final java.util.regex.Pattern TYPE = java.util.regex.Pattern.compile("\"type\":\"([a-z_]+)\"");
+  private static final java.util.regex.Pattern SESSION = java.util.regex.Pattern.compile("\"session_id\":\"([^\"]+)\"");
+  private static Process chat;            // the running chat process; null when none
+  private static OutputStream chatIn;
+  private static String chatSession;      // its session id (from system/init)
+
+  /** Bridge.claudeSend: one user message, queued on the chat thread. sessionId '' or null: a new chat. */
+  public static void turn(Context c, String prompt, String sessionId) {
+    Context app = c.getApplicationContext();
+    chatQueue.execute(() -> {
+      try {
+        new NativeClaudeRunner(app, "").sendTurn(prompt, sessionId == null ? "" : sessionId);
+      } catch (Throwable t) {
+        Log.e(TAG, "chat: send failed: " + t.getClass().getSimpleName());
+        chatEvent("{\"type\":\"error\",\"message\":\"start_failed\"}");
+      }
+    });
+  }
+
+  /** Bridge.claudeStop: ends the running chat process (the page gets an exit event; the next send resumes the session). */
+  public static void stopChat() {
+    Process p;
+    synchronized (NativeClaudeRunner.class) { p = chat; }
+    if (p != null) { Log.i(TAG, "chat: stop"); p.destroy(); }
+  }
+
+  private void sendTurn(String prompt, String sessionId) throws Exception {
+    OutputStream in;
+    synchronized (NativeClaudeRunner.class) {
+      boolean same = chat != null && chat.isAlive() && !sessionId.isEmpty() && sessionId.equals(chatSession);
+      if (!same && chat != null) { chat.destroy(); chat = null; chatIn = null; }   // replaced: its exit stays quiet
+      in = same ? chatIn : null;
+    }
+    if (in == null) in = startChat(sessionId);
+    String line = new org.json.JSONObject().put("type", "user")
+        .put("message", new org.json.JSONObject().put("role", "user").put("content", prompt)).toString();
+    Log.i(TAG, "chat: user message, " + prompt.length() + " chars");
+    in.write((line + "\n").getBytes(StandardCharsets.UTF_8));
+    in.flush();
+  }
+
+  private OutputStream startChat(String resume) throws Exception {
+    String libDir = app.getApplicationInfo().nativeLibraryDir;
+    File dir = new File(app.getFilesDir(), "claude");
+    File bin = new File(dir, "claude");
+    if (!bin.exists() || !new File(dir, "version.txt").exists()) bin = download(dir);   // first run: fetch the CLI
+    if (bin == null) throw new IllegalStateException("no CLI binary");
+    bin.setExecutable(true, true);
+    List<String> cmd = concat(List.of(new File(libDir, LOADER).getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath()),
+        "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+        "--include-partial-messages", "--permission-mode", "dontAsk", "--model", CHAT_MODEL, "--tools=");
+    if (!resume.isEmpty()) cmd = concat(cmd, "--resume", resume);
+    LoopbackProxy proxy = LoopbackProxy.start(l -> Log.i(TAG, l));
+    File home = app.getFilesDir();
+    File tmp = new File(home, "tmp");
+    tmp.mkdirs();
+    ProcessBuilder pb = new ProcessBuilder(cmd).directory(home);
+    pb.environment().put("HOME", home.getAbsolutePath());
+    pb.environment().put("TMPDIR", tmp.getAbsolutePath());
+    pb.environment().putAll(Map.of("DISABLE_AUTOUPDATER", "1", "BROWSER", "echo",
+        "HTTPS_PROXY", proxy.url(), "HTTP_PROXY", proxy.url(), "NO_PROXY", "localhost,127.0.0.1"));
+    Process p;
+    try { p = pb.start(); } catch (Exception e) { proxy.close(); throw e; }
+    Log.i(TAG, "chat: process started, " + (resume.isEmpty() ? "new session" : "resume"));
+    synchronized (NativeClaudeRunner.class) { chat = p; chatIn = p.getOutputStream(); chatSession = resume.isEmpty() ? null : resume; }
+    new Thread(() -> {
+      try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getErrorStream(), StandardCharsets.UTF_8))) {
+        String l;
+        while ((l = r.readLine()) != null) Log.i(TAG, "chat: stderr line, " + l.length() + " chars");
+      } catch (Exception e) { /* ended */ }
+    }, "native-chat-err").start();
+    new Thread(() -> {
+      try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
+        String l;
+        while ((l = r.readLine()) != null) {
+          java.util.regex.Matcher t = TYPE.matcher(l);
+          String type = t.find() ? t.group(1) : "?";
+          if (!"stream_event".equals(type)) Log.i(TAG, "chat: event " + type + ", " + l.length() + " chars");
+          synchronized (NativeClaudeRunner.class) {
+            if (chat != p) continue;   // replaced by a newer chat
+            if ("system".equals(type)) { java.util.regex.Matcher s = SESSION.matcher(l); if (s.find()) chatSession = s.group(1); }
+          }
+          chatEvent(l);
+        }
+      } catch (Exception e) { /* ended */ }
+      int code = -1;
+      try { p.waitFor(5, TimeUnit.SECONDS); code = p.exitValue(); } catch (Exception e) { p.destroyForcibly(); }
+      proxy.close();
+      boolean current;
+      synchronized (NativeClaudeRunner.class) { current = chat == p; if (current) { chat = null; chatIn = null; } }
+      Log.i(TAG, "chat: process exited, code " + code + (current ? "" : " (replaced)"));
+      if (current) chatEvent("{\"type\":\"exit\",\"code\":" + code + "}");
+    }, "native-chat-out").start();
+    return p.getOutputStream();
+  }
+
+  /** One stream-json line to the page, as a JS string (the page parses it). */
+  private static void chatEvent(String line) {
+    try { MainActivity.claudeNative(org.json.JSONObject.quote(line)); } catch (Throwable t) { Log.e(TAG, "chat: page event failed"); }
+  }
+
   /** Terminal colour and cursor codes out. */
   private static String strip(String s) {
     return s.replaceAll("\u001B\\[[0-?]*[ -/]*[@-~]|\u001B\\][^\u0007\u001B]*(\u0007|\u001B\\\\)", "").trim();

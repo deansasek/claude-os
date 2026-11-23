@@ -109,6 +109,19 @@ public class MainActivity extends Activity {
   }
 
   /**
+   * SPIKE (native chat, node/NativeClaudeRunner): one stream-json line from the tablet's Claude CLI to the page
+   * (apps/claude/web/native.ts), as window.hubClaudeNative(line). jsString is already a quoted JS string.
+   */
+  public static void claudeNative(String jsString) {
+    MainActivity a = live;
+    if (a == null) return;
+    a.runOnUiThread(() -> {
+      if (a.web == null || a.bridge == null || !a.bridge.isAllowed()) return;
+      a.web.evaluateJavascript("window.hubClaudeNative && window.hubClaudeNative(" + jsString + ")", null);
+    });
+  }
+
+  /**
    * SPIKE (CLI sign-in): the sign-in address as a new tab of ClaudeOS's own Browser app, the same path as a link from a
    * Claude reply (Bridge.browserOpenUrl, BrowserView.offer); the Browser page takes it and comes on screen. False if refused.
    */

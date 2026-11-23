@@ -260,6 +260,15 @@
     screenOff: () => { console.info('[mock] On the tablet the screen turns off now.'); return ok(); },
     cliSigninCode: () => { console.info('[mock] On the tablet the code goes to the waiting claude auth login.'); return ok(); },
     cliSigninClipboard: () => j({ text: 'mock-code#mock-state' }),
+    claudeSend: () => {   // a made-up streamed reply, in the CLI's stream-json lines (apps/claude/web/native.ts)
+      const line = (o: Json) => setTimeout(() => (window as unknown as { hubClaudeNative?: (l: string) => void }).hubClaudeNative?.(JSON.stringify(o)), 0);
+      const words = 'On the tablet, this reply comes from the Claude CLI.'.split(' ');
+      line({ type: 'system', subtype: 'init', session_id: 'mock-native' });
+      words.forEach((w, i) => setTimeout(() => line({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: (i ? ' ' : '') + w } } }), 300 + i * 150));
+      setTimeout(() => line({ type: 'result', subtype: 'success', is_error: false, result: words.join(' '), session_id: 'mock-native', usage: {} }), 400 + words.length * 150);
+      return ok();
+    },
+    claudeStop: () => ok(),
     cliSigninState: () => j({ left: -1 }),
     maintenance: () => { alert('On the tablet this opens Android’s Settings (Desk mode pauses until you come back).'); resume(); return ok(); },
     // voice

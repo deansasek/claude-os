@@ -19,6 +19,7 @@ import { historyTitle, initSidebar, sidebarHtml, toggleFolder } from './sessions
 import { initManage, openSessionMenu } from './sessions/manage.ts';
 import { msgKey, type MsgUi, openClips, openGroups, quickReplies, relAgo, SPARK, SPARK_RAYS, transcriptHtml } from './sessions/transcript.ts';
 import { speakable } from './voice.ts';
+import { initNative, NATIVE_ID, nativeOn, nativeSend, nativeStop, nativeView } from './native.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -224,6 +225,7 @@ export const currentSession = (): string | null => (mode === 'session' ? openId 
 async function refresh(): Promise<void> {
   const id = openId;
   if (mode !== 'session' || !id) return;
+  if (id === NATIVE_ID) { view = nativeView(); render(); return; }   // the tablet's own chat (native.ts): no hub
   let v: SessionView;
   // send the version we hold: the Hub answers "unchanged" with no transcript when nothing changed
   const have = view?.version ?? '';
@@ -300,7 +302,7 @@ function render(): void {
     // the chips: changeable when you can reply (applies from your next reply), otherwise what the log says
     ctl: { settings: settingsFor(openId, view.settings), context: view.context ?? null, interactive: !active && view.canReply, show: !!view.settings },
     stop: !!active,
-    mic: !active && view.canReply,
+    mic: !active && view.canReply && openId !== NATIVE_ID,
   });
   paintLog(view, active);   // last, so it measures the conversation at its final height
 }
@@ -329,16 +331,17 @@ function paintFolders(): void {
   $('nsFolders').innerHTML = projects.map(p =>
     `<button class="ns-row${chosen?.id === p.id ? ' on' : ''}" data-project="${esc(p.id)}">${FOLDER_ICON}<span class="ns-name">${esc(p.name)}</span><span class="ns-when">${esc(p.lastUsed ? ago(p.lastUsed) : p.detail)}</span></button>`).join('')
     || '<div class="ns-row empty">No recent folders found.</div>';
-  $('nsHint').textContent = chosen ? `Claude will work in ${chosen.detail.startsWith('~') || chosen.detail.includes('/') ? chosen.detail : chosen.name}.` : 'Pick a folder, then tell Claude what to do.';
+  $('nsHint').textContent = nativeOn() ? 'New chats run on this tablet (Settings → Apps → Claude). No folder needed.' : chosen ? `Claude will work in ${chosen.detail.startsWith('~') || chosen.detail.includes('/') ? chosen.detail : chosen.name}.` : 'Pick a folder, then tell Claude what to do.';
   paintNewComposer();
 }
 
 function paintNewComposer(): void {
-  const ready = !!chosen && !starting;
+  const native = nativeOn();   // Settings → Apps → Claude: new chats run on the tablet (native.ts), no folder needed
+  const ready = (!!chosen || native) && !starting;
   paintComposer({
-    ph: withPhotos(starting && chosen ? `Starting in ${chosen.name}…` : 'Describe a task or ask a question', ready),
+    ph: native ? 'Ask Claude on this tablet' : withPhotos(starting && chosen ? `Starting in ${chosen.name}…` : 'Describe a task or ask a question', ready),
     ready, folder: chosen ? chosen.name : 'Choose folder', pick: true,
-    ctl: { settings: newDefaults(), context: null, interactive: !starting, show: true }, stop: false, mic: ready,
+    ctl: { settings: newDefaults(), context: null, interactive: !starting, show: !native }, stop: false, mic: ready && !native,
   });
   paintStarters(ready);
 }
@@ -371,7 +374,7 @@ async function openNew(): Promise<void> {
   $('sv').classList.remove('readonly');
   $('svTitle').textContent = 'New session';
   $('svSub').textContent = '';
-  $('svState').className = 'live'; $('svStateText').textContent = 'On this computer';
+  $('svState').className = 'live'; $('svStateText').textContent = nativeOn() ? 'On this tablet' : 'On this computer';
   $('svNudge').hidden = true;
   $('svApproval').hidden = true; $('svQuick').hidden = true; $('svBlocked').hidden = true;
   $('nsFolders').innerHTML = '<div class="ns-row empty">Loading folders…</div>';
@@ -386,6 +389,13 @@ async function openNew(): Promise<void> {
 }
 
 function askFirstMessage(): void {
+  if (nativeOn() && !starting) {   // a new chat on the tablet's own Claude CLI: text only, no folder, no PIN
+    Keyboard.open({
+      value: takeDraft(), placeholder: 'Ask Claude on this tablet', autoCap: true, max: 300, done: 'Send',
+      onDone: text => { if (!text.trim()) return; nativeSend(text.trim(), true); picking = false; photos = []; openSession(NATIVE_ID); report('new-native-chat'); },
+    });
+    return;
+  }
   if (!chosen || starting) return;
   const p = chosen;
   Keyboard.open({
@@ -419,7 +429,7 @@ const NEW_ERROR: Record<string, string> = {
 
 /** Send with no text: the photos go as they are (Claude asks what it sees). */
 function sendPhotos(): void {
-  if (mode === 'new' && chosen && !starting) startNewSession(chosen, '');
+  if (mode === 'new' && chosen && !starting && !nativeOn()) startNewSession(chosen, '');
   else if (mode === 'session') send('');
 }
 
@@ -442,6 +452,7 @@ function send(text: string): void {
   if (mode !== 'session' || !openId) return;
   const id = openId;
   sendNote = '';
+  if (id === NATIVE_ID) { if (text) nativeSend(text); report('reply-native'); return; }   // the tablet's own chat
   $('svPh').textContent = 'Sending…';   // shown until the next refresh repaints the composer (every 2 s)
   void withPin(async () => {
     const r = await call<{ ok: boolean; error?: string; turn?: HubTurn }>('reply', { id, text, photoIds: photos, ...wantFor(id) });
@@ -479,6 +490,7 @@ function answer(allow: boolean, then: HubPermission = 'default'): void {
 function stop(): void {
   const t = activeTurn();
   if (!t) return;
+  if (openId === NATIVE_ID) { nativeStop(); report('stop-native'); return; }
   void withPin(async () => { await call('stop', { turn: t.id }); report('stop'); void refresh(); });
 }
 
@@ -699,6 +711,7 @@ export function initReply(context: AppContext): void {
   initPin(ctx);
   initSidebar(() => paintSidebar(true));
   onMicChange(repaintComposer);
+  initNative(() => { if (mode === 'session' && openId === NATIVE_ID) void refresh(); });   // the tablet's chat streams in
 
   // the dashboard's list
   $('sess').addEventListener('click', e => {

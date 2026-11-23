@@ -894,6 +894,22 @@ public class Bridge {
     String r = hub.kiosk.node.NativeClaudeRunner.clipboardCode(act, text);
     return r == null ? "{\"text\":" + JSONObject.quote(text.toString()) + "}" : err(r);
   }
+  /**
+   * SPIKE (native chat, apps/claude/web/native.ts): one message to the tablet's own Claude CLI. sessionId '' starts a
+   * new chat. Events come back as window.hubClaudeNative(line). The text is never logged.
+   */
+  @JavascriptInterface public String claudeSend(String text, String sessionId) {
+    if (!allowed) return DENIED;
+    if (text == null || text.trim().isEmpty()) return err("empty");
+    hub.kiosk.node.NativeClaudeRunner.turn(act, text, sessionId);
+    return OK;
+  }
+  /** SPIKE (native chat): stops the running chat process. */
+  @JavascriptInterface public String claudeStop() {
+    if (!allowed) return DENIED;
+    hub.kiosk.node.NativeClaudeRunner.stopChat();
+    return OK;
+  }
   /** SPIKE (CLI sign-in): {"left":s}, the seconds left for a login that takes a code, or -1 when none runs. */
   @JavascriptInterface public String cliSigninState() {
     if (!allowed) return DENIED;
