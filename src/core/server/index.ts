@@ -6,6 +6,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { stripTypeScriptTypes } from 'node:module';
+import { gzipSync } from 'node:zlib';
 import type { Binary, Route, ServerApp } from './app.ts';
 import { config } from './config.ts';
 import { HUB, PUBLIC, SRC } from './paths.ts';
@@ -21,12 +22,36 @@ function send(res: http.ServerResponse, code: number, body: string | Buffer, typ
 }
 const json = (res: http.ServerResponse, obj: unknown) => send(res, 200, JSON.stringify(obj ?? null), 'application/json', 'no-store');
 
+/** Text types worth gzipping (pictures such as .png are already compressed). */
+const GZIP_EXT = new Set(['.html', '.css', '.js', '.ts', '.json', '.svg']);
+
+/** True when an Accept-Encoding header allows gzip (a "gzip;q=0" refuses it). */
+export function acceptsGzip(header: string | string[] | undefined): boolean {
+  const value = Array.isArray(header) ? header.join(',') : header || '';
+  return value.split(',').some(part => {
+    const [name, ...params] = part.trim().toLowerCase().split(';').map(s => s.trim());
+    if (name !== 'gzip' && name !== 'x-gzip') return false;
+    const q = params.find(p => p.startsWith('q='));
+    return !q || Number(q.slice(2)) > 0;
+  });
+}
+
+/** True when an If-None-Match header names this ETag (a list, a weak W/ form, or "*"). */
+function etagMatches(header: string | undefined, etag: string): boolean {
+  if (!header) return false;
+  return header.split(',').some(t => { const v = t.trim(); return v === '*' || v === etag || v === `W/${etag}`; });
+}
+
 /**
  * A served file, with an ETag. The browser revalidates on each load (no-cache), so an unchanged file
- * answers 304 with no body. A .ts file is stripped to plain JS once per change, not once per request.
+ * answers 304 with no body; an edited file is sent again at once. A .ts file is stripped to plain JS once
+ * per change, not once per request, and a text file is gzipped at most once per change when the client
+ * accepts gzip. The gzip body has its own ETag (the plain ETag with "-gz"), because it is a different
+ * byte sequence: a 304 is sent only when the client already holds the variant it would get now.
  */
-const staticCache = new Map<string, { key: string; body: Buffer | string; etag: string }>();
-function serveStatic(req: http.IncomingMessage, res: http.ServerResponse, file: string): void {
+type StaticEntry = { key: string; body: Buffer | string; etag: string; gz?: Buffer };
+const staticCache = new Map<string, StaticEntry>();
+export function serveStatic(req: http.IncomingMessage, res: http.ServerResponse, file: string): void {
   const st = fs.statSync(file);
   const key = `${st.mtimeMs}:${st.size}`;
   let entry = staticCache.get(file);
@@ -39,16 +64,24 @@ function serveStatic(req: http.IncomingMessage, res: http.ServerResponse, file: 
     entry = { key, body, etag };
     staticCache.set(file, entry);
   }
-  const type = TYPES[path.extname(file)] || 'application/octet-stream';
-  if (req.headers['if-none-match'] === entry.etag) {
-    res.writeHead(304, { 'Cache-Control': 'no-cache', ETag: entry.etag });
+  const ext = path.extname(file);
+  const type = TYPES[ext] || 'application/octet-stream';
+  const compressible = GZIP_EXT.has(ext);
+  const gzip = compressible && acceptsGzip(req.headers['accept-encoding']);
+  if (gzip && !entry.gz) entry.gz = gzipSync(entry.body);
+  const etag = gzip ? `${entry.etag.slice(0, -1)}-gz"` : entry.etag;
+  const headers: http.OutgoingHttpHeaders = { 'Cache-Control': 'no-cache', ETag: etag };
+  if (compressible) headers.Vary = 'Accept-Encoding';
+  if (etagMatches(req.headers['if-none-match'], etag)) {
+    res.writeHead(304, headers);
     res.end();
     return;
   }
+  const body = gzip ? entry.gz! : entry.body;
   res.writeHead(200, {
-    'Content-Type': type, 'Cache-Control': 'no-cache', ETag: entry.etag, 'Content-Length': Buffer.byteLength(entry.body),
+    ...headers, 'Content-Type': type, 'Content-Length': Buffer.byteLength(body), ...(gzip ? { 'Content-Encoding': 'gzip' } : {}),
   });
-  res.end(entry.body);
+  res.end(body);
 }
 
 /** A JSON body's size limit: a browser result can carry a whole screenshot (a base64 picture), so this is generous. */
