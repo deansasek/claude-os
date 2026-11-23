@@ -1,4 +1,4 @@
-// The PC link's key: the hooks in scripts/pc-bridge.ts read .pc-bridge.json (the hub's address and a random key) and
+// The PC link's key: the hooks in scripts/claude-os-pc-hook.ts read .pc-bridge.json (the hub's address and a random key) and
 // send the key with every call, so only processes on this PC that can read the hub's folder reach the pc/* routes.
 // The file is kept across restarts (the hooks of open sessions keep working) and is never sent to the tablet.
 import crypto from 'node:crypto';

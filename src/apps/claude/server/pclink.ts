@@ -1,7 +1,7 @@
 // The PC link: how a reply or an approval typed on the tablet reaches a Claude Code session that is open on the PC
-// (the CLI or the desktop app). Pure parts only, shared by the hub (turns.ts) and the hook script (scripts/pc-bridge.ts).
+// (the CLI or the desktop app). Pure parts only, shared by the hub (turns.ts) and the hook script (scripts/claude-os-pc-hook.ts).
 //
-// Two Claude Code hooks carry it (scripts/pc-bridge.ts installs them in ~/.claude/settings.json):
+// Two Claude Code hooks carry it (scripts/claude-os-pc-hook.ts installs them in ~/.claude/settings.json):
 //   Stop (asyncRewake)   runs in the background after each turn and long-polls the hub. When the tablet sends a
 //                        reply, the hook prints it to stderr and exits 2, which wakes that same session with it.
 //   PermissionRequest    while the tablet drives the session, asks the hub first; the tablet's answer is the
@@ -9,7 +9,7 @@
 // Nothing here imports the hub, so the hook script can load it without starting anything.
 
 /** Marks the hook commands this file installs, so they can be found and replaced. */
-export const HOOK_MARK = 'pc-bridge.ts';
+export const HOOK_MARK = 'claude-os-pc-hook.ts';
 /** How long the background Stop hook may live (seconds). It also ends when the hub says the session closed. */
 export const STOP_HOOK_TIMEOUT_S = 24 * 3600;
 /** How long the PermissionRequest hook may wait (seconds): longer than the hub's 3-minute approval window. */
