@@ -1,10 +1,10 @@
 // The PC link: lets the tablet reply to, and answer permission prompts of, Claude Code sessions open on this PC
 // (the CLI or the desktop app). See src/apps/claude/server/pclink.ts for how it works.
 //
-//   node scripts/pc-bridge.ts install     add the two hooks to ~/.claude/settings.json (a backup is kept next to it)
-//   node scripts/pc-bridge.ts uninstall   remove them again
-//   node scripts/pc-bridge.ts stop        (run by Claude Code) the background Stop hook
-//   node scripts/pc-bridge.ts permission  (run by Claude Code) the PermissionRequest hook
+//   node scripts/claude-os-pc-hook.ts install     add the two hooks to ~/.claude/settings.json (a backup is kept next to it)
+//   node scripts/claude-os-pc-hook.ts uninstall   remove them again
+//   node scripts/claude-os-pc-hook.ts stop        (run by Claude Code) the background Stop hook
+//   node scripts/claude-os-pc-hook.ts permission  (run by Claude Code) the PermissionRequest hook
 //
 // Sessions already open load the hooks once they are reopened. The hooks do nothing in turns the hub runs itself.
 import crypto from 'node:crypto';
@@ -91,7 +91,7 @@ function readSettings(): Record<string, any> {
 
 function writeSettings(next: Record<string, any>): void {
   fs.mkdirSync(path.dirname(SETTINGS), { recursive: true });
-  if (fs.existsSync(SETTINGS)) fs.copyFileSync(SETTINGS, `${SETTINGS}.claudeos-backup`);
+  if (fs.existsSync(SETTINGS)) fs.copyFileSync(SETTINGS, `${SETTINGS}.claude-os-pc-hook-backup`);
   fs.writeFileSync(SETTINGS, JSON.stringify(next, null, 2) + '\n', 'utf8');
 }
 
@@ -106,7 +106,7 @@ async function main(): Promise<number> {
     const q = (p: string) => `"${p.replace(/\\/g, '/')}"`;
     const command = `${q(process.execPath)} --disable-warning=ExperimentalWarning ${q(SCRIPT)}`;
     writeSettings(withBridgeHooks(readSettings(), command));
-    console.log(`PC link hooks added to ${SETTINGS} (backup: settings.json.claudeos-backup).`);
+    console.log(`PC link hooks added to ${SETTINGS} (backup: settings.json.claude-os-pc-hook-backup).`);
     console.log('Reopen any Claude Code session that is already open so it loads them.');
     return 0;
   }
@@ -115,7 +115,7 @@ async function main(): Promise<number> {
     console.log(`PC link hooks removed from ${SETTINGS}.`);
     return 0;
   }
-  console.log('usage: node scripts/pc-bridge.ts install | uninstall');
+  console.log('usage: node scripts/claude-os-pc-hook.ts install | uninstall');
   return 1;
 }
 

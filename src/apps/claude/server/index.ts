@@ -88,7 +88,7 @@ const app: ServerApp = {
         return { ok: true };
       },
     },
-    // the PC link (scripts/pc-bridge.ts): hooks in sessions open on the PC, with the key from .pc-bridge.json (no PIN: they run on the PC)
+    // the PC link (scripts/claude-os-pc-hook.ts): hooks in sessions open on the PC, with the key from .pc-bridge.json (no PIN: they run on the PC)
     { method: 'POST', path: 'pc/wait', handle: ({ body, signal }) => (pcKeyOk(body.key) ? pcWait(body, signal) : { ok: false, error: 'bad_key' }) },
     { method: 'POST', path: 'pc/permission', handle: ({ body, signal }) => (pcKeyOk(body.key) ? pcPermission(body, signal) : { ok: false, error: 'bad_key' }) },
     {

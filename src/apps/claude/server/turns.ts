@@ -336,7 +336,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
       // (calendar/server/tools.ts) join the same way, under the same approvals.
       mcpServers: { ...(pluginOpts.mcpServers ?? {}), claudeos_browser: browserServer, claudeos_ha: haServer, claudeos_tablet: tabletServer, claudeos_lists: listsServer, claudeos_calendar: calendarServer, claudeos_weather: weatherServer, claudeos_routines: routinesServer },
       abortController: t.abort,
-      // the PC link's hooks (scripts/pc-bridge.ts) load with the user's settings: this tells them the Hub runs this turn
+      // the PC link's hooks (scripts/claude-os-pc-hook.ts) load with the user's settings: this tells them the Hub runs this turn
       env: { ...process.env, CLAUDEOS_HUB_TURN: '1' },
       ...(append ? { systemPrompt: { type: 'preset' as const, preset: 'claude_code' as const, append } } : {}),
       canUseTool: (tool, input, { signal }) => new Promise(resolve => {
@@ -452,7 +452,7 @@ function sendToPc(sessionId: string, title: string, text: string, from: string, 
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * One long poll from a PC session's Stop hook (scripts/pc-bridge.ts). `fresh`: the first poll after a turn ended on
+ * One long poll from a PC session's Stop hook (scripts/claude-os-pc-hook.ts). `fresh`: the first poll after a turn ended on
  * the PC, so a PC turn sent from here is done (`lastText`: Claude's last words in it).
  */
 export async function pcWait(body: Record<string, unknown>, signal: AbortSignal): Promise<{ ok: boolean; error?: string; answer?: WaitAnswer }> {
