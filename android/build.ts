@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { delimiter, dirname, join, relative, sep } from 'node:path';
 import {
-  androidJar, binPath, buildTools, fail, here, jdkTool, platformTools, run, tools,
+  androidJar, binPath, buildTools, fail, here, jdkTool, keystorePath, keystoreProblem, platformTools, run, tools,
 } from './toolchain.ts';
 
 function args(argv: string[]): { install: boolean; device: string } {
@@ -51,6 +51,9 @@ function writeHubConfig(genDir: string): void {
 
 function main(): void {
   const { install, device } = args(process.argv.slice(2));
+  // the signing key must already exist (stop before any work; never make a new one)
+  const keyProblem = keystoreProblem();
+  if (keyProblem) fail(keyProblem);
   const out = join(here, 'build');
   rmSync(out, { recursive: true, force: true });
   const gen = join(out, 'gen');
@@ -64,7 +67,6 @@ function main(): void {
   const apksigner = binPath(buildTools, 'apksigner');
   const javac = jdkTool('javac');
   const jarTool = jdkTool('jar');
-  const keytool = jdkTool('keytool');
   const adb = binPath(platformTools, 'adb');
 
   // voice (Vosk + JNA + the speech model), fetched by setup-voice.ts into tools/voice
@@ -138,15 +140,8 @@ function main(): void {
 
   run(zipalign, ['-p', '-f', '4', unsigned, join(out, 'aligned.apk')], 'zipalign');
 
-  // the app's signing key: made once, kept next to this script (updates must be signed with the same key)
-  const ks = join(here, 'hub.keystore');
-  if (!existsSync(ks)) {
-    // keytool writes its prompts to stderr; keep them out of the build log
-    run(keytool, [
-      '-genkeypair', '-keystore', ks, '-alias', 'hub', '-storepass', 'hubkiosk', '-keypass', 'hubkiosk',
-      '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000', '-dname', 'CN=Claude Hub',
-    ], 'keytool', { quiet: true });
-  }
+  // the app's signing key, kept next to this script (updates must be signed with the same key)
+  const ks = keystorePath;
   const apk = join(out, 'claude-hub.apk');
   run(apksigner, [
     'sign', '--ks', ks, '--ks-pass', 'pass:hubkiosk', '--key-pass', 'pass:hubkiosk',
