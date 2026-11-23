@@ -8,6 +8,7 @@
   "scripts": {
     "check": "tsc -p . && npm run check:web",
     "check:web": "node --disable-warning=ExperimentalWarning scripts/check-web-imports.ts",
+    "check:tests": "node --disable-warning=ExperimentalWarning scripts/check-test-list.ts",
     "setup": "node --disable-warning=ExperimentalWarning scripts/setup.ts",
     "pc-link": "node --disable-warning=ExperimentalWarning scripts/claude-os-pc-hook.ts install",
     "start": "node --disable-warning=ExperimentalWarning src/main.server.ts",
