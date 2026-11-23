@@ -387,6 +387,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
     let failReason: string | null = null;   // the assistant error code, when the SDK sent one (failed.ts)
     try {
       for await (const m of q) {
+        t.lastEventAt = Date.now();   // every SDK message counts as an event, so the stalled line only shows after real silence
         if (!t.sessionId && 'session_id' in m && m.session_id) { t.sessionId = m.session_id; gotId(m.session_id); }
         // the mode can change mid-turn (e.g. leaving Plan mode): remember it for the next reply
         if (m.type === 'system' && 'permissionMode' in m && t.sessionId) {
