@@ -199,6 +199,9 @@ function resetText(iso: string, now: number): string {
     : d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
 }
 
+/** True when a reply that was running ended well (no error note, not stopped): the "Claude finished" alert fires then. */
+export const replyFinished = (prev: NativeChat, next: NativeChat): boolean => prev.running && !next.running && next.error == null;
+
 /** The kept part of a stopped reply, marked so the chat shows where it was cut. Empty when nothing streamed. */
 const stoppedText = (text: string): string => (text ? `${text} (stopped)` : '');
 

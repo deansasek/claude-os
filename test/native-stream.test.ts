@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   applyEvent, chatAge, chatListed, clearedChat, contextOf, durationText, elapsedText, emptyChat, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
-  newerSaved, parseStreamLine, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
+  newerSaved, parseStreamLine, replyFinished, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
 const AT = '2026-11-23T10:00:00.000Z';
@@ -390,4 +390,14 @@ test('the Usage page asks the CLI again only when the newest limit is old or mis
   assert.equal(usageStale([seen('five_hour', 1, null)], 600e3, now), true);
   assert.equal(usageStale([seen('five_hour', 1, AT)], 600e3, now + 599e3), false);
   assert.equal(usageStale([seen('five_hour', 1, AT)], 600e3, now + 601e3), true);
+});
+
+test('replyFinished: a reply that ends well, and no other end', () => {
+  const running = userSent(emptyChat(), 'Hi', AT);
+  const ok: NativeEvent = { type: 'result', ok: true, text: 'Hello', sessionId: 's1', costUsd: null, usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, window: null };
+  assert.equal(replyFinished(running, applyEvent(running, ok, AT)), true);
+  assert.equal(replyFinished(running, applyEvent(running, { type: 'exit', code: 0 }, AT)), false);
+  assert.equal(replyFinished(running, applyEvent(running, { type: 'result', ok: false, text: 'x', sessionId: null, costUsd: null, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, window: null, reason: 'rate_limit' }, AT)), false);
+  assert.equal(replyFinished(running, applyEvent(applyEvent(running, { type: 'stop' }, AT), ok, AT)), false);
+  assert.equal(replyFinished(emptyChat(), applyEvent(emptyChat(), ok, AT)), false);
 });
