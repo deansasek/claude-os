@@ -252,10 +252,27 @@ function settlePcTurns(): void {
   for (const t of live) if (!open.has(t.sessionId)) { inbox.forget(t.sessionId); endPcTurn(t, 'error', null, 'The session closed on your PC.'); }
 }
 
+/** A turn as the pruning sees it. */
+export interface KeepTurn { id: string; sessionId: string; status: string; startedAt: string; finishedAt: number | null }
+
+/** The ids to drop from the turn list at `now`. A finished turn goes after keepMs, except the latest turn of a session
+ *  when that turn ended in an error: it stays until the session's next turn starts (see launch). */
+export function turnsToDrop(list: KeepTurn[], now: number, keepMs: number): string[] {
+  const latest = new Map<string, KeepTurn>();
+  for (const t of list) {
+    if (!t.sessionId) continue;
+    const cur = latest.get(t.sessionId);
+    if (!cur || t.startedAt.localeCompare(cur.startedAt) > 0) latest.set(t.sessionId, t);
+  }
+  return list
+    .filter(t => t.finishedAt && now - t.finishedAt > keepMs && !(t.status === 'error' && latest.get(t.sessionId) === t))
+    .map(t => t.id);
+}
+
 export function listTurns(): HubTurn[] {
   settlePcTurns();
-  const now = Date.now();
-  for (const [id, t] of turns) if (t.finishedAt && now - t.finishedAt > KEEP_FINISHED_MS) turns.delete(id);
+  const drop = turnsToDrop([...turns.values()].map(t => ({ id: t.id, sessionId: t.sessionId, status: t.status, startedAt: t.startedAt, finishedAt: t.finishedAt })), Date.now(), KEEP_FINISHED_MS);
+  for (const id of drop) turns.delete(id);
   return [...turns.values()].map(view);
 }
 
@@ -323,6 +340,8 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
     q: null, abort: new AbortController(), answer: null, finishedAt: null, lastEventAt: Date.now(),
   };
   turns.set(t.id, t);
+  // a session's next turn replaces its kept error turn (turnsToDrop keeps that one until now)
+  if (o.resume) for (const [id, old] of turns) if (id !== t.id && old.sessionId === o.resume && old.status === 'error') turns.delete(id);
   let gotId!: (id: string) => void;
   const sessionId = new Promise<string>(resolve => { gotId = resolve; });
   if (o.resume) gotId(o.resume);
