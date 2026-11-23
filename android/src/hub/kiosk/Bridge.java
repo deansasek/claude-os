@@ -603,6 +603,13 @@ public class Bridge {
     try { dpm().reboot(admin()); return OK; } catch (Exception e) { return err(e.toString()); }
   }
 
+  /** The power menu's Turn off screen: Android's lock (device admin force-lock). The keyguard is off, so the power button wakes straight to ClaudeOS. */
+  @JavascriptInterface public String screenOff() {
+    if (!allowed) return DENIED;
+    if (!act.isOwner()) return err("Finish Desk mode setup first.");
+    try { dpm().lockNow(); return OK; } catch (Exception e) { return err(e.toString()); }
+  }
+
   /** Unpin and open Android's Settings; pressing Home (or the app restarting) locks it down again. */
   @JavascriptInterface public String maintenance() {
     if (!allowed) return DENIED;

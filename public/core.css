@@ -270,6 +270,21 @@
   .lock-pad .pin-done { margin-top: 16px; height: 56px; border-radius: 14px; line-height: 56px; font-size: 17px; }
   @media (prefers-reduced-motion: reduce) { .lock-crit .crit-body { animation: none; } }
   :root.reduce-motion .lock-crit .crit-body { animation: none; }
+  /* the power menu (core/web/power-sheet.ts): a long press of the power button. Over everything but the PIN lock. */
+  .pw { position: absolute; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; background: rgba(20, 20, 19, .32);
+    font-family: var(--sans); animation: wel-fade var(--dur-base) var(--ease-out); }
+  :root[data-theme="dark"] .pw { background: rgba(0, 0, 0, .55); }
+  .pw[hidden] { display: none; }
+  .pw-card { width: 440px; padding: 22px 24px 18px; border-radius: 18px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 16px 48px rgba(20, 20, 19, .2); }
+  :root[data-theme="dark"] .pw-card { background: var(--card); box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
+  .pw-card h3 { margin: 0 0 8px; font: 600 18px var(--sans); color: var(--text); }
+  .pw-card p { margin: 0; font-size: 14px; line-height: 1.45; color: var(--t2); }
+  .pw-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+  .pw-btn { all: unset; box-sizing: border-box; position: relative; cursor: pointer; min-height: 52px; padding: 0 18px; border-radius: 12px; display: flex;
+    align-items: center; justify-content: center; font: 500 16px var(--sans); color: var(--text); background: var(--card-2); }
+  .pw-btn[hidden] { display: none; }
+  .pw-btn:active { transform: scale(.98); }
+  .pw-btn.ghost { background: transparent; color: var(--t2); }
   /* the first-run welcome (core/web/welcome.ts): one calm sheet over the stage, a few short steps, all skippable.
      Under the keyboard (20) and the controls (50) and banners (60), over the apps and the rail. */
   .wel { position: absolute; inset: 0; z-index: 19; display: flex; flex-direction: column; align-items: center; box-sizing: border-box;

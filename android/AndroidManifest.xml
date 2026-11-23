@@ -70,6 +70,11 @@
         <category android:name="android.intent.category.HOME" />
         <category android:name="android.intent.category.DEFAULT" />
       </intent-filter>
+      <!-- a long press of the power button (power_button_long_press=4) opens ClaudeOS's power menu (MainActivity.showPowerMenu) -->
+      <intent-filter>
+        <action android:name="android.intent.action.VOICE_ASSIST" />
+        <category android:name="android.intent.category.DEFAULT" />
+      </intent-filter>
       <!-- default browser: a web link from another app opens in the Browser app (BrowserView.fromIntent) -->
       <intent-filter>
         <action android:name="android.intent.action.VIEW" />

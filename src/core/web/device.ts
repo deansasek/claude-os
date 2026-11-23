@@ -12,6 +12,7 @@ interface HubDeviceApi {
   volume(): string; setVolume(which: 'media' | 'alarm' | 'notification', v: number): string;
   apps(): string; setAppHidden(pkg: string, hidden: boolean): string;
   reboot(): string; maintenance(): string;
+  screenOff?(): string;   // newer app builds: the power menu's Turn off screen
   setup(): string; fix(id: string): string; setKiosk(on: boolean): string;
   keyboardStatus?(): string; keyboardSetDefault?(): string; keyboardClearLearned?(): string;   // newer app builds
   keyboardPrefs?(): string; keyboardSetPref?(name: string, on: boolean): string;   // newer app builds: suggestions, key sounds
@@ -94,6 +95,8 @@ export const device = {
   apps: () => call<AppEntry[]>(a => a.apps()),
   setAppHidden: (pkg: string, hidden: boolean) => call<{ ok: boolean }>(a => a.setAppHidden(pkg, hidden)),
   reboot: () => call<{ ok: boolean }>(a => a.reboot()),
+  /** The screen off now (Android's lock, with no lock screen: the power button wakes it). Throws on older app builds. */
+  screenOff: () => call<{ ok: boolean }>(a => a.screenOff!()),
   maintenance: () => call<{ ok: boolean }>(a => a.maintenance()),
   /** One-time Android settings that make the tablet a kiosk without device owner. Older app builds lack it. */
   setup: (): Setup | null => { try { return call<Setup>(a => a.setup()); } catch { return null; } },
