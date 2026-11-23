@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { LiveSession, NextStep, SessionState, TranscriptEntry } from '../api.ts';
 import { describeTool } from './describe.ts';
+import { mayTrackSubagent, runningSubagents } from './subagents.ts';
 import { type ChoiceEvent, currentChoices, WRAP_UP_TOOL } from '../web/sessions/next-step.ts';
 import { tabletReplyIn } from './pclink.ts';
 import { PROJECTS } from '../../../core/server/paths.ts';
@@ -19,6 +20,7 @@ interface Info {
   cwd: string | null; branch: string | null; model: string | null;
   state: SessionState | null; tool: string | null; last: string | null; entry: string | null;
   lastText: string | null;     // Claude's most recent words in this session
+  working: number;             // subagents this session is running right now
 }
 
 /** Server-only details the Hub never sees directly (paths stay on this PC). */
@@ -54,7 +56,8 @@ function readSession(file: string): Info {
   if (start > 0) lines.shift();   // first line is probably partial
 
   const info: Info = { id: null, title: null, agent: null, prompt: null, cwd: null, branch: null,
-    model: null, state: null, tool: null, last: null, entry: null, lastText: null };
+    model: null, state: null, tool: null, last: null, entry: null, lastText: null, working: 0 };
+  const subEvents: any[] = [];   // events that show subagents starting and ending (see subagents.ts)
   for (const raw of lines) {
     let o: any;
     try { o = JSON.parse(raw); } catch { continue; }
@@ -64,6 +67,7 @@ function readSession(file: string): Info {
     else if (t === 'agent-name' && o.agentName) info.agent = o.agentName;
     else if (t === 'last-prompt' && o.lastPrompt) info.prompt = o.lastPrompt;
     if (o.isSidechain) continue;
+    if (mayTrackSubagent(raw)) subEvents.push(o);
     if (o.cwd) info.cwd = o.cwd;
     if (o.gitBranch) info.branch = o.gitBranch;
     if (o.entrypoint) info.entry = o.entrypoint;
@@ -90,6 +94,7 @@ function readSession(file: string): Info {
     }
     if (o.timestamp && ['user', 'assistant', 'api-request', 'system'].includes(t)) info.last = o.timestamp;
   }
+  info.working = runningSubagents(subEvents);
   cache.set(file, { key, info });
   return info;
 }
@@ -113,7 +118,7 @@ function describe(file: string, now: number, open: Set<string> | Map<string, unk
   const fromHub = !!(s.id && hubIds.has(s.id));
   const title = s.title || s.agent || (fromHub && s.id ? hubSession(s.id)?.title : null) || (s.prompt || '').slice(0, 60) || fo.name || 'Session';
   const live: LiveSession = { id: s.id, title, folder: fo.name, folderId: fo.id, branch: s.branch, model: s.model, state, tool: s.tool,
-    age: Math.round(age), subagents, tokens: (s.id && tokensBySession.get(s.id)) || 0, surface: s.entry,
+    age: Math.round(age), subagents, working: s.working, tokens: (s.id && tokensBySession.get(s.id)) || 0, surface: s.entry,
     open: !!(s.id && open.has(s.id)), hub: fromHub };
   return s.id && s.cwd ? { id: s.id, cwd: s.cwd, file, model: s.model, lastText: s.lastText, live } : { id: '', cwd: '', file, model: null, lastText: null, live };
 }
