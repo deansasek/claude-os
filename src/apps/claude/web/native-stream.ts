@@ -361,8 +361,8 @@ const SAVED_ENTRIES = 100;
 /** The chat as JSON for the store: the session, the entries and the token counts. Never the streaming reply.
  *  savedAt: when it was saved (ms), so the newer of two copies wins (newerSaved). */
 export function saveChat(c: NativeChat, savedAt = Date.now()): string {
-  return JSON.stringify({ v: 1, savedAt, sessionId: c.sessionId, entries: c.entries.slice(-SAVED_ENTRIES), tokens: c.tokens, last: c.last, window: c.window, limits: c.limits,
-    lastModel: c.lastModel, lastMs: c.lastMs });
+  return JSON.stringify({ v: 1, savedAt, sessionId: c.sessionId, entries: c.entries.slice(-SAVED_ENTRIES), error: c.running ? null : c.error, tokens: c.tokens, last: c.last, window: c.window,
+    limits: c.limits, lastModel: c.lastModel, lastMs: c.lastMs });
 }
 
 /** Of the copy in the app's file and the copy in localStorage, the one saved last (the file on a tie, or when the
@@ -394,7 +394,8 @@ export function loadChat(s: string | null): NativeChat {
       if (l) limits[type] = { type, status: str(l.status) || '', used: typeof l.used === 'number' && Number.isFinite(l.used) ? l.used : null,
         resetsAt: str(l.resetsAt), at: str(l.at) };
     }
-    return { ...emptyChat(), sessionId: str(o.sessionId), entries: entries.slice(-SAVED_ENTRIES), tokens: tokenUse(obj(o.tokens)),
+    // the note of the last reply (a failure or Stopped) stays on screen after a reload
+    return { ...emptyChat(), sessionId: str(o.sessionId), entries: entries.slice(-SAVED_ENTRIES), error: str(o.error), tokens: tokenUse(obj(o.tokens)),
       last: o.last ? tokenUse(obj(o.last)) : null, window: num(o.window) || null, limits,
       lastModel: str(o.lastModel), lastMs: typeof o.lastMs === 'number' && Number.isFinite(o.lastMs) ? o.lastMs : null };
   } catch { return emptyChat(); }
