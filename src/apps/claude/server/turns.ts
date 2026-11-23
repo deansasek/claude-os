@@ -29,6 +29,8 @@ import { listsServer } from '../../lists/server/tools.ts';
 import { calendarServer } from '../../calendar/server/tools.ts';
 import { weatherServer } from '../../weather/server/tools.ts';
 import { routinesServer } from '../../routines/server/tools.ts';
+import { PcInbox, rewakeText, type PcDecision, type WaitAnswer } from './pclink.ts';
+import { openSessions } from './registry.ts';
 
 const APPROVAL_MS = 3 * 60e3;
 const MAX_RUNNING = 2;
@@ -197,8 +199,12 @@ interface Live extends HubTurn {
   abort: AbortController;
   answer: ((allow: boolean, next?: HubPermission) => void) | null;
   finishedAt: number | null;
+  /** A reply sent into a session open on the PC (pclink.ts): the PC process runs it, not the Hub. */
+  pc?: boolean;
 }
 const turns = new Map<string, Live>();
+/** Replies on their way to sessions open on the PC, and the PC hooks waiting for them (pclink.ts). */
+const inbox = new PcInbox();
 
 const view = (t: Live): HubTurn => ({
   id: t.id, sessionId: t.sessionId, title: t.title, status: t.status, startedAt: t.startedAt,
@@ -215,7 +221,25 @@ export function failedText(subtype?: string): string {
 
 const step = (t: Live, line: string) => { t.progress.push(line); if (t.progress.length > 20) t.progress.shift(); };
 
+/** End a PC turn (the session finished its turn, or closed). */
+function endPcTurn(t: Live, status: 'done' | 'error', reply: string | null, error: string | null = null): void {
+  if (t.status === 'running' || t.status === 'approval') t.status = status;
+  if (reply) t.reply = reply.slice(0, 1500);
+  t.error = error; t.finishedAt = Date.now(); t.approval = null; t.answer = null;
+  step(t, status === 'done' ? 'Finished on your PC' : 'The session closed on your PC');
+  logAction('hub', `turn-pc-${status}`, { session: t.sessionId, turn: t.id });
+}
+
+/** A PC turn whose session is no longer open on the PC has ended. */
+function settlePcTurns(): void {
+  const live = [...turns.values()].filter(t => t.pc && (t.status === 'running' || t.status === 'approval'));
+  if (!live.length) return;
+  const open = openSessions();
+  for (const t of live) if (!open.has(t.sessionId)) { inbox.forget(t.sessionId); endPcTurn(t, 'error', null, 'The session closed on your PC.'); }
+}
+
 export function listTurns(): HubTurn[] {
+  settlePcTurns();
   const now = Date.now();
   for (const [id, t] of turns) if (t.finishedAt && now - t.finishedAt > KEEP_FINISHED_MS) turns.delete(id);
   return [...turns.values()].map(view);
@@ -223,16 +247,19 @@ export function listTurns(): HubTurn[] {
 
 /** Can the Hub reply to this session right now, and if not, why not. */
 export function sessionView(id: string, have = ''): SessionView {
+  settlePcTurns();
   const s = lookupSession(id);
   const running = runningFor(id);
   const latest = running || [...turns.values()].filter(t => t.sessionId === id).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0];
+  // open on the PC with the PC link's hook listening: the reply goes into that PC session (pclink.ts), not through the SDK
+  const viaPc = !!s?.live.open && inbox.listening(id);
   let reason: ReplyBlock | null = null;
   if (!s) reason = 'not_found';
   else if (running) reason = 'running';
-  else if (s.live.open) reason = 'open_on_pc';
+  else if (s.live.open && !viaPc) reason = 'open_on_pc';
   else if (s.live.state !== 'waiting') reason = 'busy';
-  else if (s.live.age > 30 * 60 && !s.live.hub) reason = 'too_old';   // Hub-started sessions never go stale here
-  else if (runningCount() >= MAX_RUNNING) reason = 'too_many';
+  else if (!viaPc && s.live.age > 30 * 60 && !s.live.hub) reason = 'too_old';   // Hub-started and open PC sessions never go stale here
+  else if (!viaPc && runningCount() >= MAX_RUNNING) reason = 'too_many';   // a PC turn runs on the PC, not here
   const { settings, context } = s ? settingsOf(id) : { settings: undefined, context: null };
   const pinned = new Set(pinnedIn(id));
   const transcript = s ? transcriptFor(id).map(e => (e.id && pinned.has(e.id) ? { ...e, pinned: true } : e)) : [];
@@ -309,6 +336,8 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
       // (calendar/server/tools.ts) join the same way, under the same approvals.
       mcpServers: { ...(pluginOpts.mcpServers ?? {}), claudeos_browser: browserServer, claudeos_ha: haServer, claudeos_tablet: tabletServer, claudeos_lists: listsServer, claudeos_calendar: calendarServer, claudeos_weather: weatherServer, claudeos_routines: routinesServer },
       abortController: t.abort,
+      // the PC link's hooks (scripts/pc-bridge.ts) load with the user's settings: this tells them the Hub runs this turn
+      env: { ...process.env, CLAUDEOS_HUB_TURN: '1' },
       ...(append ? { systemPrompt: { type: 'preset' as const, preset: 'claude_code' as const, append } } : {}),
       canUseTool: (tool, input, { signal }) => new Promise(resolve => {
         const isPlan = tool === 'ExitPlanMode';
@@ -381,13 +410,14 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
   return { turn: t, sessionId };
 }
 
-const runningCount = () => [...turns.values()].filter(t => t.status === 'running' || t.status === 'approval').length;
+const runningCount = () => [...turns.values()].filter(t => !t.pc && (t.status === 'running' || t.status === 'approval')).length;
 
 /** Reply to a session. `want`: model / effort / mode picked on the tablet (missing ones: what the session had). `photoIds`: photos to send with it. */
 export function startTurn(sessionId: string, text: string, from: string, want: Partial<SessionSettings> = {}, photoIds: string[] = []): { ok: boolean; error?: string; turn?: HubTurn } {
   const v = sessionView(sessionId);
   if (!v.canReply) return { ok: false, error: v.reason || 'blocked' };
   const s = lookupSession(sessionId)!;
+  if (s.live.open) return sendToPc(sessionId, s.live.title, text, from, photoIds);
   const loaded = loadPhotos(photoIds);
   if (!loaded.ok) return { ok: false, error: loaded.error };
   const message = String(text || '').trim().slice(0, 2000) || (loaded.photos.length ? PHOTO_QUESTION : '');
@@ -397,6 +427,89 @@ export function startTurn(sessionId: string, text: string, from: string, want: P
   modeNow.set(sessionId, run.mode as HubPermission);
   logAction(from, 'reply', { session: sessionId, turn: turn.id, text: message, photos: loaded.photos.length, model: run.model || 'default', effort: run.effort || 'default', mode: run.mode });
   return { ok: true, turn: view(turn) };
+}
+
+// ---------- sessions open on the PC (the PC link, pclink.ts) ----------
+// The reply is handed to the session's Stop hook, which wakes that same PC session with it. The PC process runs the
+// turn; the tablet follows it through the session log, and its permission prompts come here through the
+// PermissionRequest hook (pcPermission). Model, effort and mode stay as the PC session has them; photos can't go.
+
+function sendToPc(sessionId: string, title: string, text: string, from: string, photoIds: string[]): { ok: boolean; error?: string; turn?: HubTurn } {
+  if (photoIds.length) return { ok: false, error: 'photos_on_pc' };
+  const message = String(text || '').trim().slice(0, 2000);
+  if (!message) return { ok: false, error: 'empty' };
+  const t: Live = {
+    id: crypto.randomUUID(), sessionId, title, status: 'running', startedAt: new Date().toISOString(),
+    progress: ['Sent to your PC session'], approval: null, reply: null, error: null,
+    q: null, abort: new AbortController(), answer: null, finishedAt: null, pc: true,
+  };
+  if (!inbox.deliver(sessionId, rewakeText(message))) return { ok: false, error: 'open_on_pc' };
+  turns.set(t.id, t);
+  logAction(from, 'reply-pc', { session: sessionId, turn: t.id, text: message });
+  return { ok: true, turn: view(t) };
+}
+
+const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * One long poll from a PC session's Stop hook (scripts/pc-bridge.ts). `fresh`: the first poll after a turn ended on
+ * the PC, so a PC turn sent from here is done (`lastText`: Claude's last words in it).
+ */
+export async function pcWait(body: Record<string, unknown>, signal: AbortSignal): Promise<{ ok: boolean; error?: string; answer?: WaitAnswer }> {
+  const session = String(body.session || ''), waiter = String(body.waiter || '');
+  if (!SESSION_ID.test(session) || !/^[\w-]{8,64}$/.test(waiter)) return { ok: false, error: 'bad_request' };
+  const fresh = body.fresh === true;
+  if (fresh) {
+    const t = runningFor(session);
+    if (t?.pc) endPcTurn(t, 'done', typeof body.lastText === 'string' ? body.lastText : null);
+  } else if (!openSessions().has(session)) {
+    inbox.forget(session);   // the PC session closed: its hook can stop
+    return { ok: true, answer: { kind: 'stop' } };
+  }
+  return { ok: true, answer: await inbox.wait(session, waiter, fresh, 25e3, signal) };
+}
+
+/**
+ * A permission prompt from a PC session (the PermissionRequest hook). Only while a reply sent from here is running in
+ * that session: the tablet answers it. Otherwise, or with no answer in 3 minutes, no decision: the PC asks as usual.
+ */
+export function pcPermission(body: Record<string, unknown>, signal: AbortSignal): Promise<{ ok: boolean; error?: string; decision?: PcDecision | null }> {
+  const session = String(body.session || ''), tool = String(body.tool || '').slice(0, 200);
+  if (!SESSION_ID.test(session) || !tool) return Promise.resolve({ ok: false, error: 'bad_request' });
+  settlePcTurns();
+  const t = runningFor(session);
+  if (!t?.pc || t.approval) return Promise.resolve({ ok: true, decision: null });
+  const input = (body.input && typeof body.input === 'object' ? body.input : {}) as Record<string, any>;
+  return new Promise(resolve => {
+    const isPlan = tool === 'ExitPlanMode';
+    const { summary, detail } = isPlan ? { summary: 'Start making changes', detail: 'Claude has finished planning.' } : askFor(tool, input);
+    t.approval = { id: crypto.randomUUID(), tool, summary, detail, expiresAt: new Date(Date.now() + APPROVAL_MS).toISOString(),
+      ...(isPlan ? { kind: 'plan' as const, plan: planText(input, t.reply) } : {}) };
+    t.status = 'approval';
+    step(t, isPlan ? 'Plan ready for your OK' : `Asking: ${summary}`);
+    const finish = (decision: PcDecision | null, line: string) => {
+      clearTimeout(timer); signal.removeEventListener('abort', onAbort);
+      t.answer = null; t.approval = null;
+      if (t.status === 'approval') t.status = 'running';
+      step(t, line);
+      resolve({ ok: true, decision });
+    };
+    const timer = setTimeout(() => {
+      logAction('hub', 'approval-timeout', { session, turn: t.id, tool, detail });
+      finish(null, 'No answer here: the PC asks instead');
+    }, APPROVAL_MS);
+    const onAbort = () => finish(null, 'Answered on the PC');
+    signal.addEventListener('abort', onAbort, { once: true });
+    t.answer = (allow, next) => {
+      if (t.status === 'stopped') return finish({ behavior: 'deny', message: 'Stopped from ClaudeOS.', interrupt: true }, 'Stopped');
+      if (!allow) {
+        return finish({ behavior: 'deny', message: isPlan ? 'Not yet: the user wants to keep planning. Stay in plan mode and ask what to change.' : 'Denied from ClaudeOS.' },
+          isPlan ? 'Kept planning' : `Denied: ${summary}`);
+      }
+      finish(isPlan ? { behavior: 'allow', updatedPermissions: [{ type: 'setMode', mode: next || 'default', destination: 'session' }] } : { behavior: 'allow' },
+        isPlan ? 'Plan approved' : `Allowed: ${summary}`);
+    };
+  });
 }
 
 /** Start a brand-new session from the Hub in one of the listed folders (with photos, if any). */
@@ -435,6 +548,12 @@ export async function stopTurn(turnId: string, from: string): Promise<{ ok: bool
   logAction(from, 'stop', { session: t.sessionId, turn: t.id });
   t.status = 'stopped';
   t.answer?.(false);
+  if (t.pc) {
+    // the PC process runs it: a waiting permission prompt is denied with an interrupt (above); otherwise the tablet stops following it
+    t.finishedAt = Date.now(); t.approval = null; t.answer = null;
+    step(t, 'Stopped following here');
+    return { ok: true };
+  }
   try { await t.q?.interrupt(); } catch { /* fall through to abort */ }
   setTimeout(() => t.abort.abort(), 5e3);   // if it hasn't wound down by then, end it
   return { ok: true };

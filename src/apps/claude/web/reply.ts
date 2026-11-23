@@ -57,13 +57,16 @@ let photos: string[] = [];
 let draft = '';
 // a send that didn't go: the composer says why until you type or send again (shown in place of the placeholder)
 let sendNote = '';
-const SEND_NOTE: Record<string, string> = { too_many_photos: 'Too many photos for one message. Take one off.' };
+const SEND_NOTE: Record<string, string> = {
+  too_many_photos: 'Too many photos for one message. Take one off.',
+  photos_on_pc: 'Photos can’t go to a session open on your PC. Send words only.',
+};
 const takeDraft = (): string => { const t = draft; draft = ''; return t; };
 const attended = new Set<string>();                  // approvals we've already pulled the screen for
 const activeTurn = (): HubTurn | null => { const t = view?.turn; return t && (t.status === 'running' || t.status === 'approval') ? t : null; };
 
 const BLOCKED: Record<ReplyBlock, [string, string]> = {
-  open_on_pc: ['Open on your PC', 'Reply in that window. ClaudeOS only answers sessions that aren’t open anywhere else.'],
+  open_on_pc: ['Open on your PC', 'Reply in that window. To reply here instead, turn on the PC link once on the PC (npm run pc-link) and reopen that session there.'],
   busy: ['Claude is still working', 'Wait for this session to finish its turn, then you can reply from here.'],
   too_old: ['This one has gone quiet', 'You can read it here. ClaudeOS only replies to sessions active in the last 30 minutes.'],
   no_pin: ['Set a PIN first', 'Replies from ClaudeOS need the ClaudeOS PIN. Set it in Settings, then come back.'],

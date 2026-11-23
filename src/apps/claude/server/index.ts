@@ -16,6 +16,8 @@
 //   POST fork    {token, session, message}       a new session continuing from one of Claude's replies
 //   POST browser/next  {token, active?}         the tablet's long poll for a browser or tablet job (browser.ts, tablet.ts); null after 15 s
 //   POST browser/result {token, id, ok, data}   the tablet's answer to a browser job
+//   POST pc/wait       {key, session, waiter, fresh, lastText?}   a PC session's Stop hook waits for a reply (pclink.ts); 25 s long poll
+//   POST pc/permission {key, session, tool, input}   a PC session's permission prompt, answered on the tablet while it drives that session
 import type { Binary, ServerApp } from '../../../core/server/app.ts';
 import type { Usage } from '../api.ts';
 import { manifest } from '../manifest.ts';
@@ -27,7 +29,8 @@ import { history, historyStats, refreshHistory } from './history.ts';
 import { archiveSession, deleteSession, forkFrom, pinMessage } from './manage.ts';
 import { finishJob, nextJob } from './browser.ts';
 import { noteTabletActive } from './tablet.ts';
-import { answerApproval, listModels, listTurns, sessionView, settingsFrom, startNew, startTurn, stopTurn } from './turns.ts';
+import { answerApproval, listModels, listTurns, pcPermission, pcWait, sessionView, settingsFrom, startNew, startTurn, stopTurn } from './turns.ts';
+import { pcKeyOk, startPcLink } from './pcbridge.ts';
 import { Store } from './usage.ts';
 import { photoIdsFrom } from '../../photos/server/store.ts';
 
@@ -85,6 +88,9 @@ const app: ServerApp = {
         return { ok: true };
       },
     },
+    // the PC link (scripts/pc-bridge.ts): hooks in sessions open on the PC, with the key from .pc-bridge.json (no PIN: they run on the PC)
+    { method: 'POST', path: 'pc/wait', handle: ({ body, signal }) => (pcKeyOk(body.key) ? pcWait(body, signal) : { ok: false, error: 'bad_key' }) },
+    { method: 'POST', path: 'pc/permission', handle: ({ body, signal }) => (pcKeyOk(body.key) ? pcPermission(body, signal) : { ok: false, error: 'bad_key' }) },
     {
       method: 'POST', path: 'approve', handle: ({ body, from }) =>
         checkToken(body.token) ? answerApproval(String(body.turn), String(body.approval), body.allow === true, from, body.mode) : locked,
@@ -125,6 +131,7 @@ const app: ServerApp = {
     console.log(`claude: indexed ${store.scan()} replies in ${((Date.now() - t) / 1000).toFixed(1)}s`);
     setInterval(() => { try { store.scan(); } catch (e) { console.log('scan error:', e); } }, 15e3);
     startLimits();
+    startPcLink();
     const h = Date.now();   // index every past session in the background (counts only; nothing from the logs is printed)
     refreshHistory().then(() => console.log(`claude: indexed ${historyStats.files} session logs in ${((Date.now() - h) / 1000).toFixed(1)}s`), () => {});
   },
