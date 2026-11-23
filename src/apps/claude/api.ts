@@ -129,6 +129,9 @@ export interface TranscriptEntry {
   pinned?: boolean;             // pinned in Claude Home
 }
 
+/** The choices Claude offered at the end of its last turn (its wrap_up call): ask, plus [label, what gets sent]. */
+export interface NextStep { ask: string | null; choices: [string, string][] }
+
 export interface SessionView {
   session: LiveSession | null;
   transcript: TranscriptEntry[];   // the latest part of the conversation, oldest first
@@ -140,6 +143,7 @@ export interface SessionView {
   turn: HubTurn | null;
   settings?: SessionSettings;      // what the session runs with (from its log, or as last set from Claude Home)
   context?: ContextUse | null;
+  next?: NextStep | null;          // the latest wrap_up's choices, only when no user message came after it
 }
 
 export interface UnlockResult { ok: boolean; token?: string; ttl?: number; error?: string; retryIn?: number }

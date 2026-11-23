@@ -15,7 +15,7 @@ import type { Approval, ContextUse, HubEffort, HubPermission, HubTurn, ModelChoi
 import { projectFolder, rememberHubSession, SCRATCH } from './hubsessions.ts';
 import { logAction } from './guard.ts';
 import { askFor, describeTool } from './describe.ts';
-import { lookupSession, transcriptFor, transcriptVersion } from './sessions.ts';
+import { lookupSession, nextStepFor, transcriptFor, transcriptVersion } from './sessions.ts';
 import { Lru } from './lru.ts';
 import { pinnedIn } from './state.ts';
 import { MAX_PER_ASK, readPhoto } from '../../photos/server/store.ts';
@@ -269,6 +269,7 @@ export function sessionView(id: string, have = ''): SessionView {
   return {
     session: s?.live ?? null, transcript: unchanged ? [] : transcript, version, unchanged,
     lastText: s?.lastText ?? null, canReply: reason == null, reason, turn: latest ? view(latest) : null, settings, context,
+    next: s ? nextStepFor(id) : null,   // sent even when unchanged: the page keeps its old transcript but takes this
   };
 }
 
