@@ -66,12 +66,12 @@ test('a failed result names its reason: an expired login, a busy API, a turn out
 
 test('a retry or compacting line shows while the reply runs; the next reply piece clears it', () => {
   const retry = parseStreamLine(line({ type: 'system', subtype: 'api_retry', attempt: 2, max_retries: 10, retry_delay_ms: 1000, error_status: 529, error: 'overloaded' }));
-  assert.deepEqual(retry, { type: 'status', text: 'Retrying (2 of 10)' });
+  assert.deepEqual(retry, { type: 'status', text: 'Claude is busy · retrying (2 of 10)' });
   assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'status', status: 'compacting' })), { type: 'status', text: 'Compacting' });
   assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'status', status: null })), { type: 'status', text: null });
   assert.equal(parseStreamLine(line({ type: 'system', subtype: 'status', status: 'requesting' })), null);
   let c = applyEvent(userSent(emptyChat(), 'Hi', AT), retry!, AT);
-  assert.equal(c.status, 'Retrying (2 of 10)');
+  assert.equal(c.status, 'Claude is busy · retrying (2 of 10)');
   assert.equal(applyEvent(c, { type: 'status', text: null }, AT).status, null);
   c = applyEvent(applyEvent(c, { type: 'status', text: 'Compacting' }, AT), { type: 'delta', text: 'Hel' }, AT);
   assert.equal(c.status, null);
@@ -443,6 +443,13 @@ test('the retry and compacting wording is shared by the tablet chat and the PC t
   assert.equal(retryText(2, 10), 'Retrying (2 of 10)');
   assert.equal(retryText(0, 0), 'Retrying');
   assert.equal(COMPACTING_TEXT, 'Compacting');
+  // the cause in plain words, when the API status says it
+  assert.equal(retryText(2, 10, 529), 'Claude is busy · retrying (2 of 10)');
+  assert.equal(retryText(4, 10, 429), 'Claude hit a limit · retrying (4 of 10)');
+  assert.equal(retryText(1, 10, 503), 'Claude had a server error · retrying (1 of 10)');
+  assert.equal(retryText(0, 10, 529), 'Claude is busy · retrying');
+  assert.equal(retryText(2, 10, null), 'Retrying (2 of 10)');   // no status (a connection error): no cause
+  assert.equal(retryText(2, 10, 401), 'Retrying (2 of 10)');
   assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'api_retry', attempt: 3, max_retries: 10 })), { type: 'status', text: retryText(3, 10) });
   assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'status', status: 'compacting' })), { type: 'status', text: COMPACTING_TEXT });
 });

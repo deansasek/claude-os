@@ -396,8 +396,8 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
         if (m.type === 'result') for (const [id, u] of Object.entries(m.modelUsage || {})) if (u.contextWindow > 0) windows.set(id, u.contextWindow);
         // a retry or compacting: the same progress wording as the tablet chat (native-stream.ts)
         if (m.type === 'system') {
-          const s = m as { subtype?: string; attempt?: number; max_retries?: number; status?: string | null };
-          if (s.subtype === 'api_retry') step(t, retryText(Number(s.attempt) || 0, Number(s.max_retries) || 0));
+          const s = m as { subtype?: string; attempt?: number; max_retries?: number; status?: string | null; error_status?: number | null };
+          if (s.subtype === 'api_retry') step(t, retryText(Number(s.attempt) || 0, Number(s.max_retries) || 0, s.error_status));
           else if (s.subtype === 'status' && s.status === 'compacting') step(t, COMPACTING_TEXT);
         }
         if (m.type === 'assistant') {
