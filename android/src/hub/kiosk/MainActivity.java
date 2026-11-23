@@ -226,7 +226,9 @@ public class MainActivity extends Activity {
     try {
       if (i == null || !i.getBooleanExtra("node_spike", false)) return;
       Log.i(hub.kiosk.node.NodeRunner.TAG, "hook: node_spike extra seen in " + from);
-      hub.kiosk.node.NodeRunner.start(this, DEFAULT_URL);
+      // loader test: Claude Code's native musl binary through the bundled musl loader (node/NativeClaudeRunner).
+      // The embedded Node test (node/NodeRunner.start) is off while this runs.
+      hub.kiosk.node.NativeClaudeRunner.start(this, DEFAULT_URL);
     } catch (Throwable t) {
       Log.e(hub.kiosk.node.NodeRunner.TAG, "hook failed in " + from, t);
     }

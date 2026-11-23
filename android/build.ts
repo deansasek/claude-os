@@ -136,6 +136,10 @@ function main(): void {
       cpSync(so, join(stageRest, 'lib', 'arm64-v8a', so.split(sep).pop()!));
     }
   }
+  // SPIKE: native libraries kept in the repository (android/src/jniLibs/arm64-v8a, e.g. the musl loader libmuslld.so)
+  for (const so of filesUnder(join(here, 'src', 'jniLibs', 'arm64-v8a'), '.so')) {
+    cpSync(so, join(stageRest, 'lib', 'arm64-v8a', so.split(sep).pop()!));
+  }
   // the speech model as assets, plus the app's own assets in android/assets (e.g. the recogniser's warm-up audio)
   const assetRoots = [join(voice, 'assets'), join(here, 'assets'), ...(node ? [join(nodeTools, 'assets')] : [])];
   for (const root of assetRoots) {
