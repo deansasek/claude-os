@@ -31,6 +31,38 @@ Follow this exact structure:
 ## Tests
 [State the exact tests run or added, or write "None." with the reason.]
 
+Issue titles and PR titles follow Conventional Commits, for example `fix(home): weather detail overflows the glance column`.
+
+## Issue template
+
+Use this template for every GitHub issue. Write it in the same plain style as PR bodies. Delete a section only if it does not apply (for example, Steps for a feature request). Android UI that reaches the user is a bug by default (see "Rule: no visible Android").
+
+```markdown
+## Problem
+[What is wrong or missing, in 1-3 short sentences.]
+
+## Where
+- Device: [tablet / cast device (Nest Hub, Chromecast) / PC hub]
+- Screen or app: [for example Home, Clock, Claude, lock screen, `src/apps/<app>`]
+- Build: [commit or PR number, if known]
+
+## Steps
+1. [Step]
+2. [Step]
+
+## Expected
+[What ClaudeOS should do.]
+
+## Actual
+[What ClaudeOS does. Say if Android UI shows (status bar, dialog, toast, stock keyboard, other app).]
+
+## Evidence
+[Screenshot, `adb exec-out screencap -p`, `adb shell dumpsys` lines, or hub log lines.]
+
+## Proposed solution
+[Optional. The fix or change you suggest.]
+```
+
 ## Rule: no visible Android
 
 Treat anything Android-looking that reaches the user as a bug to remove, not a style to theme. This includes:
