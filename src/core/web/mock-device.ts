@@ -258,6 +258,24 @@
     guardLog: () => j([]),
     reboot: () => { setTimeout(() => location.reload(), 600); return ok(); },
     screenOff: () => { console.info('[mock] On the tablet the screen turns off now.'); return ok(); },
+    // chats on the tablet's own Claude CLI (apps/claude/web/native.ts) and its sign-in (core/web/cli-signin.ts)
+    cliSigninStart: () => { console.info('[mock] On the tablet the Claude CLI sign-in starts now.'); return ok(); },
+    cliAuthState: () => j({ signedIn: 1, busy: false }),
+    cliSigninCode: () => { console.info('[mock] On the tablet the code goes to the waiting claude auth login.'); return ok(); },
+    cliSigninClipboard: () => j({ text: 'mock-code#mock-state' }),
+    cliSigninState: () => j({ left: -1 }),
+    claudeSend: () => {   // a made-up streamed reply, in the CLI's stream-json lines
+      const line = (o: Json) => setTimeout(() => (window as unknown as { hubClaudeNative?: (l: string) => void }).hubClaudeNative?.(JSON.stringify(o)), 0);
+      const words = 'On the tablet, this reply comes from the Claude CLI.'.split(' ');
+      line({ type: 'system', subtype: 'init', session_id: 'mock-native' });
+      words.forEach((w, i) => setTimeout(() => line({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: (i ? ' ' : '') + w } } }), 300 + i * 150));
+      setTimeout(() => line({ type: 'result', subtype: 'success', is_error: false, result: words.join(' '), session_id: 'mock-native', usage: { input_tokens: 12, output_tokens: words.length, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 }, modelUsage: { mock: { contextWindow: 200000 } } }), 400 + words.length * 150);
+      return ok();
+    },
+    claudeStop: () => ok(),
+    // the app's files folder: here localStorage (on the tablet a file, written at once)
+    pageFileWrite: (name: string, text: string) => { try { localStorage.setItem(`mock.page.${name}`, text); } catch { /* ignore */ } return ok(); },
+    pageFileRead: (name: string) => { try { return j({ text: localStorage.getItem(`mock.page.${name}`) }); } catch { return j({ text: null }); } },
     maintenance: () => { alert('On the tablet this opens Android’s Settings (Desk mode pauses until you come back).'); resume(); return ok(); },
     // voice
     voice: () => j({ permission: true, wake: s.wake, mode, speaking: mode === 'speaking' }),

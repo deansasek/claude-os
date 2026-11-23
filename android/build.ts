@@ -119,6 +119,10 @@ function main(): void {
   for (const so of filesUnder(join(voice, 'lib', 'arm64-v8a'), '.so')) {  // native speech recogniser (64-bit ARM tablets)
     cpSync(so, join(stageRest, 'lib', 'arm64-v8a', so.split(sep).pop()!));
   }
+  // native libraries kept in the repository (android/src/jniLibs/arm64-v8a: the musl loader libmuslld.so, cli/ClaudeCli)
+  for (const so of filesUnder(join(here, 'src', 'jniLibs', 'arm64-v8a'), '.so')) {
+    cpSync(so, join(stageRest, 'lib', 'arm64-v8a', so.split(sep).pop()!));
+  }
   // the speech model as assets, plus the app's own assets in android/assets (e.g. the recogniser's warm-up audio)
   for (const root of [join(voice, 'assets'), join(here, 'assets')]) {
     if (!existsSync(root)) continue;
