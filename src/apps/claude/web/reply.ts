@@ -54,6 +54,8 @@ let drawnLog = '', drawnSide = '';
 let sessions: LiveSession[] = [];
 // photos (the Camera and Photos apps) to send with the next message, and a draft to start the keyboard with
 const MAX_PHOTOS = 3;
+/** The longest message the composer takes. The server cuts a message to the same length (server/turns.ts). */
+const MAX_MESSAGE = 2000;
 let photos: string[] = [];
 let draft = '';
 // a send that didn't go: the composer says why until you type or send again (shown in place of the placeholder)
@@ -394,7 +396,7 @@ async function openNew(): Promise<void> {
 function askFirstMessage(): void {
   if (nativeOn() && !starting) {   // a new chat on the tablet's own Claude CLI: text only, no folder, no PIN
     Keyboard.open({
-      value: takeDraft(), placeholder: 'Ask Claude on this tablet', autoCap: true, max: 300, done: 'Send',
+      value: takeDraft(), placeholder: 'Ask Claude on this tablet', autoCap: true, max: MAX_MESSAGE, done: 'Send',
       onDone: startNativeChat,
     });
     return;
@@ -402,7 +404,7 @@ function askFirstMessage(): void {
   if (!chosen || starting) return;
   const p = chosen;
   Keyboard.open({
-    value: takeDraft(), placeholder: photos.length ? 'Ask about the photo, or send it as it is' : `Describe a task for ${p.name}`, autoCap: true, max: 300, done: 'Send',
+    value: takeDraft(), placeholder: photos.length ? 'Ask about the photo, or send it as it is' : `Describe a task for ${p.name}`, autoCap: true, max: MAX_MESSAGE, done: 'Send',
     onDone: text => { if (text.trim() || photos.length) startNewSession(p, text.trim()); },
   });
 }
@@ -480,7 +482,7 @@ function typeReply(): void {
   if (mode !== 'session' || !view?.canReply || activeTurn()) return;
   sendNote = '';
   Keyboard.open({
-    value: takeDraft(), placeholder: photos.length ? 'Ask about the photo, or send it as it is' : 'Reply to Claude', autoCap: true, max: 300, done: 'Send',
+    value: takeDraft(), placeholder: photos.length ? 'Ask about the photo, or send it as it is' : 'Reply to Claude', autoCap: true, max: MAX_MESSAGE, done: 'Send',
     onDone: text => { if (text.trim() || photos.length) send(text.trim()); },
   });
 }
