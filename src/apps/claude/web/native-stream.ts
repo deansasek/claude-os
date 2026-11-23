@@ -157,14 +157,15 @@ export interface NativeChat {
   status: string | null;   // a retry or compacting while the reply runs ("Retrying (2 of 10)", "Compacting"); null otherwise
   turnStartedAt: string | null;   // when the running reply was sent (set once per turn, by userSent)
   lastModel: string | null; lastMs: number | null;   // the model and the time of the latest turn (under the title)
+  resuming: boolean;   // the reply resumes a saved session and the CLI has not yet sent its init (the session is live)
 }
 export const emptyChat = (): NativeChat =>
   ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {},
-    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null });
+    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null, resuming: false });
 
-/** Your message goes on screen and the reply starts. */
+/** Your message goes on screen and the reply starts. A reply to a saved session is a resume until its init comes. */
 export const userSent = (c: NativeChat, text: string, at = new Date().toISOString()): NativeChat =>
-  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false, status: null, turnStartedAt: at });
+  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false, status: null, turnStartedAt: at, resuming: !!c.sessionId });
 
 /** How long a reply has run, as the chat shows it: '0:42', or '1:02:05' past an hour. */
 export function elapsedText(startedAt: string, now = Date.now()): string {
@@ -173,6 +174,9 @@ export function elapsedText(startedAt: string, now = Date.now()): string {
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = String(s % 60).padStart(2, '0');
   return h ? h + ':' + String(m).padStart(2, '0') + ':' + sec : m + ':' + sec;
 }
+
+/** The note when the saved session cannot be resumed; the saved id is dropped, so the next message starts a fresh chat. */
+const DEAD_RESUME = 'That chat can’t be picked up again. Your next message starts a fresh chat.';
 
 const ERRORS: Record<string, string> = { start_failed: 'Claude couldn’t start on this tablet. Sign in under Settings → Apps → Claude, then try again.' };
 
@@ -198,7 +202,7 @@ const stoppedText = (text: string): string => (text ? `${text} (stopped)` : '');
 export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOString()): NativeChat {
   const withReply = (text: string): TranscriptEntry[] => (text ? [...c.entries, { kind: 'assistant', text, at }] : c.entries);
   switch (e.type) {
-    case 'init': return { ...c, sessionId: e.sessionId, lastModel: e.model || c.lastModel };
+    case 'init': return { ...c, sessionId: e.sessionId, lastModel: e.model || c.lastModel, resuming: false };
     // a reply piece or the result is a normal event again: the retry or compacting line goes
     case 'delta': return c.running ? { ...c, partial: c.partial + e.text, status: null } : c;
     case 'text': return c.running ? { ...c, partial: e.text, status: null } : c;
@@ -209,6 +213,10 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
       // not Claude's words: it becomes a note (failedNote), not a reply
       if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial || (e.ok ? e.text : ''))), running: false, partial: '', stopped: false, status: null,
         sessionId: e.sessionId || c.sessionId, error: 'Stopped', tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
+      // a resumed turn that ends before its init, or a CLI that says the session is gone: the saved id goes
+      if (c.resuming || /No conversation found/i.test(e.text))
+        return { ...c, entries: withReply(c.partial), running: false, partial: '', sessionId: null, resuming: false, status: null, error: DEAD_RESUME,
+          tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
       return { ...c, entries: e.ok ? withReply(e.text || c.partial) : withReply(c.partial), running: false, partial: '', status: null,
         sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at, e.reason ?? null),
         tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window, lastMs: e.durationMs ?? c.lastMs };
@@ -221,6 +229,7 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
     case 'usageChecked': return c;
     case 'exit':
       if (!c.running) return c;
+      if (c.resuming) return { ...c, entries: withReply(c.partial), running: false, partial: '', sessionId: null, resuming: false, stopped: false, status: null, error: DEAD_RESUME };
       if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial)), running: false, partial: '', stopped: false, status: null, error: 'Stopped' };
       return { ...c, entries: withReply(c.partial), running: false, partial: '', status: null, error: 'Claude on this tablet stopped before it finished.' };
     case 'error':

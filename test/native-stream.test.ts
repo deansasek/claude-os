@@ -111,6 +111,30 @@ test('the last turn shows its model and time: "Haiku · 8 s", kept across a rest
   assert.equal(lastTurnText(loadChat(saveChat(c))), 'Haiku · 8 s');
 });
 
+test('a saved session that cannot be resumed is dropped: the next message starts fresh', () => {
+  const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const saved = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'init', sessionId: 's1' }, AT);
+  // a resumed turn that ends before its init (the CLI exited)
+  let c = applyEvent(userSent(applyEvent(saved, { type: 'result', ok: true, text: 'Hi', sessionId: 's1', costUsd: null, usage, window: null }, AT), 'Again', AT),
+    { type: 'exit', code: 1 }, AT);
+  assert.equal(c.sessionId, null);
+  assert.equal(c.running, false);
+  assert.equal(c.error, 'That chat can’t be picked up again. Your next message starts a fresh chat.');
+  // the CLI says the conversation is gone
+  c = applyEvent(userSent(saved, 'Again', AT), { type: 'result', ok: false, text: 'No conversation found with session ID: s1', sessionId: null, costUsd: null, usage, window: null }, AT);
+  assert.equal(c.sessionId, null);
+  assert.equal(c.error, 'That chat can’t be picked up again. Your next message starts a fresh chat.');
+  assert.deepEqual(c.entries.map(e => e.kind), ['user', 'user']);
+  // a resumed turn that did send its init keeps the session
+  c = applyEvent(applyEvent(userSent(saved, 'Again', AT), { type: 'init', sessionId: 's1' }, AT), { type: 'exit', code: 1 }, AT);
+  assert.equal(c.sessionId, 's1');
+  assert.equal(c.error, 'Claude on this tablet stopped before it finished.');
+  // a new chat that ends before its init is not a resume
+  const fresh = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'exit', code: 1 }, AT);
+  assert.equal(fresh.sessionId, null);
+  assert.equal(fresh.error, 'Claude on this tablet stopped before it finished.');
+});
+
 test('lines that are not JSON or not used give null', () => {
   assert.equal(parseStreamLine('not json'), null);
   assert.equal(parseStreamLine('[1,2]'), null);
