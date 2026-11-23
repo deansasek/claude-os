@@ -91,6 +91,9 @@ export function setStageInset(right: number): boolean {
   return true;
 }
 
+/** The stage's height for a screen of `vw` × `vh` CSS px: 600 on the Nest Hub, ~640 on the 1280×800 tablet, at most 700. */
+export const stageHeight = (vw: number, vh: number): number => Math.round(Math.min(700, Math.max(600, 1024 * vh / vw)));
+
 /** Fit the fixed 1024x600 stage to whatever screen this is on. */
 export function fitStage(): void {
   // The layout is drawn for 1024 wide. On squarer screens (the tablet's 1280×800) the stage grows
@@ -104,7 +107,7 @@ export function fitStage(): void {
     const vv = window.visualViewport;
     const vw = vv ? vv.width * vv.scale : innerWidth;
     const vh = vv ? vv.height * vv.scale : innerHeight;
-    const h = Math.round(Math.min(700, Math.max(600, 1024 * vh / vw)));
+    const h = stageHeight(vw, vh);
     stage.style.height = `${h}px`;
     const aw = Math.max(320, vw - insetRight);
     const s = Math.min(aw / 1024, vh / h);

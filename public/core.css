@@ -220,7 +220,8 @@
      on a button undoes .label: put it on a span inside. */
   .kicker { font-size: 13px; color: var(--t4); margin-bottom: 6px; display: flex; gap: 6px; }
   .label { font: 600 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--t4); }
-  /* PIN pad: shared by the lock screen (core/web/lock.ts), Settings' PIN sheet and the Claude app's PIN (its overlay is in claude/app.css) */
+  /* PIN pad: shared by the lock screen (core/web/lock.ts), Settings' PIN sheet and the Claude app's PIN (its overlay is in claude/app.css).
+     .pin-card is the boxed look, for the Claude app's PIN only; the lock screen's pad (.lock-pad) has no box. */
   .pin-card { width: 320px; padding: 20px 22px 22px; text-align: center; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
   .pin-card .kicker { justify-content: center; }
   .pin-dots { display: flex; justify-content: center; gap: 12px; height: 18px; margin: 8px 0 2px; }
@@ -228,9 +229,6 @@
   .pin-dots i.on { background: var(--text); }
   .pin-msg { font-size: 13px; color: var(--clay-deep); min-height: 20px; margin: 6px 0 4px; }   /* 6:1 on paper; --hot was 4.1 */
   :root[data-theme="dark"] .pin-msg { color: var(--hot); }
-  /* the lock's heading: serif title, one quiet line under it */
-  .lock-title { font: 500 26px/1.2 var(--serif); letter-spacing: -.015em; color: var(--text); }
-  .lock-sub { margin-top: 4px; font-size: 14px; color: var(--t3); }
   .pin-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
   .pin-keys button { all: unset; cursor: pointer; height: 52px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); color: var(--text);
     font: 500 21px var(--sans); display: grid; place-items: center; transition: transform calc(var(--dur-fast) / 2) var(--ease-out), background-color var(--dur-fast) var(--ease-out); }
@@ -246,6 +244,32 @@
   /* the lock screen: the whole tablet, above every app, banner and sheet */
   .lock { position: fixed; inset: 0; z-index: 3000; display: grid; place-items: center; background: var(--bg); touch-action: none; }
   .lock[hidden] { display: none; }
+  /* the lock's page: a 1024-wide box the height of the stage (--lock-h), scaled to the screen like the stage (lock.ts
+     sets --lock-h and --lock-s), so it is measured in the same px as every app. Two columns: the time, the date and
+     the critter on the left; the PIN pad on the right, with no box behind it. --tall works as it does for .app. */
+  .lock-in { --tall: 0; position: absolute; left: 50%; top: 50%; width: 1024px; height: var(--lock-h, 600px); box-sizing: border-box;
+    transform: translate(-50%, -50%) scale(var(--lock-s, 1)); padding: 0 calc(104px + 8px * var(--tall)) 0 calc(96px + 8px * var(--tall));
+    display: grid; grid-template-columns: minmax(0, 1fr) 288px; column-gap: 48px; align-items: center; font-family: var(--sans); color: var(--text); }
+  @media (max-aspect-ratio: 163/100) { .lock-in { --tall: 1; } }
+  .lock-face { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+  .lock-time { font: 500 calc(104px + 16px * var(--tall)) var(--serif); letter-spacing: -.04em; line-height: .92; white-space: nowrap; }
+  .lock-time small { font: 400 calc(30px + 2px * var(--tall)) var(--serif); letter-spacing: 0; color: var(--t3); margin-left: 10px; }
+  .lock-date { margin-top: calc(6px + 2px * var(--tall)); font: 400 calc(24px + 2px * var(--tall)) var(--serif); letter-spacing: -.01em; color: var(--t2); white-space: nowrap; }
+  /* the critter at Home's size (about 9 px per pixel-unit there), awake, with a slow bob */
+  .lock-crit { display: block; margin-top: calc(36px + 12px * var(--tall)); width: calc(112px + 16px * var(--tall)); height: auto; aspect-ratio: 14 / 9.6; overflow: visible; }
+  .lock-crit .crit-body { transform-box: fill-box; transform-origin: 50% 100%; animation: lock-bob 3.2s ease-in-out infinite; }
+  @keyframes lock-bob { 50% { transform: translateY(-.18px); } }
+  .lock-caption { margin-top: 12px; font: 400 14px/20px var(--sans); color: var(--t3); }
+  .lock-pad { text-align: center; }
+  .lock-pad .pin-dots { gap: 14px; height: 18px; margin: 0 0 6px; }
+  .lock-pad .pin-dots i { width: 16px; height: 16px; box-sizing: border-box; }
+  .lock-pad .pin-msg { min-height: 40px; margin: 4px 0 8px; line-height: 20px; }   /* room for two lines, so a wrong PIN never moves the keys */
+  .lock-pad .pin-keys { grid-template-columns: repeat(3, 88px); gap: 12px; }
+  .lock-pad .pin-keys button { height: 64px; font-size: 26px; border-radius: 14px; }
+  .lock-pad .pin-keys svg { width: 26px; height: 26px; }
+  .lock-pad .pin-done { margin-top: 16px; height: 56px; border-radius: 14px; line-height: 56px; font-size: 17px; }
+  @media (prefers-reduced-motion: reduce) { .lock-crit .crit-body { animation: none; } }
+  :root.reduce-motion .lock-crit .crit-body { animation: none; }
   /* the first-run welcome (core/web/welcome.ts): one calm sheet over the stage, a few short steps, all skippable.
      Under the keyboard (20) and the controls (50) and banners (60), over the apps and the rail. */
   .wel { position: absolute; inset: 0; z-index: 19; display: flex; flex-direction: column; align-items: center; box-sizing: border-box;
