@@ -58,8 +58,10 @@
   border-top: 1px solid var(--line); cursor: pointer; transition: opacity var(--dur-fast) var(--ease-out); }
 #app-home .hm-row:active { opacity: .6; }
 #app-home .hm-row-k { flex: none; font: 500 15px var(--sans); color: var(--text); }
-#app-home .hm-row-v { flex: 1 1 auto; min-width: 0; text-align: right; font: 400 14px var(--sans); color: var(--t3);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the value is ~180px wide (288 less the label), the same on the tablet and the Nest Hub: it wraps to two lines of 18px,
+   which fit in the 46px row, and is cut only past the second line */
+#app-home .hm-row-v { flex: 1 1 auto; min-width: 0; text-align: right; font: 400 14px/18px var(--sans); color: var(--t3);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 #app-home .hm-row-v b { font-weight: 500; color: var(--t2); }
 #app-home .hm-row-v b + span:not(:empty)::before { content: ' · '; }
 

@@ -18,6 +18,7 @@ import { nickname } from '../../../core/web/profile.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { ago, batteryGlyph, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
+import { notesRow } from './notes-row.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -370,16 +371,12 @@ function paintCalendar(): void {
 }
 
 // ---------- notifications ----------
-const APP_NAMES: Record<string, string> = { claude: 'Claude', weather: 'Weather', clock: 'Clock', settings: 'Settings', home: 'Home' };
 function paintNotes(): void {
-  const all = notifications(), recent = all.filter(n => Date.now() - n.at < 24 * 3600e3);
   // a row beside its label (a tap opens the notification list): "Claude finished · 11 hr", "3 new · Claude finished", "All caught up"
-  const val = $('hmNtVal'), sub = $('hmNtSub');
-  if (!recent.length) { val.textContent = 'All caught up'; sub.textContent = ''; return; }
-  const n = recent[0];
-  if (recent.length > 1) { val.textContent = `${recent.length} new`; sub.textContent = n.title; return; }
-  val.textContent = n.title;
-  sub.textContent = [n.app ? APP_NAMES[n.app] || '' : '', ago(n.at)].filter(Boolean).join(' · ');
+  const recent = notifications().filter(n => Date.now() - n.at < 24 * 3600e3);
+  const { val, sub } = notesRow(recent, ago);
+  $('hmNtVal').textContent = val;
+  $('hmNtSub').textContent = sub;
 }
 
 // ---------- tablet: Wi-Fi and battery ----------
