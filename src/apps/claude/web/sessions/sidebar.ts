@@ -2,17 +2,16 @@
 // grouped under its folder (a small header with a chevron that folds the group), newest first, each
 // with a dot for its state (clay pulsing = working, blue = your turn, grey = quiet or past), the open
 // one highlighted. A search field at the top filters by title; "Show older" pages back per folder.
-// Live state comes from the usage poll; the past comes from sessions/history.ts.
+// Live state comes from the usage poll; the past comes from sessions/history.ts. The list's data (groups,
+// dots, times) is in sessions/sidebar-groups.ts; this file draws it.
 import { $, esc, report, store } from '../../../../core/web/dom.ts';
-import { clock, shortAge } from '../../../../core/web/format.ts';
 import { Keyboard } from '../../../../core/web/keyboard.ts';
-import type { HistoryItem, LiveSession } from '../../api.ts';
-import { toolWord } from '../words.ts';
+import type { LiveSession } from '../../api.ts';
+import { groups, isLive, stateOf, when, type Row } from './sidebar-groups.ts';
 import { historyArchivedView, historyLoading, historyNow, historyQuery, historyTick, loadOlder, onHistoryChange, setQuery } from './history.ts';
 
 export { historyTitle } from './history.ts';
 
-const LIVE_S = 30 * 60;
 const QUIET_FOLD_DAYS = 14;        // folders untouched this long start folded
 const MAX_ROWS = 400;              // never draw more than this many rows
 
@@ -34,32 +33,6 @@ export function toggleFolder(name: string): void {
 
 const CHEV = '<svg class="sb-chev" viewBox="0 0 12 12"><path d="M4 2.5 7.5 6 4 9.5"/></svg>';
 
-/** A session counts as live here while it's recent, open on the PC, or one Claude Home started. */
-const isLive = (s: LiveSession) => s.age < LIVE_S || s.open || s.hub;
-
-/** Which dot a session gets, and the few words under its title. */
-function stateOf(s: LiveSession): { cls: string; what: string } {
-  if (s.state === 'thinking' || s.state === 'tool') return { cls: 'busy', what: s.state === 'tool' ? toolWord(s.tool) : 'Thinking' };
-  if (s.state === 'waiting' && isLive(s)) return { cls: 'yours', what: s.open ? `Your turn · on your PC` : `Your turn · ${shortAge(s.age)}` };
-  if (!isLive(s)) return { cls: '', what: when(Date.now() - s.age * 1000) };
-  return { cls: '', what: `${s.open ? 'On your PC' : 'Quiet'} · ${shortAge(s.age)}` };
-}
-
-/** "12m ago", "Today 2:14 PM", "Yesterday", "Tue", "Mar 3", "Mar 3, 2025". */
-function when(at: number): string {
-  const d = new Date(at), now = new Date(), mins = (now.getTime() - at) / 60e3;
-  if (mins < 60) return `${Math.max(1, Math.round(mins))}m ago`;
-  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((day(now) - day(d)) / 864e5);
-  if (days === 0) return `Today ${clock(d)}`;
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return d.toLocaleDateString([], { weekday: 'long' });
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric', ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}) });
-}
-
-interface Row { id: string; title: string; at: number; live: LiveSession | null; item: HistoryItem | null }
-interface Group { key: string; id: string | null; name: string; rows: Row[]; count: number; more: boolean; latest: number }
-
 const DOTS = '<svg viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.4"/><circle cx="8" cy="8" r="1.4"/><circle cx="12.5" cy="8" r="1.4"/></svg>';
 
 function rowHtml(r: Row, openId: string | null): string {
@@ -75,58 +48,19 @@ function rowHtml(r: Row, openId: string | null): string {
     + `<button class="sb-more" data-menu="${esc(r.id)}" data-title="${esc(r.title)}" data-arch="${historyArchivedView() ? 1 : 0}" aria-label="Session actions">${DOTS}</button></div>`;
 }
 
-/** Live sessions laid over the history, grouped by folder, folders ordered by their newest session. */
-function groups(list: LiveSession[]): Group[] {
-  const now = Date.now();
-  const live = new Map<string, LiveSession>();
-  for (const s of list) if (s.id) live.set(s.id, s);
-  const h = historyNow(), q = historyQuery();
-  const out: Group[] = [];
-  const byKey = new Map<string, Group>();
-  const placed = new Set<string>();
-  for (const g of h?.groups || []) {
-    const grp: Group = { key: g.name, id: g.id, name: g.name, count: g.count, more: g.more, latest: Date.parse(g.latest), rows: [] };
-    for (const i of g.items) {
-      const l = live.get(i.id) || null;
-      const at = l && isLive(l) ? now - l.age * 1000 : Date.parse(i.at);
-      grp.rows.push({ id: i.id, title: l?.title || i.title, at, live: l, item: i });
-      placed.add(i.id);
-    }
-    out.push(grp); byKey.set(g.id, grp); byKey.set('n:' + g.name, grp);
-  }
-  // live sessions the history hasn't caught up with yet (or before it has loaded); not while searching or in the archive
-  if (!q && !historyArchivedView()) {
-    for (const s of live.values()) {
-      if (placed.has(s.id!)) continue;
-      let grp = (s.folderId && byKey.get(s.folderId)) || byKey.get('n:' + s.folder);
-      if (!grp) {
-        grp = { key: s.folder, id: null, name: s.folder, count: 0, more: false, latest: 0, rows: [] };
-        out.push(grp); byKey.set('n:' + s.folder, grp); if (s.folderId) byKey.set(s.folderId, grp);
-      }
-      grp.rows.push({ id: s.id!, title: s.title, at: now - s.age * 1000, live: s, item: null });
-      grp.count++;
-    }
-  }
-  for (const g of out) {
-    g.rows.sort((a, b) => b.at - a.at);
-    g.latest = Math.max(g.latest, g.rows[0]?.at || 0);
-  }
-  return out.sort((a, b) => b.latest - a.latest);
-}
-
 /**
  * The sidebar's list. Groups are ordered by their most recent session; a folder holding the open
  * session is never folded away from view, and searching shows every match unfolded.
  */
 export function sidebarHtml(list: LiveSession[], openId: string | null): string {
   historyTick();
-  const q = historyQuery(), gs = groups(list);
+  const q = historyQuery(), now = Date.now();
+  const gs = groups(list, now, historyNow(), q, historyArchivedView());
   if (!gs.length) {
     if (q) return `<div class="sb-empty">No sessions match “${esc(q)}”.</div>`;
     if (historyArchivedView()) return historyNow() ? '<div class="sb-empty">Nothing archived.<br>Archive a session from its ⋯ menu to tuck it away here.</div>' : '<div class="sb-empty">Loading…</div>';
     return historyNow() || !historyLoading() ? '<div class="sb-empty">No sessions yet.<br>Start one with New session.</div>' : '<div class="sb-empty">Loading sessions…</div>';
   }
-  const now = Date.now();
   let html = '', rows = 0;
   shutNow = new Map();
   for (const g of gs) {

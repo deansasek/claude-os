@@ -1,0 +1,94 @@
+// The Sessions sidebar's list as data (src/apps/claude/web/sessions/sidebar-groups.ts): the native row, live sessions
+// over the history, and the order of folders and rows. Run with: npm test
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import type { History, HistoryItem, LiveSession } from '../src/apps/claude/api.ts';
+
+// The modules read the page's location when they load (via dom.ts); node has none, so give it one first.
+Object.assign(globalThis, { location: { search: '' } });
+const { groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
+
+const NOW = Date.parse('2026-11-23T12:00:00.000Z');
+const HOUR = 3600;
+
+const session = (o: Partial<LiveSession>): LiveSession => ({
+  id: 's', title: 'Title', folder: 'proj', branch: null, model: null, state: 'waiting', tool: null, age: 5 * HOUR, subagents: 0,
+  working: 0, tokens: 0, surface: null, open: false, hub: false, ...o,
+});
+const item = (id: string, title: string, at: string, o: Partial<HistoryItem> = {}): HistoryItem =>
+  ({ id, title, at, messages: 2, open: false, live: false, hub: false, ...o });
+
+test('a session is live while recent, open on the PC, or started here', () => {
+  assert.equal(isLive(session({ age: 60 })), true);
+  assert.equal(isLive(session({ age: 3 * HOUR })), false);
+  assert.equal(isLive(session({ age: 3 * HOUR, open: true })), true);
+  assert.equal(isLive(session({ age: 3 * HOUR, hub: true })), true);
+});
+
+test('the dot and the words of a session', () => {
+  assert.deepEqual(stateOf(session({ state: 'thinking' }), NOW), { cls: 'busy', what: 'Thinking' });
+  assert.deepEqual(stateOf(session({ state: 'waiting', age: 90 }), NOW), { cls: 'yours', what: 'Your turn · 1m' });
+  assert.deepEqual(stateOf(session({ state: 'waiting', open: true }), NOW), { cls: 'yours', what: 'Your turn · on your PC' });
+  assert.deepEqual(stateOf(session({ state: 'waiting', age: 3 * HOUR }), NOW), { cls: '', what: when(NOW - 3 * HOUR * 1000, NOW) });
+  assert.equal(when(NOW - 12 * 60e3, NOW), '12m ago');
+});
+
+test('the native row: the tablet chat is a group of its own, with its live state', () => {
+  const native = session({ id: 'native', title: 'Tell me a joke', folder: 'On this tablet', state: 'waiting', age: 5, hub: true });
+  const gs = groups([native], NOW, null, '', false);
+  assert.equal(gs.length, 1);
+  assert.equal(gs[0]!.name, 'On this tablet');
+  assert.equal(gs[0]!.id, null);
+  assert.equal(gs[0]!.rows[0]!.id, 'native');
+  assert.equal(gs[0]!.rows[0]!.at, NOW - 5000);
+  assert.deepEqual(stateOf(native, NOW), { cls: 'yours', what: 'Your turn · now' });
+  // the tablet chat is not added while searching or in the archive
+  assert.deepEqual(groups([native], NOW, null, 'joke', false), []);
+  assert.deepEqual(groups([native], NOW, null, '', true), []);
+});
+
+test('a live session lays over the history: its title and time win, the history keeps the rest', () => {
+  const hist: History = { q: '', total: 1, archived: 0, groups: [{ id: 'f1', name: 'proj', count: 1, latest: '2026-11-23T08:00:00.000Z', more: false,
+    items: [item('s1', 'Old title', '2026-11-23T08:00:00.000Z', { messages: 4 })] }] };
+  const live = [session({ id: 's1', title: 'New title', folder: 'proj', folderId: 'f1', state: 'thinking', age: 60 })];
+  const gs = groups(live, NOW, hist, '', false);
+  assert.equal(gs.length, 1);
+  assert.equal(gs[0]!.rows.length, 1);
+  const row = gs[0]!.rows[0]!;
+  assert.equal(row.title, 'New title');
+  assert.equal(row.at, NOW - 60e3);
+  assert.ok(row.live && row.item);
+  assert.deepEqual(stateOf(live[0]!, NOW), { cls: 'busy', what: 'Thinking' });
+  // with no live entry, the history's title and time stand
+  const old = groups([], NOW, hist, '', false)[0]!.rows[0]!;
+  assert.equal(old.title, 'Old title');
+  assert.equal(old.at, Date.parse('2026-11-23T08:00:00.000Z'));
+  assert.equal(old.live, null);
+  // a live session the history has not listed joins its folder by the folder id, and sorts by its time
+  const late = groups([session({ id: 's9', title: 'Late', folder: 'proj', folderId: 'f1', age: 10 })], NOW, hist, '', false);
+  assert.equal(late.length, 1);
+  assert.deepEqual(late[0]!.rows.map(r => r.id), ['s9', 's1']);
+  assert.equal(late[0]!.count, 2);   // the history's one, and the live one added to it
+});
+
+test('folders go by their newest session, and rows by their time, newest first', () => {
+  const hist: History = { q: '', total: 3, archived: 0, groups: [
+    { id: 'a', name: 'Older folder', count: 1, latest: '2026-11-20T10:00:00.000Z', more: false, items: [item('a1', 'A1', '2026-11-20T10:00:00.000Z')] },
+    { id: 'b', name: 'Newer folder', count: 2, latest: '2026-11-23T09:00:00.000Z', more: true,
+      items: [item('b1', 'B1', '2026-11-22T09:00:00.000Z'), item('b2', 'B2', '2026-11-23T09:00:00.000Z')] },
+  ] };
+  const gs = groups([], NOW, hist, '', false);
+  assert.deepEqual(gs.map(g => g.name), ['Newer folder', 'Older folder']);
+  assert.deepEqual(gs[0]!.rows.map(r => r.id), ['b2', 'b1']);
+  assert.equal(gs[0]!.more, true);
+  assert.equal(gs[0]!.count, 2);
+  // a live folder the history does not know is placed by its newest session
+  const extra = groups([session({ id: 'x1', title: 'X', folder: 'Scratch', age: 60 })], NOW, hist, '', false);
+  assert.deepEqual(extra.map(g => g.name), ['Scratch', 'Newer folder', 'Older folder']);
+});
+
+test('a search shows only what the history matched: live sessions the history lacks stay out', () => {
+  const live = [session({ id: 'z', folder: 'proj', age: 5 })];
+  assert.deepEqual(groups(live, NOW, null, 'x', false), []);
+  assert.equal(groups(live, NOW, null, '', false).length, 1);
+});
