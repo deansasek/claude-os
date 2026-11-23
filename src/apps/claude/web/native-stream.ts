@@ -23,7 +23,8 @@ export type NativeEvent =
   | { type: 'usageChecked'; ok: boolean }     // a usage check ended (from the runner, ClaudeCli.usageCheck)
   | { type: 'exit'; code: number }       // the process ended (from the runner, not the CLI)
   | { type: 'error'; message: string }   // the runner could not send (from the runner)
-  | { type: 'stop' };                    // the user asked to stop the running reply (native.ts nativeStop)
+  | { type: 'stop' }                     // the user asked to stop the running reply (native.ts nativeStop)
+  | { type: 'status'; text: string | null };  // a retry or compacting, as the CLI says it; null when it is over
 
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj | null => (v && typeof v === 'object' && !Array.isArray(v) ? v as Obj : null);
@@ -91,7 +92,17 @@ export function parseStreamLine(line: string): NativeEvent | null {
   switch (o.type) {
     case 'system': {
       const id = str(o.session_id);
-      return o.subtype === 'init' && id ? { type: 'init', sessionId: id } : null;
+      if (o.subtype === 'init') return id ? { type: 'init', sessionId: id } : null;
+      // the API is retried: "Retrying (2 of 10)" (attempt, max_retries). Compacting: the CLI's status is "compacting".
+      if (o.subtype === 'api_retry') {
+        const attempt = num(o.attempt), max = num(o.max_retries);
+        return { type: 'status', text: attempt ? `Retrying (${attempt} of ${max})` : 'Retrying' };
+      }
+      if (o.subtype === 'status') {
+        if (o.status === 'compacting') return { type: 'status', text: 'Compacting' };
+        return o.status == null ? { type: 'status', text: null } : null;
+      }
+      return null;
     }
     case 'stream_event': {
       const e = obj(o.event), d = obj(e?.delta);
@@ -142,13 +153,14 @@ export interface NativeChat {
   sessionId: string | null; entries: TranscriptEntry[]; running: boolean; partial: string; error: string | null;
   tokens: TokenUse; last: TokenUse | null; window: number | null; limits: Record<string, SeenLimit>;
   stopped: boolean;   // the user asked to stop the running reply: its end reads as "Stopped", not as an error
+  status: string | null;   // a retry or compacting while the reply runs ("Retrying (2 of 10)", "Compacting"); null otherwise
 }
 export const emptyChat = (): NativeChat =>
-  ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {}, stopped: false });
+  ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {}, stopped: false, status: null });
 
 /** Your message goes on screen and the reply starts. */
 export const userSent = (c: NativeChat, text: string, at = new Date().toISOString()): NativeChat =>
-  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false });
+  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false, status: null });
 
 const ERRORS: Record<string, string> = { start_failed: 'Claude couldn’t start on this tablet. Sign in under Settings → Apps → Claude, then try again.' };
 
@@ -175,15 +187,17 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
   const withReply = (text: string): TranscriptEntry[] => (text ? [...c.entries, { kind: 'assistant', text, at }] : c.entries);
   switch (e.type) {
     case 'init': return { ...c, sessionId: e.sessionId };
-    case 'delta': return c.running ? { ...c, partial: c.partial + e.text } : c;
-    case 'text': return c.running ? { ...c, partial: e.text } : c;
+    // a reply piece or the result is a normal event again: the retry or compacting line goes
+    case 'delta': return c.running ? { ...c, partial: c.partial + e.text, status: null } : c;
+    case 'text': return c.running ? { ...c, partial: e.text, status: null } : c;
+    case 'status': return c.running ? { ...c, status: e.text } : c;
     case 'stop': return c.running ? { ...c, stopped: true } : c;
     case 'result':
       // a stopped reply keeps what streamed, marked; its end is not an error. A failed result's text is the CLI's error,
       // not Claude's words: it becomes a note (failedNote), not a reply
-      if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial || (e.ok ? e.text : ''))), running: false, partial: '', stopped: false,
+      if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial || (e.ok ? e.text : ''))), running: false, partial: '', stopped: false, status: null,
         sessionId: e.sessionId || c.sessionId, error: 'Stopped', tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
-      return { ...c, entries: e.ok ? withReply(e.text || c.partial) : withReply(c.partial), running: false, partial: '',
+      return { ...c, entries: e.ok ? withReply(e.text || c.partial) : withReply(c.partial), running: false, partial: '', status: null,
         sessionId: e.sessionId || c.sessionId, error: e.ok ? null : failedNote(c, e.text, at, e.reason ?? null),
         tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window };
     case 'limits': {
@@ -195,10 +209,10 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
     case 'usageChecked': return c;
     case 'exit':
       if (!c.running) return c;
-      if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial)), running: false, partial: '', stopped: false, error: 'Stopped' };
-      return { ...c, entries: withReply(c.partial), running: false, partial: '', error: 'Claude on this tablet stopped before it finished.' };
+      if (c.stopped) return { ...c, entries: withReply(stoppedText(c.partial)), running: false, partial: '', stopped: false, status: null, error: 'Stopped' };
+      return { ...c, entries: withReply(c.partial), running: false, partial: '', status: null, error: 'Claude on this tablet stopped before it finished.' };
     case 'error':
-      return { ...c, running: false, partial: '', stopped: false, error: ERRORS[e.message] || 'That didn’t send. Try again.' };
+      return { ...c, running: false, partial: '', stopped: false, status: null, error: ERRORS[e.message] || 'That didn’t send. Try again.' };
   }
 }
 
