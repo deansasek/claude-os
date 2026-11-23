@@ -105,8 +105,9 @@ export function transcriptHtml(entries: TranscriptEntry[], active: boolean, ui: 
   return html;
 }
 
-/** Quick replies that fit what Claude just said. [label, what gets sent] */
+/** Quick replies that fit what Claude just said: its next-step choices when it offered some, else chips. [label, what gets sent] */
 export function quickReplies(v: SessionView): [string, string][] {
+  if (v.next?.choices.length) return v.next.choices;
   const last = [...v.transcript].reverse().find(e => e.kind === 'assistant' || e.kind === 'user');
   return quickChips(last?.kind === 'assistant' ? last.text : '');
 }

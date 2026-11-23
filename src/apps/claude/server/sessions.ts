@@ -1,8 +1,9 @@
 // Live sessions: read the tail of recently-written session logs to tell what each is doing.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { LiveSession, SessionState, TranscriptEntry } from '../api.ts';
+import type { LiveSession, NextStep, SessionState, TranscriptEntry } from '../api.ts';
 import { describeTool } from './describe.ts';
+import { type ChoiceEvent, currentChoices, WRAP_UP_TOOL } from '../web/sessions/next-step.ts';
 import { tabletReplyIn } from './pclink.ts';
 import { PROJECTS } from '../../../core/server/paths.ts';
 import { openSessions } from './registry.ts';
@@ -172,7 +173,7 @@ let lastTokens = new Map<string, number>();
 
 // ---------- the conversation itself, for the Hub's session view ----------
 const TRANSCRIPT_SPANS = [1_500_000, 5_000_000, 12_000_000], MAX_ENTRIES = 80;
-const transcripts = new Lru<string, { key: string; entries: TranscriptEntry[] }>(40);   // the sessions recently viewed
+const transcripts = new Lru<string, { key: string; entries: TranscriptEntry[]; next: NextStep | null }>(40);   // the sessions recently viewed
 
 /** Text the user typed, without Claude Code's own wrappers (system reminders, command echoes…). */
 export function userText(content: any): string {
@@ -187,6 +188,11 @@ export function transcriptVersion(id: string): string {
   return transcripts.get(id)?.key ?? '';
 }
 
+/** The choices of the session's latest wrap_up call, when no user message came after it. Call transcriptFor first. */
+export function nextStepFor(id: string): NextStep | null {
+  return transcripts.get(id)?.next ?? null;
+}
+
 export function transcriptFor(id: string): TranscriptEntry[] {
   const s = details.get(id);
   if (!s) return [];
@@ -197,14 +203,14 @@ export function transcriptFor(id: string): TranscriptEntry[] {
   if (hit && hit.key === key) return hit.entries;
 
   // Logs can hold a few huge lines near the end (request snapshots): read further back until there's enough to show
-  let out: TranscriptEntry[] = [];
+  let out: TranscriptEntry[] = [], next: NextStep | null = null;
   for (const span of TRANSCRIPT_SPANS) {
     const start = Math.max(0, st.size - span);
-    out = parseTranscript(id, s.file, start, st.size);
+    ({ entries: out, next } = parseTranscript(id, s.file, start, st.size));
     if (start === 0 || out.filter(e => e.kind !== 'tool').length >= MAX_ENTRIES / 2) break;
   }
   const entries = out.slice(-MAX_ENTRIES);
-  transcripts.set(id, { key, entries });
+  transcripts.set(id, { key, entries, next });
   return entries;
 }
 
@@ -241,7 +247,7 @@ export function forgetTranscript(sessionId: string): void {
   for (const k of [...imageSpots.keys()]) if (k.startsWith(sessionId + '|')) imageSpots.delete(k);
 }
 
-function parseTranscript(sessionId: string, file: string, start: number, size: number): TranscriptEntry[] {
+function parseTranscript(sessionId: string, file: string, start: number, size: number): { entries: TranscriptEntry[]; next: NextStep | null } {
   const buf = Buffer.alloc(size - start);
   const fd = fs.openSync(file, 'r');
   try { fs.readSync(fd, buf, 0, buf.length, start); } finally { fs.closeSync(fd); }
@@ -256,6 +262,7 @@ function parseTranscript(sessionId: string, file: string, start: number, size: n
   if (start > 0) lines.shift();
 
   const out: TranscriptEntry[] = [];
+  const events: ChoiceEvent[] = [];   // user messages and wrap_up calls, for the next-step choices
   const seen = new Set<string>();
   for (const { raw: rawBuf, off } of lines) {
     const raw = rawBuf.toString('utf8');
@@ -275,6 +282,7 @@ function parseTranscript(sessionId: string, file: string, start: number, size: n
       const reply = tabletReplyIn(text);   // a reply from the tablet, stored as a hook note: show only the reply
       if (reply === '') continue;
       const shown = reply ?? text;
+      events.push({ kind: 'user' });
       if (shown.startsWith('[Request interrupted')) out.push({ kind: 'note', text: 'Interrupted', at });
       else {
         const images: string[] = [];
@@ -292,11 +300,12 @@ function parseTranscript(sessionId: string, file: string, start: number, size: n
         const mid = o.uuid && MSG_ID.test(o.uuid) ? (bi ? `${o.uuid}#${bi}` : o.uuid) : undefined;
         if (b?.type === 'text' && b.text?.trim()) out.push({ kind: 'assistant', text: b.text.trim().slice(0, 8000), at, ...(mid ? { id: mid } : {}) });
         else if (b?.type === 'tool_use') {
+          if (b.name === WRAP_UP_TOOL) events.push({ kind: 'wrap_up', input: b.input });
           const d = describeTool(b.name, b.input);
           out.push({ kind: 'tool', text: d.summary, tool: b.name, detail: d.detail.slice(0, 300), at });
         }
       });
     }
   }
-  return out;
+  return { entries: out, next: currentChoices(events) };
 }
