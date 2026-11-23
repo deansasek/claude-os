@@ -1,7 +1,10 @@
 // The native chat's stream-json parser and chat folding (src/apps/claude/web/native-stream.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyEvent, chatAge, chatListed, contextOf, emptyChat, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens, userSent, type NativeEvent } from '../src/apps/claude/web/native-stream.ts';
+import {
+  applyEvent, chatAge, chatListed, contextOf, emptyChat, limitList, limitName, limitState, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens, userSent,
+  type NativeEvent,
+} from '../src/apps/claude/web/native-stream.ts';
 
 const AT = '2026-11-23T10:00:00.000Z';
 const line = (o: unknown) => JSON.stringify(o);
@@ -130,4 +133,54 @@ test('of the file copy and the localStorage copy, the one saved last wins', () =
   assert.equal(newerSaved(older, noTime), older);
   assert.equal(newerSaved(noTime, older), older);
   assert.deepEqual(loadChat(newerSaved(newer, older)).entries.map(e => e.text), ['Hi', 'Again']);
+});
+// rate_limit_event, as the CLI sends it: utilization is a fraction, resetsAt is Unix seconds
+const RESET = 1795000000, RESET_ISO = new Date(RESET * 1000).toISOString();
+const rateLine = (info: unknown) => line({ type: 'rate_limit_event', rate_limit_info: info, uuid: 'u1', session_id: 's1' });
+
+test('a rate_limit_event keeps the status, window type, utilization and reset time', () => {
+  assert.deepEqual(parseStreamLine(rateLine({ status: 'allowed_warning', rateLimitType: 'seven_day', utilization: 0.81, resetsAt: RESET, surpassedThreshold: 0.75 })),
+    { type: 'limits', limits: [{ type: 'seven_day', status: 'allowed_warning', used: 81, resetsAt: RESET_ISO }] });
+});
+
+test('a rate_limit_event without utilization keeps the status and reset time only', () => {
+  assert.deepEqual(parseStreamLine(rateLine({ status: 'allowed', rateLimitType: 'five_hour', resetsAt: RESET, isUsingOverage: false })),
+    { type: 'limits', limits: [{ type: 'five_hour', status: 'allowed', used: null, resetsAt: RESET_ISO }] });
+  assert.deepEqual(parseStreamLine(rateLine({ status: 'rejected', rateLimitType: 'seven_day_opus' })),
+    { type: 'limits', limits: [{ type: 'seven_day_opus', status: 'rejected', used: null, resetsAt: null }] });
+});
+
+test('a rate_limit_event reads unifiedWindows; the named window wins over its own entry', () => {
+  const e = parseStreamLine(rateLine({
+    status: 'allowed', rateLimitType: 'five_hour', resetsAt: RESET,
+    unifiedWindows: { five_hour: { utilization: 0.4, resetsAt: 1, status: 'allowed_warning' }, seven_day: { utilization: 0.12, resetsAt: RESET } },
+  }));
+  assert.deepEqual(e, { type: 'limits', limits: [
+    { type: 'five_hour', status: 'allowed', used: 40, resetsAt: RESET_ISO },
+    { type: 'seven_day', status: '', used: 12, resetsAt: RESET_ISO },
+  ] });
+});
+
+test('a rate_limit_event with no window type, or no info, is dropped', () => {
+  assert.equal(parseStreamLine(rateLine({ status: 'allowed' })), null);
+  assert.equal(parseStreamLine(line({ type: 'rate_limit_event' })), null);
+});
+
+test('the chat keeps the latest limit per window, across saves and a fresh chat', () => {
+  const later = '2026-11-23T11:00:00.000Z';
+  let c = applyEvent(emptyChat(), { type: 'limits', limits: [{ type: 'seven_day', status: 'allowed', used: null, resetsAt: RESET_ISO }] }, AT);
+  c = applyEvent(c, { type: 'limits', limits: [{ type: 'five_hour', status: 'allowed', used: null, resetsAt: null }] }, AT);
+  c = applyEvent(c, { type: 'limits', limits: [{ type: 'seven_day', status: 'allowed_warning', used: 76, resetsAt: RESET_ISO }] }, later);
+  assert.deepEqual(limitList(c).map(l => [l.type, l.status, l.used, l.at]),
+    [['five_hour', 'allowed', null, AT], ['seven_day', 'allowed_warning', 76, later]]);
+  assert.deepEqual(loadChat(saveChat(c)).limits, c.limits);
+  assert.deepEqual(loadChat(JSON.stringify({ v: 1, entries: [] })).limits, {});   // saved before limits existed
+});
+
+test('a limit reads as the percent used, or its status when there is no utilization', () => {
+  assert.equal(limitState({ type: 'five_hour', status: 'allowed', used: 38.4, resetsAt: null }), '38% used');
+  assert.equal(limitState({ type: 'five_hour', status: 'allowed', used: null, resetsAt: null }), 'Within limit');
+  assert.equal(limitState({ type: 'five_hour', status: 'rejected', used: null, resetsAt: null }), 'Limit reached');
+  assert.equal(limitName('five_hour'), 'Session limit');
+  assert.equal(limitName('something_new'), 'something_new');
 });
