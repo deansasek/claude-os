@@ -6,6 +6,7 @@ import { report } from '../../../../core/web/dom.ts';
 import type { AppContext } from '../../../../core/web/shell.ts';
 import { onBack } from '../../../../core/web/system.ts';
 import { nativeBusy, nativeClear, NATIVE_ID } from '../native.ts';
+import { copyText } from '../reply.ts';
 import { call, withPin } from './pin.ts';
 
 let ctx: AppContext;
@@ -42,6 +43,7 @@ export function openSessionMenu(id: string, title: string, archived: boolean): v
   $('smDeleteText').textContent = tablet ? 'Clear this chat' : 'Delete';
   $('smAsk').textContent = tablet ? 'Clear this chat? It leaves this screen and the list. The tablet keeps its session files.' : 'Delete this session? This can’t be undone.';
   $('smGone').textContent = tablet ? 'Clear' : 'Delete';
+  $('smCopy').hidden = id === NATIVE_ID;   // a PC session's id only: the tablet's own chat has none
   say('');
   show(true);
   $('svSessMenu').hidden = false;
@@ -59,6 +61,15 @@ async function changeState(on: boolean): Promise<void> {
   };
   report(on ? 'session-archive' : 'session-unarchive');
   await withPin(act);
+}
+
+/** Copies the PC session's id to the clipboard (the same copy path as a message's Copy). The menu stays open. */
+async function copyId(): Promise<void> {
+  const t = target;
+  if (!t || t.id === NATIVE_ID) return;
+  const ok = await copyText(t.id);
+  report(ok ? 'copy-session-id' : 'copy-session-id-failed');
+  say(ok ? 'Session id copied.' : 'Couldn’t copy the session id.');
 }
 
 async function remove(): Promise<void> {
@@ -93,6 +104,7 @@ export function initManage(context: AppContext, onDone: (id: string, what: Manag
   $('smDelete').addEventListener('click', () => { say(''); show(false); });
   $('smKeep').addEventListener('click', () => { say(''); show(true); });
   $('smGone').addEventListener('click', () => { void remove(); });
+  $('smCopy').addEventListener('click', () => { void copyId(); });
   $('smClose').addEventListener('click', close);
   $('svSessMenu').addEventListener('click', e => { if (e.target === $('svSessMenu')) close(); });   // tap the dimmed part to close
   // Back: the delete confirmation goes back to the actions (as Keep it does), then the menu closes
