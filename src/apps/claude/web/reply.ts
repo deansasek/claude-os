@@ -118,8 +118,8 @@ function paintSidebar(force = false): void {
 // ---------- the conversation ----------
 function paintLog(v: SessionView, active: HubTurn | null, force = false): void {
   const log = $('svLog');
-  // the tablet's chat shows its elapsed time: the key changes with each whole second, so the line repaints
-  const elapsed = active?.id === NATIVE_ID ? elapsedText(active.startedAt) : '';
+  // the running reply shows its elapsed time (tablet and PC): the key changes with each whole second, so the line repaints
+  const elapsed = active ? elapsedText(active.startedAt) : '';
   const tail = active ? `${active.status}|${active.progress[active.progress.length - 1] || ''}|${elapsed}` : (v.turn?.status === 'error' ? 'error' : '');
   const end = v.transcript[v.transcript.length - 1];
   const key = `${v.transcript.length}|${end?.at}|${end?.text.length}|${tail}`;
@@ -131,8 +131,8 @@ function paintLog(v: SessionView, active: HubTurn | null, force = false): void {
   let html = v.transcript.length ? transcriptHtml(v.transcript, !!active, msgUi()) : '<div class="m-note">No messages yet.</div>';
   if (active) {
     const said = active.status === 'approval' ? 'Waiting for your OK' : (active.progress[active.progress.length - 1] || 'Working');
-    // the tablet's chat: "Thinking · 0:42", the time since the reply was sent (native.ts turnStartedAt)
-    const line = active.id === NATIVE_ID ? `${said} · ${elapsedText(active.startedAt)}` : `${said}…`;
+    // "Thinking · 0:42": the time since the reply was sent (native.ts turnStartedAt, turns.ts startedAt)
+    const line = `${said} · ${elapsedText(active.startedAt)}`;
     html += `<div class="m-working">${SPARK}<span>${esc(line)}</span></div>`;
   } else if (v.turn?.status === 'error') {
     // the last reply did not finish: say so, until the next reply starts
