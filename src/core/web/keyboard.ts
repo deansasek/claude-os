@@ -15,6 +15,7 @@ interface KeyboardOptions {
   autoCap?: boolean;        // capitalise the first letter of each word
   max?: number;
   mask?: boolean;           // a secret (e.g. an access token): the bar shows dots, and only the last character typed
+  paste?: () => string | null;   // shows Paste in the bar: the text to put in the field (null: nothing to paste)
   onChange?: (text: string) => void;
   onDone?: (text: string) => boolean | void;
   onClose?: (reason: CloseReason, text: string) => void;
@@ -101,6 +102,7 @@ export const Keyboard = {
     opts = { placeholder: '', done: 'Done', autoCap: false, max: 60, ...o };
     val = o.value || ''; layout = 'alpha'; shift = false;
     $('kbDone').textContent = opts.done || 'Done';
+    $('kbPaste').hidden = !opts.paste;
     sounds = device.keyboard.prefs()?.keySounds ?? false;
     render();
     $('kb').classList.add('on');
@@ -131,6 +133,13 @@ export function initKeyboard(): void {
   });
   (['pointerup', 'pointerleave', 'pointercancel'] as const).forEach(ev => keys.addEventListener(ev, stopRepeat));
   $('kbCancel').addEventListener('click', () => Keyboard.close('cancel'));
+  $('kbPaste').addEventListener('click', () => {   // replaces the field: a pasted code or token is the whole entry
+    const text = opts?.paste?.();
+    if (!opts || text == null) return;
+    val = text.slice(0, opts.max ?? 60);
+    paint();
+    opts.onChange?.(val);
+  });
   $('kbDone').addEventListener('click', () => {
     if (!opts) return;
     if (opts.onDone?.(val) !== false) Keyboard.close('done');

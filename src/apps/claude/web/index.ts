@@ -13,6 +13,8 @@ import { initVoice, tapToStop } from './voice.ts';
 import { pace, toolWord } from './words.ts';
 import { loadModels, modelChoices, newPref, setNewPref, setVoicePref, voicePref } from './sessions/controls.ts';
 import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-settings.ts';
+import { device } from '../../../core/web/device.ts';
+import { NATIVE_MODELS, nativeModel, nativeOn, setNativeModel, setNativeOn } from './native.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -230,6 +232,14 @@ function registerClaudeSettings(): void {
   registerAppSettings({
     app: 'claude', name: 'Claude', icon: app.icon, blurb: 'Defaults for new sessions and for “Hey Claude”',
     rows: () => [
+      { kind: 'switch', id: 'native', title: 'Run Claude chats on this tablet', detail: 'New chats use the Claude CLI signed in on this tablet (no tools) instead of your PC.',
+        get: nativeOn, set: v => { setNativeOn(v); if (v) device.cliAuthState(true); appSettingsChanged(); } },
+      ...(nativeOn() ? [
+        { kind: 'choice' as const, id: 'nativeModel', title: 'Chats on this tablet · model', detail: 'The model a chat on this tablet runs on. Changing it keeps the chat and applies from the next reply.',
+          options: NATIVE_MODELS, get: nativeModel, set: (v: string) => setNativeModel(v) },
+        { kind: 'action' as const, id: 'nativeSignin', title: 'Chats on this tablet · sign-in', detail: 'Sign in with your Claude account once. The first time, Claude Code downloads to the tablet (about 365 MB).',
+          value: signinText, label: 'Sign in', run: startSignin },
+      ] : []),
       { kind: 'choice', id: 'newModel', title: 'New sessions · model', detail: 'What a session started from ClaudeOS runs on. You can change it per session in the composer.',
         options: [{ value: '', label: 'Default' }, ...models()], get: () => newPref('model'), set: v => setNewPref('model', v) },
       { kind: 'choice', id: 'newMode', title: 'New sessions · permissions', detail: 'Manual asks before every change. Auto lets Claude decide what needs a yes.',
@@ -246,6 +256,19 @@ function registerClaudeSettings(): void {
     ],
   });
   void loadModels().then(() => appSettingsChanged());
+  if (nativeOn()) device.cliAuthState(true);   // the sign-in row's state (the answer repaints Settings, cli-signin.ts)
+}
+
+/** The tablet CLI's sign-in, as the Settings row shows it. */
+function signinText(): string {
+  const s = device.cliAuthState();
+  return s.busy ? 'Signing in…' : s.signedIn === 1 ? 'Signed in' : s.signedIn === 0 ? 'Not signed in' : '';
+}
+
+/** Settings → Apps → Claude → Sign in: the tablet downloads the CLI if needed, then opens claude.ai in the Browser. */
+function startSignin(): void {
+  try { device.cliSigninStart(); } catch { /* already running, or an older app build */ }
+  appSettingsChanged();
 }
 
 function mount(context: AppContext): void {

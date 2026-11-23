@@ -13,6 +13,9 @@ import calendar from './apps/calendar/web/index.ts';
 import routines from './apps/routines/web/index.ts';
 import settings from './apps/settings/web/index.ts';
 import { device, onTablet } from './core/web/device.ts';
+import { appSettingsChanged } from './core/web/app-settings.ts';
+import { initCliSignin } from './core/web/cli-signin.ts';
+import { Keyboard } from './core/web/keyboard.ts';
 import { mockDevice } from './core/web/dom.ts';
 import { checkHitAreas } from './core/web/hit-guard.ts';
 import { startHub } from './core/web/shell.ts';
@@ -32,6 +35,12 @@ void startHub(onTablet
   : [home, launcher, claude, weather, clock, photos, homeAssistant, lists, calendar, routines]).then(() => {
     maybeWelcome();
     initPowerSheet({ reboot: device.reboot, screenOff: device.screenOff, onBack });   // a long press of the power button
+    initCliSignin({   // the tablet's Claude CLI sign-in (Settings → Apps → Claude → Sign in)
+      sendCode: device.cliSigninCode, paste: device.cliSigninClipboard, secondsLeft: device.cliSigninState, onBack,
+      keyboard: o => Keyboard.open(o), keyboardClose: () => Keyboard.close(),
+      notify: (title, body) => notify({ title, body: body || undefined, app: 'claude' }),
+      onStatus: appSettingsChanged,
+    });
     if (mockDevice) setTimeout(checkHitAreas, 400);   // dev: tap areas after boot (hit-guard.ts)
   });
 

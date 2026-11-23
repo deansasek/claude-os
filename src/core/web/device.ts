@@ -13,6 +13,11 @@ interface HubDeviceApi {
   apps(): string; setAppHidden(pkg: string, hidden: boolean): string;
   reboot(): string; maintenance(): string;
   screenOff?(): string;   // newer app builds: the power menu's Turn off screen
+  // newer app builds: chats on the tablet's own Claude CLI (apps/claude/web/native.ts) and its sign-in (cli-signin.ts)
+  cliSigninStart?(): string; cliAuthState?(check: boolean): string;
+  cliSigninCode?(code: string): string; cliSigninClipboard?(): string; cliSigninState?(): string;
+  claudeSend?(text: string, sessionId: string, model: string): string; claudeStop?(): string;
+  pageFileWrite?(name: string, text: string): string; pageFileRead?(name: string): string;
   setup(): string; fix(id: string): string; setKiosk(on: boolean): string;
   keyboardStatus?(): string; keyboardSetDefault?(): string; keyboardClearLearned?(): string;   // newer app builds
   keyboardPrefs?(): string; keyboardSetPref?(name: string, on: boolean): string;   // newer app builds: suggestions, key sounds
@@ -98,6 +103,28 @@ export const device = {
   /** The screen off now (Android's lock, with no lock screen: the power button wakes it). Throws on older app builds. */
   screenOff: () => call<{ ok: boolean }>(a => a.screenOff!()),
   maintenance: () => call<{ ok: boolean }>(a => a.maintenance()),
+  /** Starts signing the tablet's Claude CLI in (core/web/cli-signin.ts follows the steps). Throws with the reason. */
+  cliSigninStart: () => call<{ ok: boolean }>(a => a.cliSigninStart!()),
+  /** The tablet CLI's sign-in: 1 signed in, 0 not, -1 not known (also on older builds); busy while a sign-in runs.
+   *  check: also asks the CLI now (the answer comes as a "status" step). */
+  cliAuthState: (check = false): { signedIn: number; busy: boolean } => {
+    try { return call<{ signedIn: number; busy: boolean }>(a => a.cliAuthState!(check)); } catch { return { signedIn: -1, busy: false }; }
+  },
+  /** The code for the waiting `claude auth login` ('' = the clipboard's). Throws with the reason. */
+  cliSigninCode: (code: string) => call<{ ok: boolean }>(a => a.cliSigninCode!(code)),
+  /** The clipboard's text for the sign-in sheet's Paste (read natively). Throws with the reason. */
+  cliSigninClipboard: () => call<{ text: string }>(a => a.cliSigninClipboard!()).text,
+  /** Seconds left for a running CLI login that takes a code; -1 when none runs or on older builds. */
+  cliSigninState: (): number => { try { return call<{ left: number }>(a => a.cliSigninState!()).left; } catch { return -1; } },
+  /** One message to the tablet's own Claude CLI ('' = a new chat; model haiku, sonnet or opus). Throws on older builds or with the reason. */
+  claudeSend: (text: string, sessionId: string, model: string) => call<{ ok: boolean }>(a => a.claudeSend!(text, sessionId, model)),
+  /** Stops the tablet's running chat. */
+  claudeStop: () => call<{ ok: boolean }>(a => a.claudeStop!()),
+  /** A small file in the app's files folder, on disk when this returns, so it survives the app being closed
+   *  (localStorage writes land a few seconds late). Throws on older builds or off the tablet. */
+  pageFileWrite: (name: 'native-chat', text: string) => call<{ ok: boolean }>(a => a.pageFileWrite!(name, text)),
+  /** The file's text, or null when it is not there. Throws on older builds or off the tablet. */
+  pageFileRead: (name: 'native-chat'): string | null => call<{ text: string | null }>(a => a.pageFileRead!(name)).text,
   /** One-time Android settings that make the tablet a kiosk without device owner. Older app builds lack it. */
   setup: (): Setup | null => { try { return call<Setup>(a => a.setup()); } catch { return null; } },
   fix: (id: string) => call<{ ok: boolean }>(a => a.fix(id)),

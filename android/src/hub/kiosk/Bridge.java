@@ -878,6 +878,95 @@ public class Bridge {
     if (b == null) return err("no browser");
     return b.offer(url) == null ? err("link not allowed") : OK;
   }
+
+  // ---------- Claude chats on the tablet's own Claude CLI (cli/ClaudeCli, apps/claude/web/native.ts) ----------
+  /** Starts signing the CLI in (download on first use, `claude auth login`, then its status). Steps reach the page as
+   *  window.hubCliSignin (core/web/cli-signin.ts). */
+  @JavascriptInterface public String cliSigninStart() {
+    if (!allowed) return DENIED;
+    return hub.kiosk.cli.ClaudeCli.startSignin(act) ? OK : err("a sign-in is running");
+  }
+  /** {"signedIn":1|0|-1,"busy":bool}. check: also runs `claude auth status` now (the result comes as a "status" step). */
+  @JavascriptInterface public String cliAuthState(boolean check) {
+    if (!allowed) return DENIED;
+    return hub.kiosk.cli.ClaudeCli.authState(act, check);
+  }
+  /** The sign-in sheet's code for the waiting `claude auth login`. An empty code means "use the clipboard". Never logged or kept. */
+  @JavascriptInterface public String cliSigninCode(String code) {
+    if (!allowed) return DENIED;
+    String r = hub.kiosk.cli.ClaudeCli.sendCode(act, code);
+    return r == null ? OK : err(r);
+  }
+  /** The sign-in sheet's Paste, {"text":...}. Only while a login takes a code. Never logged or kept. */
+  @JavascriptInterface public String cliSigninClipboard() {
+    if (!allowed) return DENIED;
+    StringBuilder text = new StringBuilder();
+    String r = hub.kiosk.cli.ClaudeCli.clipboardCode(act, text);
+    return r == null ? "{\"text\":" + JSONObject.quote(text.toString()) + "}" : err(r);
+  }
+  /** {"left":s}, the seconds left for a login that takes a code, or -1 when none runs. */
+  @JavascriptInterface public String cliSigninState() {
+    if (!allowed) return DENIED;
+    return "{\"left\":" + hub.kiosk.cli.ClaudeCli.secondsLeft() + "}";
+  }
+  /**
+   * One message to the tablet's own Claude CLI. sessionId '' starts a new chat. model: haiku, sonnet or opus (anything
+   * else is haiku). Events come back as window.hubClaudeNative(line). The text is never logged.
+   */
+  @JavascriptInterface public String claudeSend(String text, String sessionId, String model) {
+    if (!allowed) return DENIED;
+    if (text == null || text.trim().isEmpty()) return err("empty");
+    String m = "sonnet".equals(model) || "opus".equals(model) ? model : "haiku";
+    hub.kiosk.cli.ClaudeCli.turn(act, text, sessionId, m);
+    return OK;
+  }
+  /** Stops the running chat process. */
+  @JavascriptInterface public String claudeStop() {
+    if (!allowed) return DENIED;
+    hub.kiosk.cli.ClaudeCli.stopChat();
+    return OK;
+  }
+
+  // ---------- small files the page keeps in the app's own files folder (files/page/<name>.json) ----------
+  // The WebView's localStorage writes reach disk a few seconds late, and are lost when the app is closed before that.
+  // These files are written at once (fsync, then rename), so they survive a force-stop. Only the names below; the text
+  // is never logged.
+  private static final Set<String> PAGE_FILES = new HashSet<>(Arrays.asList("native-chat"));
+  private static final int PAGE_FILE_MAX = 1 << 20;
+  private java.io.File pageFile(String name) { return new java.io.File(new java.io.File(act.getFilesDir(), "page"), name + ".json"); }
+  /** {"ok":true} once the text is on disk. */
+  @JavascriptInterface public String pageFileWrite(String name, String text) {
+    if (!allowed) return DENIED;
+    if (!PAGE_FILES.contains(name)) return err("unknown file");
+    if (text == null || text.length() > PAGE_FILE_MAX) return err("too big");
+    java.io.File f = pageFile(name), tmp = new java.io.File(f.getPath() + ".tmp");
+    synchronized (PAGE_FILES) {
+      try {
+        java.io.File dir = f.getParentFile();
+        if (dir != null && !dir.isDirectory() && !dir.mkdirs()) return err("no folder");
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+          out.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+          out.getFD().sync();
+        }
+        if (!tmp.renameTo(f)) return err("rename failed");
+        return OK;
+      } catch (Exception e) { return err(e.toString()); }
+    }
+  }
+  /** {"text":...}, or {"text":null} when the file is not there. */
+  @JavascriptInterface public String pageFileRead(String name) {
+    if (!allowed) return DENIED;
+    if (!PAGE_FILES.contains(name)) return err("unknown file");
+    java.io.File f = pageFile(name);
+    synchronized (PAGE_FILES) {
+      if (!f.isFile()) return "{\"text\":null}";
+      try {
+        byte[] b = java.nio.file.Files.readAllBytes(f.toPath());
+        return "{\"text\":" + JSONObject.quote(new String(b, java.nio.charset.StandardCharsets.UTF_8)) + "}";
+      } catch (Exception e) { return err(e.toString()); }
+    }
+  }
+
   /** The page's answer to a Browser page's alert, confirm or prompt (a ClaudeOS sheet): ok, and the typed text. */
   @JavascriptInterface public String browserDialog(String dialogId, boolean ok, String text) { return browser(b -> b.answerDialog(dialogId, ok, text)); }
   /** The Google sign-in panel's Done: finishes Chrome's side sheet (Claude Home comes back to the front). */
