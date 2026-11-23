@@ -20,6 +20,7 @@ import { initManage, openSessionMenu } from './sessions/manage.ts';
 import { msgKey, type MsgUi, openClips, openGroups, quickReplies, relAgo, SPARK, SPARK_RAYS, transcriptHtml } from './sessions/transcript.ts';
 import { speakable } from './voice.ts';
 import { initNative, NATIVE_ID, nativeListed, nativeOn, nativeSend, nativeStop, nativeView } from './native.ts';
+import { elapsedText } from './native-stream.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -117,7 +118,9 @@ function paintSidebar(force = false): void {
 // ---------- the conversation ----------
 function paintLog(v: SessionView, active: HubTurn | null, force = false): void {
   const log = $('svLog');
-  const tail = active ? `${active.status}|${active.progress[active.progress.length - 1] || ''}` : (v.turn?.status === 'error' ? 'error' : '');
+  // the tablet's chat shows its elapsed time: the key changes with each whole second, so the line repaints
+  const elapsed = active?.id === NATIVE_ID ? elapsedText(active.startedAt) : '';
+  const tail = active ? `${active.status}|${active.progress[active.progress.length - 1] || ''}|${elapsed}` : (v.turn?.status === 'error' ? 'error' : '');
   const end = v.transcript[v.transcript.length - 1];
   const key = `${v.transcript.length}|${end?.at}|${end?.text.length}|${tail}`;
   if (key === drawnLog && !force) return;
@@ -128,7 +131,9 @@ function paintLog(v: SessionView, active: HubTurn | null, force = false): void {
   let html = v.transcript.length ? transcriptHtml(v.transcript, !!active, msgUi()) : '<div class="m-note">No messages yet.</div>';
   if (active) {
     const said = active.status === 'approval' ? 'Waiting for your OK' : (active.progress[active.progress.length - 1] || 'Working');
-    html += `<div class="m-working">${SPARK}<span>${esc(said)}…</span></div>`;
+    // the tablet's chat: "Thinking · 0:42", the time since the reply was sent (native.ts turnStartedAt)
+    const line = active.id === NATIVE_ID ? `${said} · ${elapsedText(active.startedAt)}` : `${said}…`;
+    html += `<div class="m-working">${SPARK}<span>${esc(line)}</span></div>`;
   } else if (v.turn?.status === 'error') {
     // the last reply did not finish: say so, until the next reply starts
     html += `<div class="m-note">${esc(v.turn.error || 'That reply didn’t finish. Try again.')}</div>`;

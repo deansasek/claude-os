@@ -154,13 +154,22 @@ export interface NativeChat {
   tokens: TokenUse; last: TokenUse | null; window: number | null; limits: Record<string, SeenLimit>;
   stopped: boolean;   // the user asked to stop the running reply: its end reads as "Stopped", not as an error
   status: string | null;   // a retry or compacting while the reply runs ("Retrying (2 of 10)", "Compacting"); null otherwise
+  turnStartedAt: string | null;   // when the running reply was sent (set once per turn, by userSent)
 }
 export const emptyChat = (): NativeChat =>
-  ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {}, stopped: false, status: null });
+  ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {}, stopped: false, status: null, turnStartedAt: null });
 
 /** Your message goes on screen and the reply starts. */
 export const userSent = (c: NativeChat, text: string, at = new Date().toISOString()): NativeChat =>
-  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false, status: null });
+  ({ ...c, entries: [...c.entries, { kind: 'user', text, at }], running: true, partial: '', error: null, stopped: false, status: null, turnStartedAt: at });
+
+/** How long a reply has run, as the chat shows it: '0:42', or '1:02:05' past an hour. */
+export function elapsedText(startedAt: string, now = Date.now()): string {
+  const start = Date.parse(startedAt);
+  const s = Number.isFinite(start) ? Math.max(0, Math.floor((now - start) / 1000)) : 0;
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = String(s % 60).padStart(2, '0');
+  return h ? h + ':' + String(m).padStart(2, '0') + ':' + sec : m + ':' + sec;
+}
 
 const ERRORS: Record<string, string> = { start_failed: 'Claude couldn’t start on this tablet. Sign in under Settings → Apps → Claude, then try again.' };
 

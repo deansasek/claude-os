@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, contextOf, emptyChat, limitList, limitName, limitState, limitsUpdated, loadChat, newerSaved, parseStreamLine, saveChat,
+  applyEvent, chatAge, chatListed, clearedChat, contextOf, elapsedText, emptyChat, limitList, limitName, limitState, limitsUpdated, loadChat, newerSaved, parseStreamLine, saveChat,
   totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
@@ -77,6 +77,19 @@ test('a retry or compacting line shows while the reply runs; the next reply piec
   assert.equal(c.status, null);
   // outside a reply a status changes nothing
   assert.equal(applyEvent(emptyChat(), { type: 'status', text: 'Compacting' }, AT).status, null);
+});
+
+test('the elapsed time of a reply: m:ss, then h:mm:ss past an hour; a bad start reads as zero', () => {
+  const start = Date.parse(AT);
+  assert.equal(elapsedText(AT, start), '0:00');
+  assert.equal(elapsedText(AT, start + 42e3), '0:42');
+  assert.equal(elapsedText(AT, start + 65e3), '1:05');
+  assert.equal(elapsedText(AT, start + 3725e3), '1:02:05');
+  assert.equal(elapsedText(AT, start - 5e3), '0:00');
+  assert.equal(elapsedText('not a time', start), '0:00');
+  // the start is kept with the turn: a new message sets it, and an empty chat has none
+  assert.equal(userSent(emptyChat(), 'Hi', AT).turnStartedAt, AT);
+  assert.equal(emptyChat().turnStartedAt, null);
 });
 
 test('lines that are not JSON or not used give null', () => {

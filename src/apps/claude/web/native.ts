@@ -121,7 +121,7 @@ export function nativeView(): SessionView {
     session: { id: NATIVE_ID, title, folder: 'On this tablet', branch: null, model: nativeModel(), state: c.running ? 'thinking' : 'waiting', tool: null,
       age: chatAge(c), subagents: 0, working: 0, tokens: totalTokens(c.tokens), surface: 'tablet', open: false, hub: true },
     transcript, lastText: null, canReply: !c.running, reason: null, context: contextOf(c),
-    turn: c.running ? { id: NATIVE_ID, sessionId: NATIVE_ID, title, status: 'running', startedAt: now, progress: [c.status || (c.partial ? 'Writing' : 'Thinking')],
+    turn: c.running ? { id: NATIVE_ID, sessionId: NATIVE_ID, title, status: 'running', startedAt: c.turnStartedAt || now, progress: [c.status || (c.partial ? 'Writing' : 'Thinking')],
       approval: null, reply: null, error: null } : null,
   };
 }
