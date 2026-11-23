@@ -30,14 +30,15 @@ import { initPowerSheet } from './core/web/power-sheet.ts';
 // devices are switched by the PC). The first-run welcome shows once the app has mounted (startHub resolves after that),
 // if the PC hasn't recorded it.
 // Test only: the tablet app's ui_test launch (MainActivity) sets window.hubUiTest to a run id and calls
-// window.hubTestRun after each page load. The check (apps/claude/web/ui-test.ts) loads only then, once per run and page.
+// window.hubTestRun after each page load (window.hubUiTestPhase 2: the check after an app restart). The check
+// (apps/claude/web/ui-test.ts) loads only then, once per run and page.
 let hubReady = false, uiTestStarted = '';
-const testHook = window as unknown as { hubUiTest?: unknown; hubTestRun?: () => void };
+const testHook = window as unknown as { hubUiTest?: unknown; hubUiTestPhase?: unknown; hubTestRun?: () => void };
 testHook.hubTestRun = () => {
-  const run = testHook.hubUiTest;
+  const run = testHook.hubUiTest, phase = testHook.hubUiTestPhase === 2 ? 2 : 1;
   if (!hubReady || typeof run !== 'string' || !run || run === uiTestStarted) return;
   uiTestStarted = run;
-  import('./apps/claude/web/ui-test.ts').then(m => m.runUiTest(run)).catch(e => console.log(`uitest: could not load the check: ${String(e)}`));
+  import('./apps/claude/web/ui-test.ts').then(m => m.runUiTest(run, phase)).catch(e => console.log(`uitest: could not load the check: ${String(e)}`));
 };
 void startHub(onTablet
   ? [home, launcher, claude, weather, clock, browserApp, camera, photos, homeAssistant, lists, calendar, routines, settings]

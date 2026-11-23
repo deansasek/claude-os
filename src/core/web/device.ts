@@ -16,6 +16,7 @@ interface HubDeviceApi {
   cliSigninCode?(code: string): string;   // SPIKE builds: the CLI sign-in sheet's code (cli-signin.ts)
   cliSigninClipboard?(): string; cliSigninState?(): string;   // SPIKE builds: the sheet's Paste; the login's time left
   claudeSend?(text: string, sessionId: string, model: string): string; claudeStop?(): string;   // SPIKE builds: native chat (apps/claude/web/native.ts)
+  pageFileWrite?(name: string, text: string): string; pageFileRead?(name: string): string; processId?(): string;   // newer builds: native chat files
   setup(): string; fix(id: string): string; setKiosk(on: boolean): string;
   keyboardStatus?(): string; keyboardSetDefault?(): string; keyboardClearLearned?(): string;   // newer app builds
   keyboardPrefs?(): string; keyboardSetPref?(name: string, on: boolean): string;   // newer app builds: suggestions, key sounds
@@ -110,6 +111,13 @@ export const device = {
   claudeSend: (text: string, sessionId: string, model: string) => call<{ ok: boolean }>(a => a.claudeSend!(text, sessionId, model)),
   /** SPIKE: stops the tablet's running chat. */
   claudeStop: () => call<{ ok: boolean }>(a => a.claudeStop!()),
+  /** A small file in the app's files folder ('native-chat' or 'uitest'), on disk when this returns, so it survives the
+   *  app being closed (localStorage writes land a few seconds late). Throws on older builds or off the tablet. */
+  pageFileWrite: (name: 'native-chat' | 'uitest', text: string) => call<{ ok: boolean }>(a => a.pageFileWrite!(name, text)),
+  /** The file's text, or null when it is not there. Throws on older builds or off the tablet. */
+  pageFileRead: (name: 'native-chat' | 'uitest'): string | null => call<{ text: string | null }>(a => a.pageFileRead!(name)).text,
+  /** This app process (pid and start time): a new id means the app was restarted. Null on older builds. */
+  processId: (): string | null => { try { return call<{ id: string }>(a => a.processId!()).id; } catch { return null; } },
   cliSigninState: (): number => { try { return call<{ left: number }>(a => a.cliSigninState!()).left; } catch { return -1; } },
   /** One-time Android settings that make the tablet a kiosk without device owner. Older app builds lack it. */
   setup: (): Setup | null => { try { return call<Setup>(a => a.setup()); } catch { return null; } },

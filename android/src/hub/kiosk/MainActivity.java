@@ -285,17 +285,25 @@ public class MainActivity extends Activity {
    * TEST hook: adb shell am start -n hub.kiosk/.MainActivity --ez ui_test true. With the extra (and only then), each
    * Hub page load in this activity runs the page's scripted check (apps/claude/web/ui-test.ts) through
    * window.hubTestRun; the run id lets the page resume the same check after its own reload. Results go to the PC log.
+   * Phase 2: after am force-stop hub.kiosk, am start ... --ez ui_test_phase2 true checks the chat survived the restart.
    */
   private String uiTestRun = null;
+  private int uiTestPhase = 1;
+  /** Phase 2 (--ez ui_test_phase2 true, after the app was closed): the page checks that phase 1's chat is still there,
+   *  without sending a message. */
   private void uiTest(Intent i, boolean pageLoaded) {
-    if (i == null || !i.getBooleanExtra("ui_test", false)) return;
+    if (i == null) return;
+    boolean phase2 = i.getBooleanExtra("ui_test_phase2", false);
+    if (!phase2 && !i.getBooleanExtra("ui_test", false)) return;
     uiTestRun = String.valueOf(System.currentTimeMillis());
-    Log.i(TAG, "uitest: run " + uiTestRun);
+    uiTestPhase = phase2 ? 2 : 1;
+    Log.i(TAG, "uitest: run " + uiTestRun + " phase " + uiTestPhase);
     if (pageLoaded) runUiTest();
   }
   private void runUiTest() {
     if (uiTestRun == null || web == null || bridge == null || !bridge.isAllowed()) return;
-    web.evaluateJavascript("window.hubUiTest='" + uiTestRun + "';window.hubTestRun&&window.hubTestRun()", null);
+    web.evaluateJavascript("window.hubUiTest='" + uiTestRun + "';window.hubUiTestPhase=" + uiTestPhase
+        + ";window.hubTestRun&&window.hubTestRun()", null);
   }
 
   /** Cream with the spark, the same as the splash screen before it. */

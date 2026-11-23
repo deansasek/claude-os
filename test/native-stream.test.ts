@@ -1,7 +1,7 @@
 // The native chat's stream-json parser and chat folding (src/apps/claude/web/native-stream.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyEvent, chatAge, chatListed, contextOf, emptyChat, loadChat, parseStreamLine, saveChat, totalTokens, userSent, type NativeEvent } from '../src/apps/claude/web/native-stream.ts';
+import { applyEvent, chatAge, chatListed, contextOf, emptyChat, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens, userSent, type NativeEvent } from '../src/apps/claude/web/native-stream.ts';
 
 const AT = '2026-11-23T10:00:00.000Z';
 const line = (o: unknown) => JSON.stringify(o);
@@ -114,4 +114,20 @@ test('a loaded chat with messages stays listed after it is closed, aged from its
   assert.equal(chatListed(back), true);
   assert.equal(chatAge(back, Date.parse(AT) + 90_000), 90);
   assert.equal(chatAge(loadChat(JSON.stringify({ v: 1, entries: [{ kind: 'user', text: 'x', at: null }] }))), 0);
+});
+
+test('of the file copy and the localStorage copy, the one saved last wins', () => {
+  const chat = userSent(emptyChat(), 'Hi', AT);
+  const older = saveChat(chat, 1000), newer = saveChat(userSent(chat, 'Again', AT), 2000);
+  assert.equal(newerSaved(newer, older), newer);
+  assert.equal(newerSaved(older, newer), newer);   // the file write failed: localStorage is newer
+  assert.equal(newerSaved(newer, newer), newer);
+  assert.equal(newerSaved(older, null), older);    // a page that never saved to localStorage
+  assert.equal(newerSaved(null, older), older);    // an older app build: no file
+  assert.equal(newerSaved('not json', older), older);
+  assert.equal(newerSaved(null, null), null);
+  const noTime = JSON.stringify({ v: 1, entries: [] });   // saved before savedAt existed
+  assert.equal(newerSaved(older, noTime), older);
+  assert.equal(newerSaved(noTime, older), older);
+  assert.deepEqual(loadChat(newerSaved(newer, older)).entries.map(e => e.text), ['Hi', 'Again']);
 });

@@ -269,6 +269,10 @@
       return ok();
     },
     claudeStop: () => ok(),
+    // the app's files folder: here localStorage (on the tablet a file, written at once)
+    pageFileWrite: (name: string, text: string) => { try { localStorage.setItem(`mock.page.${name}`, text); } catch { /* ignore */ } return ok(); },
+    pageFileRead: (name: string) => { try { return j({ text: localStorage.getItem(`mock.page.${name}`) }); } catch { return j({ text: null }); } },
+    processId: () => j({ id: 'mock' }),
     cliSigninState: () => j({ left: -1 }),
     maintenance: () => { alert('On the tablet this opens Android’s Settings (Desk mode pauses until you come back).'); resume(); return ok(); },
     // voice

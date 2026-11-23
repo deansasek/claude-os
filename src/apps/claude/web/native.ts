@@ -1,12 +1,12 @@
 // SPIKE (native chat, milestone 1): chats that run on the tablet's own Claude CLI instead of the PC hub.
 // Settings → Apps → Claude → "Run Claude chats on this tablet" (off: the PC hub, the default). When on, a new chat
 // from the Sessions screen goes to device.claudeSend; the tablet sends each stream-json line back as
-// window.hubClaudeNative(line). One native chat at a time. The chat (its session id and entries) is kept in the store,
-// so a reload resumes it; the screen shows it as the session NATIVE_ID.
+// window.hubClaudeNative(line). One native chat at a time. The chat (its session id and entries) is kept in the store
+// and in the app's files folder, so a reload or an app restart resumes it; the screen shows it as the session NATIVE_ID.
 import { device } from '../../../core/web/device.ts';
 import { store } from '../../../core/web/dom.ts';
 import type { LiveSession, SessionView } from '../api.ts';
-import { applyEvent, chatAge, chatListed, contextOf, emptyChat, loadChat, parseStreamLine, saveChat, totalTokens, userSent, type NativeChat } from './native-stream.ts';
+import { applyEvent, chatAge, chatListed, contextOf, emptyChat, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens, userSent, type NativeChat } from './native-stream.ts';
 
 const KEY = 'claude.native.on';
 export const nativeOn = (): boolean => store.get(KEY) === '1';
@@ -23,11 +23,23 @@ export const nativeModel = (): string => {
 };
 export const setNativeModel = (m: string): void => store.set(MODEL_KEY, NATIVE_MODELS.some(o => o.value === m) ? m : 'haiku');
 
-let chat: NativeChat = loadChat(store.get(CHAT_KEY));
+// The chat is kept twice: in localStorage, and in a file in the app's files folder (device.pageFileWrite). The file is
+// on disk as soon as the save returns; localStorage reaches disk a few seconds later, so closing the app right after a
+// reply could lose it there. At start-up the newer copy wins (newerSaved).
+const CHAT_FILE = 'native-chat';
+function readFile(): string | null { try { return device.pageFileRead(CHAT_FILE); } catch { return null; } }
+const fromFile = readFile(), fromLocal = store.get(CHAT_KEY), picked = newerSaved(fromFile, fromLocal);
+/** Where the chat came from when the page loaded: the app's file, localStorage, or neither (for the ui_test check). */
+export const nativeLoadedFrom: 'file' | 'local' | 'none' = picked == null ? 'none' : picked === fromFile ? 'file' : 'local';
+let chat: NativeChat = loadChat(picked);
 let changed = (): void => {};
 
-/** Keep the chat for the next page load. Called after each change that is not a streamed piece. */
-function save(): void { store.set(CHAT_KEY, saveChat(chat)); }
+/** Keep the chat for the next page load and the next app start. Called after each change that is not a streamed piece. */
+function save(): void {
+  const s = saveChat(chat);
+  store.set(CHAT_KEY, s);
+  try { device.pageFileWrite(CHAT_FILE, s); } catch { /* older app build, or off the tablet: localStorage only */ }
+}
 
 /** Listen for the tablet's events; onChange runs after each one the chat uses. */
 export function initNative(onChange: () => void): void {
@@ -51,6 +63,9 @@ export function nativeSend(text: string, fresh = false): void {
 }
 
 export function nativeStop(): void { try { device.claudeStop(); } catch { /* older app build */ } }
+
+/** The chat's CLI session id (null before the first reply starts). For the ui_test check. */
+export const nativeSessionId = (): string | null => chat.sessionId;
 
 /** The native chat as a row of the Sessions list, or null when there is no chat yet. The hub's list never has it. */
 export const nativeListed = (): LiveSession | null => (chatListed(chat) ? nativeView().session : null);

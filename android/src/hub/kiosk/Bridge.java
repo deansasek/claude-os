@@ -917,6 +917,52 @@ public class Bridge {
     if (!allowed) return DENIED;
     return "{\"left\":" + hub.kiosk.node.NativeClaudeRunner.secondsLeft() + "}";
   }
+
+  // ---------- small files the page keeps in the app's own files folder (files/page/<name>.json) ----------
+  // The WebView's localStorage writes reach disk a few seconds late, and are lost when the app is closed before that;
+  // it is also tied to the Hub's address. These files are written at once (fsync, then rename), so they survive a
+  // force-stop. Only the names below; the text is never logged.
+  private static final Set<String> PAGE_FILES = new HashSet<>(Arrays.asList("native-chat", "uitest"));
+  private static final int PAGE_FILE_MAX = 1 << 20;
+  private java.io.File pageFile(String name) { return new java.io.File(new java.io.File(act.getFilesDir(), "page"), name + ".json"); }
+  /** {"ok":true} once the text is on disk. */
+  @JavascriptInterface public String pageFileWrite(String name, String text) {
+    if (!allowed) return DENIED;
+    if (!PAGE_FILES.contains(name)) return err("unknown file");
+    if (text == null || text.length() > PAGE_FILE_MAX) return err("too big");
+    java.io.File f = pageFile(name), tmp = new java.io.File(f.getPath() + ".tmp");
+    synchronized (PAGE_FILES) {
+      try {
+        java.io.File dir = f.getParentFile();
+        if (dir != null && !dir.isDirectory() && !dir.mkdirs()) return err("no folder");
+        try (java.io.FileOutputStream out = new java.io.FileOutputStream(tmp)) {
+          out.write(text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+          out.getFD().sync();
+        }
+        if (!tmp.renameTo(f)) return err("rename failed");
+        return OK;
+      } catch (Exception e) { return err(e.toString()); }
+    }
+  }
+  /** {"text":...}, or {"text":null} when the file is not there. */
+  @JavascriptInterface public String pageFileRead(String name) {
+    if (!allowed) return DENIED;
+    if (!PAGE_FILES.contains(name)) return err("unknown file");
+    java.io.File f = pageFile(name);
+    synchronized (PAGE_FILES) {
+      if (!f.isFile()) return "{\"text\":null}";
+      try {
+        byte[] b = java.nio.file.Files.readAllBytes(f.toPath());
+        return "{\"text\":" + JSONObject.quote(new String(b, java.nio.charset.StandardCharsets.UTF_8)) + "}";
+      } catch (Exception e) { return err(e.toString()); }
+    }
+  }
+  /** {"id":...}: this app process (its pid and start time). A new id means the process was restarted. */
+  @JavascriptInterface public String processId() {
+    if (!allowed) return DENIED;
+    return "{\"id\":\"" + android.os.Process.myPid() + "-" + android.os.Process.getStartElapsedRealtime() + "\"}";
+  }
+
   /** The page's answer to a Browser page's alert, confirm or prompt (a ClaudeOS sheet): ok, and the typed text. */
   @JavascriptInterface public String browserDialog(String dialogId, boolean ok, String text) { return browser(b -> b.answerDialog(dialogId, ok, text)); }
   /** The Google sign-in panel's Done: finishes Chrome's side sheet (Claude Home comes back to the front). */

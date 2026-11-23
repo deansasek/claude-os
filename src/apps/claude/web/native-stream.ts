@@ -110,12 +110,26 @@ export function chatAge(c: NativeChat, now = Date.now()): number {
   return Number.isFinite(at) ? Math.max(0, Math.floor((now - at) / 1000)) : 0;
 }
 
-// ---------- keeping the chat across page reloads (native.ts keeps the JSON in the store) ----------
+// ---------- keeping the chat across page reloads and app restarts (native.ts keeps the JSON in the store and in a
+// file in the app's files folder) ----------
 const SAVED_ENTRIES = 100;
 
-/** The chat as JSON for the store: the session, the entries and the token counts. Never the streaming reply. */
-export function saveChat(c: NativeChat): string {
-  return JSON.stringify({ v: 1, sessionId: c.sessionId, entries: c.entries.slice(-SAVED_ENTRIES), tokens: c.tokens, last: c.last, window: c.window });
+/** The chat as JSON for the store: the session, the entries and the token counts. Never the streaming reply.
+ *  savedAt: when it was saved (ms), so the newer of two copies wins (newerSaved). */
+export function saveChat(c: NativeChat, savedAt = Date.now()): string {
+  return JSON.stringify({ v: 1, savedAt, sessionId: c.sessionId, entries: c.entries.slice(-SAVED_ENTRIES), tokens: c.tokens, last: c.last, window: c.window });
+}
+
+/** Of the copy in the app's file and the copy in localStorage, the one saved last (the file on a tie, or when the
+ *  other is missing or unreadable). localStorage can lag behind the file when the app was closed right after a save;
+ *  the file can be missing on an older app build. */
+export function newerSaved(file: string | null, local: string | null): string | null {
+  const at = (s: string | null): number => {
+    try { const o = obj(s ? JSON.parse(s) : null); return o && o.v === 1 ? num(o.savedAt) || 0 : -1; } catch { return -1; }
+  };
+  const f = at(file), l = at(local);
+  if (f < 0 && l < 0) return file ?? local;
+  return l > f ? local : file;
 }
 
 /** The chat from the store's JSON. Anything unreadable gives an empty chat; a reply that was streaming is not kept. */
