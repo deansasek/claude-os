@@ -33,6 +33,35 @@ Follow this exact structure:
 
 Issue titles and PR titles follow Conventional Commits, for example `fix(home): weather detail overflows the glance column`.
 
+## PR size
+
+A small PR gets a faster and more careful review, hides fewer bugs, merges with fewer conflicts, and is easy to revert. Keep each PR small. Use the pr-size skill to measure and split.
+
+- **Target:** one self-contained idea per PR. The PR includes its tests and leaves `main` working after merge. A new function or API ships with a caller in the same PR, so the reviewer can see why it exists.
+- **Soft limit:** about 300 changed lines (added plus deleted) and about 10 files, measured with `git diff --stat main...HEAD`. Most PRs in this repo are under 150 lines and 5 files, for example a change to one app's files under `src/apps/<app>/`. Over 300 lines, split the PR or say in `## What` why it cannot be split. Count concepts, not only lines: 200 lines in one file can be fine, while the same 200 lines across 20 files is usually too big.
+- **Do not count:** deleted files, lockfiles, and generated output (for example a build tool's output). Name these in `## What` so the reviewer can skip them.
+- **Split when a PR mixes:**
+  - a refactor and a feature or fix;
+  - unrelated fixes;
+  - a change and a large moved, renamed, or generated file;
+  - code changes that need different reviewers or areas, for example `android/` and `src/apps/`.
+- **Refactor first:** a refactor that changes no behavior (move, rename, extract) goes in its own PR, before the feature that needs it. A small cleanup in the lines you already touch can stay in the feature PR.
+- **Too big:** a PR over the limit gets a stack of small PRs, not one long review.
+
+### Stacked PRs
+
+Use a stack as often as possible to keep PRs small. A stack is a chain of PRs. Each PR builds on the one below it.
+
+This repo uses a manual chain of branches and PRs. GitHub's official `gh stack` extension (`github/gh-stack`) is not installed here. Do not use it unless the repository owner installs it.
+
+1. Use one branch per PR, named `<type>/<kebab-name>`, for example `refactor/clock-extract-timer`, then `feat/clock-lap-times`.
+2. The bottom PR targets `main`: `gh pr create --base main --head <bottom-branch> ...`.
+3. Each next PR targets the branch below it, not `main`: `gh pr create --base <previous-branch> --head <branch> ...`. Start each branch from the previous branch: `git switch -c <branch> <previous-branch>`.
+4. In `## Why`, give the PR's place in the stack, for example `Part 2 of 3. Depends on #120.`
+5. Merge from the bottom up. Do not merge a PR until the PR below it is in `main`.
+6. When the bottom PR merges, the repo deletes its branch (auto-delete is on), and GitHub normally retargets the next PR to `main`. Check with `gh pr view <n> --json baseRefName`. If the base is not `main`, retarget it: `gh pr edit <n> --base main`.
+7. Rebase the rest of the stack onto `main`, so the merged commits drop out: `git fetch origin`, then `git rebase --onto origin/main <old-base> <branch>`, where `<old-base>` is your local copy of the merged branch (it keeps the old commits after GitHub deletes the remote branch). Add `--update-refs` to move the higher branches in the same rebase. Push each rebased branch with `git push --force-with-lease`.
+
 ## Issue template
 
 Use this template for every GitHub issue. Write it in the same plain style as PR bodies. Delete a section only if it does not apply (for example, Steps for a feature request). Android UI that reaches the user is a bug by default (see "Rule: no visible Android").
