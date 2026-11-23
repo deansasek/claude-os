@@ -216,6 +216,12 @@ function failedNote(c: NativeChat, text: string, at: string, reason: string | nu
   const latest = rejected.map(l => l.resetsAt).filter((r): r is string => !!r).sort().pop();
   return latest ? `Limit reached, resets ${resetText(latest, now)}` : 'Limit reached';
 }
+/** The note when a plan window is close to its limit: "90% of session limit used, resets 4:30 PM". */
+export function warningNote(l: PlanLimit, at: string): string {
+  const now = Date.parse(at) || Date.now(), name = limitName(l.type).toLowerCase();
+  const head = l.used != null ? `${Math.round(l.used)}% of ${name} used` : `Close to the ${name}`;
+  return l.resetsAt ? `${head}, resets ${resetText(l.resetsAt, now)}` : head;
+}
 /** A reset time for the note: the clock time today, else the weekday and the clock time. */
 function resetText(iso: string, now: number): string {
   const d = new Date(iso), sameDay = d.toDateString() === new Date(now).toDateString();
@@ -263,9 +269,16 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
         tokens: addTokens(c.tokens, e.usage), last: e.usage, window: e.window || c.window, lastMs: e.durationMs ?? c.lastMs };
     case 'limits': {
       const limits = { ...c.limits };
-      // a get_usage reply has no status: keep the one the last rate_limit_event gave
-      for (const l of e.limits) limits[l.type] = { ...l, status: l.status || limits[l.type]?.status || '', at };
-      return { ...c, limits };
+      const notes: TranscriptEntry[] = [];
+      for (const l of e.limits) {
+        const prev = limits[l.type];
+        // one note per window: a warning already noted for this window (same type, same reset time) is not noted again
+        if (l.status === 'allowed_warning' && !(prev?.status === 'allowed_warning' && prev.resetsAt === l.resetsAt))
+          notes.push({ kind: 'note', text: warningNote(l, at), at });
+        // a get_usage reply has no status: keep the one the last rate_limit_event gave
+        limits[l.type] = { ...l, status: l.status || prev?.status || '', at };
+      }
+      return { ...c, limits, entries: notes.length ? [...c.entries, ...notes] : c.entries };
     }
     case 'usageChecked': return c;
     case 'exit':
