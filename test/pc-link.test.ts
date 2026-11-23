@@ -87,3 +87,16 @@ test('the hooks are added once, beside the user\'s own, and removed cleanly', ()
   assert.deepEqual(withoutBridgeHooks(once), mine);
   assert.deepEqual(withoutBridgeHooks(withBridgeHooks({}, cmd)), {});
 });
+
+test('queued() gives the time a reply waits for the PC hook, and null once the hook takes it', async () => {
+  let now = 1000;
+  const box = new PcInbox(45e3, () => now);
+  assert.equal(box.queued(S), null);
+  assert.deepEqual(await box.wait(S, 'waiter-aaaa', true, 5), { kind: 'again' });
+  now = 2000;
+  assert.equal(box.deliver(S, 'later'), true);
+  assert.equal(box.queued(S), 2000);
+  now = 3000;
+  assert.deepEqual(await box.wait(S, 'waiter-aaaa', false, 5000), { kind: 'reply', text: 'later' });
+  assert.equal(box.queued(S), null);
+});

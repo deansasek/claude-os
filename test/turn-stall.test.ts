@@ -1,7 +1,7 @@
 // The PC-or-Hub stalled line for a Hub turn (src/apps/claude/server/turns.ts progressFor): the pure part.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { progressFor } from '../src/apps/claude/server/turns.ts';
+import { PC_PICKUP_MS, PC_PICKUP_TEXT, progressFor } from '../src/apps/claude/server/turns.ts';
 import { STALLED_TEXT, STALL_MS } from '../src/apps/claude/web/native-stream.ts';
 
 const T0 = 1_000_000;
@@ -27,4 +27,14 @@ test('only the latest six steps are shown, and the stalled line comes after them
   const steps = ['1', '2', '3', '4', '5', '6', '7', '8'];
   assert.deepEqual(progressFor(steps, 'running', false, T0, T0 + STALL_MS), ['3', '4', '5', '6', '7', '8', STALLED_TEXT]);
   assert.deepEqual(progressFor(steps, 'running', false, T0, T0 + 1), ['3', '4', '5', '6', '7', '8']);
+});
+
+test('a reply sent to a PC session shows the pick-up line after PC_PICKUP_MS, not before', () => {
+  assert.deepEqual(progressFor(['Sent to your PC session'], 'running', true, undefined, T0 + PC_PICKUP_MS - 1, T0), ['Sent to your PC session']);
+  assert.deepEqual(progressFor(['Sent to your PC session'], 'running', true, undefined, T0 + PC_PICKUP_MS, T0), ['Sent to your PC session', PC_PICKUP_TEXT]);
+});
+
+test('no pick-up line when no reply waits, or the PC turn is no longer running', () => {
+  assert.deepEqual(progressFor(['Sent'], 'running', true, undefined, T0 + PC_PICKUP_MS * 2, null), ['Sent']);
+  assert.deepEqual(progressFor(['Finished on your PC'], 'done', true, undefined, T0 + PC_PICKUP_MS * 2, T0), ['Finished on your PC']);
 });

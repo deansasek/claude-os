@@ -210,16 +210,24 @@ const turns = new Map<string, Live>();
 /** Replies on their way to sessions open on the PC, and the PC hooks waiting for them (pclink.ts). */
 const inbox = new PcInbox();
 
-/** The steps a turn shows: the latest six, then the stalled line once a running Hub turn has had no event for STALL_MS.
- *  The line is added here only; it is not kept as a step. Turns that run on the PC are left out. */
-export function progressFor(progress: string[], status: TurnStatus, onPc: boolean, lastEventAt: number | undefined, now = Date.now()): string[] {
+/** The line for a PC turn whose reply has waited this long for the PC hook to pick it up. */
+export const PC_PICKUP_TEXT = 'Waiting for your PC to pick it up';
+export const PC_PICKUP_MS = 60e3;
+
+/** The steps a turn shows: the latest six, then the stalled line once a running Hub turn has had no event for STALL_MS,
+ *  or the PC pick-up line once a reply sent to a PC session has waited PC_PICKUP_MS (`queuedAt`, ms).
+ *  The line is added here only; it is not kept as a step. */
+export function progressFor(progress: string[], status: TurnStatus, onPc: boolean, lastEventAt: number | undefined, now = Date.now(), queuedAt: number | null = null): string[] {
   const shown = progress.slice(-6);
-  return status === 'running' && !onPc && stalled(now, lastEventAt ?? null) ? [...shown, STALLED_TEXT] : shown;
+  if (status !== 'running') return shown;
+  if (onPc) return queuedAt != null && now - queuedAt >= PC_PICKUP_MS ? [...shown, PC_PICKUP_TEXT] : shown;
+  return stalled(now, lastEventAt ?? null) ? [...shown, STALLED_TEXT] : shown;
 }
 
 const view = (t: Live): HubTurn => ({
   id: t.id, sessionId: t.sessionId, title: t.title, status: t.status, startedAt: t.startedAt,
-  progress: progressFor(t.progress, t.status, !!t.pc, t.lastEventAt), approval: t.approval, reply: t.reply, error: t.error,
+  progress: progressFor(t.progress, t.status, !!t.pc, t.lastEventAt, Date.now(), t.pc ? inbox.queued(t.sessionId) : null),
+  approval: t.approval, reply: t.reply, error: t.error,
 });
 const runningFor = (sessionId: string) => [...turns.values()].find(t => t.sessionId === sessionId && (t.status === 'running' || t.status === 'approval'));
 /** Is a reply from the Hub running in this session right now? */
