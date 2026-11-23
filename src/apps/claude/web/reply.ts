@@ -19,7 +19,7 @@ import { historyTitle, initSidebar, sidebarHtml, toggleFolder } from './sessions
 import { initManage, openSessionMenu } from './sessions/manage.ts';
 import { msgKey, type MsgUi, openClips, openGroups, quickReplies, relAgo, SPARK, SPARK_RAYS, transcriptHtml } from './sessions/transcript.ts';
 import { speakable } from './voice.ts';
-import { initNative, NATIVE_ID, nativeOn, nativeSend, nativeStop, nativeView } from './native.ts';
+import { initNative, NATIVE_ID, nativeListed, nativeOn, nativeSend, nativeStop, nativeView } from './native.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -90,11 +90,14 @@ function showScreen(m: Exclude<Mode, 'closed'>): void {
   paintSidebar(true);
 }
 
-/** The sidebar's sessions: the live list, with the open session's freshest copy (kept even if it went quiet). */
+/** The sidebar's sessions: the live list, with the open session's freshest copy (kept even if it went quiet), and the
+ *  tablet's own chat (native.ts), which the hub's list never has, so it stays listed after the session is closed. */
 function sideList(): LiveSession[] {
+  const n = nativeListed();
+  const list = n ? [n, ...sessions.filter(x => x.id !== n.id)] : sessions;
   const s = mode === 'session' ? view?.session : null;
-  if (!s?.id) return sessions;
-  return sessions.some(x => x.id === s.id) ? sessions.map(x => (x.id === s.id ? s : x)) : [s, ...sessions];
+  if (!s?.id) return list;
+  return list.some(x => x.id === s.id) ? list.map(x => (x.id === s.id ? s : x)) : [s, ...list];
 }
 
 function paintSidebar(force = false): void {

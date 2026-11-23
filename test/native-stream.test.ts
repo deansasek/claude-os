@@ -1,7 +1,7 @@
 // The native chat's stream-json parser and chat folding (src/apps/claude/web/native-stream.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyEvent, contextOf, emptyChat, loadChat, parseStreamLine, saveChat, totalTokens, userSent, type NativeEvent } from '../src/apps/claude/web/native-stream.ts';
+import { applyEvent, chatAge, chatListed, contextOf, emptyChat, loadChat, parseStreamLine, saveChat, totalTokens, userSent, type NativeEvent } from '../src/apps/claude/web/native-stream.ts';
 
 const AT = '2026-11-23T10:00:00.000Z';
 const line = (o: unknown) => JSON.stringify(o);
@@ -102,4 +102,16 @@ test('an unreadable or foreign saved chat gives an empty chat', () => {
   const odd = loadChat(JSON.stringify({ v: 1, sessionId: 's2', entries: [{ kind: 'bogus', text: 'x' }, 'no', { kind: 'user', text: 'Kept', at: null }] }));
   assert.equal(odd.sessionId, 's2');
   assert.deepEqual(odd.entries, [{ kind: 'user', text: 'Kept', at: null }]);
+});
+
+test('a loaded chat with messages stays listed after it is closed, aged from its last message', () => {
+  assert.equal(chatListed(emptyChat()), false);
+  let c = userSent(emptyChat(), 'Hi', AT);
+  assert.equal(chatListed(c), true);
+  assert.equal(chatAge(c), 0);   // a reply is running
+  c = applyEvent(c, { type: 'result', ok: true, text: 'Hello', sessionId: 's1', costUsd: null, usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 }, window: null }, AT);
+  const back = loadChat(saveChat(c));
+  assert.equal(chatListed(back), true);
+  assert.equal(chatAge(back, Date.parse(AT) + 90_000), 90);
+  assert.equal(chatAge(loadChat(JSON.stringify({ v: 1, entries: [{ kind: 'user', text: 'x', at: null }] }))), 0);
 });

@@ -101,6 +101,15 @@ export const totalTokens = (t: TokenUse): number => t.input + t.output + t.cache
 export const contextOf = (c: NativeChat): { used: number; window: number } | null =>
   c.last && c.window ? { used: c.last.input + c.last.cacheRead + c.last.cacheWrite, window: c.window } : null;
 
+/** The Sessions list shows the chat while it has a message or a reply is running, also when the chat is not open. */
+export const chatListed = (c: NativeChat): boolean => c.running || c.entries.length > 0;
+
+/** Seconds since the chat's last message (0 while a reply runs, or when no time is known). */
+export function chatAge(c: NativeChat, now = Date.now()): number {
+  const at = c.running ? NaN : Date.parse(c.entries[c.entries.length - 1]?.at || '');
+  return Number.isFinite(at) ? Math.max(0, Math.floor((now - at) / 1000)) : 0;
+}
+
 // ---------- keeping the chat across page reloads (native.ts keeps the JSON in the store) ----------
 const SAVED_ENTRIES = 100;
 

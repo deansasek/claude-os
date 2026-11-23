@@ -5,8 +5,8 @@
 // so a reload resumes it; the screen shows it as the session NATIVE_ID.
 import { device } from '../../../core/web/device.ts';
 import { store } from '../../../core/web/dom.ts';
-import type { SessionView } from '../api.ts';
-import { applyEvent, contextOf, emptyChat, loadChat, parseStreamLine, saveChat, totalTokens, userSent, type NativeChat } from './native-stream.ts';
+import type { LiveSession, SessionView } from '../api.ts';
+import { applyEvent, chatAge, chatListed, contextOf, emptyChat, loadChat, parseStreamLine, saveChat, totalTokens, userSent, type NativeChat } from './native-stream.ts';
 
 const KEY = 'claude.native.on';
 export const nativeOn = (): boolean => store.get(KEY) === '1';
@@ -52,6 +52,9 @@ export function nativeSend(text: string, fresh = false): void {
 
 export function nativeStop(): void { try { device.claudeStop(); } catch { /* older app build */ } }
 
+/** The native chat as a row of the Sessions list, or null when there is no chat yet. The hub's list never has it. */
+export const nativeListed = (): LiveSession | null => (chatListed(chat) ? nativeView().session : null);
+
 /** The native chat as the Sessions screen draws a session. */
 export function nativeView(): SessionView {
   const c = chat, now = new Date().toISOString();
@@ -62,7 +65,7 @@ export function nativeView(): SessionView {
   if (!c.running && c.error) transcript.push({ kind: 'note', text: c.error, at: null });
   return {
     session: { id: NATIVE_ID, title, folder: 'On this tablet', branch: null, model: nativeModel(), state: c.running ? 'thinking' : 'waiting', tool: null,
-      age: 0, subagents: 0, working: 0, tokens: totalTokens(c.tokens), surface: 'tablet', open: false, hub: true },
+      age: chatAge(c), subagents: 0, working: 0, tokens: totalTokens(c.tokens), surface: 'tablet', open: false, hub: true },
     transcript, lastText: null, canReply: !c.running, reason: null, context: contextOf(c),
     turn: c.running ? { id: NATIVE_ID, sessionId: NATIVE_ID, title, status: 'running', startedAt: now, progress: [c.partial ? 'Writing' : 'Thinking'],
       approval: null, reply: null, error: null } : null,
