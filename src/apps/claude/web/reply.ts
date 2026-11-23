@@ -407,10 +407,22 @@ function askFirstMessage(): void {
   });
 }
 
-/** A new chat on the tablet's own Claude CLI with its first message, then the chat opens (the new-chat composer's Send). */
+/** A new chat on the tablet's own Claude CLI with its first message (the new-chat composer's Send). A chat already
+ *  there is replaced only after the OK on ncConfirm; Keep the chat returns the text to the composer. */
+let replaceText: string | null = null;
 function startNativeChat(text: string): void {
-  if (!text.trim()) return;
-  nativeSend(text.trim(), true); picking = false; photos = []; openSession(NATIVE_ID); report('new-native-chat');
+  const first = text.trim();
+  if (!first) return;
+  if (nativeListed()) { replaceText = first; $('ncConfirm').hidden = false; report('new-native-replace'); return; }
+  newNativeChat(first);
+}
+function newNativeChat(first: string): void {
+  nativeSend(first, true); picking = false; photos = []; openSession(NATIVE_ID); report('new-native-chat');
+}
+function keepNativeChat(): void {
+  $('ncConfirm').hidden = true;
+  const t = replaceText; replaceText = null;
+  if (t) { draft = t; askFirstMessage(); }
 }
 
 function startNewSession(p: Project, text: string): void {
@@ -811,6 +823,19 @@ export function initReply(context: AppContext): void {
     const i = chosen ? projects.findIndex(p => p.id === chosen!.id) : -1;
     chosen = projects[(i + 1) % projects.length]; paintFolders();
   });
+
+  // a new chat on the tablet that would replace the one there (startNativeChat): the OK, or keep it
+  $('ncYes').addEventListener('click', () => {
+    $('ncConfirm').hidden = true;
+    const t = replaceText; replaceText = null;
+    if (t) newNativeChat(t);
+  });
+  $('ncNo').addEventListener('click', keepNativeChat);
+  onBack(() => {   // Back on the confirm keeps the chat, like Keep the chat
+    if (!ctx.isVisible() || $('ncConfirm').hidden) return false;
+    keepNativeChat();
+    return true;
+  }, 25);
 
   // the dock and the composer
   $('svQuick').addEventListener('click', e => {
