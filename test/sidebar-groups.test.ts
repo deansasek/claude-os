@@ -134,3 +134,9 @@ test('an empty archive shows a failed fetch, not Loading', () => {
   assert.deepEqual(archiveEmpty(false, true).head, 'Nothing archived.');
   assert.deepEqual(archiveEmpty(false, false), { head: 'Loading…', tip: '' });
 });
+
+test('a session whose Hub turn waits for your OK reads Needs your OK; other sessions keep their words', () => {
+  assert.deepEqual(stateOf(session({ id: 'a', state: 'thinking' }), NOW, new Set(['a'])), { cls: 'yours', what: 'Needs your OK' });
+  assert.deepEqual(stateOf(session({ id: 'a', state: 'thinking' }), NOW, new Set(['b'])), { cls: 'busy', what: 'Thinking' });
+  assert.deepEqual(stateOf(session({ id: 'a', state: 'thinking' }), NOW), { cls: 'busy', what: 'Thinking' });
+});

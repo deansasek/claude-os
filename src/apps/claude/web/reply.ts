@@ -53,6 +53,7 @@ const entryFor = (key: string) => (view?.transcript || []).find((e, n) => msgKey
 let poll: number | undefined;
 let drawnLog = '', drawnSide = '';
 let sessions: LiveSession[] = [];
+let waitingOk = new Set<string>();   // the sessions whose Hub turn waits for your OK (the sidebar says so)
 // photos (the Camera and Photos apps) to send with the next message, and a draft to start the keyboard with
 const MAX_PHOTOS = 3;
 /** The longest message the composer takes. The server cuts a message to the same length (server/turns.ts). */
@@ -109,7 +110,7 @@ function sideList(): LiveSession[] {
 
 function paintSidebar(force = false): void {
   if (mode === 'closed') return;
-  const html = sidebarHtml(sideList(), mode === 'session' ? openId : null);
+  const html = sidebarHtml(sideList(), mode === 'session' ? openId : null, waitingOk);
   $('svNew').classList.toggle('on', mode === 'new');
   const arch = historyArchivedView(), n = historyArchivedCount();
   $('svArchText').textContent = arch ? 'Back to sessions' : `Archived${n ? ` · ${n}` : ''}`;
@@ -755,6 +756,7 @@ function hidePhoto(): void {
 /** Called with every usage refresh: keeps the sidebar current, and pulls the screen over when a reply needs an answer. */
 export function onUsage(u: Usage): boolean {
   sessions = u.sessions || [];
+  waitingOk = new Set((u.turns || []).filter(t => t.status === 'approval').map(t => t.sessionId));
   paintSidebar();
   const asking = (u.turns || []).filter(t => t.status === 'approval' && t.approval);
   for (const t of asking) {
