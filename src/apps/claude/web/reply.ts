@@ -632,7 +632,7 @@ function msgAct(act: string, key: string): void {
 }
 
 /** Copy the message's text (its Markdown, for Claude's replies). The tablet's WebView may refuse the newer way. */
-async function copyText(text: string): Promise<boolean> {
+export async function copyText(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return true; }
   } catch { /* not allowed here: try the older way */ }
