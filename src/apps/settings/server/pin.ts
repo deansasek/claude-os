@@ -8,7 +8,7 @@ import path from 'node:path';
 import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import type { PinResult, PinStatus } from '../api.ts';
 
-const FILE = path.join(HUB, 'claudeos-pin.json');
+const FILE = process.env.CLAUDEOS_PIN_FILE || path.join(HUB, 'claudeos-pin.json');   // a test sets CLAUDEOS_PIN_FILE (test/pin.test.ts)
 const ITERATIONS = 200000, KEY_BYTES = 32;
 const MAX_TRIES = 5, COOLDOWN_MS = 30 * 1000;
 const PIN_RE = /^\d{4,6}$/;
