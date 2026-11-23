@@ -3,10 +3,14 @@
 // from the Sessions screen goes to device.claudeSend; the tablet sends each stream-json line back as
 // window.hubClaudeNative(line). One native chat at a time. The chat (its session id and entries) is kept in the store
 // and in the app's files folder, so a reload or an app restart resumes it; the screen shows it as the session NATIVE_ID.
+import { appSettingsChanged } from '../../../core/web/app-settings.ts';
 import { device } from '../../../core/web/device.ts';
 import { store } from '../../../core/web/dom.ts';
 import type { LiveSession, SessionView } from '../api.ts';
-import { applyEvent, chatAge, chatListed, contextOf, emptyChat, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens, userSent, type NativeChat } from './native-stream.ts';
+import {
+  applyEvent, chatAge, chatListed, contextOf, emptyChat, limitList, loadChat, newerSaved, parseStreamLine, saveChat, totalTokens, userSent,
+  type NativeChat, type SeenLimit,
+} from './native-stream.ts';
 
 const KEY = 'claude.native.on';
 export const nativeOn = (): boolean => store.get(KEY) === '1';
@@ -47,12 +51,16 @@ export function initNative(onChange: () => void): void {
     chat = applyEvent(chat, e);
     if (e.type !== 'delta' && e.type !== 'text') save();
     changed();
+    if (e.type === 'limits') appSettingsChanged();   // Settings -> Apps -> Claude shows them
   };
 }
 
+/** The plan limits from the tablet CLI's last chat (rate_limit_event), the newest per window. Not the hub's limits. */
+export const nativeLimits = (): SeenLimit[] => limitList(chat);
+
 /** A message to the native chat (a fresh chat when `fresh`). The reply resumes the chat's session, on the chosen model. */
 export function nativeSend(text: string, fresh = false): void {
-  if (fresh) chat = emptyChat();
+  if (fresh) chat = { ...emptyChat(), limits: chat.limits };   // plan limits belong to the account, not to one chat
   chat = userSent(chat, text);
   try { device.claudeSend(text, chat.sessionId || '', nativeModel()); } catch { chat = applyEvent(chat, { type: 'error', message: 'send' }); }
   save();

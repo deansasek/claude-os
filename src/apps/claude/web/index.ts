@@ -14,7 +14,8 @@ import { pace, toolWord } from './words.ts';
 import { loadModels, modelChoices, newPref, setNewPref, setVoicePref, voicePref } from './sessions/controls.ts';
 import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-settings.ts';
 import { device } from '../../../core/web/device.ts';
-import { NATIVE_MODELS, nativeModel, nativeOn, setNativeModel, setNativeOn } from './native.ts';
+import { NATIVE_MODELS, nativeLimits, nativeModel, nativeOn, setNativeModel, setNativeOn } from './native.ts';
+import { limitName, limitState } from './native-stream.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -239,6 +240,7 @@ function registerClaudeSettings(): void {
           options: NATIVE_MODELS, get: nativeModel, set: (v: string) => setNativeModel(v) },
         { kind: 'action' as const, id: 'nativeSignin', title: 'Chats on this tablet · sign-in', detail: 'Sign in with your Claude account once. The first time, Claude Code downloads to the tablet (about 365 MB).',
           value: signinText, label: 'Sign in', run: startSignin },
+        ...nativeLimitRows(),
       ] : []),
       { kind: 'choice', id: 'newModel', title: 'New sessions · model', detail: 'What a session started from ClaudeOS runs on. You can change it per session in the composer.',
         options: [{ value: '', label: 'Default' }, ...models()], get: () => newPref('model'), set: v => setNewPref('model', v) },
@@ -257,6 +259,23 @@ function registerClaudeSettings(): void {
   });
   void loadModels().then(() => appSettingsChanged());
   if (nativeOn()) device.cliAuthState(true);   // the sign-in row's state (the answer repaints Settings, cli-signin.ts)
+}
+
+/** Settings rows for the plan limits the tablet CLI reported in its last chat: one per window, with the reset time. */
+function nativeLimitRows(): { kind: 'info'; id: string; title: string; detail: string; value: () => string }[] {
+  const limits = nativeLimits();
+  if (!limits.length) {
+    return [{ kind: 'info', id: 'nativeLimits', title: 'Chats on this tablet · plan limits', detail: 'Shown after your first chat on this tablet.', value: () => '–' }];
+  }
+  return limits.map(l => ({
+    kind: 'info' as const, id: `nativeLimit-${l.type}`, title: `${limitName(l.type)} · as of your last chat`,
+    detail: l.at ? `Reported by Claude on this tablet, ${whenText(new Date(l.at))}.` : 'Reported by Claude on this tablet.',
+    value: () => {
+      const at = l.resetsAt ? new Date(l.resetsAt) : null;
+      const reset = !at ? '' : +at <= Date.now() ? ' · reset since' : ` · resets ${whenText(at)}`;
+      return `${limitState(l)}${reset}`;
+    },
+  }));
 }
 
 /** The tablet CLI's sign-in, as the Settings row shows it. */
