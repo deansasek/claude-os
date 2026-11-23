@@ -1,8 +1,9 @@
 // The Home app: the first screen, a calm overview of the day that ties the other apps together.
 //   Left     a greeting, the time and date, and one sentence about what needs you (a waiting Claude session).
 //   Right    the critter, living through the day: the real sky, sleepy at night, a "!" when a session waits,
-//            the spark turning while Claude works. Tap it for a line.
-//   Bottom   Weather, Claude, Clock, Today (the calendar) and Notifications at a glance (tap one to go there), then quick actions.
+//            the spark turning while Claude works. Tap it for a line. Under it, the shopping list and notifications.
+//   Glance   Weather, Claude usage, Clock and Today (the calendar) in four columns (tap one to go there).
+//   Actions  New session, then quiet buttons: a 5-minute timer, the rest screen, up to two routines or scenes, Settings.
 // Everything is read-only: the Weather and Claude apps' server routes, the Clock app's saved state, and the
 // system's notifications. Live parts refresh every 30 seconds and whenever Home comes on screen.
 // For testing, ?hour=23 (and &min=59) shifts this app's clock, like the Clock app; &mock=waiting|working fakes Claude.
@@ -72,13 +73,7 @@ const svg = (d: string, w = 1.8) => `<svg viewBox="0 0 32 32" fill="none" stroke
 const HOME = svg('<path d="M5.5 14.5L16 6l10.5 8.5"/><path d="M8.5 12.5v13h15v-13"/><path d="M13.5 25.5V19h5v6.5"/>');
 const I = {
   plus: svg('<path d="M16 7v18M7 16h18"/>', 2),
-  apps: svg('<rect x="6" y="6" width="8" height="8" rx="2.2"/><rect x="18" y="6" width="8" height="8" rx="2.2"/><rect x="6" y="18" width="8" height="8" rx="2.2"/><rect x="18" y="18" width="8" height="8" rx="2.2"/>', 2),
-  timer: svg('<path d="M10 5.5h12M10 26.5h12M11 5.5c0 5 10 6.5 10 10.5S11 21.5 11 26.5M21 5.5c0 5-10 6.5-10 10.5s10 5.5 10 10.5"/>', 2),
   cloud: svg('<path d="M9 24h14a5.5 5.5 0 0 0 .6-11A7.5 7.5 0 0 0 9.2 15.2 4.4 4.4 0 0 0 9 24z"/>', 2),
-  moon: svg('<path d="M24 19.5A9.5 9.5 0 0 1 12.5 8a9.5 9.5 0 1 0 11.5 11.5z"/><path d="M20 6h4l-4 4h4"/>', 2),
-  gear: svg('<path d="M6 10h11M23 10h3M6 22h3M15 22h11"/><circle cx="20" cy="10" r="3"/><circle cx="12" cy="22" r="3"/>', 2),
-  scene: svg('<path d="M13 6.5l1.9 5.6 5.6 1.9-5.6 1.9L13 21.5l-1.9-5.6L5.5 14l5.6-1.9z"/><path d="M23 18.5l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9z"/>', 2),
-  routine: svg('<path d="M7 9.5h3M7 16h3M7 22.5h3"/><path d="M14 9.5h11M14 16h11M14 22.5h7"/><path d="M24 20.5l2.5 2-2.5 2"/>', 2),
 };
 function wifiGlyph(bars: number, on: boolean): string {
   const s = (n: number) => (on && bars >= n ? 'currentColor' : 'var(--t5)');
@@ -164,12 +159,17 @@ function paintWeather(): void {
   $('hmWxTemp').className = 'num';
   $('hmWxTemp').textContent = `${Math.round(c.temperature_2m)}°`;
   const hi = d?.temperature_2m_max?.[0], lo = d?.temperature_2m_min?.[0], rain = d?.precipitation_probability_max?.[0];
-  const parts = [wxWord(c.weather_code)];
-  if (hi != null && lo != null) parts.push(`H ${Math.round(hi)}°  L ${Math.round(lo)}°`);
+  // two short lines: the sky, then the high/low and the rain. The glance column is narrow (app.css), so each line stays short.
+  const hiLo = hi != null && lo != null ? `H ${Math.round(hi)}° L ${Math.round(lo)}°` : '';
   const later = rainLater(f);
-  const rainText = later ? `Rain likely ${later}` : rain != null ? `${Math.round(rain)}% chance of rain` : '';
-  $('hmWxSub').innerHTML = `${esc(parts.join(' · '))}${rainText ? `<br>${esc(rainText)}` : ''}`;
+  const rainShort = later ? `Rain ${later}` : rain != null ? `${Math.round(rain)}% rain` : '';
+  subLines($('hmWxSub'), [wxWord(c.weather_code), [hiLo, rainShort].filter(Boolean).join(' · ')]);
   setSky(skyOf(c.weather_code));
+}
+
+/** A glance column's detail: each line on its own row, cut short rather than wrapped (app.css .hm-l). */
+function subLines(el: HTMLElement, lines: string[]): void {
+  el.innerHTML = lines.filter(Boolean).map(l => `<span class="hm-l">${esc(l)}</span>`).join('');
 }
 
 function setSky(s: Sky | null): void {
@@ -229,7 +229,7 @@ function paintClaude(): void {
     const resets = L?.limits?.five_hour?.resets_at;
     const lines = [s != null ? `Session${resets ? ` · resets ${hm(new Date(Date.parse(resets) + offset))}` : ''}` : 'This week'];
     if (s != null && w != null) lines.push(`${w}% left this week`);
-    sub.innerHTML = lines.map(esc).join('<br>');
+    subLines(sub, lines);
   }
   paintLine();
   paintStatus();
@@ -334,12 +334,12 @@ async function loadLists(): Promise<void> {
   paintLists();
 }
 function paintLists(): void {
+  // a row beside its label: "3 to get · Milk, eggs…", or one plain phrase
   const val = $('hmLsVal'), sub = $('hmLsSub');
-  if (!lists) { val.className = 'quiet'; val.textContent = '–'; sub.textContent = listsFailed ? 'Can’t reach the lists' : 'Loading…'; return; }
+  if (!lists) { val.textContent = listsFailed ? 'Can’t reach the lists' : 'Loading…'; sub.textContent = ''; return; }
   const open = lists.items.filter(i => !i.done);
-  val.className = 'num';
-  val.innerHTML = `${open.length}<small>to get</small>`;
-  sub.textContent = open.length ? open.slice(0, 2).map(i => i.text).join(', ') + (open.length > 2 ? '…' : '') : 'Nothing to get';
+  val.textContent = open.length ? `${open.length} to get` : 'Nothing to get';
+  sub.textContent = open.length ? open.slice(0, 2).map(i => i.text).join(', ') + (open.length > 2 ? '…' : '') : '';
 }
 
 const calLine = (e: CalEvent): string => (e.allDay ? `${e.title} (all day)` : `${hm(new Date(e.start))} ${e.title}`);
@@ -372,13 +372,13 @@ function paintCalendar(): void {
 const APP_NAMES: Record<string, string> = { claude: 'Claude', weather: 'Weather', clock: 'Clock', settings: 'Settings', home: 'Home' };
 function paintNotes(): void {
   const all = notifications(), recent = all.filter(n => Date.now() - n.at < 24 * 3600e3);
+  // a row beside its label (a tap opens the notification list): "Claude finished · 11 hr", "3 new · Claude finished", "All caught up"
   const val = $('hmNtVal'), sub = $('hmNtSub');
-  $('hmNtHint').hidden = !all.length;   // "See all": the tile opens the notification list, not an app
-  if (!recent.length) { val.className = 'quiet'; val.textContent = 'All caught up'; sub.textContent = all.length ? 'Nothing new today' : 'Nothing new'; return; }
+  if (!recent.length) { val.textContent = 'All caught up'; sub.textContent = ''; return; }
   const n = recent[0];
-  val.className = 'hm-ntitle'; val.textContent = n.title;
-  const from = [n.app ? APP_NAMES[n.app] || '' : '', ago(n.at)].filter(Boolean).join(' · ');
-  sub.innerHTML = `${esc(from)}${recent.length > 1 ? ` · ${recent.length - 1} more today` : n.body ? ` · ${esc(n.body)}` : ''}`;   // one line under the title
+  if (recent.length > 1) { val.textContent = `${recent.length} new`; sub.textContent = n.title; return; }
+  val.textContent = n.title;
+  sub.textContent = [n.app ? APP_NAMES[n.app] || '' : '', ago(n.at)].filter(Boolean).join(' · ');
 }
 
 // ---------- tablet: Wi-Fi and battery ----------
@@ -549,17 +549,17 @@ function scheduleAct(): void {
 }
 
 // ---------- quick actions ----------
-interface QuickAction { id: string; label: string; icon: string; primary?: boolean; run(): void }
+// One ink button with its icon, then quiet ones in plain words. Settings sits at the row's right end, after the routines
+// and scenes. (No Weather or All apps button: the Weather column opens Weather, and the rail's Apps opens the launcher.)
+interface QuickAction { id: string; label: string; icon?: string; kind?: 'primary' | 'ghost'; end?: boolean; run(): void }
 const ACTIONS: QuickAction[] = [
-  { id: 'new', label: 'New session', icon: I.plus, primary: true, run: () => {
+  { id: 'new', label: 'New session', icon: I.plus, kind: 'primary', run: () => {
     openApp('claude');
     dispatchEvent(new CustomEvent('hub:new-session'));   // the Claude app opens its "New session" screen when it listens for this
   } },
-  { id: 'timer', label: '5-min timer', icon: I.timer, run: startTimer },
-  // (no Weather button: the Weather tile above opens the Weather app in one tap)
-  { id: 'apps', label: 'All apps', icon: I.apps, run: () => openApp('launcher') },
-  { id: 'rest', label: 'Rest screen', icon: I.moon, run: () => sleep() },
-  ...(onTablet ? [{ id: 'settings', label: 'Settings', icon: I.gear, run: () => openSettings() }] : []),
+  { id: 'timer', label: '5-min timer', run: startTimer },
+  { id: 'rest', label: 'Rest screen', run: () => sleep() },
+  ...(onTablet ? [{ id: 'settings', label: 'Settings', kind: 'ghost' as const, end: true, run: () => openSettings() }] : []),
 ];
 
 // ---------- Home Assistant scenes: up to three, chosen in Settings > Apps > Home Assistant ----------
@@ -585,22 +585,33 @@ function paintActs(): void {
   const scene = (s: SceneAct) => {
     const st = sceneBusy.get(s.id);
     const label = st === 'done' ? 'Done' : st === 'fail' ? 'Couldn’t set' : s.name;
-    return `<button class="hm-act hm-scene${st ? ` ${st}` : ''}" data-scene="${esc(s.id)}" title="${esc(s.name)}" aria-label="${esc(`Set the scene ${s.name}`)}">${I.scene}<span>${esc(label)}</span></button>`;
+    return `<button class="hm-act hm-scene${st ? ` ${st}` : ''}" data-scene="${esc(s.id)}" title="${esc(s.name)}" aria-label="${esc(`Set the scene ${s.name}`)}"><span>${esc(label)}</span></button>`;
   };
   const run = runState();
   const routine = (r: RoutineAct) => {
     const on = run?.id === r.id;
     const label = on ? `${r.name} · ${run.step}/${run.of}` : r.name;
-    return `<button class="hm-act hm-scene hm-routine${on ? ' busy' : ''}" data-routine="${esc(r.id)}" title="${esc(r.name)}" aria-label="${esc(on ? `Stop the routine ${r.name}` : `Run the routine ${r.name}`)}">${I.routine}<span>${esc(label)}</span></button>`;
+    return `<button class="hm-act hm-scene hm-routine${on ? ' busy' : ''}" data-routine="${esc(r.id)}" title="${esc(r.name)}" aria-label="${esc(on ? `Stop the routine ${r.name}` : `Run the routine ${r.name}`)}"><span>${esc(label)}</span></button>`;
   };
-  // the row holds the quick actions plus at most two routines or scenes: more crowd the labels into the serif wrap.
-  // A scene with the same name as a routine is skipped (it looked like a duplicate button).
+  // at most two routines or scenes; a scene with the same name as a routine is skipped (it looked like a duplicate button)
   const routineNames = new Set(routineActs.map(r => r.name));
   const extras = [...routineActs.map(routine), ...sceneActs.filter(s => !routineNames.has(s.name)).map(scene)].slice(0, 2);
-  // more than six buttons don't fit side by side as icon + label: the row then stacks each label under its icon (app.css)
-  $('hmActs').classList.toggle('hm-dense', ACTIONS.length + extras.length > 6);
-  $('hmActs').innerHTML = ACTIONS.map(a => `<button class="hm-act${a.primary ? ' primary' : ''}" data-act="${a.id}">${a.icon}<span>${esc(a.label)}</span></button>`).join('')
-    + (extras.length ? `<span class="hm-scenes">${extras.join('')}</span>` : '');
+  const btn = (a: QuickAction) => `<button class="hm-act${a.kind ? ` ${a.kind}` : ''}" data-act="${a.id}">${a.icon ?? ''}<span>${esc(a.label)}</span></button>`;
+  const row = $('hmActs');
+  row.innerHTML = ACTIONS.filter(a => !a.end).map(btn).join('') + '<span class="hm-spacer"></span>'
+    + extras.join('') + ACTIONS.filter(a => a.end).map(btn).join('');
+  fitActs();
+}
+
+/** Every label shows whole: while the row is wider than its box, drop the last routine or scene (the Routines app has them all). */
+function fitActs(): void {
+  const row = $('hmActs');
+  if (!row.clientWidth) return;   // not laid out yet; onShow paints again
+  let extra = row.querySelectorAll('.hm-scene');
+  while (row.scrollWidth > row.clientWidth + 1 && extra.length) {
+    extra[extra.length - 1].remove();
+    extra = row.querySelectorAll('.hm-scene');
+  }
 }
 
 // ---------- routines: the first four (the Routines app has them all); a tap runs one, a tap while it runs stops it ----------
@@ -687,9 +698,11 @@ function refresh(): void {
   void loadScenes();
   void loadRoutineActs();
   void loadCalendar();
+  void loadLists();
   paintDevice();
   paintNotes();
   paintGreeting(now());
+  paintActs();   // fit the row again: fonts and the page's width are settled once Home is on screen
   tick();
 }
 
@@ -715,6 +728,7 @@ function mount(context: AppContext): void {
   ctx = context;
   drawSky();
   paintActs();
+  void document.fonts?.ready.then(() => paintActs());   // the serif's real width decides which routines fit
   $('hmActs').addEventListener('click', e => {
     const sc = (e.target as HTMLElement).closest<HTMLElement>('[data-scene]')?.dataset.scene;
     if (sc) { report('home:scene'); void setScene(sc); return; }
@@ -724,7 +738,8 @@ function mount(context: AppContext): void {
     const a = ACTIONS.find(x => x.id === id);
     if (a) { report(`home:${a.id}`); a.run(); }
   });
-  ctx.root.querySelector('.hm-tiles')!.addEventListener('click', e => {
+  // the glance columns and the two rows under the critter each open their app ([data-go])
+  ctx.root.querySelector('.hm-page')!.addEventListener('click', e => {
     const go = (e.target as HTMLElement).closest<HTMLElement>('[data-go]')?.dataset.go;
     if (!go) return;
     report(`home:tile:${go}`);
