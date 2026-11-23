@@ -6,7 +6,7 @@ import type { History, HistoryItem, LiveSession } from '../src/apps/claude/api.t
 
 // The modules read the page's location when they load (via dom.ts); node has none, so give it one first.
 Object.assign(globalThis, { location: { search: '' } });
-const { folderLive, groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
+const { emptyText, folderLive, groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
 
 const NOW = Date.parse('2026-11-23T12:00:00.000Z');
 const HOUR = 3600;
@@ -109,4 +109,9 @@ test('a folder header counts its working and waiting sessions', () => {
   assert.equal(folderLive(g!), '2 working · 2 waiting');
   assert.equal(folderLive(groups([session({ id: 'q', folder: 'quiet', state: 'waiting', age: 5 * HOUR })], NOW, null, '', false)[0]!), '');
   assert.equal(folderLive(groups([session({ id: 'w', folder: 'only', state: 'thinking', age: 10 })], NOW, null, '', false)[0]!), '1 working');
+});
+
+test('an empty sessions list says why it is empty', () => {
+  assert.equal(emptyText(true), 'Can’t reach your PC');
+  assert.equal(emptyText(false), 'No sessions yet');
 });
