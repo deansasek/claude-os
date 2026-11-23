@@ -1,7 +1,7 @@
 // Quick replies picked from Claude's last message (src/apps/claude/web/sessions/quick-chips.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { quickChips } from '../src/apps/claude/web/sessions/quick-chips.ts';
+import { quickChips, retryChip } from '../src/apps/claude/web/sessions/quick-chips.ts';
 
 const labels = (last: string) => quickChips(last).map(([label]) => label);
 
@@ -18,4 +18,10 @@ test('a statement that mentions asking is not a question', () => {
 
 test('no message gets chips for moving on', () => {
   assert.deepEqual(labels(''), ['Continue', 'Looks good, thanks', 'Stop here']);
+});
+
+test('after a failed or stopped reply, Try again resends the last message', () => {
+  assert.deepEqual(retryChip('Fix the login bug  '), ['Try again', 'Fix the login bug']);
+  assert.equal(retryChip(null), null);
+  assert.equal(retryChip('   '), null);
 });
