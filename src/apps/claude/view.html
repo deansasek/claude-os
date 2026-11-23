@@ -197,6 +197,18 @@
     <!-- the session controls' menu (model / effort / more models / mode), opened from the composer's chips -->
     <div class="cm" id="svMenu" role="menu" hidden></div>
 
+    <!-- a new chat on this tablet would replace the chat there (reply.ts asks first; Back keeps it) -->
+    <div class="sm" id="ncConfirm" hidden>
+      <div class="sm-card" role="dialog" aria-modal="true">
+        <div class="sm-title">Start a new chat?</div>
+        <p class="sm-ask">The chat on this tablet is replaced, and its messages are removed.</p>
+        <div class="sm-acts">
+          <button class="sm-row danger" id="ncYes">Start a new chat</button>
+          <button class="sm-row" id="ncNo">Keep the chat</button>
+        </div>
+      </div>
+    </div>
+
     <!-- a photo from the conversation, full size: tap to close -->
     <div class="pv" id="svPhotoView" hidden><img id="svPhotoFull" alt="Photo"></div>
 
