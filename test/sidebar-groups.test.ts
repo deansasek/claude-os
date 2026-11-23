@@ -30,7 +30,8 @@ test('the dot and the words of a session', () => {
   assert.deepEqual(stateOf(session({ state: 'waiting', age: 90 }), NOW), { cls: 'yours', what: 'Your turn · 1m' });
   assert.deepEqual(stateOf(session({ state: 'waiting', open: true }), NOW), { cls: 'yours', what: 'Your turn · on your PC' });
   assert.deepEqual(stateOf(session({ state: 'waiting', age: 3 * HOUR }), NOW), { cls: '', what: when(NOW - 3 * HOUR * 1000, NOW) });
-  assert.equal(when(NOW - 12 * 60e3, NOW), '12m ago');
+  assert.deepEqual(stateOf(session({ state: 'stalled', age: 12 * 60 }), NOW), { cls: 'stalled', what: 'No word for 12m' });
+  assert.deepEqual(stateOf(session({ state: 'stalled', open: true, age: 12 * 60 }), NOW), { cls: 'stalled', what: 'No word for 12m' });  assert.equal(when(NOW - 12 * 60e3, NOW), '12m ago');
 });
 
 test('the native row: the tablet chat is a group of its own, with its live state', () => {

@@ -26,6 +26,7 @@ export function when(at: number, now = Date.now()): string {
 export function stateOf(s: LiveSession, now = Date.now()): { cls: string; what: string } {
   if (s.state === 'thinking' || s.state === 'tool') return { cls: 'busy', what: s.state === 'tool' ? toolWord(s.tool) : 'Thinking' };
   if (s.state === 'waiting' && isLive(s)) return { cls: 'yours', what: s.open ? `Your turn · on your PC` : `Your turn · ${shortAge(s.age)}` };
+  if (s.state === 'stalled' && isLive(s)) return { cls: 'stalled', what: `No word for ${shortAge(s.age)}` };
   if (!isLive(s)) return { cls: '', what: when(now - s.age * 1000, now) };
   return { cls: '', what: `${s.open ? 'On your PC' : 'Quiet'} · ${shortAge(s.age)}` };
 }
