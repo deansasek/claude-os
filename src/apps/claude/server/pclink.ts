@@ -25,6 +25,7 @@ export type WaitAnswer = { kind: 'reply'; text: string } | { kind: 'again' } | {
 export class PcInbox {
   private latest = new Map<string, { waiter: string; seen: number }>();
   private pending = new Map<string, string>();
+  private queuedAt = new Map<string, number>();   // when each pending reply was queued (ms)
   private wake = new Map<string, (a: WaitAnswer) => void>();
   private readonly staleMs: number;
   private readonly now: () => number;
@@ -41,13 +42,18 @@ export class PcInbox {
     if (!this.listening(session)) return false;
     const w = this.wake.get(session);
     if (w) { this.wake.delete(session); w({ kind: 'reply', text }); }
-    else this.pending.set(session, text);
+    else { this.pending.set(session, text); this.queuedAt.set(session, this.now()); }
     return true;
+  }
+
+  /** When a reply for a session is still waiting for the PC hook to pick it up (ms), or null when none waits. */
+  queued(session: string): number | null {
+    return this.pending.has(session) ? this.queuedAt.get(session) ?? null : null;
   }
 
   /** Drop what a session has (the PC session closed). */
   forget(session: string): void {
-    this.latest.delete(session); this.pending.delete(session);
+    this.latest.delete(session); this.pending.delete(session); this.queuedAt.delete(session);
     const w = this.wake.get(session);
     if (w) { this.wake.delete(session); w({ kind: 'stop' }); }
   }
@@ -66,7 +72,7 @@ export class PcInbox {
     }
     this.latest.set(session, { waiter, seen: this.now() });
     const queued = this.pending.get(session);
-    if (queued !== undefined) { this.pending.delete(session); return Promise.resolve({ kind: 'reply', text: queued }); }
+    if (queued !== undefined) { this.pending.delete(session); this.queuedAt.delete(session); return Promise.resolve({ kind: 'reply', text: queued }); }
     return new Promise(resolve => {
       const done = (a: WaitAnswer) => { clearTimeout(timer); signal?.removeEventListener('abort', onAbort); resolve(a); };
       const timer = setTimeout(() => { if (this.wake.get(session) === done) this.wake.delete(session); done({ kind: 'again' }); }, waitMs);
