@@ -392,6 +392,9 @@ public class MainActivity extends Activity {
       home.addCategory(Intent.CATEGORY_HOME);
       home.addCategory(Intent.CATEGORY_DEFAULT);
       d.addPersistentPreferredActivity(admin, home, new ComponentName(this, MainActivity.class));   // the home screen: no role prompt
+      IntentFilter assist = new IntentFilter(VOICE_ASSIST);
+      assist.addCategory(Intent.CATEGORY_DEFAULT);
+      d.addPersistentPreferredActivity(admin, assist, new ComponentName(this, MainActivity.class));   // power long press: no chooser
       boolean keyguardOff = d.setKeyguardDisabled(admin, true);                                     // no lock screen, no password screen
       getSharedPreferences("hub", MODE_PRIVATE).edit().putBoolean("keyguardOff", keyguardOff).apply();
       boolean sb = d.setStatusBarDisabled(admin, true);
@@ -1061,12 +1064,22 @@ public class MainActivity extends Activity {
   @Override protected void onNewIntent(Intent i) {
     super.onNewIntent(i);
     if (BrowserView.fromIntent(i) && web != null) web.evaluateJavascript("window.hubBrowserIncoming && window.hubBrowserIncoming()", null);
+    if (VOICE_ASSIST.equals(i.getAction())) showPowerMenu();
     String u = i.getStringExtra("url");
     if (u != null && u.startsWith("http")) {
       url = u;
       getSharedPreferences("hub", MODE_PRIVATE).edit().putString("url", u).apply();
       loadHub();
     }
+  }
+
+  /**
+   * A long press of the power button, with power_button_long_press=4, starts VOICE_ASSIST (Intent.ACTION_VOICE_ASSIST, hidden in the SDK); lockdown() makes this
+   * activity its fixed handler. The page opens its own power menu (core/web/power-sheet.ts). A cold start has no page yet: nothing opens.
+   */
+  static final String VOICE_ASSIST = "android.intent.action.VOICE_ASSIST";
+  private void showPowerMenu() {
+    if (web != null && bridge != null && bridge.isAllowed()) web.evaluateJavascript("window.hubPower && window.hubPower()", null);
   }
 
   /** Back does nothing to Android; the page can listen for it (window.hubBack). */

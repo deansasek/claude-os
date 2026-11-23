@@ -12,15 +12,16 @@ import lists from './apps/lists/web/index.ts';
 import calendar from './apps/calendar/web/index.ts';
 import routines from './apps/routines/web/index.ts';
 import settings from './apps/settings/web/index.ts';
-import { onTablet } from './core/web/device.ts';
+import { device, onTablet } from './core/web/device.ts';
 import { mockDevice } from './core/web/dom.ts';
 import { checkHitAreas } from './core/web/hit-guard.ts';
 import { startHub } from './core/web/shell.ts';
 import { maybeWelcome } from './core/web/welcome.ts';
 import { closePreviewLock, previewLock } from './core/web/lock.ts';
-import { notifications, notify, openApp, openControlCenter, closeControlCenter, sleep, wake } from './core/web/system.ts';
+import { notifications, notify, onBack, openApp, openControlCenter, closeControlCenter, sleep, wake } from './core/web/system.ts';
 import type { Notice } from './core/web/system.ts';
 import { voiceUi } from './core/web/voice-ui.ts';
+import { initPowerSheet } from './core/web/power-sheet.ts';
 
 // Settings controls the tablet itself, so it only appears inside the tablet app; Browser needs the tablet's own web views;
 // Camera needs the tablet's camera (Photos works anywhere, it only shows what the PC has; Home Assistant too, its
@@ -30,6 +31,7 @@ void startHub(onTablet
   ? [home, launcher, claude, weather, clock, browserApp, camera, photos, homeAssistant, lists, calendar, routines, settings]
   : [home, launcher, claude, weather, clock, photos, homeAssistant, lists, calendar, routines]).then(() => {
     maybeWelcome();
+    initPowerSheet({ reboot: device.reboot, screenOff: device.screenOff, onBack });   // a long press of the power button
     if (mockDevice) setTimeout(checkHitAreas, 400);   // dev: tap areas after boot (hit-guard.ts)
   });
 
@@ -70,6 +72,8 @@ if (mockDevice) {
     /** The PIN lock in a phase: 'pin' | 'cooldown' | 'retry' | 'checking'. Nothing is sent to the PC. */
     lock(phase: 'pin' | 'cooldown' | 'retry' | 'checking' = 'pin', secs = 25): void { previewLock(phase, secs); },
     unlock(): void { closePreviewLock(); },
+    /** The power menu, as a long press of the power button opens it on the tablet. */
+    power(): void { (window as unknown as { hubPower?: () => void }).hubPower?.(); },
     voice: voiceUi,
     /** Tap areas that are wrong right now (hit-guard.ts): [] when all is well. */
     hitAreas: checkHitAreas,
