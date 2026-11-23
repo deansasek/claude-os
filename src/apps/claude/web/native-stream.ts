@@ -85,6 +85,10 @@ export const USAGE_REQUEST = 'claudeos-usage';
 /** The API's HTTP status (api_error_status on a failed result) to the reason failed.ts says for it. */
 const STATUS_REASONS: Record<number, string> = { 401: 'authentication_failed', 404: 'model_not_found', 429: 'rate_limit', 529: 'overloaded' };
 
+/** The progress wording for a retry and for compacting. Shared by the tablet chat and the PC turn (server/turns.ts). */
+export const retryText = (attempt: number, max: number): string => (attempt ? `Retrying (${attempt} of ${max})` : 'Retrying');
+export const COMPACTING_TEXT = 'Compacting';
+
 /** One stream-json line to an event; null for lines the chat does not use (or that are not JSON). */
 export function parseStreamLine(line: string): NativeEvent | null {
   let o: Obj | null;
@@ -96,11 +100,10 @@ export function parseStreamLine(line: string): NativeEvent | null {
       if (o.subtype === 'init') return id ? { type: 'init', sessionId: id, model: str(o.model) } : null;
       // the API is retried: "Retrying (2 of 10)" (attempt, max_retries). Compacting: the CLI's status is "compacting".
       if (o.subtype === 'api_retry') {
-        const attempt = num(o.attempt), max = num(o.max_retries);
-        return { type: 'status', text: attempt ? `Retrying (${attempt} of ${max})` : 'Retrying' };
+        return { type: 'status', text: retryText(num(o.attempt), num(o.max_retries)) };
       }
       if (o.subtype === 'status') {
-        if (o.status === 'compacting') return { type: 'status', text: 'Compacting' };
+        if (o.status === 'compacting') return { type: 'status', text: COMPACTING_TEXT };
         return o.status == null ? { type: 'status', text: null } : null;
       }
       return null;

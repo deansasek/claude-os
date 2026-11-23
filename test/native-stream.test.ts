@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, contextOf, durationText, elapsedText, emptyChat, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
+  applyEvent, chatAge, chatListed, clearedChat, COMPACTING_TEXT, contextOf, durationText, elapsedText, emptyChat, retryText, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
   newerSaved, parseStreamLine, replyFinished, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
@@ -424,4 +424,12 @@ test('an assistant message with an error code is not a reply; the result names t
   const plain = applyEvent(userSent(emptyChat(), 'Hi', AT), parseStreamLine(line({ type: 'assistant', message: { content: [{ type: 'text', text: 'Hello' }] } }))!, AT);
   assert.equal(plain.partial, 'Hello');
   assert.equal(plain.replyError, null);
+});
+
+test('the retry and compacting wording is shared by the tablet chat and the PC turn', () => {
+  assert.equal(retryText(2, 10), 'Retrying (2 of 10)');
+  assert.equal(retryText(0, 0), 'Retrying');
+  assert.equal(COMPACTING_TEXT, 'Compacting');
+  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'api_retry', attempt: 3, max_retries: 10 })), { type: 'status', text: retryText(3, 10) });
+  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'status', status: 'compacting' })), { type: 'status', text: COMPACTING_TEXT });
 });
