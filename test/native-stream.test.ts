@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  applyEvent, chatAge, chatListed, clearedChat, COMPACTING_TEXT, contextOf, durationText, elapsedText, emptyChat, retryText, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
+  applyEvent, chatAge, chatListed, clearedChat, COMPACTED_TEXT, COMPACTING_TEXT, contextOf, durationText, elapsedText, emptyChat, retryText, lastTurnText, limitList, limitName, limitState, limitsUpdated, loadChat, modelName,
   newerSaved, parseStreamLine, replyFinished, saveChat, totalTokens, USAGE_REQUEST, usageRows, usageStale, userSent, type NativeEvent, type SeenLimit,
 } from '../src/apps/claude/web/native-stream.ts';
 
@@ -11,7 +11,7 @@ const line = (o: unknown) => JSON.stringify(o);
 
 test('system/init keeps the session id', () => {
   assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'init', session_id: 's1', model: 'haiku', tools: [] })), { type: 'init', sessionId: 's1', model: 'haiku' });
-  assert.equal(parseStreamLine(line({ type: 'system', subtype: 'compact_boundary' })), null);
+  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'compact_boundary' })), { type: 'compacted' });
 });
 
 test('a text delta from a stream event', () => {
@@ -432,4 +432,12 @@ test('the retry and compacting wording is shared by the tablet chat and the PC t
   assert.equal(COMPACTING_TEXT, 'Compacting');
   assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'api_retry', attempt: 3, max_retries: 10 })), { type: 'status', text: retryText(3, 10) });
   assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'status', status: 'compacting' })), { type: 'status', text: COMPACTING_TEXT });
+});
+
+test('a compacted chat keeps a note in the chat and ends the compacting line', () => {
+  let c = applyEvent(userSent(emptyChat(), 'Hi', AT), { type: 'status', text: 'Compacting' }, AT);
+  c = applyEvent(c, { type: 'compacted' }, AT);
+  assert.equal(c.status, null);
+  assert.deepEqual(c.entries[c.entries.length - 1], { kind: 'note', text: 'Earlier messages were summarised to keep going.', at: AT });
+  assert.equal(COMPACTED_TEXT, 'Earlier messages were summarised to keep going.');
 });

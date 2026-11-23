@@ -25,7 +25,11 @@ export type NativeEvent =
   | { type: 'exit'; code: number }       // the process ended (from the runner, not the CLI)
   | { type: 'error'; message: string }   // the runner could not send (from the runner)
   | { type: 'stop' }                     // the user asked to stop the running reply (native.ts nativeStop)
-  | { type: 'status'; text: string | null };  // a retry or compacting, as the CLI says it; null when it is over
+  | { type: 'status'; text: string | null }   // a retry or compacting, as the CLI says it; null when it is over
+  | { type: 'compacted' };                    // the CLI summarised the earlier messages (system/compact_boundary)
+
+/** The note in the chat when the CLI has summarised the earlier messages to keep going. */
+export const COMPACTED_TEXT = 'Earlier messages were summarised to keep going.';
 
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj | null => (v && typeof v === 'object' && !Array.isArray(v) ? v as Obj : null);
@@ -98,6 +102,7 @@ export function parseStreamLine(line: string): NativeEvent | null {
     case 'system': {
       const id = str(o.session_id);
       if (o.subtype === 'init') return id ? { type: 'init', sessionId: id, model: str(o.model) } : null;
+      if (o.subtype === 'compact_boundary') return { type: 'compacted' };
       // the API is retried: "Retrying (2 of 10)" (attempt, max_retries). Compacting: the CLI's status is "compacting".
       if (o.subtype === 'api_retry') {
         return { type: 'status', text: retryText(num(o.attempt), num(o.max_retries)) };
@@ -226,6 +231,8 @@ export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOS
       if (e.error) return { ...c, replyError: e.error, status: null };
       return { ...c, partial: e.text, status: null };
     case 'status': return c.running ? { ...c, status: e.text } : c;
+    // the note stays in the chat; the compacting line ends with it
+    case 'compacted': return { ...c, entries: [...c.entries, { kind: 'note', text: COMPACTED_TEXT, at }], status: null };
     case 'stop': return c.running ? { ...c, stopped: true } : c;
     case 'result':
       // a stopped reply keeps what streamed, marked; its end is not an error. A failed result's text is the CLI's error,
