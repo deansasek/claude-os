@@ -406,7 +406,7 @@
   /* sits just above Android's own bottom gesture band (--grab-bottom, from the tablet: a swipe up that starts in that
      band is taken by Android, see switcher.ts); touch-action none keeps the browser from starting a scroll on it */
   .sw-handle { position: absolute; left: 84px; right: 0; bottom: var(--grab-bottom, 0px); height: 18px; z-index: 40; cursor: pointer; touch-action: none; }
-  .sw-handle::after { content: ''; position: absolute; bottom: 6px; left: 50%; width: 112px; height: 4px; margin-left: -56px;
+  .sw-handle::after { content: ''; position: absolute; bottom: 2px; left: 50%; width: 112px; height: 4px; margin-left: -56px;
     border-radius: 4px; background: var(--t5); opacity: .55; transition: opacity var(--dur-base) var(--ease-out); }
   .stage:not(.on-tablet) .sw-handle::after { opacity: .3; }
   .kb.on ~ .sw-handle, .stage.sw-on .sw-handle { display: none; }
@@ -445,7 +445,7 @@
      taken by Android, or in Desk mode by the helper's strip), a 44px hit area; touch-action none keeps the browser from
      starting a scroll on it (the rest of the grab zone stops that in script, system.ts bindCC) */
   .cc-handle { position: absolute; top: var(--grab-top, var(--sys-top, 0px)); left: 50%; width: 160px; height: 44px; margin-left: -80px; z-index: 40; cursor: pointer; touch-action: none; }
-  .cc-handle::after { content: ''; position: absolute; top: 18px; left: 60px; width: 40px; height: 4px; border-radius: 4px; background: var(--t5); opacity: .6; }
+  .cc-handle::after { content: ''; position: absolute; top: 6px; left: 60px; width: 40px; height: 4px; border-radius: 4px; background: var(--t5); opacity: .6; }
   .stage:not(.on-tablet) .cc-handle::after { opacity: .3; }
   /* header controls (the tabs, the count, the "+") sit in the handle's top band: they take taps above the handle's
      hit area (z 40), so a tap on them is a tap on the button; the grab zone is stage-level and is unaffected */
