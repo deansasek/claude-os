@@ -1,23 +1,33 @@
 // Builds the tablet app without Gradle, using only the tools in tools (see setup-tools.ts):
 //   aapt2 (resources + manifest) -> javac -> d8 (dex) -> zipalign -> apksigner
 // Works on Windows, macOS and Linux.
-// Output: android/build/claude-hub.apk
+// Output: android/build/claude-hub.apk (or <dir>/claude-hub.apk with --out <dir>)
 // Install / update it:   node android/build.ts --install [--device <serial>]
+// SPIKE, embedded Node.js:  node android/build.ts --node --out <dir>   (see setup-node.ts)
 
 import {
   cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
-import { delimiter, dirname, join, relative, sep } from 'node:path';
+import { delimiter, dirname, join, relative, resolve, sep } from 'node:path';
 import {
   androidJar, binPath, buildTools, fail, here, jdkTool, platformTools, run, tools,
 } from './toolchain.ts';
 
-function args(argv: string[]): { install: boolean; device: string } {
+// --out <dir>: build there instead of android/build (the hub serves android/build/claude-hub.apk to the tablet).
+// --node: SPIKE. Adds embedded Node.js (tools/nodejs-mobile, see setup-node.ts). Needs --out, so a test
+// build never replaces the APK the tablet updates itself from.
+function args(argv: string[]): { install: boolean; device: string; out: string; node: boolean } {
   const install = argv.includes('--install');
+  const node = argv.includes('--node');
   const i = argv.indexOf('--device');
   const device = i === -1 ? '' : argv[i + 1] ?? '';
   if (i !== -1 && !device) fail('--device needs a device serial.');
-  return { install, device };
+  const o = argv.indexOf('--out');
+  const outArg = o === -1 ? '' : argv[o + 1] ?? '';
+  if (o !== -1 && !outArg) fail('--out needs a folder.');
+  const out = outArg ? resolve(outArg) : join(here, 'build');
+  if (node && out === resolve(here, 'build')) fail('--node needs --out <folder> outside android/build: the hub serves android/build/claude-hub.apk to the tablet.');
+  return { install, device, out, node };
 }
 
 // Every file under dir with a given extension, as absolute paths.
@@ -50,8 +60,7 @@ function writeHubConfig(genDir: string): void {
 }
 
 function main(): void {
-  const { install, device } = args(process.argv.slice(2));
-  const out = join(here, 'build');
+  const { install, device, out, node } = args(process.argv.slice(2));
   rmSync(out, { recursive: true, force: true });
   const gen = join(out, 'gen');
   const classes = join(out, 'classes');
@@ -119,8 +128,17 @@ function main(): void {
   for (const so of filesUnder(join(voice, 'lib', 'arm64-v8a'), '.so')) {  // native speech recogniser (64-bit ARM tablets)
     cpSync(so, join(stageRest, 'lib', 'arm64-v8a', so.split(sep).pop()!));
   }
+  // SPIKE (--node): embedded Node.js (libnode.so, libc++_shared.so) and its test files (assets/node)
+  const nodeTools = join(tools, 'nodejs-mobile');
+  if (node) {
+    if (!existsSync(join(nodeTools, 'lib', 'arm64-v8a', 'libnode.so'))) fail('node parts missing: run node android/setup-node.ts once');
+    for (const so of filesUnder(join(nodeTools, 'lib', 'arm64-v8a'), '.so')) {
+      cpSync(so, join(stageRest, 'lib', 'arm64-v8a', so.split(sep).pop()!));
+    }
+  }
   // the speech model as assets, plus the app's own assets in android/assets (e.g. the recogniser's warm-up audio)
-  for (const root of [join(voice, 'assets'), join(here, 'assets')]) {
+  const assetRoots = [join(voice, 'assets'), join(here, 'assets'), ...(node ? [join(nodeTools, 'assets')] : [])];
+  for (const root of assetRoots) {
     if (!existsSync(root)) continue;
     for (const file of filesUnder(root, '')) {
       if (statSync(file).isDirectory()) continue;

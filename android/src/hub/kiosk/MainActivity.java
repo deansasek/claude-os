@@ -215,6 +215,12 @@ public class MainActivity extends Activity {
     ui.postDelayed(this::hideCover, 12_000);   // never leave the cover up for good
     loadHub();
     ui.postDelayed(this::updateTick, 20_000);  // silent self-update: a check soon after start, then every 30 minutes
+    nodeSpike(getIntent());
+  }
+
+  /** SPIKE test hook: adb shell am start -n hub.kiosk/.MainActivity --ez node_spike true (see node/NodeRunner). */
+  private void nodeSpike(Intent i) {
+    if (i != null && i.getBooleanExtra("node_spike", false)) hub.kiosk.node.NodeRunner.start(this);
   }
 
   /** Cream with the spark, the same as the splash screen before it. */
@@ -1063,6 +1069,7 @@ public class MainActivity extends Activity {
 
   @Override protected void onNewIntent(Intent i) {
     super.onNewIntent(i);
+    nodeSpike(i);
     if (BrowserView.fromIntent(i) && web != null) web.evaluateJavascript("window.hubBrowserIncoming && window.hubBrowserIncoming()", null);
     if (VOICE_ASSIST.equals(i.getAction())) showPowerMenu();
     String u = i.getStringExtra("url");

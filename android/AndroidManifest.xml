@@ -132,6 +132,12 @@
       <meta-data android:name="android.view.im" android:resource="@xml/method" />
     </service>
 
+    <!-- SPIKE: embedded Node.js test (node/NodeRunner), in its own process so process.exit() can't end ClaudeOS -->
+    <service
+        android:name=".node.NodeRunner"
+        android:process=":node"
+        android:exported="false" />
+
     <!-- the result of a silent self-update (Updater): device owner only -->
     <receiver android:name=".UpdateReceiver" android:exported="false" />
 
