@@ -7,7 +7,7 @@
 import { $, esc, report, store } from '../../../../core/web/dom.ts';
 import { Keyboard } from '../../../../core/web/keyboard.ts';
 import type { LiveSession } from '../../api.ts';
-import { emptyText, folded, folderLive, groups, isLive, stateOf, when, type Row } from './sidebar-groups.ts';
+import { archiveEmpty, emptyText, folded, folderLive, groups, isLive, stateOf, when, type Row } from './sidebar-groups.ts';
 import { historyArchivedView, historyFailed, historyLoading, historyNow, historyQuery, historyTick, loadOlder, onHistoryChange, setQuery } from './history.ts';
 
 export { historyTitle } from './history.ts';
@@ -58,7 +58,7 @@ export function sidebarHtml(list: LiveSession[], openId: string | null): string 
   const gs = groups(list, now, historyNow(), q, historyArchivedView());
   if (!gs.length) {
     if (q) return `<div class="sb-empty">No sessions match “${esc(q)}”.</div>`;
-    if (historyArchivedView()) return historyNow() ? '<div class="sb-empty">Nothing archived.<br>Archive a session from its ⋯ menu to tuck it away here.</div>' : '<div class="sb-empty">Loading…</div>';
+    if (historyArchivedView()) { const a = archiveEmpty(historyFailed(), !!historyNow()); return `<div class="sb-empty">${a.head}${a.tip ? `<br>${a.tip}` : ''}</div>`; }
     if (historyFailed()) return `<div class="sb-empty">${emptyText(true)}.</div>`;
     return historyNow() || !historyLoading() ? `<div class="sb-empty">${emptyText(false)}.<br>Start one with New session.</div>` : '<div class="sb-empty">Loading sessions…</div>';
   }

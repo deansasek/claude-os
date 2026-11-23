@@ -6,7 +6,7 @@ import type { History, HistoryItem, LiveSession } from '../src/apps/claude/api.t
 
 // The modules read the page's location when they load (via dom.ts); node has none, so give it one first.
 Object.assign(globalThis, { location: { search: '' } });
-const { emptyText, folded, folderLive, groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
+const { archiveEmpty, emptyText, folded, folderLive, groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
 
 const NOW = Date.parse('2026-11-23T12:00:00.000Z');
 const HOUR = 3600;
@@ -125,4 +125,11 @@ test('a folder folds by its id, and an older choice by name still applies', () =
 test('an empty sessions list says why it is empty', () => {
   assert.equal(emptyText(true), 'Can’t reach your PC');
   assert.equal(emptyText(false), 'No sessions yet');
+});
+
+test('an empty archive shows a failed fetch, not Loading', () => {
+  assert.deepEqual(archiveEmpty(true, false), { head: 'Can’t reach your PC.', tip: '' });
+  assert.deepEqual(archiveEmpty(true, true), { head: 'Can’t reach your PC.', tip: '' });
+  assert.deepEqual(archiveEmpty(false, true).head, 'Nothing archived.');
+  assert.deepEqual(archiveEmpty(false, false), { head: 'Loading…', tip: '' });
 });
