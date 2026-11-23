@@ -48,7 +48,9 @@ function save(): void {
   const e = typeof line === 'string' ? parseStreamLine(line) : null;
   if (!e) return;
   if (e.type === 'usageChecked') { checking = false; checkFailed = !e.ok; appSettingsChanged(); return; }
-  chat = applyEvent(chat, e);
+  // a start that failed reads as a sign-in problem when the sign-in state says so, else as a network or start problem
+  chat = applyEvent(chat, e.type === 'error' && e.message === 'start_failed'
+    ? { type: 'error', message: device.cliAuthState().signedIn === 0 ? 'not_signed_in' : 'start_failed' } : e);
   if (e.type !== 'delta' && e.type !== 'text') save();
   changed();
   if (e.type === 'limits') appSettingsChanged();   // Settings (Usage, and Apps -> Claude) shows them
