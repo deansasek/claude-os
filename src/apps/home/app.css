@@ -140,7 +140,7 @@
 @keyframes hm-nudge { 0%, 70%, 100% { transform: none; } 78% { transform: translateY(-.5px) rotate(-8deg); } 88% { transform: translateY(-.2px) rotate(6deg); } }
 
 /* ---- the day at a glance: four columns, a label, a serif value, up to two lines of detail ---- */
-#app-home .hm-glance { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px;
+#app-home .hm-glance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 288px; column-gap: 24px;   /* the fourth column is the hero's 288px right column, so both start at one x */
   border-top: 1px solid var(--line); padding-top: calc(14px + 4px * var(--tall)); }
 #app-home .hm-cell { all: unset; box-sizing: border-box; display: flex; flex-direction: column; min-width: 0; cursor: pointer;
   transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out); }
