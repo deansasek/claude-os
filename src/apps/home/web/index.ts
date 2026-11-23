@@ -19,6 +19,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { ago, batteryGlyph, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
+import { nativeLimits } from '../../claude/web/native.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -207,6 +208,17 @@ const busySessions = (): Session[] => (usage?.sessions || []).filter(s => s.stat
 const left = (w: LimitWindow | undefined): number | null => (w && w.used != null ? Math.round(100 - Math.min(100, Math.max(0, w.used))) : null);
 const shortTitle = (t: string, n = 40) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
+/** The tablet's own plan limits (native.ts), as percent left, with the session window's reset time. Null when the
+ *  tablet has none. Used when the PC has none, or is away. */
+function tabletLimits(): { s: number | null; w: number | null; resetMs: number | null } | null {
+  const pct = (used: number | null | undefined): number | null => (used == null ? null : Math.round(100 - Math.min(100, Math.max(0, used))));
+  const lim = nativeLimits();
+  const five = lim.find(l => l.type === 'five_hour'), week = lim.find(l => l.type === 'seven_day');
+  const s = pct(five?.used), w = pct(week?.used);
+  if (s == null && w == null) return null;
+  return { s, w, resetMs: five?.resetsAt ? Date.parse(five.resetsAt) : null };
+}
+
 function paintClaude(): void {
   const waiting = waitingSessions(), busy = busySessions();
   ctx.root.classList.toggle('hm-waiting', waiting.length > 0);
@@ -222,15 +234,22 @@ function paintClaude(): void {
   // the tile
   const val = $('hmClVal'), sub = $('hmClSub');
   $('hmClDot').classList.toggle('on', waiting.length > 0);
-  const L = usage?.limits, s = left(L?.limits?.five_hour), w = left(L?.limits?.seven_day);
-  if (!usage) { val.className = 'quiet'; val.textContent = usageFailed ? 'Offline' : '–'; sub.textContent = usageFailed ? 'Can’t reach the usage meter' : 'Loading usage…'; }
-  else if (s == null && w == null) { val.className = 'quiet'; val.textContent = 'Not connected'; sub.textContent = 'Plan limits aren’t connected yet'; }
+  // the PC's limits; when the PC has none (or is away), the tablet's own (native.ts) before anything says Offline
+  const L = usage?.limits, pcS = left(L?.limits?.five_hour), pcW = left(L?.limits?.seven_day);
+  const tab = pcS == null && pcW == null ? tabletLimits() : null;
+  const s = tab ? tab.s : pcS, w = tab ? tab.w : pcW;
+  if (s == null && w == null) {
+    val.className = 'quiet';
+    if (!usage) { val.textContent = usageFailed ? 'Offline' : '–'; sub.textContent = usageFailed ? 'Can’t reach the usage meter' : 'Loading usage…'; }
+    else { val.textContent = 'Not connected'; sub.textContent = 'Plan limits aren’t connected yet'; }
+  }
   else {
     val.className = `num${s != null && s < 15 ? ' clay' : ''}`;
     val.innerHTML = s != null ? `${s}%<small>left</small>` : `${w}%<small>left</small>`;
-    const resets = L?.limits?.five_hour?.resets_at;
-    const lines = [s != null ? `Session${resets ? ` · resets ${hm(new Date(Date.parse(resets) + offset))}` : ''}` : 'This week'];
+    const resets = tab ? tab.resetMs : (L?.limits?.five_hour?.resets_at ? Date.parse(L.limits.five_hour.resets_at) + offset : null);
+    const lines = [s != null ? `Session${resets ? ` · resets ${hm(new Date(resets))}` : ''}` : 'This week'];
     if (s != null && w != null) lines.push(`${w}% left this week`);
+    if (tab) lines.push('On this tablet');
     subLines(sub, lines);
   }
   paintLine();
