@@ -378,6 +378,7 @@
 .cp-chip.strong { cursor: pointer; color: var(--t2); height: 44px; }   /* 44px for the finger, like the other chips */
 .cp-chip.strong::after { content: ''; width: 5px; height: 5px; margin: -3px 0 0 3px; border: solid var(--t4); border-width: 0 1.4px 1.4px 0; transform: rotate(45deg); }
 .cp-chip.strong:active { background: var(--card); }
+.cp-chip[hidden] { display: none; }
 /* session controls (sessions/controls.ts): model · effort · mode chips and the context ring, like the desktop app */
 .cp-meta { position: relative; }
 .cp-right { margin-left: auto; display: flex; align-items: center; gap: 2px; min-width: 0; color: var(--t3); white-space: nowrap; }
