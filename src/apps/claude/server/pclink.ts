@@ -82,6 +82,15 @@ export function rewakeText(text: string): string {
   return `The user replied from the ClaudeOS tablet. Treat this as their next message and answer it:\n\n${text}`;
 }
 
+/** The tablet's reply inside a stored hook note: the text after "answer it:", without the wrapper tags.
+ *  '' for a hook note with no reply in it; null when the text is not a tablet reply at all. */
+export function tabletReplyIn(text: string): string | null {
+  if (!/replied from the ClaudeOS tablet/.test(text)) return null;
+  const after = text.split(/answer it:\s*/)[1];
+  if (after === undefined) return '';
+  return after.replace(/\s*(?:&lt;|<)\/?(?:system-reminder|task-notification)[^]*$/i, '').trim();
+}
+
 /** The tablet's answer to a PC permission prompt (the PermissionRequest hook's decision). */
 export type PcDecision =
   | { behavior: 'allow'; updatedPermissions?: { type: 'setMode'; mode: string; destination: 'session' }[] }

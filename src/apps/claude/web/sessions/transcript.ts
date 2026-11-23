@@ -5,6 +5,7 @@
 import { esc, SPARK_SHAPE } from '../../../../core/web/dom.ts';
 import { markdown } from '../../../../core/web/markdown.ts';
 import type { SessionView, TranscriptEntry } from '../../api.ts';
+import { quickChips } from './quick-chips.ts';
 
 export const SPARK = '<svg viewBox="-50 -50 100 100" class="m-spark"><g fill="var(--clay)" class="spark-rays"></g></svg>';
 export const SPARK_RAYS = SPARK_SHAPE;   // the shared Claude spark (core/web/dom.ts)
@@ -107,9 +108,5 @@ export function transcriptHtml(entries: TranscriptEntry[], active: boolean, ui: 
 /** Quick replies that fit what Claude just said. [label, what gets sent] */
 export function quickReplies(v: SessionView): [string, string][] {
   const last = [...v.transcript].reverse().find(e => e.kind === 'assistant' || e.kind === 'user');
-  const text = last?.kind === 'assistant' ? last.text.trim() : '';
-  const tail = text.slice(-400).toLowerCase();
-  const asks = /\?\s*$/.test(text) || /\b(want me to|should i|shall i|would you like|do you want|ready for me to|ok to|okay to)\b/.test(tail);
-  if (asks) return [['Yes, please', 'Yes, please go ahead.'], ['No, thanks', 'No, thanks. Leave it as it is.'], ['Continue', 'Continue.']];
-  return [['Yes, go ahead', 'Yes, go ahead.'], ['Continue', 'Continue.'], ['Looks good, thanks', 'Looks good, thanks!']];
+  return quickChips(last?.kind === 'assistant' ? last.text : '');
 }

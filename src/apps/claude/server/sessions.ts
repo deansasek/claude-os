@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { LiveSession, SessionState, TranscriptEntry } from '../api.ts';
 import { describeTool } from './describe.ts';
+import { tabletReplyIn } from './pclink.ts';
 import { PROJECTS } from '../../../core/server/paths.ts';
 import { openSessions } from './registry.ts';
 import { folderOf, hubSession, hubSessionIds } from './hubsessions.ts';
@@ -271,7 +272,10 @@ function parseTranscript(sessionId: string, file: string, start: number, size: n
       const text = userText(c);
       const photos: any[] = Array.isArray(c) ? c.filter((x: any) => x?.type === 'image') : [];
       if (!text && !photos.length) continue;
-      if (text.startsWith('[Request interrupted')) out.push({ kind: 'note', text: 'Interrupted', at });
+      const reply = tabletReplyIn(text);   // a reply from the tablet, stored as a hook note: show only the reply
+      if (reply === '') continue;
+      const shown = reply ?? text;
+      if (shown.startsWith('[Request interrupted')) out.push({ kind: 'note', text: 'Interrupted', at });
       else {
         const images: string[] = [];
         if (o.uuid && MSG_ID.test(o.uuid)) {
@@ -280,7 +284,7 @@ function parseTranscript(sessionId: string, file: string, start: number, size: n
             images.push(`/api/claude/image?s=${encodeURIComponent(sessionId)}&m=${encodeURIComponent(o.uuid)}&n=${n}`);
           });
         }
-        out.push({ kind: 'user', text: text.slice(0, 4000), at, ...(images.length ? { images } : {}), ...(o.uuid && MSG_ID.test(o.uuid) ? { id: o.uuid } : {}) });
+        out.push({ kind: 'user', text: shown.slice(0, 4000), at, ...(images.length ? { images } : {}), ...(o.uuid && MSG_ID.test(o.uuid) ? { id: o.uuid } : {}) });
       }
     } else if (o.type === 'assistant') {
       const blocks: any[] = Array.isArray(o.message?.content) ? o.message.content : [];
