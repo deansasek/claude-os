@@ -541,10 +541,15 @@ export async function startNew(projectId: string, text: string, from: string, vo
   const run = resolve(want, null);
   const { turn, sessionId } = launch({ cwd, title, text: message, from, firstStep: 'Starting a new session', voice, photos: loaded.photos, ...run });
   logAction(from, voice ? 'new-session-voice' : 'new-session', { turn: turn.id, folder: cwd, text: message, photos: loaded.photos.length, model: run.model || 'default', effort: run.effort || 'default', mode: run.mode });
+  // remember the session when its id arrives, even after the 45 s wait below, so a slow start is not lost
+  const remember = (id: string) => {
+    if (!id) return;
+    if (!modeNow.has(id)) modeNow.set(id, run.mode as HubPermission);
+    rememberHubSession({ id, cwd, title, createdAt: new Date().toISOString() });
+  };
+  sessionId.then(remember);
   const id = await Promise.race([sessionId, new Promise<string>(r => setTimeout(() => r(''), 45e3))]);
   if (!id) return { ok: false, error: turn.error || 'did_not_start' };
-  if (!modeNow.has(id)) modeNow.set(id, run.mode as HubPermission);
-  rememberHubSession({ id, cwd, title, createdAt: new Date().toISOString() });
   return { ok: true, sessionId: id };
 }
 
