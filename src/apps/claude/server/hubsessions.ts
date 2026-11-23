@@ -13,6 +13,8 @@ import { HOME, HUB, PROJECTS, readJson, readJsonOrSetAside, writeJsonFile } from
 const FILE = path.join(HUB, 'hub-sessions.json');
 export const SCRATCH = path.join(HUB, 'workspace');
 const RECENT_MS = 60 * 864e5;
+/** Hub-started sessions kept in hub-sessions.json. Past this many, the oldest are forgotten and read as too old to continue. */
+const HUB_SESSION_CAP = 500;
 
 export interface HubSessionRecord { id: string; cwd: string; title: string; createdAt: string }
 
@@ -22,7 +24,7 @@ export const hubSessionIds = (): Set<string> => new Set(records.map(r => r.id));
 export const hubSession = (id: string): HubSessionRecord | undefined => records.find(r => r.id === id);
 
 export function rememberHubSession(r: HubSessionRecord): void {
-  records = [r, ...records.filter(x => x.id !== r.id)].slice(0, 50);
+  records = [r, ...records.filter(x => x.id !== r.id)].slice(0, HUB_SESSION_CAP);
   writeJsonFile(FILE, { sessions: records }, { indent: 2 });
 }
 
