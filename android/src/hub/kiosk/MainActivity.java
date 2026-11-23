@@ -208,7 +208,10 @@ public class MainActivity extends Activity {
     cover = coverView();
     root.addView(cover, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
     setContentView(root);
-    if (Build.VERSION.SDK_INT >= 30) root.setOnApplyWindowInsetsListener(this::keepPageSizeFromKeyboard);
+    if (Build.VERSION.SDK_INT >= 30) {
+      root.setOnApplyWindowInsetsListener(this::keepPageSizeFromKeyboard);
+      root.setWindowInsetsAnimationCallback(barShowGuard());
+    }
     new BrowserView(this, root, web);   // the Browser app's native pages, laid over the content area (BrowserView.java)
     BrowserView.fromIntent(getIntent());   // a web link that opened Claude Home from another app (default browser)
     ui.postDelayed(this::hideCover, 12_000);   // never leave the cover up for good
@@ -617,6 +620,51 @@ public class MainActivity extends Activity {
     rehidePending = true;
     long wait = Math.max(0, lastRehideAt + REHIDE_DELAY_MS - System.currentTimeMillis());
     ui.postDelayed(rehideNow, wait);
+  }
+
+  /**
+   * A swipe up from the bottom edge (or down from the top) makes Android ask this window to show the bars
+   * (DisplayPolicy.requestTransientBars with BEHAVIOR_DEFAULT). On this tablet the navigation bar is Launcher's
+   * Taskbar: the white dock. The bars' show animation starts here, in this window, so it is stopped at its start
+   * and the bars are snapped back to hidden with no animation: the dock never slides in. rehide() stays as the
+   * fallback for a show that doesn't come through an animation.
+   */
+  private long lastSnapAt = 0;
+  private android.view.WindowInsetsAnimation.Callback barShowGuard() {
+    return new android.view.WindowInsetsAnimation.Callback(android.view.WindowInsetsAnimation.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+      @Override public android.view.WindowInsetsAnimation.Bounds onStart(android.view.WindowInsetsAnimation a,
+          android.view.WindowInsetsAnimation.Bounds b) {
+        // onStart sees the end state: the bars are "visible" here only when this animation shows them
+        long now = android.os.SystemClock.uptimeMillis();
+        if ((a.getTypeMask() & WindowInsets.Type.systemBars()) != 0 && barsShouldBeHidden() && barsShowing() != 0
+            && now - lastSnapAt > REHIDE_DELAY_MS) {   // our own snap animates too: one snap at a time (loop guard)
+          lastSnapAt = now;
+          trace("bars show animation: snapped back");
+          ui.postAtFrontOfQueue(MainActivity.this::snapBarsHidden);
+        }
+        return b;
+      }
+      @Override public WindowInsets onProgress(WindowInsets in, java.util.List<android.view.WindowInsetsAnimation> running) { return in; }
+    };
+  }
+
+  /** Hide the status and navigation bars at once (a zero-length controlled animation), not with the slide-out. */
+  private void snapBarsHidden() {
+    if (Build.VERSION.SDK_INT < 30 || !barsShouldBeHidden()) return;
+    WindowInsetsController c = getWindow().getInsetsController();
+    if (c == null) return;
+    try {
+      c.controlWindowInsetsAnimation(WindowInsets.Type.systemBars(), 0, null, null,
+          new android.view.WindowInsetsAnimationControlListener() {
+            @Override public void onReady(android.view.WindowInsetsAnimationController ctl, int types) { ctl.finish(false); }
+            @Override public void onFinished(android.view.WindowInsetsAnimationController ctl) { }
+            @Override public void onCancelled(android.view.WindowInsetsAnimationController ctl) { scheduleRehide(); }
+          });
+    } catch (Exception e) {
+      Log.w(TAG, "snap bars hidden", e);
+      c.hide(WindowInsets.Type.systemBars());
+    }
+    scheduleRehide();   // and check again, as for any other show
   }
 
   // ---------- Android's top gesture band ----------
