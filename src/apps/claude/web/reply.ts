@@ -66,6 +66,8 @@ const SEND_NOTE: Record<string, string> = {
   photos_on_pc: 'Photos can’t go to a session open on your PC. Send words only.',
 };
 const takeDraft = (): string => { const t = draft; draft = ''; return t; };
+// the text a reply composer closed with unsent (Cancel, a tap outside it): it returns to that session's composer
+let replyDraft: { id: string | null; text: string } = { id: null, text: '' };
 const attended = new Set<string>();                  // approvals we've already pulled the screen for
 const activeTurn = (): HubTurn | null => { const t = view?.turn; return t && (t.status === 'running' || t.status === 'approval') ? t : null; };
 
@@ -226,7 +228,7 @@ function openList(): void {
 
 export function closeSession(): void {
   mode = 'closed'; openId = null; view = null; picking = false;
-  photos = []; draft = ''; openMsg = null;
+  photos = []; draft = ''; replyDraft = { id: null, text: '' }; openMsg = null;
   closeMenu();
   $('svNudge').hidden = true;
   clearInterval(poll);
@@ -516,9 +518,13 @@ function send(text: string): void {
 function typeReply(): void {
   if (mode !== 'session' || !view?.canReply || activeTurn()) return;
   sendNote = '';
+  const kept = replyDraft.id === openId ? replyDraft.text : '';
+  replyDraft = { id: null, text: '' };
   Keyboard.open({
-    value: takeDraft(), placeholder: photos.length ? 'Ask about the photo, or send it as it is' : 'Reply to Claude', autoCap: true, max: MAX_MESSAGE, done: 'Send',
+    value: kept, placeholder: photos.length ? 'Ask about the photo, or send it as it is' : 'Reply to Claude', autoCap: true, max: MAX_MESSAGE, done: 'Send',
     onDone: text => { if (text.trim() || photos.length) send(text.trim()); },
+    // closed without Send: the text stays as this session's reply draft
+    onClose: (reason, text) => { if (reason !== 'done') replyDraft = { id: openId, text }; },
   });
 }
 
