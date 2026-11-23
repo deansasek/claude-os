@@ -14,7 +14,7 @@ import { pace, toolWord } from './words.ts';
 import { loadModels, modelChoices, newPref, setNewPref, setVoicePref, voicePref } from './sessions/controls.ts';
 import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-settings.ts';
 import { device } from '../../../core/web/device.ts';
-import { NATIVE_MODELS, nativeLimits, nativeModel, nativeOn, setNativeModel, setNativeOn } from './native.ts';
+import { NATIVE_MODELS, nativeCliVersion, nativeLimits, nativeModel, nativeOn, setNativeModel, setNativeOn } from './native.ts';
 import { limitName, limitState } from './native-stream.ts';
 
 let ctx: AppContext;
@@ -239,6 +239,8 @@ function registerClaudeSettings(): void {
       { kind: 'switch', id: 'native', title: 'Run Claude chats on this tablet', detail: 'New chats use the Claude CLI signed in on this tablet (no tools) instead of your PC.',
         get: nativeOn, set: v => { setNativeOn(v); if (v) device.cliAuthState(true); appSettingsChanged(); } },
       ...(nativeOn() ? [
+        { kind: 'info' as const, id: 'nativeCli', title: 'Chats on this tablet · CLI version', detail: 'The Claude CLI on this tablet, as the last chat reported it.',
+          value: () => nativeCliVersion() || '–' },
         { kind: 'choice' as const, id: 'nativeModel', title: 'Chats on this tablet · model', detail: 'The model a chat on this tablet runs on. Changing it keeps the chat and applies from the next reply.',
           options: NATIVE_MODELS, get: nativeModel, set: (v: string) => setNativeModel(v) },
         { kind: 'action' as const, id: 'nativeSignin', title: 'Chats on this tablet · sign-in', detail: 'Sign in with your Claude account once. The first time, Claude Code downloads to the tablet (about 365 MB).',

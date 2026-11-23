@@ -67,6 +67,8 @@ export function initNative(onChange: () => void): void { changed = onChange; }
 /** The plan limits from the tablet CLI (rate_limit_event of a chat, or a usage check), the newest per window.
  *  Not the hub's limits. */
 export const nativeLimits = (): SeenLimit[] => limitList(chat);
+/** The tablet CLI's version as its last chat reported it (system/init), or null before the first chat. */
+export const nativeCliVersion = (): string | null => chat.cliVersion;
 
 // ---------- the usage check (Settings → Usage): the CLI's get_usage, with no prompt (no usage spent) ----------
 let checking = false;

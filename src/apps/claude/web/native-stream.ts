@@ -15,7 +15,7 @@ export interface SeenLimit extends PlanLimit { at: string | null }
 export interface TokenUse { input: number; output: number; cacheRead: number; cacheWrite: number }
 
 export type NativeEvent =
-  | { type: 'init'; sessionId: string; model?: string | null }   // model: the id the turn runs on (system/init)
+  | { type: 'init'; sessionId: string; model?: string | null; version?: string | null }   // model: the id the turn runs on; version: the CLI's version (system/init)
   | { type: 'delta'; text: string }      // a piece of the reply as it streams (--include-partial-messages)
   | { type: 'text'; text: string; error?: string }   // a whole assistant message; error: the SDK's error code when the reply failed (text then is the CLI's error, not a reply)
   | { type: 'result'; ok: boolean; text: string; sessionId: string | null; costUsd: number | null; usage: TokenUse; window: number | null; reason?: string | null;
@@ -101,7 +101,7 @@ export function parseStreamLine(line: string): NativeEvent | null {
   switch (o.type) {
     case 'system': {
       const id = str(o.session_id);
-      if (o.subtype === 'init') return id ? { type: 'init', sessionId: id, model: str(o.model) } : null;
+      if (o.subtype === 'init') return id ? { type: 'init', sessionId: id, model: str(o.model), version: str(o.claude_code_version) } : null;
       if (o.subtype === 'compact_boundary') return { type: 'compacted' };
       // the API is retried: "Retrying (2 of 10)" (attempt, max_retries). Compacting: the CLI's status is "compacting".
       if (o.subtype === 'api_retry') {
@@ -168,13 +168,14 @@ export interface NativeChat {
   status: string | null;   // a retry or compacting while the reply runs ("Retrying (2 of 10)", "Compacting"); null otherwise
   turnStartedAt: string | null;   // when the running reply was sent (set once per turn, by userSent)
   lastModel: string | null; lastMs: number | null;   // the model and the time of the latest turn (under the title)
+  cliVersion: string | null;   // the tablet CLI's version, from system/init (Settings shows it)
   resuming: boolean;   // the reply resumes a saved session and the CLI has not yet sent its init (the session is live)
   replyError: string | null;   // the SDK's error code for the running reply (an assistant message's error), else null
   lastEventAt: number | null;  // when the last event of the running reply came (ms); stalled() reads it
 }
 export const emptyChat = (): NativeChat =>
   ({ sessionId: null, entries: [], running: false, partial: '', error: null, tokens: { ...NO_TOKENS }, last: null, window: null, limits: {},
-    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null, resuming: false, replyError: null, lastEventAt: null });
+    stopped: false, status: null, turnStartedAt: null, lastModel: null, lastMs: null, resuming: false, replyError: null, lastEventAt: null, cliVersion: null });
 
 /** Your message goes on screen and the reply starts. A reply to a saved session is a resume until its init comes. */
 export const userSent = (c: NativeChat, text: string, at = new Date().toISOString()): NativeChat =>
@@ -229,7 +230,7 @@ const stoppedText = (text: string): string => (text ? `${text} (stopped)` : '');
 export function applyEvent(c: NativeChat, e: NativeEvent, at = new Date().toISOString()): NativeChat {
   const withReply = (text: string): TranscriptEntry[] => (text ? [...c.entries, { kind: 'assistant', text, at }] : c.entries);
   switch (e.type) {
-    case 'init': return { ...c, sessionId: e.sessionId, lastModel: e.model || c.lastModel, resuming: false };
+    case 'init': return { ...c, sessionId: e.sessionId, lastModel: e.model || c.lastModel, cliVersion: e.version || c.cliVersion, resuming: false };
     // a reply piece or the result is a normal event again: the retry or compacting line goes
     case 'delta': return c.running ? { ...c, partial: c.partial + e.text, status: null } : c;
     case 'text':
@@ -362,7 +363,7 @@ const SAVED_ENTRIES = 100;
  *  savedAt: when it was saved (ms), so the newer of two copies wins (newerSaved). */
 export function saveChat(c: NativeChat, savedAt = Date.now()): string {
   return JSON.stringify({ v: 1, savedAt, sessionId: c.sessionId, entries: c.entries.slice(-SAVED_ENTRIES), error: c.running ? null : c.error, tokens: c.tokens, last: c.last, window: c.window,
-    limits: c.limits, lastModel: c.lastModel, lastMs: c.lastMs });
+    limits: c.limits, lastModel: c.lastModel, lastMs: c.lastMs, cliVersion: c.cliVersion });
 }
 
 /** Of the copy in the app's file and the copy in localStorage, the one saved last (the file on a tie, or when the
@@ -397,6 +398,6 @@ export function loadChat(s: string | null): NativeChat {
     // the note of the last reply (a failure or Stopped) stays on screen after a reload
     return { ...emptyChat(), sessionId: str(o.sessionId), entries: entries.slice(-SAVED_ENTRIES), error: str(o.error), tokens: tokenUse(obj(o.tokens)),
       last: o.last ? tokenUse(obj(o.last)) : null, window: num(o.window) || null, limits,
-      lastModel: str(o.lastModel), lastMs: typeof o.lastMs === 'number' && Number.isFinite(o.lastMs) ? o.lastMs : null };
+      lastModel: str(o.lastModel), cliVersion: str(o.cliVersion), lastMs: typeof o.lastMs === 'number' && Number.isFinite(o.lastMs) ? o.lastMs : null };
   } catch { return emptyChat(); }
 }

@@ -10,7 +10,7 @@ const AT = '2026-11-23T10:00:00.000Z';
 const line = (o: unknown) => JSON.stringify(o);
 
 test('system/init keeps the session id', () => {
-  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'init', session_id: 's1', model: 'haiku', tools: [] })), { type: 'init', sessionId: 's1', model: 'haiku' });
+  assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'init', session_id: 's1', model: 'haiku', tools: [] })), { type: 'init', sessionId: 's1', model: 'haiku', version: null });
   assert.deepEqual(parseStreamLine(line({ type: 'system', subtype: 'compact_boundary' })), { type: 'compacted' });
 });
 
@@ -467,4 +467,15 @@ test('stalled: true after 3 minutes with no event, never with no event time', ()
   const sent = userSent(emptyChat(), 'Hi', AT);
   assert.equal(sent.lastEventAt, last);
   assert.equal(emptyChat().lastEventAt, null);
+});
+
+test('system/init gives the tablet CLI version, which the chat keeps and Settings shows', () => {
+  const init = parseStreamLine(line({ type: 'system', subtype: 'init', session_id: 's1', model: 'haiku', claude_code_version: '2.1.4' }));
+  assert.deepEqual(init, { type: 'init', sessionId: 's1', model: 'haiku', version: '2.1.4' });
+  const c = applyEvent(userSent(emptyChat(), 'Hi', AT), init!, AT);
+  assert.equal(c.cliVersion, '2.1.4');
+  assert.equal(loadChat(saveChat(c)).cliVersion, '2.1.4');
+  assert.equal(emptyChat().cliVersion, null);
+  // a later init without a version keeps the one already seen
+  assert.equal(applyEvent(c, { type: 'init', sessionId: 's1' }, AT).cliVersion, '2.1.4');
 });
