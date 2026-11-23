@@ -3,6 +3,7 @@
 // or hold a photo) to delete them together, or to ask Claude about up to three.
 // Nothing is removed from the list until the PC says it is gone: a delete that fails leaves the photo where it was.
 import { esc, getJson, postJson, report } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithPhoto } from '../../claude/web/reply.ts';
@@ -36,8 +37,7 @@ let moved = false;                       // a finger went far enough (or two fin
 let swipeAt: { x: number; y: number } | null = null;   // where a finger went down on the viewer's picture
 let lastTap = { t: 0, x: 0, y: 0 };
 
-const ICON = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">'
-  + '<rect x="5" y="7" width="22" height="18" rx="3"/><path d="M5 21l6-6 5 5 3-3 8 8"/><circle cx="20.5" cy="12.5" r="1.8"/></svg>';
+const ICON = appIcon('photos');
 
 const dayLabel = (day: string): string => {
   const [y, m, d] = day.split('-').map(Number);

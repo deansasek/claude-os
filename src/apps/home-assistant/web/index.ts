@@ -9,6 +9,7 @@
 // Being on Home never lets Claude control a device: that is only the allowlist in Settings > Apps > Home Assistant
 // ("Devices Claude can control"), which is also where the address, the access token and demo mode are set.
 import { esc, getJson, postJson } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
@@ -27,8 +28,7 @@ const HOLD_MS = 520;          // a long-press opens a tile's settings
 const DRAG_START_PX = 6;      // in edit mode, a tile moves once the finger has moved this far
 const OTHER = '_other';       // the "Other" section's id on the page (room ids are "r…", so it never clashes)
 
-const ICON = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">'
-  + '<path d="M5 15L16 6l11 9"/><path d="M8 13v13h16V13"/><path d="M13.5 26v-6.5h5V26"/></svg>';
+const ICON = appIcon('home-assistant');
 
 const svg = (inner: string) => `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${inner}</svg>`;
 const DOMAIN_ICON: Record<string, string> = {

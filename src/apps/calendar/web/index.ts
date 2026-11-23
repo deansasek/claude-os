@@ -6,6 +6,7 @@
 // Claude turn, so it happens only when the app opens, when Refresh is tapped, or when the view moves to another day.
 // The 5-minute timer never makes a connector read.
 import { esc, getJson, postJson } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
@@ -15,8 +16,7 @@ import { manifest } from '../manifest.ts';
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 5 * 60e3;
 
-export const CALENDAR_ICON = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">'
-  + '<rect x="5.5" y="7.5" width="21" height="19" rx="3"/><path d="M5.5 13.5h21M11 5v5M21 5v5"/><path d="M10.5 18h3M18.5 18h3M10.5 22h3"/></svg>';
+export const CALENDAR_ICON = appIcon('calendar');
 
 type View = 'day' | 'week' | 'month' | 'year';
 /** One event in ms, as the PC sends it. */

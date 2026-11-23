@@ -14,6 +14,7 @@
 // TODO: while an Android app is open, a small floating "back to Claude Home" button over it (a later step,
 // on the Android side: an overlay started from Launcher.launch()).
 import { esc, getJson, renderSparks, report, store } from '../../../core/web/dom.ts';
+import { appIcon } from '../../../core/web/app-icons.ts';
 import { androidApps, onTablet, type AndroidApp } from '../../../core/web/device.ts';
 import { motionMs, reducedMotion } from '../../../core/web/motion.ts';
 import { installedApps, isPinned, launchAndroid, pinnable, setPinned, type AppContext, type HubApp } from '../../../core/web/shell.ts';
@@ -22,9 +23,7 @@ import { appArt } from '../../../core/web/app-art.ts';
 import { cleanLayout, type LauncherLayout, type LauncherLayoutResult, type LauncherScreen } from '../api.ts';
 import { manifest } from '../manifest.ts';
 
-const ICON = '<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
-  + '<rect x="6" y="6" width="8" height="8" rx="2.2"/><rect x="18" y="6" width="8" height="8" rx="2.2"/>'
-  + '<rect x="6" y="18" width="8" height="8" rx="2.2"/><rect x="18" y="18" width="8" height="8" rx="2.2"/></svg>';
+const ICON = appIcon('apps');
 const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
 const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16"/><path d="M9.8 5.8A9.6 9.6 0 0 1 12 5.5c6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.6 3.4M6.3 7.4A15.5 15.5 0 0 0 2.5 12s3.5 6.5 9.5 6.5a9.3 9.3 0 0 0 4-.9"/></svg>';
 const PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3.5h6l-1 6 3.5 3.5v1.5h-11V13L10 9.5z"/><path d="M12 14.5v6"/></svg>';
