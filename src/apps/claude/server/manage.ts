@@ -88,7 +88,12 @@ export function deleteSession(id: string, from: string): ManageResult {
   try { real = fs.lstatSync(file).isFile() && logIsFor(file, id); } catch { real = false; }
   if (!real) return { ok: false, error: 'not_this_session' };
 
-  fs.unlinkSync(file);
+  // a log the PC still holds open (EBUSY, EPERM) cannot go: nothing else is removed
+  try { fs.unlinkSync(file); }
+  catch (e) {
+    console.log('claude: delete failed:', String((e as Error).message || e).slice(0, 160));
+    return { ok: false, error: 'delete_failed' };
+  }
   // the folders kept for this session: each is removed only if it is a real folder named for the id
   for (const folder of [path.join(dir, id), path.join(HOME, '.claude', 'file-history', id), path.join(HOME, '.claude', 'session-env', id)]) {
     if (path.basename(folder) === id && isDir(folder)) fs.rmSync(folder, { recursive: true, force: true });
