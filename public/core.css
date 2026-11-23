@@ -305,6 +305,13 @@
   .pw-cancel b { font-weight: 600; }
   @media (prefers-reduced-motion: reduce) { .pw-card { animation-name: wel-fade; } }
   :root.reduce-motion .pw-card { animation-name: wel-fade; }
+  /* SPIKE: the Claude Code sign-in sheet (core/web/cli-signin.ts), the power sheet's look. Under the keyboard (20),
+     so typing a code works; over the apps and the rail. */
+  .pw.cs { z-index: 19; }
+  .cs .cs-field { justify-content: flex-start; font-family: var(--mono, var(--sans)); color: var(--text); }
+  .cs .cs-field b { font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cs [data-b="send"], .cs [data-b="send"] b { color: var(--clay); font-weight: 600; }
+  .cs p.cs-msg { margin: 10px 0 0; color: var(--danger); }
   /* the first-run welcome (core/web/welcome.ts): one calm sheet over the stage, a few short steps, all skippable.
      Under the keyboard (20) and the controls (50) and banners (60), over the apps and the rail. */
   .wel { position: absolute; inset: 0; z-index: 19; display: flex; flex-direction: column; align-items: center; box-sizing: border-box;

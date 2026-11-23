@@ -95,6 +95,32 @@ public class MainActivity extends Activity {
     });
   }
 
+  /**
+   * SPIKE (CLI sign-in, node/NativeClaudeRunner): hands one sign-in step to the page (core/web/cli-signin.ts), as
+   * window.hubCliSignin(json). Only while the page is the Claude Home server. The json never holds the code.
+   */
+  public static void cliSignin(String json) {
+    MainActivity a = live;
+    if (a == null) return;
+    a.runOnUiThread(() -> {
+      if (a.web == null || a.bridge == null || !a.bridge.isAllowed()) return;
+      a.web.evaluateJavascript("window.hubCliSignin && window.hubCliSignin(" + json + ")", null);
+    });
+  }
+
+  /**
+   * SPIKE (CLI sign-in): the sign-in address as a new tab of ClaudeOS's own Browser app, the same path as a link from a
+   * Claude reply (Bridge.browserOpenUrl, BrowserView.offer); the Browser page takes it and comes on screen. False if refused.
+   */
+  public static boolean cliSigninOpen(String url) {
+    MainActivity a = live;
+    BrowserView b = BrowserView.get();
+    if (a == null || b == null) return false;
+    java.util.concurrent.FutureTask<Boolean> f = new java.util.concurrent.FutureTask<>(() -> b.offer(url) != null);
+    a.runOnUiThread(f);
+    try { return f.get(5, java.util.concurrent.TimeUnit.SECONDS); } catch (Exception e) { return false; }
+  }
+
   /** The bottom strip sits over the page: touches that aren't the swipe go on to the page (main thread). */
   static void forwardTouch(android.view.MotionEvent ev) {
     MainActivity a = live;

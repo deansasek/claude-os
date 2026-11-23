@@ -3,6 +3,8 @@ package hub.kiosk.node;
 import android.content.Context;
 import android.util.Log;
 
+import hub.kiosk.MainActivity;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -34,7 +36,8 @@ import java.util.zip.GZIPInputStream;
  * The binary itself is not changed.
  *
  * Trigger:  adb shell am start -n hub.kiosk/.MainActivity --ez node_spike true
- *           add --ez login_spike true to also run `claude auth login` (up to 180 s; see run()).
+ *           add --ez login_spike true to also sign the CLI in: `claude auth login` with ClaudeOS's Browser and code
+ *           sheet (up to 10 minutes; see login()), then `claude auth status`.
  * Result:   every line is POSTed to the hub (POST /api/spike/node, header X-Spike: node), which appends it to
  *           host/logs/spike-node.log on the PC. Logcat tag NodeSpike has the same lines.
  */
@@ -97,16 +100,193 @@ public final class NativeClaudeRunner {
     exec("claude", List.of(loader.getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath(), "--version"),
         Map.of(), 60, true);
 
-    // 4. LOGIN SPIKE (intent extra login_spike): the official `claude auth login`, to see the sign-in address it
-    //    prints and whether it waits for the browser callback on the tablet's loopback.
-    //    The spike never reads files/claude/, ~/.claude or any .credentials file, and never sends their content
-    //    anywhere: it only forwards the CLI's own stdout and stderr lines. The CLI writes its sign-in result itself.
-    //    BROWSER=echo stops the CLI from trying to open a browser on Android. stdin stays open, so the CLI does not
-    //    see end-of-input while it waits.
+    // 4. CLI SIGN-IN (intent extra login_spike): the official `claude auth login`, then `claude auth status`.
+    //    See login() for the flow. BROWSER=echo stops the CLI from trying to open a browser on Android.
     if (login) {
-      exec("login", List.of(loader.getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath(), "auth", "login"),
-          Map.of("DISABLE_AUTOUPDATER", "1", "BROWSER", "echo"), 180, false);
+      List<String> base = List.of(loader.getAbsolutePath(), "--library-path", libDir, bin.getAbsolutePath());
+      Map<String, String> env = Map.of("DISABLE_AUTOUPDATER", "1", "BROWSER", "echo");
+      login(base, env);
+      // the status, as the CLI reports it; only these fields reach the hub log (not the email or the organization)
+      exec("status", concat(base, "auth", "status"), env, 60, true,
+          l -> l.matches("\\s*\"(loggedIn|authMethod|subscriptionType)\".*") ? l : null);
     }
+  }
+
+  // ---------- CLI sign-in ----------
+  // The flow: the CLI prints its sign-in address; the runner hands it to the page, which opens it in ClaudeOS's own
+  // Browser app. The user signs in on claude.ai. When claude.ai shows a code to copy (the CLI's manual flow, or its
+  // "Paste code" prompt), the page shows a ClaudeOS sheet; its Paste sends the code (Bridge.cliSigninCode), and
+  // sendCode() writes it plus a newline to the CLI's stdin, then closes stdin. The CLI, not ClaudeOS, exchanges the
+  // code for the token and stores it itself.
+  // ClaudeOS never reads files/claude/, ~/.claude or the CLI's credentials file, never stores the token or the code,
+  // and never logs the code: the code only passes from the clipboard or the sheet straight into the CLI's stdin.
+  // Posted lines have addresses and long tokens masked (redact()).
+
+  private static final long LOGIN_MAX_SEC = 600;   // the CLI waits at most 10 minutes for the user
+  private static final String AUTHORIZE = "https://claude.ai/oauth/authorize";
+  private static final java.util.regex.Pattern PROMPT = java.util.regex.Pattern.compile("(?i)paste.{0,20}code|code.{0,20}here");
+  /** The waiting CLI's stdin while it may take a code; null otherwise. */
+  private static volatile OutputStream loginIn;
+
+  /**
+   * The sheet's code for the waiting CLI (Bridge.cliSigninCode): an empty code means the clipboard's text. Writes it
+   * plus a newline to the CLI's stdin and closes stdin. Returns null when sent, else a short reason. Never logs the code.
+   */
+  public static String sendCode(Context c, String code) {
+    OutputStream in;
+    synchronized (NativeClaudeRunner.class) { in = loginIn; loginIn = null; }
+    if (in == null) return "no sign-in is waiting";
+    String text = code == null ? "" : code.trim();
+    if (text.isEmpty()) {
+      try {
+        android.content.ClipboardManager cm = c.getSystemService(android.content.ClipboardManager.class);
+        android.content.ClipData clip = cm == null ? null : cm.getPrimaryClip();
+        if (clip != null && clip.getItemCount() > 0) text = String.valueOf(clip.getItemAt(0).coerceToText(c)).trim();
+      } catch (Exception e) { /* no clipboard: the reason below */ }
+    }
+    if (text.isEmpty() || text.length() > 2048 || text.contains("\n")) {
+      synchronized (NativeClaudeRunner.class) { if (loginIn == null) loginIn = in; }   // still waiting: try again
+      return "no code to send";
+    }
+    try {
+      in.write((text + "\n").getBytes(StandardCharsets.UTF_8));
+      in.flush();
+      in.close();
+      return null;
+    } catch (Exception e) {
+      return "the sign-in has ended";
+    }
+  }
+
+  /** The page's step: {"step":"open","url":...,"code":bool} | {"step":"code"} | {"step":"copied"} | {"step":"done","ok":bool}. */
+  private static void toPage(String json) {
+    try { MainActivity.cliSignin(json); } catch (Throwable t) { Log.e(TAG, "native: page step failed", t); }
+  }
+
+  private void login(List<String> base, Map<String, String> env) {
+    post("native: login: exec auth login");
+    android.os.Handler ui = new android.os.Handler(android.os.Looper.getMainLooper());
+    android.content.ClipboardManager cm = app.getSystemService(android.content.ClipboardManager.class);
+    android.content.ClipboardManager.OnPrimaryClipChangedListener copied = () -> toPage("{\"step\":\"copied\"}");
+    boolean[] codeAsked = { false };
+    Runnable askCode = () -> {
+      synchronized (codeAsked) { if (codeAsked[0]) return; codeAsked[0] = true; }
+      post("native: login: the CLI takes a code now; the page shows the code sheet");
+      toPage("{\"step\":\"code\"}");
+      if (cm != null) ui.post(() -> cm.addPrimaryClipChangedListener(copied));   // a Copy on claude.ai brings the sheet up
+    };
+    Process p = null;
+    try {
+      File home = app.getFilesDir();
+      File tmp = new File(home, "tmp");
+      tmp.mkdirs();
+      ProcessBuilder pb = new ProcessBuilder(concat(base, "auth", "login")).directory(home);
+      pb.environment().put("HOME", home.getAbsolutePath());
+      pb.environment().put("TMPDIR", tmp.getAbsolutePath());
+      pb.environment().putAll(env);
+      long t0 = System.currentTimeMillis();
+      p = pb.start();
+      loginIn = p.getOutputStream();   // stdin stays open: the CLI may wait for a pasted code
+      Thread out = loginReader(p.getInputStream(), "stdout", askCode, ui);
+      Thread err = loginReader(p.getErrorStream(), "stderr", askCode, ui);
+      if (p.waitFor(LOGIN_MAX_SEC, TimeUnit.SECONDS)) {
+        post("native: login: exited by itself after " + (System.currentTimeMillis() - t0) / 1000 + " s");
+      } else {
+        post("native: login: still waiting after " + LOGIN_MAX_SEC + " s, stopping it");
+        p.destroyForcibly();
+        p.waitFor(5, TimeUnit.SECONDS);
+      }
+      out.join(2000);
+      err.join(2000);
+      int code = p.exitValue();
+      post("native: login: exit code " + code);
+      toPage("{\"step\":\"done\",\"ok\":" + (code == 0) + "}");
+    } catch (Throwable t) {
+      post("native: login: exception " + t);
+      toPage("{\"step\":\"done\",\"ok\":false}");
+      if (p != null) p.destroyForcibly();
+    } finally {
+      loginIn = null;
+      if (cm != null) ui.post(() -> cm.removePrimaryClipChangedListener(copied));
+    }
+  }
+
+  /**
+   * Reads the CLI's output by characters (a prompt has no newline): finds the sign-in address (it may wrap onto
+   * following lines), sends it to the page once, and calls askCode when the CLI asks for a code. Posts redacted lines.
+   */
+  private Thread loginReader(InputStream in, String label, Runnable askCode, android.os.Handler ui) {
+    Thread t = new Thread(() -> {
+      StringBuilder line = new StringBuilder();
+      StringBuilder url = new StringBuilder();
+      boolean[] sent = { false };
+      Runnable open = () -> {
+        synchronized (url) {
+          if (sent[0] || url.length() == 0) return;
+          sent[0] = true;
+          openSignin(url.toString(), askCode);
+        }
+      };
+      char[] buf = new char[4096];
+      try (InputStreamReader r = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+        int n;
+        while ((n = r.read(buf)) > 0) {
+          for (int i = 0; i < n; i++) {
+            char ch = buf[i];
+            if (ch != '\n' && ch != '\r') { line.append(ch); continue; }
+            String l = strip(line.toString());
+            line.setLength(0);
+            if (l.isEmpty()) continue;
+            boolean grew = false;
+            synchronized (url) {
+              int at = l.indexOf(AUTHORIZE);
+              if (at >= 0 && url.length() == 0) { url.append(l.substring(at).split("\\s")[0]); grew = true; }
+              else if (url.length() > 0 && !sent[0] && l.matches("[A-Za-z0-9%&=_.~+/?#:\\-]+")) { url.append(l); grew = true; }   // wrapped
+            }
+            ui.removeCallbacks(open);
+            if (grew) ui.postDelayed(open, 800);   // the address is whole after a quiet moment
+            else ui.post(open);                    // or as soon as another line follows it
+            if (PROMPT.matcher(l).find()) askCode.run();
+            post("native: login " + label + ": " + redact(l));
+          }
+          if (PROMPT.matcher(strip(line.toString())).find()) { ui.post(open); askCode.run(); }   // a prompt with no newline
+        }
+        String rest = strip(line.toString());
+        if (!rest.isEmpty()) post("native: login " + label + ": " + redact(rest));
+      } catch (Exception e) {
+        post("native: login " + label + " read ended: " + e.getClass().getSimpleName());
+      }
+    }, "native-login-" + label);
+    t.start();
+    return t;
+  }
+
+  /** The sign-in address to the page (ClaudeOS's Browser). code: claude.ai shows a code to copy (no localhost callback). */
+  private void openSignin(String url, Runnable askCode) {
+    String redirect = "";
+    try { redirect = String.valueOf(android.net.Uri.parse(url).getQueryParameter("redirect_uri")); } catch (Exception e) { /* none */ }
+    boolean local = redirect.startsWith("http://localhost") || redirect.startsWith("http://127.0.0.1");
+    boolean opened = MainActivity.cliSigninOpen(url);
+    post("native: login: sign-in address found (" + url.length() + " chars, not logged), callback "
+        + (local ? "on the tablet's loopback" : "a claude.ai code page") + "; Browser app " + (opened ? "opened it" : "REFUSED it"));
+    toPage("{\"step\":\"open\",\"code\":" + !local + "}");
+    if (!local) askCode.run();
+  }
+
+  /** Terminal colour and cursor codes out. */
+  private static String strip(String s) {
+    return s.replaceAll("\u001B\\[[0-?]*[ -/]*[@-~]|\u001B\\][^\u0007\u001B]*(\u0007|\u001B\\\\)", "").trim();
+  }
+
+  /** Addresses and long tokens masked, for the hub log. */
+  private static String redact(String s) {
+    return s.replaceAll("https?://\\S+", "<address>").replaceAll("[A-Za-z0-9_#\\-]{24,}", "<redacted>");
+  }
+
+  private static List<String> concat(List<String> base, String... more) {
+    List<String> l = new ArrayList<>(base);
+    l.addAll(List.of(more));
+    return l;
   }
 
   /** Downloads and unpacks the latest package into dir (skipped when that version is already there). */
@@ -166,6 +346,12 @@ public final class NativeClaudeRunner {
    * code. Kills it after timeoutSec and reports whether it exited by itself or was still running.
    */
   private void exec(String what, List<String> cmd, Map<String, String> env, int timeoutSec, boolean closeStdin) {
+    exec(what, cmd, env, timeoutSec, closeStdin, l -> (l.contains("http") ? "[URL LINE] " : "") + l);
+  }
+
+  /** As above; show maps each output line to the text posted (null: the line is not posted). */
+  private void exec(String what, List<String> cmd, Map<String, String> env, int timeoutSec, boolean closeStdin,
+                    java.util.function.UnaryOperator<String> show) {
     post("native: " + what + ": exec " + String.join(" ", cmd) + (env.isEmpty() ? "" : ", env " + env));
     try {
       File home = app.getFilesDir();
@@ -178,8 +364,8 @@ public final class NativeClaudeRunner {
       long t0 = System.currentTimeMillis();
       Process p = pb.start();
       if (closeStdin) p.getOutputStream().close();
-      Thread out = pipe(p.getInputStream(), what + " stdout");
-      Thread err = pipe(p.getErrorStream(), what + " stderr");
+      Thread out = pipe(p.getInputStream(), what + " stdout", show);
+      Thread err = pipe(p.getErrorStream(), what + " stderr", show);
       if (p.waitFor(timeoutSec, TimeUnit.SECONDS)) {
         post("native: " + what + ": exited by itself after " + (System.currentTimeMillis() - t0) / 1000 + " s");
       } else {
@@ -195,13 +381,13 @@ public final class NativeClaudeRunner {
     }
   }
 
-  private Thread pipe(InputStream in, String label) {
+  private Thread pipe(InputStream in, String label, java.util.function.UnaryOperator<String> show) {
     Thread t = new Thread(() -> {
       try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
         String line;
         while ((line = r.readLine()) != null) {
-          // mark lines with an address (the sign-in URL), so they stand out in the log; the spike never opens them
-          post("native: " + label + ": " + (line.contains("http") ? "[URL LINE] " : "") + line);
+          String s = show.apply(line);
+          if (s != null) post("native: " + label + ": " + s);
         }
       } catch (Exception e) {
         post("native: " + label + " read failed: " + e);

@@ -878,6 +878,15 @@ public class Bridge {
     if (b == null) return err("no browser");
     return b.offer(url) == null ? err("link not allowed") : OK;
   }
+  /**
+   * SPIKE (CLI sign-in sheet, core/web/cli-signin.ts): the code the user copied from claude.ai, for the waiting
+   * `claude auth login` (node/NativeClaudeRunner). An empty code means "use the clipboard". Never logged or kept.
+   */
+  @JavascriptInterface public String cliSigninCode(String code) {
+    if (!allowed) return DENIED;
+    String r = hub.kiosk.node.NativeClaudeRunner.sendCode(act, code);
+    return r == null ? OK : err(r);
+  }
   /** The page's answer to a Browser page's alert, confirm or prompt (a ClaudeOS sheet): ok, and the typed text. */
   @JavascriptInterface public String browserDialog(String dialogId, boolean ok, String text) { return browser(b -> b.answerDialog(dialogId, ok, text)); }
   /** The Google sign-in panel's Done: finishes Chrome's side sheet (Claude Home comes back to the front). */

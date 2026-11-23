@@ -13,6 +13,7 @@ interface HubDeviceApi {
   apps(): string; setAppHidden(pkg: string, hidden: boolean): string;
   reboot(): string; maintenance(): string;
   screenOff?(): string;   // newer app builds: the power menu's Turn off screen
+  cliSigninCode?(code: string): string;   // SPIKE builds: the CLI sign-in sheet's code (cli-signin.ts)
   setup(): string; fix(id: string): string; setKiosk(on: boolean): string;
   keyboardStatus?(): string; keyboardSetDefault?(): string; keyboardClearLearned?(): string;   // newer app builds
   keyboardPrefs?(): string; keyboardSetPref?(name: string, on: boolean): string;   // newer app builds: suggestions, key sounds
@@ -98,6 +99,8 @@ export const device = {
   /** The screen off now (Android's lock, with no lock screen: the power button wakes it). Throws on older app builds. */
   screenOff: () => call<{ ok: boolean }>(a => a.screenOff!()),
   maintenance: () => call<{ ok: boolean }>(a => a.maintenance()),
+  /** SPIKE: the code for the waiting `claude auth login` ('' = the clipboard's). Throws with the reason. */
+  cliSigninCode: (code: string) => call<{ ok: boolean }>(a => a.cliSigninCode!(code)),
   /** One-time Android settings that make the tablet a kiosk without device owner. Older app builds lack it. */
   setup: (): Setup | null => { try { return call<Setup>(a => a.setup()); } catch { return null; } },
   fix: (id: string) => call<{ ok: boolean }>(a => a.fix(id)),
