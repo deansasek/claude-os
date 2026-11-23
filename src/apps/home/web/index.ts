@@ -365,7 +365,7 @@ function paintCalendar(): void {
   }
   val.className = 'hm-ntitle';
   val.textContent = calLine(next[0]);
-  sub.innerHTML = next.slice(1).map(e => esc(calLine(e))).join('<br>') || esc(next[0].location ?? 'Nothing else today');
+  sub.innerHTML = next.slice(1).map(e => esc(calLine(e))).join(' · ') || esc(next[0].location ?? 'Nothing else today');   // one line under the title
 }
 
 // ---------- notifications ----------
@@ -378,7 +378,7 @@ function paintNotes(): void {
   const n = recent[0];
   val.className = 'hm-ntitle'; val.textContent = n.title;
   const from = [n.app ? APP_NAMES[n.app] || '' : '', ago(n.at)].filter(Boolean).join(' · ');
-  sub.innerHTML = `${esc(from)}${recent.length > 1 ? `<br>and ${recent.length - 1} more today` : n.body ? `<br>${esc(n.body)}` : ''}`;
+  sub.innerHTML = `${esc(from)}${recent.length > 1 ? ` · ${recent.length - 1} more today` : n.body ? ` · ${esc(n.body)}` : ''}`;   // one line under the title
 }
 
 // ---------- tablet: Wi-Fi and battery ----------
@@ -556,7 +556,7 @@ const ACTIONS: QuickAction[] = [
     dispatchEvent(new CustomEvent('hub:new-session'));   // the Claude app opens its "New session" screen when it listens for this
   } },
   { id: 'timer', label: '5-min timer', icon: I.timer, run: startTimer },
-  { id: 'weather', label: 'Weather', icon: I.cloud, run: () => openApp('weather') },
+  // (no Weather button: the Weather tile above opens the Weather app in one tap)
   { id: 'apps', label: 'All apps', icon: I.apps, run: () => openApp('launcher') },
   { id: 'rest', label: 'Rest screen', icon: I.moon, run: () => sleep() },
   ...(onTablet ? [{ id: 'settings', label: 'Settings', icon: I.gear, run: () => openSettings() }] : []),
@@ -593,6 +593,8 @@ function paintActs(): void {
     const label = on ? `${r.name} · ${run.step}/${run.of}` : r.name;
     return `<button class="hm-act hm-scene hm-routine${on ? ' busy' : ''}" data-routine="${esc(r.id)}" title="${esc(r.name)}" aria-label="${esc(on ? `Stop the routine ${r.name}` : `Run the routine ${r.name}`)}">${I.routine}<span>${esc(label)}</span></button>`;
   };
+  // more than six buttons don't fit side by side as icon + label: the row then stacks each label under its icon (app.css)
+  $('hmActs').classList.toggle('hm-dense', ACTIONS.length + routineActs.length + sceneActs.length > 6);
   $('hmActs').innerHTML = ACTIONS.map(a => `<button class="hm-act${a.primary ? ' primary' : ''}" data-act="${a.id}">${a.icon}<span>${esc(a.label)}</span></button>`).join('')
     + (routineActs.length || sceneActs.length
       ? `<span class="hm-scenes">${routineActs.map(routine).join('')}${sceneActs.map(scene).join('')}</span>` : '');
