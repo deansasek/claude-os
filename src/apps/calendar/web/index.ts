@@ -12,6 +12,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import type { CalConfigResult, CalStatus } from '../api.ts';
 import { manifest } from '../manifest.ts';
+import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 5 * 60e3;
@@ -305,10 +306,61 @@ function renderAdd(note: string): void {
   $('calAddMsg').textContent = note;
 }
 
-function editDraft(field: 'title' | 'date' | 'start' | 'end' | 'where'): void {
-  const placeholder = { title: 'Dentist', date: '2026-11-24', start: '09:00', end: '09:30', where: 'Main St' }[field];
+/** The name and the place are typed. The day and the times are picked (below). */
+function editDraft(field: 'title' | 'where'): void {
+  const placeholder = { title: 'Dentist', where: 'Main St' }[field];
   Keyboard.open({ value: draft[field], placeholder, done: 'Done', max: field === 'where' ? 200 : 120,
     onDone: v => { draft[field] = v.trim(); renderAdd(''); } });
+}
+
+// ---------- the day and time pickers: ClaudeOS's own sheet, never the Android picker ----------
+type PickField = 'date' | 'start' | 'end';
+let pickField: PickField | null = null;
+let pickMonth = new Date();   // the month the day grid shows
+const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => weekdayFmt.format(new Date(2024, 0, 1 + i)));   // Jan 1 2024 is a Monday
+const spinner = (unit: 'h' | 'm', value: string): string => {
+  const more = unit === 'h' ? 'One hour later' : 'Five minutes later', less = unit === 'h' ? 'One hour earlier' : 'Five minutes earlier';
+  return `<div class="cal-pick-spin"><button type="button" data-unit="${unit}" data-d="1" aria-label="${more}">+</button>`
+    + `<b>${value}</b><button type="button" data-unit="${unit}" data-d="-1" aria-label="${less}">−</button></div>`;
+};
+
+function openPicker(field: PickField): void {
+  pickField = field;
+  if (field === 'date') pickMonth = fromKey(draft.date);
+  paintPicker();
+  $('calPick').hidden = false;
+}
+function closePicker(): void { pickField = null; $('calPick').hidden = true; renderAdd(''); }
+
+function paintPicker(): void {
+  const card = $('calPickCard');
+  if (pickField === 'date') {
+    const cells = monthWeeks(pickMonth.getFullYear(), pickMonth.getMonth()).flat().map(k => k
+      ? `<button type="button" class="cal-pick-day${k === draft.date ? ' on' : ''}" data-key="${k}">${+k.slice(8)}</button>`
+      : '<span></span>').join('');
+    card.innerHTML = `<h2>Pick a day</h2>
+      <div class="cal-pick-month"><button type="button" class="cal-pick-step" data-step="-1" aria-label="Previous month">‹</button>
+      <b>${esc(monthFmt.format(pickMonth))}</b><button type="button" class="cal-pick-step" data-step="1" aria-label="Next month">›</button></div>
+      <div class="cal-pick-grid">${WEEK_DAYS.map(w => `<span class="cal-pick-wd">${w}</span>`).join('')}${cells}</div>
+      <div class="cal-add-row"><button type="button" class="cal-btn" data-done="1">Close</button></div>`;
+  } else {
+    const [h, m] = (pickField === 'start' ? draft.start : draft.end).split(':');
+    card.innerHTML = `<h2>${pickField === 'start' ? 'Starts' : 'Ends'}</h2>
+      <div class="cal-pick-time">${spinner('h', h)}<b class="cal-pick-colon">:</b>${spinner('m', m)}</div>
+      <div class="cal-add-row"><button type="button" class="cal-btn cal-btn-primary" data-done="1">Done</button></div>`;
+  }
+}
+
+/** One step of the time sheet: hours by an hour, minutes by five. Moving the start moves the end with it. */
+function pickStep(unit: 'h' | 'm', d: number): void {
+  if (pickField !== 'start' && pickField !== 'end') return;
+  const by = unit === 'h' ? 60 * d : 5 * d;
+  if (pickField === 'start') {
+    const before = draft.start;
+    draft.start = stepClock(before, by);
+    draft.end = shiftEnd(before, draft.start, draft.end);
+  } else draft.end = stepClock(draft.end, by);
+  paintPicker();
 }
 
 /** The draft as a start and an end in ms, or why it is not ready. */
@@ -419,10 +471,19 @@ const app: HubApp = {
     $('calAddBtn').addEventListener('click', openAdd);
     $('calAddCancel').addEventListener('click', closeAdd);
     $('calAddTitle').addEventListener('click', () => editDraft('title'));
-    $('calAddDate').addEventListener('click', () => editDraft('date'));
+    $('calAddDate').addEventListener('click', () => openPicker('date'));
     $('calAddAllDay').addEventListener('click', () => { draft.allDay = !draft.allDay; renderAdd(''); });
-    $('calAddStart').addEventListener('click', () => editDraft('start'));
-    $('calAddEnd').addEventListener('click', () => editDraft('end'));
+    $('calAddStart').addEventListener('click', () => openPicker('start'));
+    $('calAddEnd').addEventListener('click', () => openPicker('end'));
+    $('calPick').addEventListener('click', e => { if (e.target === $('calPick')) closePicker(); });
+    $('calPickCard').addEventListener('click', e => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('button');
+      if (!b) return;
+      if (b.dataset.step) { pickMonth = new Date(pickMonth.getFullYear(), pickMonth.getMonth() + +b.dataset.step, 1); paintPicker(); }
+      else if (b.dataset.key) { draft.date = b.dataset.key; closePicker(); }
+      else if (b.dataset.unit) pickStep(b.dataset.unit as 'h' | 'm', +b.dataset.d!);
+      else if (b.dataset.done) closePicker();
+    });
     $('calAddWhere').addEventListener('click', () => editDraft('where'));
     $('calAddReview').addEventListener('click', review);
     $('calAddNo').addEventListener('click', backToForm);
