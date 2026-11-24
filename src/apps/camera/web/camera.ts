@@ -39,7 +39,10 @@ export function onState(fn: (state: CamState, message?: string) => void): void {
 
 camera.on(e => {
   switch (e.type) {
-    case 'opened': isOn = true; emit('open'); break;
+    case 'opened':
+      // The open was still pending when the screen closed (hide cleared wanted): close it now, do not show it.
+      if (!wanted) { camera.close(); isOn = false; break; }
+      isOn = true; emit('open'); break;
     case 'closed': isOn = false; emit('closed', e.reason); break;   // 'paused': Android took the camera; onResume reopens it
     case 'captured': {
       const w = waiters.get(e.id); waiters.delete(e.id);
