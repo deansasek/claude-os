@@ -27,7 +27,7 @@ export function screenFor(res: NewsFeedResponse | null): NewsScreen {
   for (const s of res.sources) {
     // the top story sits in the headline card, so it is not repeated on its source's shelf
     const stories = res.items.filter(i => i.sourceId === s.id && i.id !== headline.id);
-    if (stories.length) shelves.push({ sourceId: s.id, name: s.name, stories, stale: s.stale, when: s.stale ? res.updated : null });
+    if (stories.length) shelves.push({ sourceId: s.id, name: s.name, stories, stale: s.stale, when: s.stale ? (s.fetched ?? res.updated) : null });
   }
   const notes: Note[] = res.sources.filter(s => s.status === 'error').map(s => ({
     sourceId: s.id,

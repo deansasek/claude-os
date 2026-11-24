@@ -630,6 +630,13 @@ public class Bridge {
     return Updater.available(act, act.serverOrigin());
   }
 
+  // ---------- News feeds (NewsFetch.java): the feeds send no CORS header, so the page cannot read them itself ----------
+  /** {status, body} for one News feed (hosts and https rules in NewsFetch), or {error}. */
+  @JavascriptInterface public String newsFetch(String url) {
+    if (!allowed) return DENIED;
+    return NewsFetch.fetch(url);
+  }
+
   // ---------- voice (see VoiceService, VoiceSpeaker, android/VOICE.md) ----------
   boolean isAllowed() { return allowed; }
 

@@ -1,5 +1,6 @@
 // The News feeds: keyless public RSS. Edit only this list. The feed terms are still to be confirmed (issue #357).
-import type { FeedSource } from '../web/rss.ts';
+// The tablet reads these with its native fetch (NewsFetch.java, which allows only the hosts named here); the PC route reads them too.
+import type { FeedSource } from './rss.ts';
 
 export interface Feed extends FeedSource { url: string }
 

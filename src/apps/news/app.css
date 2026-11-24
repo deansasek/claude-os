@@ -56,7 +56,7 @@
 #app-news .nw-empty p { margin: 0 0 16px; font: 400 16px/24px var(--sans); color: var(--t2); }
 #app-news .nw-crit { flex: none; width: 140px; }
 #app-news .nw-crit-svg { width: 100%; height: auto; display: block; }
-#app-news .nw-retry { font: 500 15px/20px var(--sans); }
+
 
 /* ---------- the reader sheet: floats over the page, so it keeps a soft shadow-free tone step instead ---------- */
 #app-news .nw-sheet { position: absolute; inset: 0; z-index: 5; display: flex; align-items: center; justify-content: center;
@@ -72,13 +72,14 @@
 #app-news .nw-sheet-desc { margin: 0; font: 400 17px/26px var(--serif); color: var(--t2); }
 #app-news .nw-link { margin: 14px 0 0; font: 400 14px/20px var(--sans); color: var(--t3); overflow-wrap: anywhere; }
 #app-news .nw-sheet-act { margin-top: 20px; }
-#app-news .nw-read { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center;
+#app-news .nw-read, #app-news .nw-retry { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center;
   padding: 12px 20px; border-radius: 12px; background: var(--text); color: var(--bg);
   font: 500 15px/20px var(--sans); transition: background-color var(--dur-fast) var(--ease-out); }
-#app-news .nw-read:active { background: var(--t2); }
+#app-news .nw-read:active, #app-news .nw-retry:active { background: var(--t2); }
+#app-news .nw-read:focus-visible, #app-news .nw-retry:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
   #app-news .nw-sheet:not([hidden]) .nw-card { animation: none; }
-  #app-news .nw-hero, #app-news .nw-tile, #app-news .nw-read { transition: none; }
+  #app-news .nw-hero, #app-news .nw-tile, #app-news .nw-read, #app-news .nw-retry { transition: none; }
   #app-news .nw-tile:active { transform: none; }
 }

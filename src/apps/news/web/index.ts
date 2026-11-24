@@ -4,11 +4,12 @@ import { getJson, report } from '../../../core/web/dom.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { critterSvg } from '../../../core/web/critter-svg.ts';
-import { browser } from '../../../core/web/device.ts';
+import { browser, nativeHas, newsFetch } from '../../../core/web/device.ts';
 import { openApp } from '../../../core/web/system.ts';
 import type { NewsFeedResponse, NewsItem } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, storiesById, type NewsScreen, type Shelf } from './screen.ts';
+import { feedSource, tabletFeed, type KeyValue } from './tablet.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -108,9 +109,20 @@ function paintError(text: string): void {
   $('nwCrit').innerHTML = critterSvg('nw-crit-svg');   // static markup from critter-svg.ts, no feed text
 }
 
+// The saved stories live in this page's local storage. Storage can be blocked, so every access is guarded.
+const savedStore: KeyValue = {
+  getItem: key => { try { return localStorage.getItem(key); } catch { return null; } },
+  setItem: (key, value) => { try { localStorage.setItem(key, value); } catch { /* blocked or full: nothing saved */ } },
+};
+
 async function load(): Promise<void> {
   let res: NewsFeedResponse | null = null;
-  try { res = await getJson<NewsFeedResponse>('/api/news/feed'); } catch { res = null; }
+  try {
+    // on the tablet the feeds are read natively (no CORS header on the feeds); otherwise the PC route answers
+    res = feedSource(nativeHas('newsFetch')) === 'tablet'
+      ? tabletFeed(newsFetch, savedStore, Date.now())
+      : await getJson<NewsFeedResponse>('/api/news/feed');
+  } catch { res = null; }
   loadedAt = Date.now();
   // a failed request keeps the stories already on screen; only an empty screen shows the error
   if (!res && hasStories) return;
@@ -185,16 +197,27 @@ function mount(context: AppContext): void {
   });
   $('nwRetry').addEventListener('click', () => { report('news-retry'); void load(); });
   void load();
-  // the feed is asked for at most every POLL_MS while the page is on screen (checked each minute)
-  setInterval(() => { if (ctx.isVisible() && Date.now() - loadedAt >= POLL_MS) void load(); }, 60e3);
+}
+
+// The feed is asked for at most every POLL_MS, and only while News is on screen: the timer starts on show and stops on hide.
+let pollTimer = 0;
+function startPolling(): void {
+  if (!pollTimer) pollTimer = window.setInterval(() => void load(), POLL_MS);
+}
+function stopPolling(): void {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = 0;
 }
 
 const app: HubApp = {
   ...manifest,
   icon: appIcon('news'),
   mount,
-  onShow() { if (Date.now() - loadedAt >= POLL_MS) void load(); },
-  onHide() { closeSheet(); },
-  onClose() { closeSheet(); },
+  onShow() {
+    startPolling();
+    if (Date.now() - loadedAt >= POLL_MS) void load();
+  },
+  onHide() { stopPolling(); closeSheet(); },
+  onClose() { stopPolling(); closeSheet(); },
 };
 export default app;
