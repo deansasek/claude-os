@@ -36,7 +36,7 @@ const app: ServerApp = {
     { method: 'GET', path: 'status', handle: () => status() },
     { method: 'POST', path: 'config', handle: ({ body }) => saveConfig((body as Record<string, unknown> | null)?.address) },
     { method: 'GET', path: 'events', handle: ({ query }) => events(query.get('refresh') === '1') },
-    // adds one event through the connector: the Calendar app calls it only after the family taps Add
+    // adds one event through the connector (no longer called by the add form, which uses local-add; a later PR removes it)
     { method: 'POST', path: 'add', handle: ({ body }) => addConnectorEvent(body) },
     // the events from one day (inclusive) to another (exclusive), for the Day, Week, Month and Year views:
     // the local calendar's events with the external ones (rangeWithLocal)

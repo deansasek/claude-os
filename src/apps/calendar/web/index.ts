@@ -314,7 +314,7 @@ function render(): void {
   $('calBody').innerHTML = loading && !events.length ? '<p class="cal-none">Reading the calendar…</p>' : body;
 }
 
-// ---------- add an event: checked here, then written to the Google calendar only after Yes ----------
+// ---------- add an event: checked here, then written to the ClaudeOS calendar only after Yes ----------
 interface Draft { title: string; date: string; start: string; end: string; allDay: boolean; where: string }
 let draft: Draft = { title: '', date: '', start: '09:00', end: '09:30', allDay: false, where: '' };
 let addSending = false;
@@ -429,22 +429,23 @@ function backToForm(): void {
   renderAdd('');
 }
 
-/** Writes the event, only after Yes. The PC checks it again and creates it through the connector. */
+/** Writes the event to the ClaudeOS calendar on the PC, only after Yes. The PC checks it again (local-add). */
 async function addEvent(): Promise<void> {
   if (addSending) return;
   const r = draftEvent();
   if (!r.ok) { backToForm(); renderAdd(r.error); return; }
   addSending = true;
-  let answer: { status?: string; message?: string; error?: string } | null = null;
+  let answer: { status?: string; event?: unknown; error?: string } | null = null;
   try {
-    answer = await postJson<{ status?: string; message?: string; error?: string }>(`${API}/add`,
+    answer = await postJson<{ status?: string; event?: unknown; error?: string }>(`${API}/local-add`,
       { title: draft.title, start: r.start, end: r.end, allDay: draft.allDay, location: draft.where });
   } catch { answer = null; }
   addSending = false;
   if (answer?.status === 'ok') {
     closeAdd();
-    msg = answer.message ?? 'Added.';
-    await load(true);
+    await load();   // the range again, so the new event is drawn at once
+    msg = `Added “${draft.title}” to ClaudeOS.`;
+    render();
   } else {
     backToForm();
     renderAdd(answer?.error ?? 'Couldn’t add it. Try again in a moment.');
