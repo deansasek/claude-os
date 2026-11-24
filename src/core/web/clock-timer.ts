@@ -52,6 +52,14 @@ export function readClockTimers(get: (key: string) => string | null): ClockTimer
   return parseClockTimers(get(CLOCK_TIMERS_KEY), get(CLOCK_TIMER_KEY)).timers;
 }
 
+/** The default name for a new timer: the lowest "Timer N" that no listed timer has, so a name is not repeated after a cancel. */
+export function nextTimerName(timers: ClockTimer[]): string {
+  const used = new Set(timers.map(t => t.name));
+  let n = 1;
+  while (used.has(`Timer ${n}`)) n++;
+  return `Timer ${n}`;
+}
+
 /** Time left on the soonest running timer in ms, or null when none runs. */
 export function runningLeftMs(timers: ClockTimer[], now: number): number | null {
   let best: number | null = null;
