@@ -20,11 +20,12 @@ import java.util.Set;
 /**
  * The web page the build put in the APK under assets/page/ (see android/toolchain.ts).
  *
- * MainActivity calls serve() for each GET or HEAD to the Hub origin when pageSource is bundle.
+ * MainActivity calls serve() for each GET or HEAD to the Hub origin when the bundle is in use (pageSource bundle, or auto
+ * while the PC is down).
  * Only the files listed in page/manifest.json are served. A listed file comes from the APK. Any other
  * path is a 404. /api/ and /apk/ are not page files: serve() returns null, so the PC answers them.
  *
- * The pageSource setting: pc (default), auto or bundle. Only bundle changes what loads.
+ * The pageSource setting: pc (default), auto or bundle. bundle always serves the bundle; auto serves it while the PC is down.
  */
 final class PageAssets {
   static final String SOURCE_PC = "pc";
@@ -60,6 +61,11 @@ final class PageAssets {
       Log.w(TAG, "page file missing from the APK: " + p);
       return notFound();
     }
+  }
+
+  /** True when the APK holds a page bundle: the manifest lists at least one file. */
+  boolean hasBundle() {
+    return !files().isEmpty();
   }
 
   private synchronized Set<String> files() {
