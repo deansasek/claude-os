@@ -142,9 +142,11 @@ function main(): void {
 
   // the app's signing key, kept next to this script (updates must be signed with the same key)
   const ks = keystorePath;
+  // the password comes from the environment, never from this file (see docs/SETUP.md)
+  if (!process.env.CLAUDEOS_KEYSTORE_PASS) fail('Set CLAUDEOS_KEYSTORE_PASS to the signing key password (docs/SETUP.md).');
   const apk = join(out, 'claude-hub.apk');
   run(apksigner, [
-    'sign', '--ks', ks, '--ks-pass', 'pass:hubkiosk', '--key-pass', 'pass:hubkiosk',
+    'sign', '--ks', ks, '--ks-pass', 'env:CLAUDEOS_KEYSTORE_PASS', '--key-pass', 'env:CLAUDEOS_KEYSTORE_PASS',
     '--out', apk, join(out, 'aligned.apk'),
   ], 'apksigner');
   console.log(`built ${apk} (${Math.round(statSync(apk).size / 1024).toLocaleString('en-US')} KB)`);
