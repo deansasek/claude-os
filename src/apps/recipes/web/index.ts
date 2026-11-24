@@ -564,7 +564,6 @@ function cookHtml(r: Recipe, step: number): string {
     + `<article class="rc-ck-page${dir}"><p class="label">${esc(s.heading)}</p><p class="rc-ck-text">${esc(s.text)}</p>`
     + (book ? `<p class="rc-ck-folio">${s.index + 1}</p>` : '') + `</article></div>`
     + `<nav class="rc-ck-bar"><button class="rc-ck-ctl big" data-act="step" data-d="-1"${s.first ? ' disabled' : ''}>Previous</button>`
-    + `<span class="rc-ck-count">${s.index + 1} of ${total}</span>`
     + `<button class="rc-ck-ctl big pri" data-act="step" data-d="1"${s.last ? ' disabled' : ''}>Next</button></nav>`
     + `<section class="rc-ck-timers"><div class="rc-ck-timers-hd"><p class="label">Timers</p><div class="rc-ck-presets">${presets}</div></div>`
     + `<div data-timers>${timersHtml()}</div></section></div>`;
