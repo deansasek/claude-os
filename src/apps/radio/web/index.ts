@@ -1,6 +1,6 @@
-// The Radio app: internet radio from Radio Browser, as a media player. Favourites and recently played sit in rows
-// along the top; the now-playing card (left) has the station, a title line, play/pause, previous and next through
-// Favourites, a sleep timer, Stop and the volume. The catalogue (right) searches with filters and browses Top stations,
+// The Radio app: internet radio from Radio Browser, as a media player. Favourites and recently played sit in a row
+// on the left. The player bar along the bottom has the station, a title line, play/pause, previous and next through
+// Favourites, a sleep timer, the volume and a way to the station page. Stop sits on the station page. The catalogue (right) searches with filters and browses Top stations,
 // Genres, Countries and Languages (through the hub, /api/radio/stations and /api/radio/catalogue); a station card opens
 // the station's own page. Favourites, recently played and the volume are kept on this tablet (the store helper).
 // Only https streams play. One audio element plays everything. The station on the air shows under the rail icon,
@@ -38,6 +38,7 @@ const I = {
   vol: svg('<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6"/><path d="M18 6.8a7.4 7.4 0 0 1 0 10.4"/>'),
   mute: svg('<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>'),
   search: svg('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.6-4.6"/>'),
+  up: svg('<path d="M6 14.5l6-6 6 6"/>'),
   heart: (on: boolean) => svg('<path d="M12 19.5s-7-4.3-7-9.4A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.1c0 5.1-7 9.4-7 9.4z"/>', on),
 };
 
@@ -355,6 +356,7 @@ function onPageClick(ev: Event): void {
   if (act && view.kind === 'station') {
     if (act === 'play') playOrToggle(view.station);
     else if (act === 'save') toggleFav(view.station.id);
+    else if (act === 'stop') stop();
   }
 }
 
@@ -406,6 +408,7 @@ function stationPage(s: Station): string {
     <div class="rd-st-actions">
       <button class="rd-cta" data-act="play">${playLabel}</button>
       <button class="rd-cta ghost${fav ? ' on' : ''}" data-act="save" aria-pressed="${fav}">${fav ? 'Saved' : 'Save'}</button>
+      ${live ? '<button class="rd-cta ghost" data-act="stop">Stop</button>' : ''}
     </div>
     ${tags ? `<div class="rd-tags">${tags}</div>` : ''}
   </div>`;
@@ -422,7 +425,6 @@ function renderVolume(): void {
   const input = $<HTMLInputElement>('rdVol');
   if (document.activeElement !== input) input.value = String(volume);
   input.style.setProperty('--p', `${volume}%`);
-  $('rdVolV').textContent = String(volume);
   $('rdVolIc').innerHTML = volume === 0 ? I.mute : I.vol;
 }
 
@@ -483,7 +485,6 @@ function render(): void {
   artEl.classList.toggle('blank', !s);
   setHtml(artEl, s ? `${esc(initial(s.name))}${s.favicon ? `<img src="${esc(s.favicon)}" alt="" referrerpolicy="no-referrer">` : ''}` : ICON);
   $<HTMLButtonElement>('rdArtBtn').disabled = !s;
-  $('rdKick').textContent = live ? 'On air' : 'Radio';
   $('rdName').textContent = s ? s.name : 'Nothing playing';
   $('rdTitle').textContent = titleLine(!!s, state, streamTitle);
   $('rdMsg').hidden = !message;
@@ -503,7 +504,6 @@ function render(): void {
   $<HTMLButtonElement>('rdToggle').disabled = !s && !favs.length && !list.length;
   $<HTMLButtonElement>('rdPrev').disabled = !favs.length;
   $<HTMLButtonElement>('rdNext').disabled = !favs.length;
-  $<HTMLButtonElement>('rdStop').disabled = !live;
   renderSleep();
 
   setHtml($('rdFavs'), favs.map(favCard).join(''));
@@ -530,20 +530,24 @@ const app: HubApp = {
     $('rdToggle').addEventListener('click', toggle);
     $('rdPrev').addEventListener('click', () => step(-1));
     $('rdNext').addEventListener('click', () => step(1));
-    $('rdStop').addEventListener('click', stop);
     $('rdSleep').addEventListener('click', cycleSleep);
     $('rdBack').addEventListener('click', back);
     $('rdNowFav').addEventListener('click', () => { if (current) toggleFav(current.id); });
-    $('rdArtBtn').addEventListener('click', () => {
+    const openPage = () => {
       if (current) go({ kind: 'station', station: current, back: view.kind === 'station' ? view.back : view });
-    });
+    };
+    $('rdArtBtn').addEventListener('click', openPage);
+    $('rdExpand').innerHTML = I.up;
+    $('rdExpand').addEventListener('click', openPage);
     $('rdVol').addEventListener('input', ev => setVolume(Number((ev.target as HTMLInputElement).value)));
     for (const id of ['rdFavs', 'rdRecent', 'rdTabs', 'rdFilters', 'rdRes']) $(id).addEventListener('click', onPageClick);
-    // a logo that does not load is removed, so the station's letter shows instead
-    $('rdNow').parentElement!.parentElement!.addEventListener('error', ev => {
-      const t = ev.target as Element;
-      if (t instanceof HTMLImageElement) t.remove();
-    }, true);
+    // a logo that does not load is removed, so the station's letter shows instead (error does not bubble: capture it)
+    for (const id of ['rdFavs', 'rdRecent', 'rdRes', 'rdNow']) {
+      $(id).addEventListener('error', ev => {
+        const t = ev.target as Element;
+        if (t instanceof HTMLImageElement) t.remove();
+      }, true);
+    }
     setInterval(tickSleep, 15e3);
     try {
       const v = volumeFromDevice(device.volume().media);

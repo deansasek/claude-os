@@ -1,19 +1,19 @@
 /* ===== Radio ===== (everything scoped to #app-radio)
-   A media player in three zones, on Home's grid (core's --app-l/--app-r/--app-body, the first label on --app-label-y):
-     left        the hero (the now-playing card, wide and top); under it the strip: favourites, then recently played, in one row
-                 of small cards that scrolls sideways
-     right       the browse column, 288 px, full height: search and tabs on top, then a list that scrolls in its own box
+   The page, on Home's grid (core's --app-l/--app-r/--app-body, the first label on --app-label-y):
+     left        the strip: favourites, then recently played, in one row of small cards that scrolls sideways
+     right       the browse column, 288 px: search and tabs on top, then a list that scrolls in its own box
                  (station cards, genres/countries/languages, or a station's own page), and the Radio Browser credit
+     bottom      the player bar, full width, 80 px: the station (left), the transport (centre), the tools (right)
    Every zone clips its own content: a logo, a long name or a long stream title never leaves its box.
    Warm neutrals and 1px hairlines; the serif for station names, the sans for labels; clay only for "on air". */
 #app-radio [hidden] { display: none !important; }
 
-#app-radio .rd-page { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
+#app-radio .rd-page { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: 96px;
   display: grid; grid-template-columns: minmax(0, 1fr) 288px; grid-template-rows: minmax(0, 1fr); column-gap: 32px; min-height: 0;
   overflow: hidden; padding-top: calc(var(--app-label-y) - var(--app-body)); }
-/* the left column: the hero, then the strip; the browse column (.rd-find) is the right column, full height */
+/* the left column: the strip; the browse column (.rd-find) is the right column, full height */
 #app-radio .rd-left { display: flex; flex-direction: column; gap: calc(14px + 4px * var(--tall)); min-width: 0; min-height: 0; overflow: hidden; }
-#app-radio .rd-left .rd-now { flex: 1 1 auto; }
+
 /* the strip: Favourites and Recently played side by side, each half its own row that scrolls sideways (84 px tall,
    about an eighth of the page), so a card never crosses the column edge */
 #app-radio .rd-strip { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; min-width: 0; }
@@ -41,62 +41,68 @@
 #app-radio .rd-fav-name { min-width: 0; font: 500 16px var(--serif); letter-spacing: -.005em; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ---- the now-playing card ---- */
-#app-radio .rd-now { min-width: 0; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;
-  gap: 16px; padding: calc(22px + 2px * var(--tall)) 28px; border-radius: 20px; background: var(--card); border: 1px solid var(--line);
-  overflow: hidden; }
-/* art | text | heart: a grid, so a long name or title can only wrap or clip inside the text column, never widen the row */
-#app-radio .rd-now-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: start; column-gap: 20px; min-width: 0; }
-#app-radio .rd-art { width: calc(120px + 8px * var(--tall)); height: calc(120px + 8px * var(--tall)); border-radius: 18px;
-  font-size: 52px; font-weight: 500; }
+/* ---- the player bar: along the bottom of the page, full width, 80 px tall. Three columns: the station, the transport
+   (centred at every width), the tools. Each column clips its own content. ---- */
+#app-radio .rd-player { position: absolute; left: 0; right: 0; bottom: 0; height: 80px; box-sizing: border-box; min-width: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 24px; align-items: center;
+  padding: 0 var(--app-r) 8px var(--app-l); background: var(--card); border-top: 1px solid var(--line); overflow: hidden; }
+#app-radio .rd-pl-station { min-width: 0; display: flex; align-items: center; gap: 12px; }
+#app-radio .rd-art-btn { all: unset; box-sizing: border-box; cursor: pointer; flex: none; position: relative; display: block; overflow: hidden;
+  width: 56px; height: 56px; border-radius: 10px; }
+#app-radio .rd-art-btn:disabled { cursor: default; }
+#app-radio .rd-art-btn:active:not(:disabled) { opacity: .85; }
+#app-radio .rd-art { width: 56px; height: 56px; border-radius: 10px; font-size: 24px; font-weight: 500; }
 #app-radio .rd-art.blank { background: var(--card-2); color: var(--t3); }
-#app-radio .rd-art.blank svg { width: 56px; height: 56px; }
-#app-radio .rd-now-text { min-width: 0; padding-top: 4px; overflow: hidden; }
-#app-radio .rd-kick { display: inline-flex; align-items: center; gap: 8px; font: 400 14px/20px var(--sans); color: var(--t3); }
-#app-radio .rd-now.live .rd-kick::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--clay); }
-#app-radio .rd-now.buffering .rd-kick::before { animation: rd-pulse 1.2s ease-in-out infinite; }
-#app-radio .rd-name { margin: 4px 0 6px; font: 500 calc(36px + 4px * var(--tall))/1.1 var(--serif); letter-spacing: -.025em; color: var(--text);
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-/* the stream title: two lines at most, then an ellipsis, inside the text column */
-#app-radio .rd-title { margin: 0; font: italic 400 18px/1.35 var(--serif); color: var(--t3);
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
-#app-radio .rd-msg { margin: 8px 0 0; font: 400 15px/1.35 var(--sans); color: var(--clay-deep);
-  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+#app-radio .rd-art.blank svg { width: 28px; height: 28px; }
+#app-radio .rd-now-text { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+#app-radio .rd-name { margin: 0; font: 500 17px/22px var(--serif); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the state line: one line, an ellipsis at the end; while on air, an 8 px clay dot leads it, and it pulses while buffering */
+#app-radio .rd-title { margin: 0; font: 400 13px/18px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-player.live .rd-title::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--clay); margin-right: 8px; vertical-align: middle; }
+#app-radio .rd-player.buffering .rd-title::before { animation: rd-pulse 1.2s ease-in-out infinite; }
+/* a failure: the reason in clay, one line */
+#app-radio .rd-msg { margin: 0; font: 400 13px/18px var(--sans); color: var(--clay-deep); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 :root[data-theme="dark"] #app-radio .rd-msg { color: var(--clay); }
 
-/* the heart: on a result card and in the now-playing card; a favourite is clay */
-#app-radio .rd-heart { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 48px; height: 48px; border-radius: 12px;
+/* the heart: on the station in the bar and on a station's page; a favourite is clay */
+#app-radio .rd-heart { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 44px; height: 44px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center; color: var(--t3); }
 #app-radio .rd-heart svg { width: 24px; height: 24px; }
 #app-radio .rd-heart:active { background: var(--card-2); }
 #app-radio .rd-heart.on { color: var(--clay); }
 
-/* transport: previous, play/pause (ink, the one primary control), next; Stop at the right end */
-#app-radio .rd-controls { display: flex; align-items: center; gap: 16px; }
-#app-radio .rd-gap { flex: 1; }
-#app-radio .rd-btn { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 56px; height: 56px; border-radius: 50%;
+/* transport: previous, play/pause (ink, the one primary control), next */
+#app-radio .rd-transport { display: flex; align-items: center; gap: 16px; }
+#app-radio .rd-btn { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 44px; height: 44px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center; color: var(--text); border: 1px solid var(--line);
   transition: transform var(--dur-fast) var(--ease-out); }
-#app-radio .rd-btn svg { width: 24px; height: 24px; }
+#app-radio .rd-btn svg { width: 22px; height: 22px; }
 #app-radio .rd-btn:active { transform: scale(.94); background: var(--card-2); }
-#app-radio .rd-btn.rd-main-btn { width: 76px; height: 76px; border: 0; background: var(--text); color: var(--bg); }
-#app-radio .rd-btn.rd-main-btn svg { width: 30px; height: 30px; }
+#app-radio .rd-btn.rd-main-btn { width: 56px; height: 56px; border: 0; background: var(--text); color: var(--bg); }
+#app-radio .rd-btn.rd-main-btn svg { width: 26px; height: 26px; }
 #app-radio .rd-btn.rd-main-btn:active { background: var(--text); opacity: .85; }
-#app-radio .rd-stop { all: unset; box-sizing: border-box; cursor: pointer; flex: none; height: 48px; padding: 0 20px; border-radius: 12px;
-  display: inline-flex; align-items: center; border: 1px solid var(--line); font: 500 15px var(--sans); color: var(--text); }
-#app-radio .rd-stop:active { background: var(--card-2); }
 #app-radio :is(.rd-btn, .rd-stop):disabled { cursor: default; opacity: .35; transform: none; }
 
-/* volume: 0..100, saved on this tablet */
-#app-radio .rd-vol { display: flex; align-items: center; gap: 14px; min-height: 44px; }
+/* tools: sleep, the volume (icon and a 140 px slider, 0..100, saved on this tablet), then the station page */
+#app-radio .rd-pl-tools { min-width: 0; display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+#app-radio .rd-stop { all: unset; box-sizing: border-box; cursor: pointer; flex: none; height: 44px; padding: 0 14px; border-radius: 12px;
+  display: inline-flex; align-items: center; border: 1px solid var(--line); font: 500 15px var(--sans); color: var(--text); white-space: nowrap; }
+#app-radio .rd-stop:active { background: var(--card-2); }
+#app-radio .rd-stop.on { border-color: var(--clay); color: var(--clay-deep); }
+:root[data-theme="dark"] #app-radio .rd-stop.on { color: var(--clay); }
+#app-radio .rd-vol { display: flex; align-items: center; gap: 8px; flex: none; min-height: 44px; }
 #app-radio .rd-vol-ic { flex: none; display: inline-flex; width: 24px; height: 24px; color: var(--t2); }
 #app-radio .rd-vol-ic svg { width: 100%; height: 100%; }
-#app-radio .rd-vol em { flex: none; width: 32px; text-align: right; font: 400 14px var(--sans); font-style: normal; color: var(--t3); }
-#app-radio .rd-vol input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 44px; margin: 0; background: transparent; }
+#app-radio .rd-vol input[type=range] { -webkit-appearance: none; appearance: none; width: 140px; height: 44px; margin: 0; background: transparent; }
 #app-radio .rd-vol input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px;
   background: linear-gradient(90deg, var(--text) var(--p, 80%), var(--line) var(--p, 80%)); }
 #app-radio .rd-vol input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border-radius: 50%;
   background: var(--bg); border: 1px solid var(--t4); }
+#app-radio .rd-expand { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; color: var(--text); }
+#app-radio .rd-expand svg { width: 22px; height: 22px; }
+#app-radio .rd-expand:active { background: var(--card-2); }
 
 /* ---- search and results ---- */
 #app-radio .rd-find { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
@@ -124,14 +130,6 @@
 #app-radio .rd-chip, #app-radio .rd-art, #app-radio .rd-logo { position: relative; overflow: hidden; contain: paint; max-width: 100%; }
 #app-radio .rd-chip img, #app-radio .rd-art img, #app-radio .rd-logo img { position: absolute; top: 0; left: 0; display: block;
   width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; background: var(--card); }
-#app-radio .rd-art-btn { all: unset; box-sizing: border-box; cursor: pointer; flex: none; position: relative; display: block; overflow: hidden;
-  width: calc(120px + 8px * var(--tall)); height: calc(120px + 8px * var(--tall)); border-radius: 18px; }
-#app-radio .rd-art-btn:disabled { cursor: default; }
-#app-radio .rd-art-btn:active:not(:disabled) { opacity: .85; }
-#app-radio .rd-controls .rd-stop { padding: 0 16px; }
-#app-radio .rd-stop.on { border-color: var(--clay); color: var(--clay-deep); }
-:root[data-theme="dark"] #app-radio .rd-stop.on { color: var(--clay); }
-
 /* ---- the catalogue: tabs, a back bar, filters, then a grid that scrolls ---- */
 #app-radio .rd-search { margin-bottom: 12px; }
 #app-radio .rd-tabs { flex: none; display: flex; gap: 8px; margin-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
@@ -171,7 +169,7 @@
 #app-radio .rd-facet span { flex: none; font: 400 13px var(--sans); color: var(--t3); }
 
 /* ---- a station's own page, in this order: the logo and name; the details; the stream title (three lines at most);
-   Play and Save, one row of two equal buttons; then its genres ---- */
+   Play, Save and (on air) Stop, one row of equal buttons; then its genres ---- */
 #app-radio .rd-station { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 16px; border-radius: 18px;
   background: var(--card); border: 1px solid var(--line); overflow: hidden; }
 #app-radio .rd-st-top { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 14px; min-width: 0; }
@@ -184,7 +182,7 @@
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
 #app-radio .rd-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 #app-radio .rd-tags .rd-pill { height: 40px; font-size: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#app-radio .rd-st-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+#app-radio .rd-st-actions { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
 #app-radio .rd-cta { all: unset; box-sizing: border-box; cursor: pointer; min-width: 0; height: 52px; padding: 0 12px; border-radius: 14px;
   display: flex; align-items: center; justify-content: center; font: 500 16px var(--sans); background: var(--text); color: var(--bg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -1,40 +1,11 @@
 <header class="app-hd">   <!-- the shell draws the icon and "Radio" (core/web/app-header.ts) -->
 </header>
 
-<!-- a media player in three zones: the hero (left, top) with the now-playing card; the strip under it, favourites then
-     recently played, in one row that scrolls sideways; and the browse column (right, full height): search, Top,
-     Genres, Countries, Languages, and a station's own page. Back in the browse column returns one level. -->
+<!-- the page: the strip (favourites, then recently played) on the left, and the browse column on the right. The player
+     bar sits along the bottom of the page, full width: the station, the transport, and the tools (sleep, volume, expand).
+     Back in the browse column returns one level. -->
 <div class="rd-page">
   <div class="rd-left">
-    <!-- the hero: the now-playing card -->
-    <section class="rd-now" id="rdNow">
-      <div class="rd-now-top">
-        <button class="rd-art-btn" id="rdArtBtn" aria-label="Station page"><span class="rd-art" id="rdArt" aria-hidden="true"></span></button>
-        <div class="rd-now-text">
-          <span class="rd-kick" id="rdKick">Radio</span>
-          <h2 class="rd-name" id="rdName">Nothing playing</h2>
-          <p class="rd-title" id="rdTitle"></p>
-          <p class="rd-msg" id="rdMsg" role="status" hidden></p>
-        </div>
-        <button class="rd-heart" id="rdNowFav" aria-label="Add to Favourites" aria-pressed="false" hidden></button>
-      </div>
-
-      <div class="rd-controls">
-        <button class="rd-btn" id="rdPrev" aria-label="Previous favourite"></button>
-        <button class="rd-btn rd-main-btn" id="rdToggle" aria-label="Play"></button>
-        <button class="rd-btn" id="rdNext" aria-label="Next favourite"></button>
-        <span class="rd-gap"></span>
-        <button class="rd-stop" id="rdSleep">Sleep</button>
-        <button class="rd-stop" id="rdStop">Stop</button>
-      </div>
-
-      <label class="rd-vol">
-        <span class="rd-vol-ic" id="rdVolIc" aria-hidden="true"></span>
-        <input type="range" min="0" max="100" step="1" id="rdVol" aria-label="Volume">
-        <em class="num" id="rdVolV"></em>
-      </label>
-    </section>
-
     <!-- the strip: one row, favourites then recently played -->
     <div class="rd-strip">
       <section class="rd-favs-band">
@@ -69,3 +40,31 @@
       <p class="rd-src">Stations from Radio Browser</p>
     </aside>
 </div>
+
+<!-- the player bar: the station (left), the transport (centre), the tools (right) -->
+<section class="rd-now rd-player" id="rdNow" aria-label="Player">
+  <div class="rd-pl-station">
+    <button class="rd-art-btn" id="rdArtBtn" aria-label="Station page"><span class="rd-art" id="rdArt" aria-hidden="true"></span></button>
+    <div class="rd-now-text">
+      <h2 class="rd-name" id="rdName">Nothing playing</h2>
+      <p class="rd-title" id="rdTitle"></p>
+      <p class="rd-msg" id="rdMsg" role="status" hidden></p>
+    </div>
+    <button class="rd-heart" id="rdNowFav" aria-label="Add to Favourites" aria-pressed="false" hidden></button>
+  </div>
+
+  <div class="rd-transport">
+    <button class="rd-btn" id="rdPrev" aria-label="Previous favourite"></button>
+    <button class="rd-btn rd-main-btn" id="rdToggle" aria-label="Play"></button>
+    <button class="rd-btn" id="rdNext" aria-label="Next favourite"></button>
+  </div>
+
+  <div class="rd-pl-tools">
+    <button class="rd-stop" id="rdSleep">Sleep</button>
+    <label class="rd-vol">
+      <span class="rd-vol-ic" id="rdVolIc" aria-hidden="true"></span>
+      <input type="range" min="0" max="100" step="1" id="rdVol" aria-label="Volume">
+    </label>
+    <button class="rd-expand" id="rdExpand" aria-label="Open the station page"></button>
+  </div>
+</section>
