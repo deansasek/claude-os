@@ -2,12 +2,13 @@
 // imports, so the test runs under node.
 
 /** Every tile the tablet's control center can show, in the order it starts with. */
-export const TILE_IDS = ['wifi', 'dnd', 'hey', 'low', 'theme', 'desk', 'timer', 'keep', 'clock', 'settings'] as const;
+export const TILE_IDS = ['wifi', 'dnd', 'hey', 'low', 'theme', 'desk', 'timer', 'keep', 'clock', 'focus-work', 'focus-family', 'focus-sleep', 'settings'] as const;
 
 /** The name each tile shows in Settings. */
 export const TILE_NAMES: Record<string, string> = {
   wifi: 'Wi-Fi', dnd: 'Do Not Disturb', hey: '“Hey Claude”', low: 'Low power', theme: 'Appearance', desk: 'Desk mode',
-  timer: 'Timer', keep: 'Keep awake', clock: 'Clock', settings: 'Settings',
+  timer: 'Timer', keep: 'Keep awake', clock: 'Clock', 'focus-work': 'Work focus', 'focus-family': 'Family focus',
+  'focus-sleep': 'Sleep focus', settings: 'Settings',
 };
 
 /**
