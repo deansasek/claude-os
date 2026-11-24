@@ -3,8 +3,8 @@
 # Triage an issue. If the issue is complete, the AI agent writes a fix in the
 # working tree and the PR text in pr.md. A gate checks the patch and the PR text.
 # The publish job pushes a branch and opens a pull request as Claude. The report
-# job posts one result comment as Claude. When the repo variable AI_FIX_DRY_RUN
-# is "true", publish opens no pull request and the report says so.
+# job edits the Claude comment from the agent run into the result. When the repo
+# variable AI_FIX_DRY_RUN is "true", publish opens no pull request and the report says so.
 #
 # Runs when a person with write access adds the ai-fix label to an issue.
 # Use workflow_dispatch to run it by hand.
@@ -495,9 +495,10 @@ jobs:
           url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" --title "$title" --body-file "$body" --label ai-generated --label ai-review | tail -n 1)
           echo "pr_url=$url" >> "$GITHUB_OUTPUT"
 
-  # Write one result report, post it as Claude with the claude action, then remove
-  # ai-fix so the label can be added again. The report is the PR link, the gate
-  # reason, a skip notice, the dry-run text, or a publish failure notice.
+  # Write one result report. Edit the Claude comment from the agent run into the
+  # report. If none is found, post a new comment as Claude. Then remove ai-fix so
+  # the label can be added again. The report is the PR link, the gate reason, a
+  # skip notice, the dry-run text, or a publish failure notice.
   report:
     needs: [agent, gate, publish]
     if: always() && vars.AI_ENABLED == 'true'
@@ -590,18 +591,56 @@ jobs:
             dry-run)
               echo "Dry run. The fix passes the gate. No pull request opened yet." > "$body" ;;
           esac
+          if [ "$kind" != none ]; then
+            printf '\n[View job](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> "$body"
+          fi
 
-      - name: Post the result comment as Claude
+      # Find the Claude comment that the agent run posted. Match the run link and
+      # the Claude author. Save the first match. An empty id means no match.
+      - name: Find the Claude comment from this run
+        id: find
+        if: steps.decide.outputs.kind != 'none'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -u
+          filter='.[] | select((.user.login == "claude" or .user.login == "claude[bot]") and (.body | test("actions/runs/'"$RUN_ID"'([^0-9]|$)"))) | .id'
+          ids=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${ISSUE}/comments" --jq "$filter") || ids=""
+          id=$(printf '%s\n' "$ids" | head -n 1)
+          printf '%s\n' "$id" > "$RUNNER_TEMP/claude-comment-id.txt"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      # Mint the Claude token used by the edit or post step below. The claude action
+      # gives the token as github_token. No other token is used for those steps.
+      - name: Mint the Claude token
+        id: claude-token
         if: steps.decide.outputs.kind != 'none'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            Post one comment on issue ${{ github.event.issue.number || inputs.issue }} in ${{ github.repository }}.
-            Use gh issue comment ${{ github.event.issue.number || inputs.issue }} --repo ${{ github.repository }} --body-file ${{ runner.temp }}/report.md.
-            Post only that. Do not edit or add anything else.
-          claude_args: '--model claude-haiku-5-5 --max-turns 5 --allowedTools "Bash(gh issue comment:*)"'
-          label_trigger: ai-fix
+            Reply with OK.
+          claude_args: '--model claude-haiku-5-5 --max-turns 1'
+
+      # Edit the agent's Claude comment into the final result. One comment stays on the issue.
+      - name: Edit the Claude comment into the result
+        if: steps.decide.outputs.kind != 'none' && steps.find.outputs.id != ''
+        env:
+          GH_TOKEN: ${{ steps.claude-token.outputs.github_token }}
+          COMMENT_ID: ${{ steps.find.outputs.id }}
+        run: |
+          set -eu
+          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}" -F body=@"$RUNNER_TEMP/report.md"
+
+      # No agent comment was found. Post the result as a new comment, as Claude.
+      - name: Post the result as a new comment
+        if: steps.decide.outputs.kind != 'none' && steps.find.outputs.id == ''
+        env:
+          GH_TOKEN: ${{ steps.claude-token.outputs.github_token }}
+        run: |
+          set -eu
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/report.md"
 
       - name: Remove the ai-fix label
         if: always()
