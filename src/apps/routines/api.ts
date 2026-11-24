@@ -27,10 +27,11 @@ export type Step =
   | { kind: 'pause'; seconds: number }           // wait 1 to 10 seconds
   | { kind: 'lists'; list: string }               // say the open items of a list: Shopping, To-do, or one the family made (its id)
   | { kind: 'quiet'; on: boolean }               // turn Do Not Disturb on or off
+  | { kind: 'radio' }                           // play the Radio app's last station (the most recent one played)
   | { kind: 'focus'; mode: FocusId }           // turn a focus mode on: Work, Family or Sleep (core/web/focus-modes.ts)
   | { kind: 'ambient' };                         // show the screen saver now
 export type StepKind = Step['kind'];
-export const STEP_KINDS: StepKind[] = ['weather', 'calendar', 'say', 'scene', 'timer', 'pause', 'lists', 'quiet', 'ambient', 'focus'];
+export const STEP_KINDS: StepKind[] = ['weather', 'calendar', 'say', 'scene', 'timer', 'pause', 'lists', 'quiet', 'ambient', 'focus', 'radio'];
 /** The focus modes a routine can turn on, and their names for the step's label. */
 export const FOCUS_NAMES: Record<FocusId, string> = { work: 'Work', family: 'Family', sleep: 'Sleep' };
 
@@ -98,6 +99,7 @@ export function cleanStep(raw: unknown): Step | { error: string } {
       return { kind: 'quiet', on: r.on };
     }
     case 'ambient': return { kind: 'ambient' };
+    case 'radio': return { kind: 'radio' };
     case 'focus': {
       if (typeof r.mode !== 'string' || !Object.hasOwn(FOCUS_NAMES, r.mode)) return { error: 'A focus step needs Work, Family or Sleep.' };
       return { kind: 'focus', mode: r.mode as FocusId };
@@ -193,5 +195,6 @@ export function stepLabel(s: Step, sceneName?: string): string {
     case 'quiet': return s.on ? 'Turn Do Not Disturb on' : 'Turn Do Not Disturb off';
     case 'ambient': return 'Show the screen saver';
     case 'focus': return `Turn on ${FOCUS_NAMES[s.mode]} focus`;
+    case 'radio': return 'Play the last radio station';
   }
 }
