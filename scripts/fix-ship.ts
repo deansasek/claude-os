@@ -10,12 +10,15 @@ import { gate, type FileChange } from './fix-gate.ts';
 
 // Every git call turns off hooks and the fsmonitor, so repo-local code does not run.
 const SAFE = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false'];
+// Every git call ignores the system and global config, so only the repo config counts.
+const GIT_ENV = { ...process.env, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null' };
 const DRY = process.env.FIX_SHIP_DRY === '1';
-const BAD_CONFIG: RegExp[] = [
-  /^core\.hookspath$/, /^core\.sshcommand$/,
-  /^alias\./, /^include\./, /^includeif\./, /^filter\./,
-  /^diff\..+\.textconv$/, /^merge\..+\.driver$/,
+// Keys that git reads from anywhere in the repo config. Refused by name, before the allowlist.
+const DENIED_KEYS: RegExp[] = [
+  /^include\.path$/, /^url\..+\.(insteadof|pushurl)$/, /^remote\..+\.pushurl$/,
+  /^gpg\.program$/, /^credential\..+\.helper$/, /^alias\./,
 ];
+const ORIGIN_URL = /^https:\/\/(x-access-token:[^@/\s]+@)?github\.com\/deansasek\/claude-os(\.git)?$/;
 const DENIED_DIRS = ['.github/', '.claude/', 'host/', 'scripts/fix-', 'scripts/check-'];
 const DENIED_NAMES = [/^CLAUDE\.md$/, /^\.mcp\.json$/, /^tsconfig\.json$/, /^\.npmrc$/, /^package[^/]*\.json$/];
 
@@ -24,14 +27,74 @@ function refuse(rule: string, reason: string): never {
   process.exit(1);
 }
 
-const git = (args: string[]): string => execFileSync('git', [...SAFE, ...args], { encoding: 'utf8', maxBuffer: 64 << 20 });
+const git = (args: string[]): string => execFileSync('git', [...SAFE, ...args], { encoding: 'utf8', maxBuffer: 64 << 20, env: GIT_ENV });
 
 function step(tool: string, args: string[]): string {
   if (DRY) {
     console.log(`${tool} ${args.join(' ')}`);
     return '';
   }
-  return execFileSync(tool, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
+  return execFileSync(tool, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'], env: tool === 'git' ? GIT_ENV : process.env });
+}
+
+// Lower-case the section and the variable name. Keep the subsection, which is case-sensitive.
+function canonicalKey(key: string): string {
+  const first = key.indexOf('.');
+  const last = key.lastIndexOf('.');
+  if (first < 0) return key.toLowerCase();
+  const section = key.slice(0, first).toLowerCase();
+  const name = key.slice(last + 1).toLowerCase();
+  return first < last ? `${section}.${key.slice(first + 1, last)}.${name}` : `${section}.${name}`;
+}
+
+const toSlash = (path: string): string => path.replace(/\\/g, '/').replace(/\/+$/, '');
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Return the value check for an allowed key, or undefined when the key is not allowed.
+function allowedKey(canonical: string, workspace: string): ((value: string) => boolean) | undefined {
+  if (/^core\.(repositoryformatversion|filemode|bare|logallrefupdates|fsmonitor)$/.test(canonical)) return () => true;
+  if (canonical === 'core.hookspath') return value => value === '/dev/null';
+  if (/^(gc\.auto|user\.name|user\.email|remote\.origin\.fetch)$/.test(canonical)) return () => true;
+  if (canonical === 'remote.origin.url') return value => ORIGIN_URL.test(value);
+  if (/^branch\..+\.(remote|merge)$/.test(canonical)) return () => true;
+  if (canonical === 'http.https://github.com/.extraheader') return () => true;
+
+  // actions/checkout writes one includeif per checkout path. Allow only those four gitdir paths.
+  const gitdir = /^includeif\.gitdir:(.+)\.path$/.exec(canonical);
+  if (!gitdir) return undefined;
+  const paths = [`${toSlash(workspace)}/.git`, `${toSlash(workspace)}/.git/worktrees/*`,
+    '/github/workspace/.git', '/github/workspace/.git/worktrees/*'];
+  const pathOk = paths.some(path => new RegExp(`^${path.split('*').map(escapeRegExp).join('[^/]+')}$`).test(toSlash(gitdir[1])));
+  if (!pathOk) return undefined;
+  const roots = [process.env.RUNNER_TEMP, '/github/runner_temp'].filter((root): root is string => Boolean(root)).map(toSlash);
+  return value => {
+    const file = toSlash(value);
+    return roots.some(root => file.startsWith(`${root}/`)) && !file.split('/').includes('..');
+  };
+}
+
+// Read every config entry with its origin. Output format: origin NUL "key LF value" NUL.
+function readConfigEntries(): Array<{ key: string; value: string }> {
+  const parts = git(['config', '--list', '--show-origin', '--includes', '-z']).split('\0');
+  const entries: Array<{ key: string; value: string }> = [];
+  for (let i = 0; i + 1 < parts.length; i += 2) {
+    const record = parts[i + 1];
+    const split = record.indexOf('\n');
+    entries.push({ key: split < 0 ? record : record.slice(0, split), value: split < 0 ? '' : record.slice(split + 1) });
+  }
+  return entries;
+}
+
+// Refuse any git config key that is not on the allowlist. Name the key in the message.
+function checkGitConfig(): void {
+  const workspace = process.env.GITHUB_WORKSPACE ?? git(['rev-parse', '--show-toplevel']).trim();
+  for (const { key, value } of readConfigEntries()) {
+    const canonical = canonicalKey(key);
+    if (DENIED_KEYS.some(pattern => pattern.test(canonical))) refuse('git-config', `git config key ${key} is not allowed`);
+    const valueOk = allowedKey(canonical, workspace);
+    if (!valueOk) refuse('git-config', `git config key ${key} is not on the allowlist`);
+    if (!valueOk(value)) refuse('git-config', `git config key ${key} has a value that is not allowed`);
+  }
 }
 
 function main(): void {
@@ -45,9 +108,7 @@ function main(): void {
     const extra = readdirSync(hooks).filter(name => !name.endsWith('.sample'));
     if (extra.length) refuse('git-hooks', `.git/hooks has files other than *.sample: ${extra.join(', ')}`);
   }
-  const keys = git(['config', '--local', '--list']).split('\n').map(line => line.split('=')[0].toLowerCase()).filter(Boolean);
-  const badKey = keys.find(key => BAD_CONFIG.some(pattern => pattern.test(key)));
-  if (badKey) refuse('git-config', `local git config sets ${badKey}`);
+  checkGitConfig();
 
   // Stage the patch and read its line counts, modes, and base package.json.
   git(['add', '-A']);
