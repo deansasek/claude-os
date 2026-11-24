@@ -1,36 +1,21 @@
 <header class="app-hd">   <!-- the shell draws the icon and "Radio" (core/web/app-header.ts) -->
 </header>
 
-<!-- the page: the strip (favourites, then recently played) on the left, and the browse column on the right. The player
-     bar sits along the bottom of the page, full width: the station, the transport, and the tools (sleep, volume, expand).
-     Back in the browse column returns one level. -->
+<!-- the main view: Home is a stack of shelves (Favourites, Recently played, Top stations, Genres, Countries). The list
+     views (Top, Genres, Countries, Languages, a facet, a search, a station's own page) take the same space under the
+     search field. Back in a list returns one level. The player bar sits along the bottom of the page. -->
 <div class="rd-page">
-  <div class="rd-left">
-    <!-- the strip: one row, favourites then recently played -->
-    <div class="rd-strip">
-      <section class="rd-favs-band">
-        <h3 class="rd-k">Favourites</h3>
-        <div class="rd-favs" id="rdFavs"></div>
-        <p class="rd-empty" id="rdFavsEmpty">Tap the heart on a station to keep it here.</p>
-      </section>
-      <section class="rd-favs-band">
-        <h3 class="rd-k">Recently played</h3>
-        <div class="rd-favs" id="rdRecent"></div>
-        <p class="rd-empty" id="rdRecentEmpty">Stations you play show here.</p>
-      </section>
-    </div>
-  </div>
-
-  <!-- the browse column -->
   <aside class="rd-find" id="rdFind">
       <button class="rd-search" id="rdSearch"><span class="rd-search-ic" id="rdSearchIc" aria-hidden="true"></span><span class="rd-search-text" id="rdQuery">Search stations</span></button>
       <div class="rd-tabs" id="rdTabs">
+        <button class="rd-tab" data-tab="home">Home</button>
         <button class="rd-tab" data-tab="top">Top stations</button>
         <button class="rd-tab" data-tab="tags">Genres</button>
         <button class="rd-tab" data-tab="countries">Countries</button>
         <button class="rd-tab" data-tab="languages">Languages</button>
       </div>
-      <div class="rd-bar">
+      <div class="rd-shelves" id="rdShelves"></div>
+      <div class="rd-bar" id="rdBarRow">
         <button class="rd-back" id="rdBack" hidden>Back</button>
         <h3 class="rd-k" id="rdResHead">Top stations</h3>
       </div>

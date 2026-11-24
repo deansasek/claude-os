@@ -19,6 +19,7 @@ import {
   volumeFromDevice,
 } from './player.ts';
 import { httpsUrl, playable, playableStations } from './stations.ts';
+import { FAV_EMPTY, TOP_COUNT, homeShelves, tileHue, topFacets, type Load, type ShelfPlan } from './shelves.ts';
 
 const API = `/api/${manifest.id}`;
 const FAVS_KEY = 'radio.favs';
@@ -44,6 +45,7 @@ const I = {
 
 /** What the catalogue shows. A station page remembers the view to go back to. */
 type View =
+  | { kind: 'home' }
   | { kind: 'top' }
   | { kind: 'facets'; facet: FacetKind; pick?: boolean }   // pick: choose the search's country filter
   | { kind: 'browse'; facet: FacetKind; name: string }
@@ -54,7 +56,10 @@ let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let favs: Station[] = loadList(FAVS_KEY);
 let recent: Station[] = loadList(RECENT_KEY);
-let view: View = { kind: 'top' };
+let view: View = { kind: 'home' };
+interface Home { top: Station[]; topState: Load; genres: Facet[]; genresState: Load; countries: Facet[]; countriesState: Load }
+let home: Home = { top: [], topState: 'loading', genres: [], genresState: 'loading', countries: [], countriesState: 'loading' };
+let homeDone = false;                    // the shelves were asked for; a failed shelf is asked again on the next show
 let list: Station[] = [];                // the stations the catalogue shows now
 let facets: Facet[] = [];                // the genres, countries or languages it shows now
 let listState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
@@ -102,7 +107,7 @@ const isFav = (id: string): boolean => favs.some(f => f.id === id);
 
 function find(id: string): Station | undefined {
   const page = view.kind === 'station' && view.station.id === id ? view.station : undefined;
-  return favs.find(s => s.id === id) ?? recent.find(s => s.id === id) ?? list.find(s => s.id === id)
+  return favs.find(s => s.id === id) ?? recent.find(s => s.id === id) ?? list.find(s => s.id === id) ?? home.top.find(s => s.id === id)
     ?? page ?? (current?.id === id ? current : undefined);
 }
 
@@ -235,6 +240,7 @@ async function fetchTitle(): Promise<void> {
 // ---- the catalogue ----
 
 function viewKey(v: View): string {
+  if (v.kind === 'home') return 'home';
   if (v.kind === 'top') return 'top';
   if (v.kind === 'facets') return `facets:${v.facet}`;
   if (v.kind === 'browse') return `browse:${v.facet}:${v.name}`;
@@ -249,6 +255,7 @@ function go(v: View): void {
 }
 
 async function load(force = false): Promise<void> {
+  if (view.kind === 'home') { await loadHome(force); return; }
   const key = viewKey(view);
   if (view.kind === 'station' || (!force && key === listKey && listState === 'ok')) return;
   const mine = ++seq;
@@ -288,9 +295,35 @@ async function load(force = false): Promise<void> {
   render();
 }
 
+async function facetsOf(facet: FacetKind): Promise<Facet[]> {
+  const got = facetCache.get(facet);
+  if (got) return got;
+  const r = await getJson<FacetsResult>(`${API}/catalogue?path=${facet}`);
+  if (r.status !== 'ok') throw new Error(r.error);
+  facetCache.set(facet, r.facets);
+  return r.facets;
+}
+
+// The Home shelves: the top stations, the genres and the countries. Asked once; a failed shelf is asked again on the next show.
+async function loadHome(force = false): Promise<void> {
+  if (homeDone && !force) { render(); return; }
+  homeDone = true;
+  home = { ...home, topState: 'loading', genresState: 'loading', countriesState: 'loading' };
+  render();
+  const top = getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent('stations/topvote/100')}`)
+    .then(r => { if (r.status !== 'ok') throw new Error(r.error); return playableStations(r.stations); });
+  const [t, g, c] = await Promise.allSettled([top, facetsOf('tags'), facetsOf('countries')]);
+  home = {
+    top: t.status === 'fulfilled' ? t.value : [], topState: t.status === 'fulfilled' ? 'ok' : 'error',
+    genres: g.status === 'fulfilled' ? g.value : [], genresState: g.status === 'fulfilled' ? 'ok' : 'error',
+    countries: c.status === 'fulfilled' ? c.value : [], countriesState: c.status === 'fulfilled' ? 'ok' : 'error',
+  };
+  render();
+}
+
 function search(q: string): void {
   query = q.trim().slice(0, 60);
-  go(query || filters.country || filters.codec || filters.bitrate ? { kind: 'search' } : { kind: 'top' });
+  go(query || filters.country || filters.codec || filters.bitrate ? { kind: 'search' } : { kind: 'home' });
 }
 
 function toggleFav(id: string): void {
@@ -338,7 +371,11 @@ function onPageClick(ev: Event): void {
     return;
   }
   const tab = d('tab');
-  if (tab) { query = ''; go(tab === 'top' ? { kind: 'top' } : { kind: 'facets', facet: tab as FacetKind }); return; }
+  if (tab) { query = ''; go(tab === 'home' ? { kind: 'home' } : tab === 'top' ? { kind: 'top' } : { kind: 'facets', facet: tab as FacetKind }); return; }
+  const showAll = d('showall');
+  if (showAll) { go(showAll === 'top' ? { kind: 'top' } : { kind: 'facets', facet: showAll as FacetKind }); return; }
+  const shelfKind = d('kind');
+  if (shelfKind) { go({ kind: 'browse', facet: shelfKind as FacetKind, name: d('name') ?? '' }); return; }
   const facetName = d('facet');
   if (facetName !== undefined && view.kind === 'facets') {
     if (view.pick) {
@@ -365,7 +402,7 @@ function back(): void {
   if (view.kind === 'browse') { go({ kind: 'facets', facet: view.facet }); return; }
   if (view.kind === 'facets' && view.pick) { go({ kind: 'search' }); return; }
   query = '';
-  go({ kind: 'top' });
+  go({ kind: 'home' });
 }
 
 // ---- drawing ----
@@ -379,8 +416,46 @@ function logo(s: Station, cls: string): string {
 const onAir = (s: Station): boolean => current?.id === s.id && state !== 'off';
 const qualityLine = (s: Station): string => [s.codec, s.bitrate ? `${s.bitrate} kbit/s` : ''].filter(Boolean).join(' · ');
 
-function favCard(s: Station): string {
-  return `<button class="rd-fav${onAir(s) ? ' on' : ''}" data-play="${esc(s.id)}">${logo(s, 'rd-chip')}<span class="rd-fav-name">${esc(s.name)}</span></button>`;
+/** A station card on a shelf: the art and the name open the station page; the button on the art plays or pauses. */
+function stationCard(s: Station): string {
+  const playing = onAir(s) && (state === 'playing' || state === 'buffering');
+  const sub = s.country || qualityLine(s);
+  return `<div class="rd-sc${onAir(s) ? ' on' : ''}">
+    <button class="rd-sc-open" data-open="${esc(s.id)}">${logo(s, 'rd-logo rd-sc-art')}<span class="rd-sc-name">${esc(s.name)}</span><span class="rd-sc-sub">${esc(sub) || '&nbsp;'}</span></button>
+    <button class="rd-sc-play" data-play="${esc(s.id)}" aria-label="${playing ? 'Pause' : 'Play'} ${esc(s.name)}">${playing ? I.pause : I.play}</button>
+  </div>`;
+}
+
+/** A category tile: the name, and the station count when the shelf shows it. */
+function facetTile(f: Facet, kind: FacetKind, withCount: boolean): string {
+  return `<button class="rd-tile2" data-kind="${kind}" data-name="${esc(f.name)}" style="--hue:${tileHue(f.name)}"><b>${esc(f.name)}</b>${withCount ? `<span>${f.count} stations</span>` : ''}</button>`;
+}
+
+/** One shelf: the heading (Show all where it has one), then its row of cards. */
+function shelfHtml(p: ShelfPlan): string {
+  const all = p.id === 'top' ? 'top' : p.id === 'genres' ? 'tags' : 'countries';
+  const head = `<div class="rd-shelf-head"><h3>${esc(p.title)}</h3>${p.showAll ? `<button class="rd-showall" data-showall="${all}">Show all</button>` : ''}</div>`;
+  if (p.id === 'top' && p.error) return `<section class="rd-shelf">${head}<p class="rd-empty">${esc(p.error)}</p></section>`;
+  let cards: string;
+  if (p.id === 'favs') cards = favs.length ? favs.map(stationCard).join('') : `<p class="rd-dashed">${esc(FAV_EMPTY)}</p>`;
+  else if (p.id === 'recent') cards = recent.map(stationCard).join('');
+  else if (p.id === 'top') cards = p.loading ? '<div class="rd-sk"></div>'.repeat(6) : home.top.slice(0, TOP_COUNT).map(stationCard).join('');
+  else if (p.id === 'genres') cards = topFacets(home.genres).map(f => facetTile(f, 'tags', true)).join('');
+  else cards = topFacets(home.countries).map(f => facetTile(f, 'countries', false)).join('');
+  return `<section class="rd-shelf">${head}<div class="rd-row${p.id === 'genres' || p.id === 'countries' ? ' rd-facets' : ''}">${cards}</div></section>`;
+}
+
+function renderShelves(): void {
+  const on = view.kind === 'home';
+  $('rdShelves').hidden = !on;
+  if (!on) return;
+  const plan = homeShelves({
+    favs: favs.length, recent: recent.length,
+    top: home.topState, topCount: home.top.length,
+    genres: home.genresState, genreCount: home.genres.length,
+    countries: home.countriesState, countryCount: home.countries.length,
+  });
+  setHtml($('rdShelves'), plan.filter(p => !p.hidden).map(shelfHtml).join(''));
 }
 
 function tile(s: Station): string {
@@ -437,9 +512,12 @@ function renderSleep(): void {
 }
 
 function renderCatalogue(): void {
-  const tabOf = view.kind === 'top' ? 'top' : view.kind === 'facets' || view.kind === 'browse' ? view.facet : '';
+  const isHome = view.kind === 'home';
+  const tabOf = isHome ? 'home' : view.kind === 'top' ? 'top' : view.kind === 'facets' || view.kind === 'browse' ? view.facet : '';
   for (const b of $('rdTabs').querySelectorAll<HTMLElement>('[data-tab]')) b.classList.toggle('on', b.dataset.tab === tabOf);
-  $('rdBack').hidden = view.kind === 'top' || (view.kind === 'facets' && !view.pick);
+  $('rdBack').hidden = isHome || (view.kind === 'facets' && !view.pick);
+  $('rdBarRow').hidden = isHome;
+  $('rdRes').hidden = isHome;
 
   let head = 'Top stations';
   if (view.kind === 'facets') head = view.pick ? 'Pick a country' : FACET_NAMES[view.facet];
@@ -460,6 +538,7 @@ function renderCatalogue(): void {
 
   let html = '';
   let emptyText = '';
+  if (isHome) { setHtml($('rdRes'), ''); $('rdResEmpty').hidden = true; return; }
   if (view.kind === 'station') html = stationPage(view.station);
   else if (listState === 'loading' || listState === 'idle') emptyText = 'Looking for stations…';
   else if (listState === 'error') emptyText = listError || 'The radio directory did not answer.';
@@ -506,12 +585,7 @@ function render(): void {
   $<HTMLButtonElement>('rdNext').disabled = !favs.length;
   renderSleep();
 
-  setHtml($('rdFavs'), favs.map(favCard).join(''));
-  $('rdFavs').hidden = !favs.length;
-  $('rdFavsEmpty').hidden = favs.length > 0;
-  setHtml($('rdRecent'), recent.map(favCard).join(''));
-  $('rdRecent').hidden = !recent.length;
-  $('rdRecentEmpty').hidden = recent.length > 0;
+  renderShelves();
 
   $('rdQuery').textContent = query || 'Search stations';
   $('rdQuery').classList.toggle('set', !!query);
@@ -540,9 +614,9 @@ const app: HubApp = {
     $('rdExpand').innerHTML = I.up;
     $('rdExpand').addEventListener('click', openPage);
     $('rdVol').addEventListener('input', ev => setVolume(Number((ev.target as HTMLInputElement).value)));
-    for (const id of ['rdFavs', 'rdRecent', 'rdTabs', 'rdFilters', 'rdRes']) $(id).addEventListener('click', onPageClick);
+    for (const id of ['rdShelves', 'rdTabs', 'rdFilters', 'rdRes']) $(id).addEventListener('click', onPageClick);
     // a logo that does not load is removed, so the station's letter shows instead (error does not bubble: capture it)
-    for (const id of ['rdFavs', 'rdRecent', 'rdRes', 'rdNow']) {
+    for (const id of ['rdShelves', 'rdRes', 'rdNow']) {
       $(id).addEventListener('error', ev => {
         const t = ev.target as Element;
         if (t instanceof HTMLImageElement) t.remove();
@@ -559,7 +633,8 @@ const app: HubApp = {
   },
   onShow() {
     // the first visit, or a load that failed, asks the directory again
-    if (listState !== 'ok') void load(true);
+    if (view.kind === 'home') void loadHome(home.topState === 'error' || home.genresState === 'error' || home.countriesState === 'error');
+    else if (listState !== 'ok') void load(true);
   },
 };
 export default app;
