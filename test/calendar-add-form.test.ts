@@ -29,7 +29,7 @@ test('a successful add refreshes the range and says ClaudeOS', () => {
 });
 
 test('the confirmation says the event is added to ClaudeOS, not Google', () => {
-  assert.match(html, /<h2>Add to ClaudeOS\?<\/h2>/);
+  assert.match(html, /<h2 id="calAddConfirmHead">Add to ClaudeOS\?<\/h2>/);
   assert.match(html, /It is added to ClaudeOS, not to Google\./);
   assert.doesNotMatch(html, /added to your Google calendar|through the claude\.ai connector/);
 });

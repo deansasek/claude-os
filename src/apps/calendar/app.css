@@ -105,6 +105,11 @@
 #app-calendar .cal-add-note { margin: 0; font: 400 13px var(--sans); color: var(--t4); }
 #app-calendar .cal-add-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
 #app-calendar .cal-btn-primary { background: var(--text); color: var(--bg); box-shadow: none; }
+/* Delete on an event: red outline; the second tap fills it with the danger colour */
+#app-calendar .cal-btn-danger { color: var(--danger); box-shadow: 0 0 0 1px var(--danger); margin-right: auto; }
+#app-calendar .cal-btn-danger.armed { background: var(--danger-fill); color: var(--paper); box-shadow: none; }
+/* an event on the ClaudeOS calendar opens its details; external events have no data-ev and stay plain */
+#app-calendar [data-ev] { cursor: pointer; }
 /* the day and time pickers over the add form: a sheet of ClaudeOS controls (index.ts) */
 #app-calendar .cal-pick { position: absolute; inset: 0; z-index: 6; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 24px; }
 #app-calendar .cal-pick[hidden] { display: none; }

@@ -14,7 +14,6 @@ import type { ServerApp } from '../../../core/server/app.ts';
 import { manifest } from '../manifest.ts';
 import { events, eventsBetween, saveConfig, status } from './calendar.ts';
 import { rangeBounds } from './range.ts';
-import { addConnectorEvent } from './connector-write.ts';
 import { cachedConnectorEvents, connectorEvents } from './connector.ts';
 import { addLocalEvent, deleteLocalEvent, localEventsBetween, updateLocalEvent } from './local.ts';
 import { loadFlags, setShown } from './calendar-shown.ts';
@@ -46,8 +45,6 @@ const app: ServerApp = {
     { method: 'GET', path: 'status', handle: () => status() },
     { method: 'POST', path: 'config', handle: ({ body }) => saveConfig((body as Record<string, unknown> | null)?.address) },
     { method: 'GET', path: 'events', handle: ({ query }) => events(query.get('refresh') === '1') },
-    // adds one event through the connector (no longer called by the add form, which uses local-add; a later PR removes it)
-    { method: 'POST', path: 'add', handle: ({ body }) => addConnectorEvent(body) },
     // the events from one day (inclusive) to another (exclusive), for the Day, Week, Month and Year views:
     // the local calendar's events with the external ones (rangeWithLocal).
     // auto=1: the page's 5-minute timer. It never reads the connector (only a fresh cached read is used).
