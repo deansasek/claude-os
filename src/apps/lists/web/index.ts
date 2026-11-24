@@ -1,5 +1,6 @@
-// The Lists app: the family's shared lists (Shopping, To-do, Notes, and any the family makes), kept on the PC
-// (.lists.json, server/store.ts) so everyone at home and Claude see the same ones.
+// The Lists app: the family's shared lists (Shopping, To-do, Notes, and any the family makes). On the tablet they live in
+// local storage and work with the PC off (web/local.ts); the PC's copy (.lists.json, server/store.ts) is a sync target
+// that Claude's tools also change. The Nest Hub has no copy of its own and talks to the PC as before.
 //
 // A row of tabs picks the list. Tap an item to tick it off (tap again to put it back); the pencil (or a tap on a note)
 // opens the keyboard with its text to change it (Save or Cancel); the x or a swipe to the left removes it, with Undo
@@ -8,14 +9,19 @@
 // ticked. New list makes another tick-off list; one the family made can be deleted (Shopping, To-do and Notes stay).
 //
 // The lists reload when the app comes on screen and every 20 s while it is there (someone else, or Claude, may have
-// changed them). Every change goes to the PC at once, which checks it again.
-import { esc, getJson, postJson } from '../../../core/web/dom.ts';
+// changed them). On the tablet a change applies to its copy at once and waits in a queue; the queue goes to the PC in
+// order whenever the PC answers, and then the PC's lists (with Claude's edits) replace the copy. On the first run the
+// copy is taken from the PC once (GET lists); if the PC has lost its file, the copy is sent back (POST restore).
+import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
+import { onTablet } from '../../../core/web/device.ts';
+import { hubReachable, onHubReachable } from '../../../core/web/hub-link.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack } from '../../../core/web/system.ts';
 import { MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, isBuiltIn, type FamilyList, type ListItem, type ListsResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
+import { applyOp, remapIds, type Op, type OpPath } from './local.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 20e3;
@@ -45,10 +51,49 @@ let undoT: number | undefined;
 
 const listNow = (): FamilyList | undefined => lists.find(l => l.id === current) ?? lists[0];
 
+// ---------- the tablet's copy ----------
+const COPY_KEY = 'lists.copy';      // the lists on this tablet
+const QUEUE_KEY = 'lists.queue';    // changes the PC hasn't got yet, oldest first
+const readKey = <T>(k: string): T | null => { try { return JSON.parse(store.get(k) || 'null') as T | null; } catch { return null; } };
+const copy = onTablet ? readKey<FamilyList[]>(COPY_KEY) : null;
+if (Array.isArray(copy)) { lists = copy; loaded = true; }
+let queue: Op[] = (onTablet && readKey<Op[]>(QUEUE_KEY)) || [];
+/** Changes apply on the tablet first once it has its copy (taken from the PC on the first run). */
+const local = (): boolean => onTablet && store.get(COPY_KEY) != null;
+function keep(): void {
+  store.set(COPY_KEY, JSON.stringify(lists));
+  store.set(QUEUE_KEY, queue.length ? JSON.stringify(queue) : null);
+}
+
 // ---------- talking to the PC ----------
 function take(r: ListsResult | null | undefined): void {
-  if (r && Array.isArray(r.lists)) { lists = r.lists; loaded = true; }
+  // the tablet's copy only takes a good answer: a refused change was never applied to it
+  if (r && Array.isArray(r.lists) && (r.ok || !local())) {
+    lists = r.lists;
+    loaded = true;
+    if (onTablet && r.ok) keep();
+  }
   if (!lists.some(l => l.id === current) && lists.length) current = lists[0].id;
+}
+
+/** Send the queued changes to the PC in order, then take its lists. Stops (the queue waits) while the PC is away. */
+let flushing = false;
+async function flush(): Promise<void> {
+  if (flushing || !queue.length) return;
+  flushing = true;
+  try {
+    while (queue.length) {
+      const op = queue[0];
+      let r: ListsResult;
+      try { r = await postJson<ListsResult>(`${API}/${op.path}`, op.body); } catch { return; }
+      if (!r || (!r.ok && r.retry)) return;   // the PC couldn't read or save its file: try again later
+      queue.shift();                  // done, or refused (Claude removed the item meanwhile): the PC's lists will show it
+      if (op.path === 'add' && r.item && r.item.id !== op.body.id) remapIds(queue, 'id', op.body.id, r.item.id);
+      if (op.path === 'new-list' && r.list && r.list !== op.body.id) remapIds(queue, 'list', op.body.id, r.list);
+      keep();
+    }
+  } finally { flushing = false; }
+  void refresh();
 }
 
 // What the family often buys and is not on Shopping now (history.ts): tap to add it.
@@ -65,19 +110,29 @@ function paintSuggest(): void {
 }
 
 async function refresh(): Promise<void> {
+  if (local() && queue.length) { await flush(); render(); return; }   // flush takes the PC's lists once the queue is sent
   const g = gen;
   try {
     const r = await getJson<ListsResult>(`${API}/lists`);
-    if (g !== gen || swipe) return;
-    take(r);
+    if (g !== gen || swipe || queue.length) return;
+    if (local() && r.ok && r.stored === false) take(await postJson<ListsResult>(`${API}/restore`, { lists }));
+    else take(r);
     note = r.ok ? '' : r.error ?? '';
   } catch { if (g === gen) note = loaded ? '' : 'Couldn’t reach the PC. Trying again…'; }
   render();
   void loadSuggest();
 }
 
-async function send(path: string, body: Record<string, unknown>): Promise<ListsResult | null> {
+async function send(path: OpPath, body: Record<string, unknown>): Promise<ListsResult | null> {
   gen++;
+  if (local()) {
+    const op: Op = { path, body: { ...body } };
+    const r = applyOp(lists, op);
+    note = r.ok ? '' : r.error ?? 'That didn’t work.';
+    if (r.ok) { lists = r.lists; queue.push(op); keep(); void flush(); }
+    render();
+    return r;
+  }
   try {
     const r = await postJson<ListsResult>(`${API}/${path}`, body);
     take(r);
@@ -366,6 +421,7 @@ const app: HubApp = {
       void send('add', { list: 'shopping', text: t }).then(() => loadSuggest());
     });
     $('lsSheet').addEventListener('click', onSheetClick);
+    onHubReachable(() => { if (hubReachable()) void flush(); });   // the PC is back: send what waited
     onBack(() => {
       if (!ctx.isVisible() || Keyboard.isOpen || !sheetOpen) return false;
       closeSheet();
