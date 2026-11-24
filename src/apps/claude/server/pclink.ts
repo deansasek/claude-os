@@ -97,6 +97,24 @@ export function tabletReplyIn(text: string): string | null {
   return after.replace(/\s*(?:&lt;|<)\/?(?:system-reminder|task-notification)[^]*$/i, '').trim();
 }
 
+/** How Claude Code stores a message that arrived on the session's messaging socket (scripts/session-relay.ts). */
+const RELAY_HEAD = 'Another Claude session sent a message:\n';
+const RELAY_TAIL = /\n\nThis came from another Claude session[^]*$/;
+
+/** The tablet's reply inside a log entry the session relay delivered, or null for any other entry.
+ *  Claude Code stores the relayed text as a peer message: isMeta, origin { kind: 'peer', from: 'unknown' }, and the
+ *  text between RELAY_HEAD and its own trailing note. Messages from subagents are peer messages too, but they carry
+ *  origin.senderTaskId and an <agent-message> wrapper, so they never match. */
+export function relayedTabletReply(o: any): string | null {
+  const origin = o?.origin;
+  if (o?.type !== 'user' || origin?.kind !== 'peer' || origin.from !== 'unknown' || origin.senderTaskId) return null;
+  const c = o.message?.content;
+  const text = typeof c === 'string' ? c : Array.isArray(c) ? c.filter((x: any) => x?.type === 'text').map((x: any) => x.text).join('\n') : '';
+  if (!text.startsWith(RELAY_HEAD)) return null;
+  const body = text.slice(RELAY_HEAD.length).replace(RELAY_TAIL, '').trim();
+  return body && !body.startsWith('<agent-message') ? body : null;
+}
+
 /** The tablet's answer to a PC permission prompt (the PermissionRequest hook's decision). */
 export type PcDecision =
   | { behavior: 'allow'; updatedPermissions?: { type: 'setMode'; mode: string; destination: 'session' }[] }
