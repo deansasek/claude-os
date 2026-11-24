@@ -90,13 +90,12 @@ jobs:
             - Add the label `needs-info` with `gh issue edit --add-label needs-info`.
             - Stop. Do not edit files.
 
-            If the issue is complete:
-            - Comment `Triage: ready for a fix.` with `gh issue comment`.
-            - Go to step 2.
+            If the issue is complete, go to step 2. Do not post any triage comment.
 
             Step 2. Fix.
             - Read CLAUDE.md first. Follow its code rules and visual style rules.
             - Make the smallest change that fixes the issue. Find the code with Glob and Grep.
+            - If the change is already in the file, make no edit. Do not comment on the issue. Do not ask for replies. Do not write pr.md in that case. Use the Write tool to write the reason in one short sentence to ${{ runner.temp }}/no-change.txt. The workflow posts the result.
             - Do not edit .github/, .claude/, CLAUDE.md, .mcp.json, host/, package.json,
               package-lock.json, tsconfig.json, or signing files (*.jks, *.keystore,
               keystore.properties). Do not add test files.
@@ -143,6 +142,9 @@ jobs:
           git rev-parse HEAD > "$dir/base.txt"
           if [ -s "$RUNNER_TEMP/pr.md" ]; then
             cp "$RUNNER_TEMP/pr.md" "$dir/pr.md"
+          fi
+          if [ -s "$RUNNER_TEMP/no-change.txt" ]; then
+            cp "$RUNNER_TEMP/no-change.txt" "$dir/no-change.txt"
           fi
           if [ -s "$dir/fix.patch" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
@@ -461,8 +463,8 @@ jobs:
   # Write one result report. Edit the Claude comment from the agent run into the
   # report. If none is found, post a new comment as Claude. Then remove ai-fix so
   # the label can be added again. The report is the PR link with its Why, What and
-  # Tests sections, the gate reason, a skip notice, the dry-run text, or a publish
-  # failure notice.
+  # Tests sections, the gate reason, a no-change notice, a skip notice, the dry-run
+  # text, or a publish failure notice. A needs-info stop posts nothing here.
   report:
     needs: [agent, gate, publish]
     if: always() && vars.AI_ENABLED == 'true'
@@ -477,6 +479,35 @@ jobs:
       ISSUE: ${{ github.event.issue.number || inputs.issue }}
 
     steps:
+      # The agent made no change. Read the labels to tell a no-change run from a
+      # needs-info stop. A needs-info stop keeps the agent's own comment. A failed
+      # lookup keeps it too.
+      - name: Check for needs-info
+        id: info
+        if: needs.agent.outputs.has_changes == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          if labels=$(gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name'); then
+            if printf '%s\n' "$labels" | grep -qx needs-info; then
+              echo "no_change=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "no_change=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "no_change=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Download the agent's reason for the no-change result, when it wrote one.
+      - name: Download the no-change reason
+        if: steps.info.outputs.no_change == 'true'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: fix-run
+          path: ${{ runner.temp }}/no-change-dl
+
       # Download the gate report only when the gate ran and did not pass.
       - name: Download the gate report
         if: needs.gate.result != 'skipped' && needs.gate.outputs.result != 'pass'
@@ -528,11 +559,14 @@ jobs:
           SKIPPED: ${{ needs.publish.outputs.skipped }}
           BRANCH: ${{ needs.publish.outputs.branch }}
           DRY_RUN: ${{ vars.AI_FIX_DRY_RUN }}
+          NO_CHANGE: ${{ steps.info.outputs.no_change }}
         run: |
           set -u
           kind=none
           if [ -n "$PR_URL" ]; then
             kind=pr
+          elif [ "$NO_CHANGE" = true ]; then
+            kind=no-change
           elif [ "$GATE_RESULT" != skipped ] && [ "$GATE_OUT" != pass ]; then
             kind=gate-failed
           elif [ "$PUBLISH_RESULT" != skipped ] && [ "$SKIPPED" != true ] && [ "$DRY_RUN" != true ]; then
@@ -577,6 +611,15 @@ jobs:
                 echo
                 echo "The pull request does not merge by itself. A person reviews and merges it."
               } > "$body" ;;
+            no-change)
+              reason=""
+              f="$RUNNER_TEMP/no-change-dl/no-change.txt"
+              if [ -s "$f" ]; then reason=$(head -n 1 "$f" | tr -d '\r' | sed -E 's/\.+$//' | cut -c1-300); fi
+              if [ -n "$reason" ]; then
+                echo "No change made: ${reason}. The gate did not run. No pull request opened." > "$body"
+              else
+                echo "No change made. The fix gate did not run because no file changed. No pull request opened." > "$body"
+              fi ;;
             gate-failed)
               f="$RUNNER_TEMP/gate-report-dl/gate-report.md"
               if [ -s "$f" ]; then cp "$f" "$body"; else echo "The gate did not finish." > "$body"; fi
