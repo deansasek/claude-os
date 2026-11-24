@@ -9,7 +9,7 @@
 #app-recipes .rc-btn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 48px; padding: 0 18px; border-radius: 99px;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 500 16px var(--sans); color: var(--t2); background: var(--card-2); white-space: nowrap; }
 #app-recipes .rc-btn:active { background: var(--line); }
-#app-recipes .rc-btn.pri { background: var(--clay); color: #fff; }
+#app-recipes .rc-btn.pri { background: var(--text); color: var(--bg); }
 #app-recipes .rc-btn.quiet { background: none; box-shadow: 0 0 0 1px var(--line); }
 #app-recipes .rc-btn.danger { color: var(--clay-deep); }
 #app-recipes .rc-btn[disabled] { opacity: .4; pointer-events: none; }
@@ -93,89 +93,86 @@
 #app-recipes .rc-card b { font: 600 17px var(--sans); color: var(--text); }
 #app-recipes .rc-text { margin-top: 8px; max-height: 260px; overflow-y: auto; white-space: pre-wrap; font: 400 15px/1.45 var(--sans); color: var(--text); }
 
-/* ---- cook mode: one page. Header, progress line, the step page, the control bar, then the timers. ---- */
-#app-recipes .rc-ck { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* ---- cook mode: one editorial page. A quiet top bar, the progress ticks, the step, Previous / Next, then the timers. ---- */
+#app-recipes .rc-ck { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 
-/* cook-mode controls: flat, 12px radius, a 1px line; the primary one is ink */
-#app-recipes .rc-ck-ctl { all: unset; box-sizing: border-box; cursor: pointer; position: relative; min-height: 48px; padding: 0 16px;
-  display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid var(--line);
-  font: 500 16px var(--sans); color: var(--t2); background: var(--card); white-space: nowrap; }
-#app-recipes .rc-ck-ctl:active { background: var(--card-2); }
-#app-recipes .rc-ck-ctl.pri { background: var(--text); border-color: var(--text); color: var(--bg); }
-#app-recipes .rc-ck-ctl.pri:active { opacity: .85; }
-#app-recipes .rc-ck-ctl[disabled] { opacity: .4; pointer-events: none; }
-#app-recipes .rc-ck-ctl.big { min-height: 64px; min-width: 176px; padding: 0 32px; border-radius: 14px; font-size: 18px; }
+/* text-weight buttons: no box, no fill; a tone step only while pressed */
+#app-recipes .rc-ck-txt { all: unset; box-sizing: border-box; cursor: pointer; position: relative; min-height: 48px; padding: 0 12px;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 10px;
+  font: 500 16px var(--sans); color: var(--t2); white-space: nowrap; transition: opacity var(--dur-fast) var(--ease-out); }
+#app-recipes .rc-ck-txt:active { background: var(--card); }
+#app-recipes .rc-ck-txt[disabled] { opacity: .3; pointer-events: none; }
 
-/* header: Exit, the recipe name, the Plain / Book switch */
-#app-recipes .rc-ck-hd { display: flex; align-items: center; gap: 16px; }
+/* top bar: Exit, the recipe name, the Plain / Book text toggle */
+#app-recipes .rc-ck-hd { display: flex; align-items: center; gap: 12px; min-width: 0; }
+#app-recipes .rc-ck-exit { margin-left: -12px; color: var(--t3); }
 #app-recipes .rc-ck-name { flex: 1; min-width: 0; margin: 0; font: 400 24px/1.25 var(--serif); letter-spacing: -.01em; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#app-recipes .rc-ck-seg { display: inline-flex; flex: none; gap: 4px; padding: 4px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
-#app-recipes .rc-ck-seg-b { all: unset; box-sizing: border-box; cursor: pointer; position: relative; min-height: 44px; padding: 0 16px;
-  display: inline-flex; align-items: center; border-radius: 10px; font: 500 15px var(--sans); color: var(--t3); }
-#app-recipes .rc-ck-seg-b.on { background: var(--bg); color: var(--text); }
+#app-recipes .rc-ck-views { display: inline-flex; flex: none; margin-right: -12px; }
+#app-recipes .rc-ck-vw { all: unset; box-sizing: border-box; cursor: pointer; position: relative; min-height: 48px; padding: 0 12px;
+  display: inline-flex; align-items: center; border-radius: 10px; font: 500 15px var(--sans); color: var(--t4);
+  transition: color var(--dur-base) var(--ease-out); }
+#app-recipes .rc-ck-vw.on { color: var(--text); }
+#app-recipes .rc-ck-vw:active { background: var(--card); }
 
-/* progress: one tick per step; done steps are quiet ink, the current step is clay */
+/* progress: one hairline tick per step; done steps are quiet ink, the current step is the page's one clay mark */
 #app-recipes .rc-ck-prog { display: flex; gap: 4px; }
-#app-recipes .rc-ck-prog i { flex: 1; min-width: 4px; height: 4px; border-radius: 2px; background: var(--line); }
+#app-recipes .rc-ck-prog i { flex: 1; min-width: 4px; height: 2px; border-radius: 1px; background: var(--line); }
 #app-recipes .rc-ck-prog i.done { background: var(--t4); }
 #app-recipes .rc-ck-prog i.now { background: var(--clay); }
 
-/* the step page: plain is clean text on the page; book is a cookbook page in the serif with a page number */
-#app-recipes .rc-ck-page { display: flex; flex-direction: column; gap: 12px; min-height: 220px; padding: 16px 0 8px; }
+/* the step: a label, then the reading text in the serif. Book sets the same text on a card with a page number. */
+#app-recipes .rc-ck-page { display: flex; flex-direction: column; gap: 16px; min-height: 240px; padding: 8px 0; }
 #app-recipes .rc-ck-page .label { margin: 0; }
-#app-recipes .rc-ck-text { margin: 0; max-width: 34em; font: 400 30px/1.45 var(--serif); color: var(--text); overflow-wrap: anywhere; }
-#app-recipes .rc-ck.book .rc-ck-page { gap: 16px; min-height: 360px; padding: 32px 40px 24px; border-radius: 24px;
+#app-recipes .rc-ck-text { margin: 0; max-width: 32em; font: 400 32px/1.45 var(--serif); letter-spacing: -.01em; color: var(--text);
+  overflow-wrap: anywhere; }
+#app-recipes .rc-ck.book .rc-ck-page { min-height: 360px; padding: 32px 40px 24px; border-radius: 24px;
   background: var(--card); border: 1px solid var(--line); }
-#app-recipes .rc-ck.book .rc-ck-text { flex: 1; max-width: none; font: 400 34px/1.45 var(--serif); letter-spacing: -.01em; }
-#app-recipes .rc-ck-folio { margin: 0; padding-top: 16px; border-top: 1px solid var(--line); text-align: center;
-  font: 400 16px var(--serif); color: var(--t4); font-variant-numeric: tabular-nums; }
+#app-recipes .rc-ck.book .rc-ck-text { flex: 1; max-width: none; }
+#app-recipes .rc-ck-folio { margin: 0; text-align: center; font: 400 15px var(--serif); color: var(--t4); font-variant-numeric: tabular-nums; }
 
-/* the page turn: the old page turns away from the spine while the new page turns in to it (transform and opacity only).
-   Forward hinges on the left edge (the spine); back hinges on the right. */
-#app-recipes .rc-ck-turnbox { position: relative; }
-#app-recipes .rc-ck-page.fwd { transform-origin: left center; animation: rc-in-fwd var(--dur-slower) var(--ease-emph) both; }
-#app-recipes .rc-ck-page.back { transform-origin: right center; animation: rc-in-back var(--dur-slower) var(--ease-emph) both; }
-#app-recipes .rc-ck-page.ghost { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; }
-#app-recipes .rc-ck-page.out-fwd { transform-origin: left center; animation: rc-out-fwd var(--dur-slower) var(--ease-in) both; }
-#app-recipes .rc-ck-page.out-back { transform-origin: right center; animation: rc-out-back var(--dur-slower) var(--ease-in) both; }
-@keyframes rc-in-fwd { from { opacity: 0; transform: perspective(1400px) rotateY(90deg); } to { opacity: 1; transform: perspective(1400px) rotateY(0); } }
-@keyframes rc-in-back { from { opacity: 0; transform: perspective(1400px) rotateY(-90deg); } to { opacity: 1; transform: perspective(1400px) rotateY(0); } }
-@keyframes rc-out-fwd { from { opacity: 1; transform: perspective(1400px) rotateY(0); } to { opacity: 0; transform: perspective(1400px) rotateY(-90deg); } }
-@keyframes rc-out-back { from { opacity: 1; transform: perspective(1400px) rotateY(0); } to { opacity: 0; transform: perspective(1400px) rotateY(90deg); } }
+/* a step change: the new step fades in and settles 12px up (transform and opacity only) */
+#app-recipes .rc-ck-page.in { animation: rc-settle var(--dur-base) var(--ease-out) both; }
+@keyframes rc-settle { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  #app-recipes .rc-ck-page.fwd, #app-recipes .rc-ck-page.back { animation: none; }
-  #app-recipes .rc-ck-page.ghost { display: none; }
+  #app-recipes .rc-ck-page.in { animation: none; }
 }
 
-/* the control bar: Previous, the step count, Next */
-#app-recipes .rc-ck-bar { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 16px; }
-#app-recipes .rc-ck-bar .rc-ck-ctl:first-child { justify-self: start; }
-#app-recipes .rc-ck-bar .rc-ck-ctl:last-child { justify-self: end; }
-#app-recipes .rc-ck-count { font: 400 15px var(--sans); color: var(--t3); font-variant-numeric: tabular-nums; }
+/* Previous and Next: one row; Next is the ink primary, Previous a text button */
+#app-recipes .rc-ck-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+#app-recipes .rc-ck-prev { min-height: 56px; padding: 0 16px; margin-left: -16px; font-size: 17px; }
+#app-recipes .rc-ck-next { all: unset; box-sizing: border-box; cursor: pointer; position: relative; min-height: 56px; min-width: 160px; padding: 0 32px;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 12px;
+  background: var(--text); color: var(--bg); font: 500 17px var(--sans); white-space: nowrap; transition: opacity var(--dur-fast) var(--ease-out); }
+#app-recipes .rc-ck-next:active { opacity: .85; }
+#app-recipes .rc-ck-next[disabled] { opacity: .3; pointer-events: none; }
 
-/* timers: the presets beside the heading, then one tile per running timer */
-#app-recipes .rc-ck-timers { margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
-#app-recipes .rc-ck-timers-hd { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
-#app-recipes .rc-ck-timers-hd .label { margin: 0; }
-#app-recipes .rc-ck-presets { display: flex; flex-wrap: wrap; gap: 8px; }
-#app-recipes .rc-ck-none { margin: 12px 0 0; font: 400 15px var(--sans); color: var(--t4); }
-#app-recipes .rc-ck-tms { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-#app-recipes .rc-ck-tm { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name stop" "left stop"; align-items: center;
-  gap: 4px 12px; padding: 16px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
-#app-recipes .rc-ck-tm-name { grid-area: name; font: 500 15px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#app-recipes .rc-ck-tm-left { grid-area: left; font: 400 32px/1.1 var(--serif); letter-spacing: -.01em; color: var(--text); font-variant-numeric: tabular-nums; }
-#app-recipes .rc-ck-tm .rc-ck-ctl { grid-area: stop; }
+/* timers: a hairline, the label, the presets as one row of text buttons, then one row per running timer */
+#app-recipes .rc-ck-timers { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
+#app-recipes .rc-ck-timers .label { margin: 0; }
+#app-recipes .rc-ck-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-left: -12px; }
+#app-recipes .rc-ck-pre { all: unset; box-sizing: border-box; cursor: pointer; position: relative; min-height: 48px; padding: 0 12px;
+  display: inline-flex; align-items: center; border-radius: 10px; font: 500 15px var(--sans); color: var(--t2); white-space: nowrap; }
+#app-recipes .rc-ck-pre:active { background: var(--card); }
+#app-recipes .rc-ck-none { margin: 0; font: 400 15px var(--sans); color: var(--t4); }
+#app-recipes .rc-ck-tms { list-style: none; margin: 0; padding: 0; }
+#app-recipes .rc-ck-tm { display: flex; align-items: center; gap: 16px; min-height: 64px; border-top: 1px solid var(--line); }
+#app-recipes .rc-ck-tm:first-child { border-top: 0; }
+#app-recipes .rc-ck-tm-name { flex: 1; min-width: 0; font: 500 15px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-recipes .rc-ck-tm-left { flex: none; font: 400 24px/1.2 var(--serif); letter-spacing: -.01em; color: var(--text); font-variant-numeric: tabular-nums; }
+#app-recipes .rc-ck-tm .rc-ck-txt { margin-right: -12px; }
 
 /* phone width: the name takes its own row, the text and the page get smaller */
 @media (max-width: 640px) {
-  #app-recipes .rc-ck-hd { flex-wrap: wrap; }
-  #app-recipes .rc-ck-name { order: -1; flex-basis: 100%; }
-  #app-recipes .rc-ck-hd .rc-ck-seg { margin-left: auto; }
-  #app-recipes .rc-ck-text { font-size: 22px; }
+  #app-recipes .rc-ck { gap: 16px; }
+  #app-recipes .rc-ck-hd { flex-wrap: wrap; row-gap: 0; }
+  #app-recipes .rc-ck-name { order: -1; flex-basis: 100%; white-space: normal; }
+  #app-recipes .rc-ck-hd .rc-ck-views { margin-left: auto; }
+  #app-recipes .rc-ck-page { min-height: 200px; }
+  #app-recipes .rc-ck-text { font-size: 24px; }
   #app-recipes .rc-ck.book .rc-ck-page { min-height: 280px; padding: 24px 24px 16px; }
-  #app-recipes .rc-ck.book .rc-ck-text { font-size: 24px; }
-  #app-recipes .rc-ck-ctl.big { min-width: 0; padding: 0 24px; }
+  #app-recipes .rc-ck-next { min-width: 0; padding: 0 24px; }
+  #app-recipes .rc-ck-tm-left { font-size: 20px; }
 }
 
 /* ---- What do you have: a text field, a Want to buy switch, chips, suggestions, then the ranked results ---- */

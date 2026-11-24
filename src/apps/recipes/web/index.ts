@@ -196,12 +196,12 @@ function timerLeft(t: CookTimer): string {
   return left > 0 ? `${dur(left)} left` : 'Done';
 }
 
-/** The running timers in cook mode: one tile each, the name, the time left in large numbers, and Stop. */
+/** The running timers in cook mode: one row each, the name, the time left in the serif, and a Stop text button. */
 function timersHtml(): string {
   if (!timers.length) return '<p class="rc-ck-none">No timers running.</p>';
   const rows = timers.map(t => `<li class="rc-ck-tm"><span class="rc-ck-tm-name">${esc(t.name)}</span>`
     + `<span class="rc-ck-tm-left">${esc(timerLeft(t))}</span>`
-    + `<button class="rc-ck-ctl" data-act="stop-timer" data-id="${esc(t.id)}">Stop</button></li>`).join('');
+    + `<button class="rc-ck-txt" data-act="stop-timer" data-id="${esc(t.id)}">Stop</button></li>`).join('');
   return `<ul class="rc-ck-tms">${rows}</ul>`;
 }
 
@@ -531,41 +531,33 @@ function detailHtml(r: Recipe): string {
 }
 
 // ---------- cook mode ----------
-// One page for both views: the header (Exit, the recipe name, the Plain/Book switch), the progress line, the step page,
-// the control bar (Previous, Next), and the timers. The book view sets the step in the serif on a card with a page
-// number; the plain view is the same step as clean text on the page. A step change turns the page in from its side.
-let turn = 0;                             // the last step move: -1 back, 1 forward, 0 none (no page turn)
-let turnFrom = -1;                        // the step the page turned away from (the page that leaves)
+// One editorial page for both views: a quiet top bar (Exit, the recipe name, the Plain/Book text toggle), the progress
+// ticks, the step, the Previous/Next pair, and the timers. The book view sets the same step on a card with a page
+// number. A step change settles the new step in (a short fade and rise); a timer tick redraws without it.
+let turn = 0;                             // the last step move: -1 back, 1 forward, 0 none (no settle animation)
 
 function cookHtml(r: Recipe, step: number): string {
   const s = cookStep(r, step);
   const total = r.steps.length;
   const book = store.get(COOK_VIEW_KEY) === 'book';
-  const dir = turn < 0 ? ' back' : turn > 0 ? ' fwd' : '';
-  // the page that leaves: the step it turned from, drawn over the new page and turned away from the spine
-  const leaving = turn !== 0 && turnFrom >= 0 && turnFrom !== s.index ? cookStep(r, turnFrom) : null;
+  const settle = turn !== 0 ? ' in' : '';
   turn = 0;
-  turnFrom = -1;
-  const seg = (v: 'plain' | 'book', label: string) => {
+  const view = (v: 'plain' | 'book', label: string) => {
     const on = (v === 'book') === book;
-    return `<button class="rc-ck-seg-b${on ? ' on' : ''}" data-act="cook-view" data-view="${v}" aria-pressed="${on}">${label}</button>`;
+    return `<button class="rc-ck-vw${on ? ' on' : ''}" data-act="cook-view" data-view="${v}" aria-pressed="${on}">${label}</button>`;
   };
   const ticks = r.steps.map((_, k) => `<i class="${k < s.index ? 'done' : k === s.index ? 'now' : ''}"></i>`).join('');
-  const presets = TIMER_MINUTES.map(m => `<button class="rc-ck-ctl" data-act="timer" data-min="${m}">${lengthWords(m * 60e3)}</button>`).join('');
+  const presets = TIMER_MINUTES.map(m => `<button class="rc-ck-pre" data-act="timer" data-min="${m}">${lengthWords(m * 60e3)}</button>`).join('');
   return `<div class="rc-ck${book ? ' book' : ''}">`
-    + `<header class="rc-ck-hd"><button class="rc-ck-ctl" data-act="detail">Exit cook mode</button>`
+    + `<header class="rc-ck-hd"><button class="rc-ck-txt rc-ck-exit" data-act="detail">Exit</button>`
     + `<h2 class="rc-ck-name">${esc(r.name)}</h2>`
-    + `<div class="rc-ck-seg" role="group" aria-label="View">${seg('plain', 'Plain')}${seg('book', 'Book')}</div></header>`
+    + `<div class="rc-ck-views" role="group" aria-label="View">${view('plain', 'Plain')}${view('book', 'Book')}</div></header>`
     + `<div class="rc-ck-prog" role="progressbar" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${s.index + 1}" aria-label="${esc(s.heading)}">${ticks}</div>`
-    + `<div class="rc-ck-turnbox">`
-    + (leaving ? `<article class="rc-ck-page ghost ${dir === ' back' ? 'out-back' : 'out-fwd'}" aria-hidden="true">`
-      + `<p class="label">${esc(leaving.heading)}</p><p class="rc-ck-text">${esc(leaving.text)}</p>`
-      + (book ? `<p class="rc-ck-folio">${leaving.index + 1}</p>` : '') + `</article>` : '')
-    + `<article class="rc-ck-page${dir}"><p class="label">${esc(s.heading)}</p><p class="rc-ck-text">${esc(s.text)}</p>`
-    + (book ? `<p class="rc-ck-folio">${s.index + 1}</p>` : '') + `</article></div>`
-    + `<nav class="rc-ck-bar"><button class="rc-ck-ctl big" data-act="step" data-d="-1"${s.first ? ' disabled' : ''}>Previous</button>`
-    + `<button class="rc-ck-ctl big pri" data-act="step" data-d="1"${s.last ? ' disabled' : ''}>Next</button></nav>`
-    + `<section class="rc-ck-timers"><div class="rc-ck-timers-hd"><p class="label">Timers</p><div class="rc-ck-presets">${presets}</div></div>`
+    + `<article class="rc-ck-page${settle}"><p class="label">${esc(s.heading)}</p><p class="rc-ck-text">${esc(s.text)}</p>`
+    + (book ? `<p class="rc-ck-folio">${s.index + 1}</p>` : '') + `</article>`
+    + `<nav class="rc-ck-bar"><button class="rc-ck-txt rc-ck-prev" data-act="step" data-d="-1"${s.first ? ' disabled' : ''}>Previous</button>`
+    + `<button class="rc-ck-next" data-act="step" data-d="1"${s.last ? ' disabled' : ''}>Next</button></nav>`
+    + `<section class="rc-ck-timers"><p class="label">Timers</p><div class="rc-ck-presets">${presets}</div>`
     + `<div data-timers>${timersHtml()}</div></section></div>`;
 }
 
@@ -627,7 +619,6 @@ function onClick(ev: Event): void {
       if (screen.t === 'cook') {
         const next = cookStep(screen.r, screen.step + Number(b.dataset.d)).index;
         turn = Math.sign(next - screen.step);
-        turnFrom = screen.step;
         screen = { ...screen, step: next };
       }
       break;
