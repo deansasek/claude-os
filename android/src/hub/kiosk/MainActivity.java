@@ -157,7 +157,7 @@ public class MainActivity extends Activity {
     });
   }
   private String url;
-  // pageSource: pc (default), auto or bundle. bundle serves the page from the APK; auto does so while the PC is down (pcPageFailed).
+  // pageSource: bundle (default), auto or pc. bundle serves the page from the APK; auto does so while the PC is down (pcPageFailed); pc asks the PC.
   private volatile String pageSource = PageAssets.DEFAULT_SOURCE;
   private PageAssets pageAssets;
   private volatile boolean bundleFallback = false;   // auto: the bundled page stands in for the PC until the probe sees it answer
@@ -173,10 +173,10 @@ public class MainActivity extends Activity {
     String fromIntent = getIntent() != null ? getIntent().getStringExtra("url") : null;
     if (fromIntent != null && fromIntent.startsWith("http")) prefs.edit().putString("url", fromIntent).apply();
     url = prefs.getString("url", DEFAULT_URL);
+    pageAssets = new PageAssets(getApplicationContext());
     String srcFromIntent = getIntent() != null ? getIntent().getStringExtra("pageSource") : null;
     if (srcFromIntent != null) setPageSource(srcFromIntent);
-    else pageSource = PageAssets.sourceOf(prefs.getString("pageSource", null));
-    pageAssets = new PageAssets(getApplicationContext());
+    else pageSource = pageSourceFor(prefs.getString("pageSource", null));
 
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     if (Build.VERSION.SDK_INT >= 28) {
@@ -245,7 +245,7 @@ public class MainActivity extends Activity {
     });
     // escape hatch when the Hub page can't load: tap the "looking for your PC" screen 7 times quickly
     web.setOnTouchListener((v, ev) -> {
-      if ((showingOffline || bundleFallback) && ev.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {
+      if ((showingOffline || servesBundle()) && ev.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {
         long now = System.currentTimeMillis();
         if (now - firstTap > 4000) { firstTap = now; taps = 0; }
         if (++taps >= 7) { taps = 0; maintenance(); }
@@ -1150,10 +1150,21 @@ public class MainActivity extends Activity {
     }
   }
 
-  /** Saves the pageSource setting (pc, auto or bundle; anything else is pc). It applies from the next load. */
+  /** Saves the pageSource setting (bundle, auto or pc; anything else is bundle). It applies from the next load. */
   private void setPageSource(String raw) {
-    pageSource = PageAssets.sourceOf(raw);
+    pageSource = pageSourceFor(raw);
     getSharedPreferences("hub", MODE_PRIVATE).edit().putString("pageSource", pageSource).apply();
+  }
+
+  /**
+   * The page source for a raw setting. With no bundle in the APK, bundle and auto give pc: the PC page and its
+   * offline screen then work as before, and the APK never serves an empty page.
+   */
+  private String pageSourceFor(String raw) {
+    String src = PageAssets.sourceOf(raw);
+    if (PageAssets.SOURCE_PC.equals(src) || pageAssets.hasBundle()) return src;
+    Log.w(TAG, "the APK holds no page bundle; the page comes from the PC");
+    return PageAssets.SOURCE_PC;
   }
 
   /** True when the APK's page answers the Hub origin: pageSource bundle, or auto while the PC is down. */
