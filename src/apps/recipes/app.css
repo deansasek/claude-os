@@ -31,10 +31,11 @@
 
 /* Discover: the large search field (a button that opens ClaudeOS's keyboard) */
 #app-recipes .rc-disc { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
-#app-recipes .rc-search { all: unset; box-sizing: border-box; cursor: text; flex: 1; min-width: 0; min-height: 72px; padding: 0 26px;
-  display: flex; align-items: center; gap: 14px; border-radius: 99px; background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t3); }
-#app-recipes .rc-search svg { width: 26px; height: 26px; flex: none; }
-#app-recipes .rc-search-text { font: 400 28px var(--serif); color: var(--t4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the search bar is one line, 44px high */
+#app-recipes .rc-search { all: unset; box-sizing: border-box; cursor: text; flex: 1; min-width: 0; height: 44px; padding: 0 18px;
+  display: flex; align-items: center; gap: 10px; border-radius: 99px; background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t3); }
+#app-recipes .rc-search svg { width: 20px; height: 20px; flex: none; }
+#app-recipes .rc-search-text { min-width: 0; font: 400 20px var(--serif); color: var(--t4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #app-recipes .rc-search-text.on { color: var(--text); }
 
 /* Claude on top: a quiet row of actions */

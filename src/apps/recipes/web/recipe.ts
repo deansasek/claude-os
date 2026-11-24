@@ -121,6 +121,14 @@ export function tonightPrompt(names: string[], time: string): string {
   return `Suggest one dinner for tonight.${limit}${saved} ${FORMAT}`;
 }
 
+/** Asks Claude for one recipe from the "have" names: it uses mostly those. The "want" names and the staples may appear too. */
+export function pantryPrompt(have: string[], want: string[]): string {
+  const list = (xs: string[]): string => xs.map(x => x.replace(/["\\]/g, '').slice(0, 40)).join(', ');
+  const buy = want.length ? ` I can also buy: ${list(want)}. The recipe may use them.` : '';
+  return `Give me one recipe that uses mostly these ingredients I have: ${list(have)}.${buy}`
+    + ` Salt, pepper, water and oil are always fine to use. ${FORMAT}`;
+}
+
 // ---------- the recipe of the day ----------
 /** The index of today's recipe among `count` saved ones (it changes at local midnight), or -1 when none are saved. */
 export function recipeOfDay(count: number, now: Date): number {
