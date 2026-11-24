@@ -17,3 +17,11 @@ export interface PhotoDay { day: string; photos: PhotoItem[] }
 export interface PhotoList { ok: boolean; days: PhotoDay[] }
 export interface UploadResult { ok: boolean; id?: string; url?: string; error?: string }
 export interface PhotoDeleteResult { ok: boolean; error?: string; deleted?: string[]; missing?: string[]; failed?: string[] }
+/** The most ids one delete request carries. The PC refuses more (server/store.ts MAX_PER_DELETE: keep them equal). */
+export const DELETE_BATCH = 200;
+/** The ids split into delete requests of at most DELETE_BATCH, in the same order. */
+export function deleteBatches(ids: string[]): string[][] {
+  const out: string[][] = [];
+  for (let i = 0; i < ids.length; i += DELETE_BATCH) out.push(ids.slice(i, i + DELETE_BATCH));
+  return out;
+}

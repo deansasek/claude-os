@@ -7,7 +7,7 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithPhoto } from '../../claude/web/reply.ts';
-import { ASK_MAX_PHOTOS, thumbUrl } from '../api.ts';
+import { ASK_MAX_PHOTOS, deleteBatches, thumbUrl } from '../api.ts';
 import type { PhotoDay, PhotoDeleteResult, PhotoItem, PhotoList } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { backfillActive, backfillThumb } from './thumb.ts';
@@ -306,19 +306,24 @@ async function removePending(): Promise<void> {
   $<HTMLButtonElement>('phGone').disabled = true;
   $<HTMLButtonElement>('phKeep').disabled = true;
   report(ids.length === 1 ? 'photos:delete' : 'photos:delete:many');
-  let r: PhotoDeleteResult | null = null;
-  try { r = await postJson<PhotoDeleteResult>('/api/photos/delete', ids.length === 1 ? { id: ids[0] } : { ids }); }
-  catch { r = null; }
-  if (!r || (!r.ok && !r.deleted && !r.missing)) {
-    // the PC did not answer, or refused the request: nothing was removed, so say so and let the person try again
+  // the PC takes at most DELETE_BATCH ids a request (server/index.ts): send them in batches and keep what each one removed
+  const gone = new Set<string>();
+  let refused = false;
+  for (const batch of deleteBatches(ids)) {
+    let r: PhotoDeleteResult | null = null;
+    try { r = await postJson<PhotoDeleteResult>('/api/photos/delete', batch.length === 1 ? { id: batch[0] } : { ids: batch }); }
+    catch { r = null; }
+    if (!r || (!r.ok && !r.deleted && !r.missing)) { refused = true; break; }
+    for (const id of [...(r.deleted || []), ...(r.missing || [])]) gone.add(id);
+  }
+  if (refused && !gone.size) {
+    // the PC did not answer, or refused the first request: nothing was removed, so say so and let the person try again
     $('phSheetErr').textContent = 'Couldn’t delete. Try again when the PC answers.';
     $('phSheetErr').hidden = false;
     $<HTMLButtonElement>('phGone').disabled = false;
     $<HTMLButtonElement>('phKeep').disabled = false;
     return;
   }
-  const gone = new Set([...(r.deleted || []), ...(r.missing || [])]);
-  const failed = r.failed || [];
   hideSheet();
   days = days.map(d => ({ ...d, photos: d.photos.filter(p => !gone.has(p.id)) })).filter(d => d.photos.length);
   for (const id of gone) picked.delete(id);
@@ -326,9 +331,10 @@ async function removePending(): Promise<void> {
   setSelecting(false);
   paint();
   await load();   // the PC's own list, now
-  if (failed.length) {
+  const failed = ids.length - gone.size;   // could not be removed, or not reached after a refused batch
+  if (failed) {
     $('phNote').hidden = false;
-    $('phNote').textContent = failed.length === 1 ? 'One photo couldn’t be deleted. Try again.' : `${failed.length} photos couldn’t be deleted. Try again.`;
+    $('phNote').textContent = failed === 1 ? 'One photo couldn’t be deleted. Try again.' : `${failed} photos couldn’t be deleted. Try again.`;
   }
 }
 
