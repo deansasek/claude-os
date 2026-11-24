@@ -118,6 +118,7 @@
 #app-claude .detail.rows > div span { flex: none; white-space: nowrap; }
 #app-claude .detail.rows > div b { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
 /* status pills mean the same as everywhere else (core's .live.wait / .live.work): blue = your turn, clay (pulsing) = Claude working */
+#app-claude #pill[hidden] { display: none; }   /* .live sets display itself, so the hidden attribute needs this */
 /* the tablet (core's --tall is 1): the stage is ~640 tall, so spend the extra room the way Home and Clock do, on the numerals and the scene */
 #app-claude .main { height: calc(334px + 40px * var(--tall)); }
 #app-claude .big { font-size: calc(92px + 8px * var(--tall)); margin: calc(16px + 4px * var(--tall)) 0 calc(10px + 2px * var(--tall)); }

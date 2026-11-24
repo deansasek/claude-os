@@ -147,6 +147,7 @@ function tick(): void {
   else if (L.status === 'expired') { pill.className = 'live bad'; pillText.textContent = 'Sign-in expired'; }
   else if (L.error?.startsWith('rate limited')) { pill.className = 'live'; pillText.textContent = 'Waiting on Anthropic'; }
   else { pill.className = 'live bad'; pillText.textContent = 'Can’t reach Anthropic'; }
+  pill.hidden = L.status === 'ok' && !L.error;   // live usage needs no pill; any warning shows it
 
   const since = data.last_activity ? +now - Date.parse(data.last_activity) : Infinity;
   const S = data.sessions || [];
@@ -218,7 +219,7 @@ async function load(): Promise<void> {
   try {
     render(await getJson<Usage>('/api/claude/usage'));
   } catch {
-    $('pill').className = 'live bad'; $('pillText').textContent = 'Offline';
+    $('pill').className = 'live bad'; $('pillText').textContent = 'Offline'; $('pill').hidden = false;
     if (!data) {   // nothing to show yet: say why, instead of dashes and "Looking for sessions…" forever
       $('summary').innerHTML = 'Can’t reach your PC. <em>Your usage and sessions come from it. ClaudeOS keeps trying.</em>';
       // with tablet chats on, the tablet's own chat is the one thing that works without the PC
