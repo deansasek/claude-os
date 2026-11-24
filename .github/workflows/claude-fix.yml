@@ -1,9 +1,9 @@
 ﻿name: Claude Issue Fix
 
 # Triage an issue. If the issue is complete, the AI agent writes a fix in the
-# working tree. A gate checks the patch. A dry-run step reports the result.
-# Nothing is pushed and no pull request opens in this workflow. A later change
-# opens the pull request.
+# working tree. A gate checks the patch. The publish job then pushes a branch
+# and opens a pull request with the App token. When the repo variable
+# AI_FIX_DRY_RUN is "true", publish only comments the dry-run text.
 #
 # Runs when a person with write access adds the ai-fix label to an issue.
 # Use workflow_dispatch to run it by hand.
@@ -189,8 +189,8 @@ jobs:
           git apply --index "$RUNNER_TEMP/fix-run/fix.patch"
           git diff --cached --raw --no-renames > "$RUNNER_TEMP/raw.txt"
 
-      # The title and body come from fixed text in this gate. PR 4 uses the
-      # agent's own title and body.
+      # The title and body come from fixed text in this gate. Publish opens
+      # the pull request with the same title and body.
       - name: Run the patch rules
         id: rules
         if: always()
@@ -245,6 +245,13 @@ jobs:
             '## Tests', 'The gate runs npm ci, npm run check, npm run check:tests and npm test.', '',
           ].join('\n');
 
+          // Save the PR title and body for the publish job.
+          const draft = `${env.RUNNER_TEMP}/pr-draft`;
+          fs.mkdirSync(draft, { recursive: true });
+          fs.writeFileSync(`${draft}/title.txt`, `${title}\n`);
+          fs.writeFileSync(`${draft}/body.md`, body);
+          fs.copyFileSync(`${env.RUNNER_TEMP}/issue-title.txt`, `${draft}/issue-title.txt`);
+
           const packageJson = files.some(f => f.path === 'package.json')
             ? { before: fs.readFileSync(`${env.RUNNER_TEMP}/pkg-before.json`, 'utf8'), after: fs.readFileSync('package.json', 'utf8') }
             : undefined;
@@ -253,6 +260,14 @@ jobs:
           finish(result.pass, `Rule \`${result.rule}\`. ${result.reason}`);
           EOF
           node --disable-warning=ExperimentalWarning "$RUNNER_TEMP/gate.mjs"
+
+      - name: Save the PR title and body for publish
+        if: steps.rules.outputs.rules == 'pass'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-draft
+          path: ${{ runner.temp }}/pr-draft/
+          if-no-files-found: error
 
       - name: Install dependencies
         id: npm-ci
@@ -318,23 +333,138 @@ jobs:
             gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label ai-blocked
           fi
 
-  # Dry run. A later change opens the pull request here.
+  # Open the pull request. Runs only when the gate passes. The App token is
+  # minted in this job and used only in the push and pull request steps.
+  # When AI_FIX_DRY_RUN is "true", this job only comments the dry-run text.
   publish:
     needs: gate
     if: vars.AI_ENABLED == 'true' && needs.gate.outputs.result == 'pass'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
       issues: write
+      pull-requests: read
     env:
       GH_TOKEN: ${{ github.token }}
       ISSUE: ${{ github.event.issue.number || inputs.issue }}
+    outputs:
+      pr_url: ${{ steps.pr.outputs.pr_url }}
 
     steps:
       - name: Post the dry-run comment
+        if: vars.AI_FIX_DRY_RUN == 'true'
         run: |
           gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Dry run. The fix passes the gate. No pull request opened yet."
+
+      - name: Download the fix run files
+        if: vars.AI_FIX_DRY_RUN != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: fix-run
+          path: ${{ runner.temp }}/fix-run
+
+      # Read the base commit from base.txt. The checkout below uses this value.
+      - name: Read the base commit
+        id: base
+        if: vars.AI_FIX_DRY_RUN != 'true'
+        run: |
+          set -euo pipefail
+          sha=$(cat "$RUNNER_TEMP/fix-run/base.txt")
+          if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "base.txt does not hold a commit sha"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # Do not keep the token from the checkout. The App token is minted later.
+      - name: Checkout the base commit
+        if: vars.AI_FIX_DRY_RUN != 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.base.outputs.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Download the PR title and body
+        if: vars.AI_FIX_DRY_RUN != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-draft
+          path: ${{ runner.temp }}/pr-draft
+
+      # The branch name comes from the issue title. Stop when the branch
+      # exists or an open pull request already uses it.
+      - name: Plan the branch
+        id: plan
+        if: vars.AI_FIX_DRY_RUN != 'true'
+        run: |
+          set -euo pipefail
+          issue_title=$(head -n 1 "$RUNNER_TEMP/pr-draft/issue-title.txt" | tr -d '\r')
+          slug=$(printf '%s' "$issue_title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-40 | sed -E 's/-+$//')
+          [ -n "$slug" ] || slug=fix
+          branch="fix/issue-${ISSUE}-${slug}"
+          skip=false
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/${branch}" > /dev/null 2>&1; then
+            skip=true
+          fi
+          open=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state open --json number --jq 'length')
+          if [ "$open" != 0 ]; then
+            skip=true
+          fi
+          echo "BRANCH=$branch" >> "$GITHUB_ENV"
+          echo "SKIP=$skip" >> "$GITHUB_ENV"
+
+      - name: Stop when the branch or pull request exists
+        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP == 'true'
+        run: |
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Fix not pushed. Branch ${BRANCH} exists or a pull request for it is open. Check it before you add the ai-fix label again."
+
+      # Commit as the App bot. The App id comes from a secret and is not printed.
+      - name: Apply the patch and commit
+        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
+        env:
+          APP_ID: ${{ secrets.FIX_APP_ID }}
+        run: |
+          set -euo pipefail
+          git apply "$RUNNER_TEMP/fix-run/fix.patch"
+          git switch -c "$BRANCH"
+          git add -A
+          git config user.name "claudeos-bot[bot]"
+          git config user.email "${APP_ID}+claudeos-bot[bot]@users.noreply.github.com"
+          git commit --quiet -F "$RUNNER_TEMP/pr-draft/title.txt"
+
+      - name: Create the App token
+        id: app-token
+        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FIX_APP_ID }}
+          private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
+
+      - name: Push the branch
+        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          git push --quiet "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
+
+      # Add the closing line so the issue closes when the pull request merges.
+      - name: Open the pull request
+        id: pr
+        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          title=$(head -n 1 "$RUNNER_TEMP/pr-draft/title.txt")
+          body="$RUNNER_TEMP/pr-draft/body.md"
+          if ! grep -qx "Fixes #${ISSUE}" "$body"; then
+            printf '\nFixes #%s\n' "$ISSUE" >> "$body"
+          fi
+          url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" --title "$title" --body-file "$body" --label ai-generated --label ai-review | tail -n 1)
+          echo "pr_url=$url" >> "$GITHUB_OUTPUT"
 
   # Remove ai-fix so the label can be added again. The sticky comment shows progress.
   report:
@@ -350,6 +480,14 @@ jobs:
       ISSUE: ${{ github.event.issue.number || inputs.issue }}
 
     steps:
+      - name: Post the pull request link
+        if: needs.publish.outputs.pr_url != ''
+        env:
+          PR_URL: ${{ needs.publish.outputs.pr_url }}
+        run: |
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Fix ready for review: ${PR_URL}. The pull request does not merge by itself. A person reviews and merges it."
+
       - name: Remove the ai-fix label
+        if: always()
         run: |
           gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label ai-fix
