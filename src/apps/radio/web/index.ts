@@ -400,18 +400,17 @@ function stationPage(s: Station): string {
   const now = live ? titleLine(true, state, streamTitle) : '';
   const tags = (s.tags ?? []).map(t => `<button class="rd-pill" data-tag="${esc(t)}">${esc(t)}</button>`).join('');
   const playLabel = live && state !== 'paused' ? 'Pause' : 'Play';
+  const details = [place, qualityLine(s)].filter(Boolean).map(line => `<p class="rd-st-meta">${esc(line)}</p>`).join('');
+  // in order: the logo and name, the details, the stream title, Play and Save (one row), then the genres
   return `<div class="rd-station">
-    <div class="rd-st-top">${logo(s, 'rd-logo')}<div class="rd-st-text">
-      <h2 class="rd-st-name">${esc(s.name)}</h2>
-      ${place ? `<p class="rd-st-meta">${esc(place)}</p>` : ''}
-      ${qualityLine(s) ? `<p class="rd-st-meta">${esc(qualityLine(s))}</p>` : ''}
-    </div></div>
-    ${now ? `<p class="rd-st-now">${esc(now)}</p>` : ''}
-    ${tags ? `<div class="rd-tags">${tags}</div>` : ''}
+    <div class="rd-st-top">${logo(s, 'rd-logo')}<h2 class="rd-st-name">${esc(s.name)}</h2></div>
+    ${details ? `<div class="rd-st-details">${details}</div>` : ''}
+    ${now ? `<p class="rd-st-desc">${esc(now)}</p>` : ''}
     <div class="rd-st-actions">
       <button class="rd-cta" data-act="play">${playLabel}</button>
       <button class="rd-cta ghost${fav ? ' on' : ''}" data-act="save" aria-pressed="${fav}">${fav ? 'Saved' : 'Save'}</button>
     </div>
+    ${tags ? `<div class="rd-tags">${tags}</div>` : ''}
   </div>`;
 }
 

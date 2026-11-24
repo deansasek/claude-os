@@ -61,6 +61,9 @@
     align-items: center; justify-content: center; gap: 6px; color: var(--t3); font: 500 11px var(--sans); cursor: pointer;
     transition: background-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), box-shadow var(--dur-base); }
   .ri-icon { display: flex; width: 26px; height: 26px; }
+  /* an app's rail label (setRail, e.g. the station on the air): two lines at most inside the 66px item, then an ellipsis */
+  .ri-label { max-width: 62px; text-align: center; line-height: 13px; display: -webkit-box; -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
   .ri-icon svg { width: 26px; height: 26px; overflow: visible; }
   .ri.busy .ri-icon svg { animation: think 2.4s cubic-bezier(.6, 0, .3, 1) infinite; }   /* an app says it's working */
   .ri.on { background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
