@@ -1,6 +1,7 @@
 // The Clock app: a full clock with four tabs (Clock, Timer, Stopwatch, Alarm) and the critter living by the time.
 //   Clock      the big serif time, the date, how far the day and week have gone. Tap the time to show seconds.
 //   Timer      hour : min : sec dials (drag the numbers or tap / hold the arrows), quick presets, start / pause / ±1 min.
+//              Several timers at once: each is a named row under the dial (tap a row to focus it; New timer brings the dial back).
 //              An hourglass drains beside the critter. Survives reloads.
 //   Stopwatch  start / pause, laps (fastest and slowest marked). The critter jogs while it runs. Survives reloads.
 //   Alarm      several alarms, each with on/off and repeat days (or once). Snooze 9 minutes. Saved in local storage,
@@ -19,6 +20,7 @@ import { registerAppSettings } from '../../../core/web/app-settings.ts';
 import { alertFor, critterSpeak, onBack, openApp } from '../../../core/web/system.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import { dur, lengthWords, words } from './timer-text.ts';
+import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, parseClockTimers, runningLeftMs, type ClockTimer } from '../../../core/web/clock-timer.ts';
 
 type Mode = 'clock' | 'timer' | 'stopwatch' | 'alarm';
 type View = Mode | 'edit' | 'ring';
@@ -29,7 +31,7 @@ const ACT_MS: Record<Act, number> = { hop: 800, stretch: 2200, wave: 2400 };
 const TIMER_PRESETS = [1, 3, 5, 10, 15, 30];   // minutes; anything else is dialled in above
 const ALARM_PRESETS: [number, number][] = [[6, 0], [6, 30], [7, 0], [7, 30], [8, 0], [9, 0]];
 const K = {
-  mode: 'clock.mode', secs: 'clock.seconds', timer: 'clock.timer', sw: 'clock.stopwatch',
+  mode: 'clock.mode', secs: 'clock.seconds', timers: CLOCK_TIMERS_KEY, timer: CLOCK_TIMER_KEY, draft: 'clock.timerDraft', sw: 'clock.stopwatch',
   alarms: 'clock.alarms', legacyAlarm: 'clock.alarm', ring: 'clock.ring', secHint: 'clock.hint.seconds',
 };
 const SNOOZE_MS = 9 * 60e3;
@@ -205,7 +207,8 @@ function scheduleAct(): void {
 
 function tapLine(d: Date): string {
   if (ringing) return 'tap Stop!';
-  if (timer.end) return pick([`${dur(timer.end - Date.now())} to go`, 'watching the sand…', 'not long now']);
+  const soon = soonestLeft();
+  if (soon != null) return pick([`${dur(soon)} to go`, 'watching the sand…', 'not long now']);
   if (sw.running) return pick(['go go go!', 'huff… puff…', 'one more lap!']);
   const h = d.getHours(), m = d.getMinutes();
   if (m >= 50 && h !== 23 && Math.random() < .5) return `almost ${hourWord(new Date(d.getTime() + (60 - m) * 60e3))} o’clock!`;
@@ -324,31 +327,61 @@ function stopRing(gaveUp = false): void {
   say(gaveUp ? 'nobody came…' : 'all done!');
 }
 
-// ---------- timer ----------
-// ms; end while running, left while paused; label: set by Claude (set_timer), shown when it rings
-interface TimerState { dur: number; end: number | null; left: number | null; label?: string }
-const timer: TimerState = { dur: 5 * 60e3, end: null, left: null, ...readJson<TimerState>(K.timer) };
-const saveTimer = () => store.set(K.timer, JSON.stringify(timer));
+// ---------- timers: a list, each with a name ----------
+// `timer` is the focused one: a timer in the list (running or paused), or the draft that the dial sets (not listed).
+// Start on the draft adds a timer to the list; Start on a paused timer resumes it; a preset adds a timer at once.
+// The list is kept under clock.timers, which the other screens read (core/web/clock-timer.ts).
+const DRAFT_DUR = 5 * 60e3;
+const draftOf = (dur: number): ClockTimer => ({ id: '', name: '', dur, end: null, left: null });
+const savedDraft = (): number => { const n = Number(store.get(K.draft)); return n >= 1e3 ? n : DRAFT_DUR; };
+const loaded = parseClockTimers(store.get(K.timers), store.get(K.timer));
+let timers: ClockTimer[] = loaded.timers;
+if (loaded.migrate) { store.set(K.timers, JSON.stringify(timers)); store.set(K.timer, null); }   // the first read saves the list
+let timer: ClockTimer = timers.find(t => t.end) ?? timers[0] ?? draftOf(savedDraft());
+const saveTimers = () => store.set(K.timers, JSON.stringify(timers));
+const saveDraft = () => store.set(K.draft, String(timer.dur));
+const isListed = (t: ClockTimer): boolean => timers.includes(t);
 const timerLeft = (): number => (timer.end ? timer.end - Date.now() : timer.left ?? timer.dur);
+const anyRunning = (): boolean => timers.some(t => t.end);
+/** The soonest running timer's time left, or null when none runs. */
+const soonestLeft = (): number | null => runningLeftMs(timers, Date.now());
 
-function timerStart(ms?: number, label?: string): void {
+function timerStart(ms?: number, name?: string): void {
   unlockAudio();
-  if (ms) { timer.dur = ms; timer.left = null; timer.label = label || undefined; }
-  if (timer.left == null && timer.dur < 1e3) return;
+  if (ms) { addTimer(ms, name); return; }
+  if (timer.end || (timer.left == null && timer.dur < 1e3)) return;
+  if (!isListed(timer)) { addTimer(timer.dur); return; }
   timer.end = Date.now() + (timer.left ?? timer.dur);
   timer.left = null;
-  saveTimer();
+  saveTimers();
   act('hop', true); say(pick(['on it!', 'tick tock…', `${dur(timer.end - Date.now())}, go!`]));
   renderTimer();
 }
-function timerPause(): void { if (!timer.end) return; timer.left = timer.end - Date.now(); timer.end = null; saveTimer(); renderTimer(); }
-function timerReset(): void { timer.end = null; timer.left = null; timer.label = undefined; saveTimer(); renderTimer(); }
+/** A new timer in the list, running and in front. It gets the given name, or "Timer" and its number. */
+function addTimer(ms: number, name?: string): void {
+  const t: ClockTimer = { id: newId(), name: name || `Timer ${timers.length + 1}`, dur: ms, end: Date.now() + ms, left: null };
+  timers.push(t);
+  timer = t;
+  saveTimers();
+  act('hop', true); say(pick(['on it!', 'tick tock…', `${dur(ms)}, go!`]));
+  renderTimer();
+}
+function timerPause(): void { if (!timer.end) return; timer.left = timer.end - Date.now(); timer.end = null; saveTimers(); renderTimer(); }
+/** Cancel the focused timer: a listed one leaves the list; the draft keeps its length. */
+function timerReset(): void {
+  const len = timer.dur;
+  if (isListed(timer)) timers = timers.filter(t => t !== timer);
+  timer = draftOf(len);
+  saveTimers(); saveDraft(); renderTimer();
+}
+/** The dial sets a new timer: the draft comes in front; the timers in the list keep running. */
+function newTimer(): void { timer = draftOf(timer.dur); saveDraft(); renderTimer(); }
 function timerNudge(sign: 1 | -1): void {
   const step = 60e3;
   if (timer.end) timer.end = Math.max(Date.now() + 5e3, timer.end + sign * step);
   else if (timer.left != null) timer.left = Math.max(5e3, timer.left + sign * step);
   timer.dur = Math.max(timer.dur, timerLeft());   // keep the progress bar and the sand honest
-  saveTimer(); renderTimer();
+  saveTimers(); renderTimer();
 }
 /** Turn one dial of the idle timer: hours wrap 0–23, minutes 0–59, seconds in fives. */
 function timerDial(unit: 'h' | 'm' | 's', d: number): void {
@@ -358,7 +391,7 @@ function timerDial(unit: 'h' | 'm' | 's', d: number): void {
   else if (unit === 'm') m = (m + d + 60) % 60;
   else sec = ((Math.round(sec / 5) * 5 + d * 5) % 60 + 60) % 60;
   timer.dur = (h * 3600 + m * 60 + sec) * 1e3;
-  saveTimer(); renderTimer();
+  saveDraft(); renderTimer();
 }
 
 function renderTimer(): void {
@@ -370,8 +403,8 @@ function renderTimer(): void {
   big.classList.toggle('idle', paused);
   $('ckTimerProg').style.width = `${(1 - Math.max(0, Math.min(1, left / (timer.dur || 1)))) * 100}%`;
   $('ckTimerState').textContent = running ? 'Running' : paused ? 'Paused' : '';
-  $('ckTimerSub').textContent = running ? `${timer.label ? `${timer.label} · ` : ''}Done at ${hm(new Date(Date.now() + offset + left))} · a ${lengthWords(timer.dur)} timer`
-    : paused ? `Paused with ${dur(left)} left. Resume to carry on.` : '';
+  $('ckTimerSub').textContent = running ? `${isListed(timer) ? `${timer.name} · ` : ''}Done at ${hm(new Date(Date.now() + offset + left))} · a ${lengthWords(timer.dur)} timer`
+    : paused ? `${timer.name} · paused with ${dur(left)} left. Resume to carry on.` : '';
   const s = Math.round(timer.dur / 1e3), set = $('ckTimerSet');
   setDigit(set, 'h', pad(Math.floor(s / 3600)), s < 3600);
   setDigit(set, 'm', pad(Math.floor(s / 60) % 60));
@@ -384,8 +417,28 @@ function renderTimer(): void {
   ctx.root.classList.toggle('ck-timing', running);
   ctx.root.style.setProperty('--sand', String(Math.max(0, Math.min(1, left / (timer.dur || 1)))));
   $('ckPresets').querySelectorAll<HTMLElement>('.ck-chip').forEach(c => c.classList.toggle('on', +c.dataset.min! * 60e3 === timer.dur));
-  tabDot('timer', running || paused);
+  tabDot('timer', timers.length > 0);
+  renderTimerList();
   renderStatus();
+}
+
+// The list under the dial: one row per timer (name, countdown, state). A tap focuses that timer. It is rebuilt only when
+// the timers or the focus change, so a tap is not lost to the once-a-second countdown, which only rewrites the times.
+let listKey = '';
+function renderTimerList(): void {
+  const box = $('ckTimerList');
+  const key = `${timers.map(t => `${t.id}${t.end ? 'r' : 'p'}`).join(',')}|${timers.indexOf(timer)}`;
+  if (key !== listKey) {
+    listKey = key;
+    box.innerHTML = timers.map((t, i) => `<button type="button" class="ck-trow${t === timer ? ' on' : ''}" data-i="${i}">`
+      + `<span class="ck-tname">${esc(t.name)}</span><span class="ck-tleft num"></span><span class="ck-tstate">${t.end ? 'Running' : 'Paused'}</span></button>`).join('')
+      + (timers.length ? '<button type="button" class="ck-trow new" data-new="1">New timer</button>' : '');
+  }
+  const now = Date.now();
+  box.querySelectorAll<HTMLElement>('.ck-trow[data-i]').forEach(b => {
+    const t = timers[+b.dataset.i!];
+    if (t) b.querySelector<HTMLElement>('.ck-tleft')!.textContent = dur(t.end ? t.end - now : t.left ?? t.dur);
+  });
 }
 
 // ---------- stopwatch ----------
@@ -766,7 +819,7 @@ const DAY_LINE: Record<Sky, string> = {
 function renderStatus(): void {
   let s: string, sub: string;
   if (ringing) { s = ringing.kind === 'alarm' ? 'Rise and shine!' : 'Time’s up!'; sub = 'tap Stop to quiet it'; }
-  else if (timer.end) { s = 'Watching the sand'; sub = `${dur(timerLeft())} left on the timer`; }
+  else if (soonestLeft() != null) { s = 'Watching the sand'; sub = `${dur(soonestLeft()!)} left on the timer`; }
   else if (sw.running) { s = 'Jogging along'; sub = sw.laps.length ? `${sw.laps.length} lap${sw.laps.length > 1 ? 's' : ''} so far` : 'keeping time for you'; }
   else {
     s = { night: 'Fast asleep', morning: 'Waking up', day: DAY_LINE[sky], evening: 'Winding down' }[phase || 'day'];
@@ -808,7 +861,7 @@ function setMode(m: Mode): void {
 let tickT: number | undefined;
 function tickWait(): number {
   const real = Date.now(), onScreen = ctx.isVisible() && !document.hidden;
-  if (timer.end || (onScreen && (showSeconds || sw.running))) return 1e3 - real % 1e3 + 20;
+  if (anyRunning() || (onScreen && (showSeconds || sw.running))) return 1e3 - real % 1e3 + 20;
   let wait = 60e3 - (real + offset) % 60e3 + 20;
   for (const a of alarms) if (a.snooze && a.snooze > real) wait = Math.min(wait, a.snooze - real + 20);
   return wait;
@@ -835,7 +888,7 @@ function tick(): void {
     if (!first && d.getMinutes() === 0 && phase !== 'night' && !ringing) { act('hop', true); say(`${hourWord(d)} o’clock!`); }
     renderAlarms();
     if (editing) renderEditor();
-    if (!timer.end) renderTimer();
+    if (!anyRunning()) renderTimer();
   }
 
   // the clock tab
@@ -846,19 +899,26 @@ function tick(): void {
   $('ckDayNow').style.left = `${pct}%`;
 
   // the timer
-  if (timer.end) {
-    if (timer.end <= Date.now()) {
-      const total = timer.dur, late = Date.now() - timer.end, endedAt = timer.end, lbl = timer.label ? `${timer.label} · ` : '';
-      timer.end = null; timer.left = null; timer.label = undefined; saveTimer(); renderTimer();
-      if (late < 5 * 60e3) ring({ kind: 'timer', id: null, started: Date.now(), title: 'Time’s up', big: dur(0), sub: `${lbl}Your ${lengthWords(total)} timer is done.` });
-      else alertFor('timer', { title: 'Timer finished', body: `${lbl}Your ${lengthWords(total)} timer finished at ${hm(new Date(endedAt + offset))}.`, app: 'clock' }, undefined, ctx.isVisible());
-    } else renderTimer();
-  }
+  // the timers: one that has ended leaves the list. The first rings; the others get a notice.
+  const nowMs = Date.now();
+  const ended = timers.filter(x => x.end && x.end <= nowMs);
+  if (ended.length) {
+    timers = timers.filter(x => !ended.includes(x));
+    if (ended.includes(timer)) timer = draftOf(timer.dur);
+    saveTimers();
+    ended.forEach((x, i) => {
+      const total = x.dur, late = nowMs - x.end!, lbl = `${x.name} · `;
+      if (i === 0 && late < 5 * 60e3) ring({ kind: 'timer', id: null, started: Date.now(), title: 'Time’s up', big: dur(0), sub: `${lbl}Your ${lengthWords(total)} timer is done.` });
+      else alertFor('timer', { title: 'Timer finished', body: `${lbl}Your ${lengthWords(total)} timer finished at ${hm(new Date(x.end! + offset))}.`, app: 'clock' }, undefined, ctx.isVisible());
+    });
+    renderTimer();
+  } else if (anyRunning()) renderTimer();
   checkAlarms(d);
   renderRingFor();
 
-  // the rail: the countdown while a timer runs, otherwise the time
-  ctx.setRail({ icon: railIcon(d), label: timer.end ? dur(timerLeft()) : `${t.hour}:${t.minute}`, busy: !!timer.end || !!ringing });
+  // the rail: the countdown of the soonest running timer, otherwise the time
+  const soon = soonestLeft();
+  ctx.setRail({ icon: railIcon(d), label: soon != null ? dur(soon) : `${t.hour}:${t.minute}`, busy: soon != null || !!ringing });
   renderStatus();
 }
 
@@ -881,7 +941,7 @@ function mount(context: AppContext): void {
         value: () => { const n = alarms.filter(a => a.on).length; return n ? `${n} on` : 'None on'; }, label: 'Open',
         run: () => { openApp(manifest.id); setMode('alarm'); } },
       { kind: 'action', id: 'timer', title: 'Timer', detail: 'Presets and a dial for any length.',
-        value: () => (timer.end ? `${dur(timerLeft())} left` : 'Not running'), label: 'Open',
+        value: () => (soonestLeft() != null ? `${dur(soonestLeft()!)} left` : 'Not running'), label: 'Open',
         run: () => { openApp(manifest.id); setMode('timer'); } },
     ],
   });
@@ -1002,14 +1062,22 @@ function mount(context: AppContext): void {
   void refreshSky();
   setInterval(() => void refreshSky(), 15 * 60e3);
   // any change to the timer, stopwatch, seconds or ringing state re-times the tick (store writes say so)
-  onStore(k => { if (k === K.timer || k === K.sw || k === K.secs || k === K.ring || k === K.alarms) tickLoop(); });
+  onStore(k => { if (k === K.timers || k === K.sw || k === K.secs || k === K.ring || k === K.alarms) tickLoop(); });
+  // a tap on a timer's row focuses it; "New timer" brings the dial back
+  $('ckTimerList').addEventListener('click', e => {
+    const row = (e.target as HTMLElement).closest<HTMLElement>('.ck-trow');
+    if (!row) return;
+    if (row.dataset.new) { report('clock:timer:new'); newTimer(); return; }
+    const t = timers[+row.dataset.i!];
+    if (t) { timer = t; renderTimer(); }
+  });
   armTick();   // the idle acts (scheduleAct) start when the Clock is on screen (onShow)
 }
 
 // ---------- for voice commands ("set a timer for 10 minutes", "wake me up at 7") ----------
 // Registered with core/web/voice-commands.ts when the Clock mounts; nothing else changes here.
 const clockApi: ClockApi = {
-  startTimer(ms: number, label?: string): void { timerStart(Math.max(1e3, Math.min(24 * 3600e3, ms)), label?.trim().slice(0, LABEL_MAX)); },
+  startTimer(ms: number, label?: string): void { timerStart(Math.max(1e3, Math.min(24 * 3600e3, ms)), label?.trim().slice(0, LABEL_MAX) || undefined); },
   addLabelled(h: number, m: number, label: string, days: number[] = []): { when: string; at: number } | null {
     unlockAudio();
     const lbl = label.trim().slice(0, LABEL_MAX);
@@ -1029,9 +1097,9 @@ const clockApi: ClockApi = {
     const at = nextFire(a);
     return at == null ? null : { when: whenWord(at), at: at - offset };
   },
-  active(): number { return (timer.end || timer.left != null ? 1 : 0) + alarms.filter(a => a.on || a.snooze).length; },
-  /** True if there was a timer to cancel. */
-  cancelTimer(): boolean { const had = !!timer.end || timer.left != null; timerReset(); return had; },
+  active(): number { return timers.length + alarms.filter(a => a.on || a.snooze).length; },
+  /** True if there was a timer to cancel: the focused one (the timer in front). */
+  cancelTimer(): boolean { const had = isListed(timer); timerReset(); return had; },
   pauseTimer(): boolean { if (!timer.end) return false; timerPause(); return true; },
   resumeTimer(): boolean { if (timer.end || timer.left == null) return false; timerStart(); return true; },
   nudgeTimer(minutes: number): boolean {

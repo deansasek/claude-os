@@ -227,10 +227,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const ms = m ? parseDuration(m[1].replace(/^(a|an) (?=\d)/, '')) : null;
     if (ms == null) continue;
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
-    // a running timer is replaced, and the reply says so (it is not replaced silently)
-    const replacing = clock.timerLeft() != null;
+    // a new timer joins the list; any timer already running keeps going
     clock.startTimer(ms);
-    return { say: `${replacing ? 'Replaced the timer that was running. ' : ''}Timer set for ${sayDuration(ms)}.`, react: 'hop' };
+    return { say: `Timer set for ${sayDuration(ms)}.`, react: 'hop' };
   }
   // alarms: "stop" silences a ringing one; only "all my alarms" switches every alarm off (core/web/voice-alarm.ts)
   if (clock) {
@@ -253,9 +252,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const dl = named ? durationAndLabel(named[1].replace(/^(a|an) (?=\d)/, '')) : null;
   if (dl) {
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
-    const replacing = clock.timerLeft() != null;
     clock.startTimer(dl.ms, dl.label);
-    return { say: `${replacing ? 'Replaced the timer that was running. ' : ''}${dl.label} timer set for ${sayDuration(dl.ms)}.`, react: 'hop' };
+    return { say: `${dl.label} timer set for ${sayDuration(dl.ms)}.`, react: 'hop' };
   }
   // timer: pause, resume, add or take off minutes (core/web/voice-alarm.ts)
   const tw = timerWord(t);

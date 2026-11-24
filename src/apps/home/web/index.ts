@@ -22,6 +22,7 @@ import { notesRow } from './notes-row.ts';
 import { busyOf, needsYou, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
+import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, readClockTimers } from '../../../core/web/clock-timer.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -292,12 +293,11 @@ function nextAlarm(d: Date = now()): number | null {
   }
   return best;
 }
-const timerNow = (): SavedTimer | null => {
-  const t = readJson<SavedTimer>('clock.timer');
-  if (!t) return null;
-  if (t.end && t.end > Date.now()) return t;
-  if (!t.end && t.left != null) return t;   // paused
-  return null;
+const timerNow = (): SavedTimer | null => {   // the soonest running Clock timer, else a paused one (the list: clock-timer.ts)
+  const timers = readClockTimers(k => store.get(k));
+  const now = Date.now();
+  const running = timers.filter(t => t.end && t.end > now).sort((a, b) => a.end! - b.end!)[0];
+  return running ?? timers.find(t => !t.end && t.left != null) ?? null;
 };
 
 function paintClock(): void {
@@ -682,10 +682,10 @@ async function setScene(id: string): Promise<void> {
 
 /** Ask the Clock app to start a 5-minute timer; if it doesn't pick that up, open the Clock instead. */
 function startTimer(): void {
-  const before = store.get('clock.timer');
+  const before = store.get(CLOCK_TIMERS_KEY);
   dispatchEvent(new CustomEvent('hub:timer', { detail: 5 * 60e3 }));
   const t = timerNow();
-  if (store.get('clock.timer') !== before && t?.end) { act('hop', true); say('5 minutes, go!'); paintClock(); paintStatus(); }
+  if (store.get(CLOCK_TIMERS_KEY) !== before && t?.end) { act('hop', true); say('5 minutes, go!'); paintClock(); paintStatus(); }
   else openApp('clock');
 }
 
@@ -792,7 +792,7 @@ function mount(context: AppContext): void {
   onResume(() => { if (ctx.isVisible()) refresh(); });
 
   // the Clock app's timer and alarms: the countdown and the sentence follow at once
-  onStore(k => { if (k === 'clock.timer' || k === 'clock.alarms' || k === 'clock.alarm') { paintClock(); paintStatus(); arm(); } });
+  onStore(k => { if (k === CLOCK_TIMERS_KEY || k === CLOCK_TIMER_KEY || k === 'clock.alarms' || k === 'clock.alarm') { paintClock(); paintStatus(); arm(); } });
   tick();
   arm();   // on the minute, even while Home is off screen (it's where the shell drifts back to); onShow takes over
   void loadWeather(true);
