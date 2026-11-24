@@ -7,6 +7,7 @@
 // it matches the native keyboard, which labels its Done with the field's action.
 import { $, esc } from './dom.ts';
 import { device } from './device.ts';
+import { clips, onClipsChange } from './clipboard-history.ts';
 
 interface KeyboardOptions {
   value?: string;
@@ -92,6 +93,15 @@ function press(k: string): void {
   opts.onChange?.(val);
 }
 
+/** The clip history as chips above the keys (clipboard-history.ts). A tap puts the clip at the end of the field. */
+const clipText = (t: string): string => { const one = t.replace(/\s+/g, ' ').trim(); return one.length > 28 ? `${one.slice(0, 27)}…` : one; };
+function paintClips(): void {
+  const list = opts && !opts.mask ? [...clips()] : [];   // never offered in a secret field (a token, a PIN)
+  const el = $('kbClips');
+  el.hidden = !list.length;
+  el.innerHTML = list.map((c, i) => `<button class="kb-clip hit" data-clip="${i}">${esc(clipText(c.text))}</button>`).join('');
+}
+
 function stopRepeat(): void {
   clearTimeout(repeatTimer); clearInterval(repeatTimer); repeatTimer = undefined;
   $('kbKeys').querySelectorAll('.down').forEach(b => b.classList.remove('down'));
@@ -105,6 +115,7 @@ export const Keyboard = {
     $('kbPaste').hidden = !opts.paste;
     sounds = device.keyboard.prefs()?.keySounds ?? false;
     render();
+    paintClips();
     $('kb').classList.add('on');
   },
   close(reason: CloseReason = 'close'): void {
@@ -133,6 +144,15 @@ export function initKeyboard(): void {
   });
   (['pointerup', 'pointerleave', 'pointercancel'] as const).forEach(ev => keys.addEventListener(ev, stopRepeat));
   $('kbCancel').addEventListener('click', () => Keyboard.close('cancel'));
+  onClipsChange(() => { if (opts) paintClips(); });
+  $('kbClips').addEventListener('click', e => {
+    const i = (e.target as HTMLElement).closest<HTMLElement>('[data-clip]')?.dataset.clip;
+    const c = i === undefined ? undefined : clips()[+i];
+    if (!opts || !c) return;
+    val = (val + c.text).slice(0, opts.max ?? 60);
+    paint();
+    opts.onChange?.(val);
+  });
   $('kbPaste').addEventListener('click', () => {   // replaces the field: a pasted code or token is the whole entry
     const text = opts?.paste?.();
     if (!opts || text == null) return;

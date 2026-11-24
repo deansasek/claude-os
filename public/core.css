@@ -452,6 +452,11 @@
   .kb-bar .kb-paste { color: var(--text); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
   .kb-bar .kb-paste[hidden] { display: none; }
   .kb-paste:active { transform: scale(.94); background: var(--card-2); }
+  /* the clip history (clipboard-history.ts): the last copies, one tap puts one at the end of the field */
+  .kb-clips { display: flex; gap: 8px; margin: 0 0 12px; overflow-x: auto; scrollbar-width: none; }
+  .kb-clips[hidden] { display: none; }
+  .kb-clip { all: unset; box-sizing: border-box; position: relative; flex: none; max-width: 260px; height: 40px; padding: 0 16px; border-radius: 99px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font: 400 15px/40px var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .kb-clip:active { background: var(--card-2); }
   .kb-cancel:active { transform: scale(.94); background: var(--card-2); }   /* pressed like a key */
   .kb-done { background: var(--text); color: var(--bg); }
   .kb-done:active { transform: scale(.94); filter: var(--press-filter); }   /* the ink a touch lighter or darker */
