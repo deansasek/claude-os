@@ -27,7 +27,7 @@ Write the review body in exactly this form. Follow the ASD-STE100 style used in 
 
 ```
 ## Verdict
-**Approved** or **Denied**
+**Verdict: ✅ Approved** or **Verdict: ❌ Denied**
 
 ## Why
 One to three short sentences. State what the pull request changes and whether the change works.
