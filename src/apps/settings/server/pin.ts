@@ -81,7 +81,7 @@ function guess(s: Stored, pin: unknown): PinResult {
 /** Is a PIN set, and how many seconds of cooldown are left. */
 export function pinStatus(): PinStatus {
   const s = load();
-  return s ? { set: true, lockedFor: secondsLeft(s.lockedUntil) } : { set: false, lockedFor: 0 };
+  return s ? { set: true, lockedFor: secondsLeft(s.lockedUntil), fingerprint: pinFingerprint() } : { set: false, lockedFor: 0, fingerprint: null };
 }
 
 /** A short fingerprint of the PIN as it is stored now: it changes when the PIN is set, changed or removed. Null if none. */

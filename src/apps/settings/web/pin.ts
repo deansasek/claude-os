@@ -3,7 +3,7 @@
 // new PIN twice; Change and Remove ask for the current PIN first. Five wrong tries on the PC give a 30-second wait.
 import { getJson, postJson, report } from '../../../core/web/dom.ts';
 import { rememberPinSet } from '../../../core/web/lock.ts';
-import { clearLocalRecord, saveLocalPin } from '../../../core/web/pin-local.ts';
+import { checkCopyFingerprint, clearLocalRecord, saveLocalPin } from '../../../core/web/pin-local.ts';
 import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from '../../../core/web/pin-pad.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
 import type { PinResult, PinStatus } from '../api.ts';
@@ -38,6 +38,7 @@ export async function paintPinRow(): Promise<void> {
     rememberPinSet(status.set);
     // the tablet's copy is made when a PIN is set or changed on this tablet (saveLocalPin); gone on the PC → forget it
     if (!status.set) clearLocalRecord();
+    else checkCopyFingerprint(status.fingerprint);
   }
   const on = status?.set === true;
   $('stPinState').textContent = status ? (on ? 'On' : 'Off') : '–';

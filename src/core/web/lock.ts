@@ -9,9 +9,9 @@ import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from './pin-pad.ts';
 import { glanceLine } from './lock-glance.ts';
 import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
 import { I, nextAlarm, notifications, timerLeftText } from './system.ts';
-import { checkLocally, clearLocalRecord, hasLocalPin, localLockedFor } from './pin-local.ts';
+import { checkCopyFingerprint, checkLocally, clearLocalRecord, hasLocalPin, localLockedFor } from './pin-local.ts';
 
-interface Status { set: boolean; lockedFor: number }
+interface Status { set: boolean; lockedFor: number; fingerprint?: string | null }
 interface Result { ok: boolean; lockedFor?: number; left?: number; error?: string }
 type Phase = 'checking' | 'pin' | 'cooldown' | 'retry';
 
@@ -219,6 +219,7 @@ async function checkStatus(): Promise<void> {
   if (!st) { if (hasLocalPin()) askOnTablet(); else retry(); return; }
   rememberPinSet(st.set);
   if (!st.set) { clearLocalRecord(); close(); return; }
+  checkCopyFingerprint(st.fingerprint);
   if (el) el.hidden = false;
   if (st.lockedFor > 0) cooldown(st.lockedFor);
   else { phase = 'pin'; paint(); }
