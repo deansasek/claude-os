@@ -2,19 +2,19 @@
   /* the thinking spark, like the one in the Claude apps */
   #think { display: none; }
   .working #think { display: inline-block; }
-  #bubble .dots circle { animation: dot 1.2s ease-in-out infinite; transform-box: fill-box; }
-  #bubble .dots circle:nth-child(2) { animation-delay: .2s; } #bubble .dots circle:nth-child(3) { animation-delay: .4s; }
+  #bubble .dots circle { animation: dot var(--dur-calm) ease-in-out infinite; transform-box: fill-box; }
+  #bubble .dots circle:nth-child(2) { animation-delay: var(--dur-base); } #bubble .dots circle:nth-child(3) { animation-delay: var(--dur-slow); }
   @keyframes dot { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-.45px); opacity: 1; } }
-  #night { opacity: 0; transition: opacity 1.2s; }
+  #night { opacity: 0; transition: opacity var(--dur-calm); }
   .asleep:not(.woke) #night { opacity: 1; }
   .stars rect { animation: twinkle 3s steps(2) infinite; }
-  .stars rect:nth-child(2) { animation-delay: .7s; } .stars rect:nth-child(3) { animation-delay: 1.5s; } .stars rect:nth-child(4) { animation-delay: 2.2s; }
+  .stars rect:nth-child(2) { animation-delay: var(--dur-slower); } .stars rect:nth-child(3) { animation-delay: var(--dur-calm); } .stars rect:nth-child(4) { animation-delay: 2.2s; }
   #scene { display: block; width: calc(330px + 22px * var(--tall)); height: calc(242px + 16px * var(--tall)); margin: calc(12px + 10px * var(--tall)) auto 0; overflow: visible; }
   .sess > div { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 7px 0;
     border-bottom: 1px solid var(--line); font-size: 14px; }
   .sess > div:last-child { border-bottom: 0; }
   .sess .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t5); align-self: center; }
-  .sess .busy .dot { background: var(--clay); animation: pulse 1.4s ease-in-out infinite; }
+  .sess .busy .dot { background: var(--clay); animation: pulse var(--dur-calm) ease-in-out infinite; }
   .sess .yours .dot { background: var(--blue); }
   .sess .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sess .name span { font-weight: 400; color: var(--t4); margin-left: 8px; }
@@ -26,20 +26,20 @@
   #crit, #upper, #lid { transform-origin: 50% 100%; }
   #eyes, #shadow, #heart, .spin, .puff, #zzz text { transform-origin: 50% 50%; }
   #eyes { animation: blink 3.4s infinite; }
-  #lid { transition: transform .7s cubic-bezier(.5, 0, .3, 1.3); }
-  #zeyes, #zzz, #sweat, #cheeks, #heart, #bubble { opacity: 0; transition: opacity .4s; }
-  #eyeLook { transition: transform .5s; }
+  #lid { transition: transform var(--dur-slower) cubic-bezier(.5, 0, .3, 1.3); }
+  #zeyes, #zzz, #sweat, #cheeks, #heart, #bubble { opacity: 0; transition: opacity var(--dur-slow); }
+  #eyeLook { transition: transform var(--dur-slower); }
 
   /* working: laptop open, eyes on the screen, little arms typing, thought bubble */
   .working #eyeLook { transform: translateY(.45px); }
-  .working #armL { animation: type .26s ease-in-out infinite; }
-  .working #armR { animation: type .26s ease-in-out infinite .13s; }
-  .working #crit { animation: bob 1.3s ease-in-out infinite; }
+  .working #armL { animation: type var(--dur-base) ease-in-out infinite; }
+  .working #armR { animation: type var(--dur-base) ease-in-out infinite var(--dur-fast); }
+  .working #crit { animation: bob var(--dur-calm) ease-in-out infinite; }
   .working #bubble { opacity: 1; }
   .working .spin { animation: spin 6s linear infinite; }
   .working .puff { animation: puff 2.4s ease-in-out infinite; }
-  .hot.working #armL, .hot.working #armR { animation-duration: .14s; }
-  .hot #sweat { opacity: 1; animation: drip 1.6s ease-in infinite; }
+  .hot.working #armL, .hot.working #armR { animation-duration: var(--dur-fast); }
+  .hot #sweat { opacity: 1; animation: drip 1.6s var(--ease-in) infinite; }
   #app-claude:not(.working) #lid { transform: scaleY(.15); }
 
   /* asleep: loaf pose, eyes shut, slow breathing, z's */
@@ -47,32 +47,32 @@
   .asleep:not(.woke) #eyes { opacity: 0; }
   .asleep:not(.woke) #zeyes, .asleep:not(.woke) #zzz { opacity: 1; }
   #zzz text { font: italic 400 1.8px var(--serif); fill: var(--t3); opacity: 0; }
-  .asleep:not(.woke) #zzz text { animation: z 3.6s ease-out infinite; }
-  .asleep:not(.woke) #zzz text:nth-child(2) { animation-delay: 1.2s; }
+  .asleep:not(.woke) #zzz text { animation: z 3.6s var(--ease-out) infinite; }
+  .asleep:not(.woke) #zzz text:nth-child(2) { animation-delay: var(--dur-calm); }
   .asleep:not(.woke) #zzz text:nth-child(3) { animation-delay: 2.4s; }
 
   /* one-shot acts, added by the scheduler */
-  .act-walk .legA, .act-dance .legA { animation: step .34s steps(1) infinite; }
-  .act-walk .legB, .act-dance .legB { animation: step .34s steps(1) infinite .17s; }
+  .act-walk .legA, .act-dance .legA { animation: step var(--dur-slow) steps(1) infinite; }
+  .act-walk .legB, .act-dance .legB { animation: step var(--dur-slow) steps(1) infinite .17s; }
   .act-walk #mover { animation: walk 6s ease-in-out; }
-  .act-hop #crit, .act-love #crit { animation: hop .75s ease-out; }
-  .act-hop #shadow, .act-love #shadow { animation: shadowhop .75s ease-out; }
+  .act-hop #crit, .act-love #crit { animation: hop var(--dur-slower) var(--ease-out); }
+  .act-hop #shadow, .act-love #shadow { animation: shadowhop var(--dur-slower) var(--ease-out); }
   .act-wave #armR { animation: wave 2.4s ease-in-out; }
   .act-wave #cheeks, .act-love #cheeks { opacity: 1; }
   .act-look #eyeLook { animation: look 3.2s ease-in-out; }
   .act-glance #eyeLook { animation: glance 2.2s ease-in-out; }
   .act-stretch #upper { animation: stretch 2.2s ease-in-out; }
-  .act-dance #crit { animation: dance .68s ease-in-out 4; }
-  .act-love #heart { animation: heart 1.6s ease-out; }
+  .act-dance #crit { animation: dance var(--dur-slower) ease-in-out 4; }
+  .act-love #heart { animation: heart 1.6s var(--ease-out); }
 
   /* voice: perked up and listening ("Hey Claude"), or talking */
   #hear { opacity: 0; transition: opacity .3s; fill: var(--clay); }
   #hear rect { transform-box: fill-box; transform-origin: 50% 100%; }
   .listening #hear, .speaking #hear { opacity: 1; }
   .speaking #hear { fill: var(--t3); }
-  .listening #hear rect, .speaking #hear rect { animation: level .5s ease-in-out infinite alternate; }
-  #hear rect:nth-child(2) { animation-delay: .17s !important; } #hear rect:nth-child(3) { animation-delay: .34s !important; }
-  .listening #crit { transform: translateY(-.5px); transition: transform .25s; }
+  .listening #hear rect, .speaking #hear rect { animation: level var(--dur-slower) ease-in-out infinite alternate; }
+  #hear rect:nth-child(2) { animation-delay: .17s !important; } #hear rect:nth-child(3) { animation-delay: var(--dur-slow) !important; }
+  .listening #crit { transform: translateY(-.5px); transition: transform var(--dur-base); }
   .listening #eyeLook { transform: translate(-.35px, -.4px) scaleY(1.15); }
   .listening #cheeks { opacity: 1; }
   .listening #upper, .speaking #upper { animation: none; }
@@ -98,17 +98,17 @@
   @keyframes heart { 0% { opacity: 0; transform: translateY(0) scale(.5); } 20% { opacity: 1; transform: translateY(-1px) scale(1.1); }
                      100% { opacity: 0; transform: translateY(-4px) scale(1); } }
   @keyframes steam { 0% { opacity: 0; transform: translateY(0); } 30% { opacity: .9; } 100% { opacity: 0; transform: translateY(-2.4px); } }
-  .steam rect { animation: steam 2.4s ease-out infinite; opacity: 0; }
+  .steam rect { animation: steam 2.4s var(--ease-out) infinite; opacity: 0; }
   .steam rect:nth-child(2) { animation-delay: .8s; } .steam rect:nth-child(3) { animation-delay: 1.6s; }
 
 /* ================= the dashboard's session list ================= */
-#app-claude .sess > div[data-id] { cursor: pointer; border-radius: 8px; transition: background-color .2s, box-shadow .2s; }
+#app-claude .sess > div[data-id] { cursor: pointer; border-radius: 8px; transition: background-color var(--dur-base), box-shadow var(--dur-base); }
 #app-claude .sess > div[data-id]:active { background: var(--card-2); box-shadow: 0 0 0 6px var(--card-2); }
 #app-claude .sess .chev { color: var(--t5); margin-left: 6px; }
 #app-claude .sess .more .name { font-weight: 400; color: var(--t3); }
 #app-claude .sess > div.more { cursor: pointer; }
 #app-claude .kicker { align-items: center; }
-.newsess { all: unset; position: relative; cursor: pointer; margin-left: auto; padding: 2px 10px; border-radius: 99px; border: 1px solid var(--line);
+.newsess { all: unset; position: relative; cursor: pointer; margin-left: auto; padding: 2px 10px; border-radius: 14px; border: 1px solid var(--line);
   background: var(--pillbg); color: var(--t2); font: 500 12px var(--sans); }
 .newsess:active { background: var(--card-2); }   /* .hit (core) gives the small pill a finger-sized target */
 
@@ -130,7 +130,7 @@
 #scene { touch-action: none; }   /* the scene is never scrolled: a drag on the mug is never taken for a scroll */
 #mug { cursor: grab; touch-action: none; pointer-events: all; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   transform-box: fill-box; transform-origin: 50% 100%;
-  transition: scale .22s cubic-bezier(.2, .8, .2, 1), rotate .22s cubic-bezier(.2, .8, .2, 1), filter .22s ease-out; }
+  transition: scale var(--dur-base) var(--ease-out), rotate var(--dur-base) var(--ease-out), filter var(--dur-base) var(--ease-out); }
 /* held: a little lift, tilted, with a soft shadow; the steam stops while it is in the air and gently resumes on the floor */
 #mug.held { cursor: grabbing; scale: 1.05; rotate: -6deg;
   filter: drop-shadow(0 1.2px 1.4px rgba(20, 20, 19, .22)); }
@@ -165,7 +165,7 @@
 .sb-folder span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   font-size: 11.5px; letter-spacing: .07em; }   /* the name is a core .label, a touch smaller in the narrow sidebar */
 .sb-folder em { margin-left: auto; font: 400 12px var(--sans); letter-spacing: 0; text-transform: none; white-space: nowrap; }
-.sb-chev { flex: none; width: 12px !important; height: 12px; stroke-width: 1.8 !important; transform: rotate(90deg); transition: transform .2s; }
+.sb-chev { flex: none; width: 12px !important; height: 12px; stroke-width: 1.8 !important; transform: rotate(90deg); transition: transform var(--dur-base); }
 .sb-folder.shut .sb-chev { transform: none; }
 .sb-folder:active { background: var(--card); }
 .sb-row { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 10px minmax(0, 1fr) 40px; column-gap: 10px; align-items: center;
@@ -180,7 +180,7 @@
 .sb-arch:active { background: var(--card); }
 .sb-arch.on { color: var(--text); background: var(--card-2); }
 .sb-row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--t5); }
-.sb-row.busy .dot { background: var(--clay); animation: pulse 1.4s ease-in-out infinite; }
+.sb-row.busy .dot { background: var(--clay); animation: pulse var(--dur-calm) ease-in-out infinite; }
 .sb-row.yours .dot { background: var(--blue); }
 .sb-row.stalled .dot { background: transparent; box-shadow: inset 0 0 0 1.5px var(--t4); }   /* a hollow ring: stalled, not quiet */
 .sb-name { font: 500 14.5px/1.3 var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -318,7 +318,7 @@
 .sv-dock { flex: none; width: 100%; max-width: var(--reply-w, 680px); margin: 0 auto; display: flex; flex-direction: column; gap: 10px; padding-top: 8px; }
 .sv-approval[hidden], .sv-quick[hidden], .sv-blocked[hidden] { display: none; }
 .qr { all: unset; box-sizing: border-box; cursor: pointer; display: block; padding: 12px 16px; border-radius: 12px; text-align: center;
-  border: 1px solid var(--line); background: var(--pillbg); color: var(--text); font: 500 15px var(--sans); transition: transform .08s, background-color .2s; }
+  border: 1px solid var(--line); background: var(--pillbg); color: var(--text); font: 500 15px var(--sans); transition: transform .08s, background-color var(--dur-base); }
 .qr:active { transform: scale(.98); background: var(--card-2); }
 .qr.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
 .sv-quick { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
@@ -399,7 +399,7 @@
 .cp-ctx:active { background: var(--card); }
 .cp-ctx svg { width: 18px; height: 18px; transform: rotate(-90deg); }
 .sv .cp-ctx .trk { stroke: var(--line); stroke-width: 2.4; }
-.sv .cp-ctx .arc { stroke: var(--t3); stroke-width: 2.4; stroke-dasharray: 0 43.98; transition: stroke-dasharray .4s; }
+.sv .cp-ctx .arc { stroke: var(--t3); stroke-width: 2.4; stroke-dasharray: 0 43.98; transition: stroke-dasharray var(--dur-slow); }
 .sv .cp-ctx.warn .arc { stroke: var(--hot); }
 .cp-tip { position: absolute; right: 0; bottom: calc(100% + 4px); z-index: 6; padding: 7px 11px; border-radius: 9px; background: var(--text); color: var(--bg);
   font: 500 12.5px var(--sans); white-space: nowrap; box-shadow: 0 6px 18px rgba(20, 20, 19, .18); pointer-events: none; }
@@ -408,7 +408,7 @@
 /* the chips' menu: a popover above the chip, touch-sized rows */
 .cm { position: absolute; z-index: 8; width: 300px; overflow-y: auto; overscroll-behavior: contain; padding: 6px; border-radius: 14px;
   background: var(--bubble); border: 1px solid var(--line); box-shadow: 0 12px 36px rgba(20, 20, 19, .16), 0 2px 6px rgba(20, 20, 19, .06);
-  font: 400 14.5px var(--sans); color: var(--text); animation: cm-in .14s ease-out; }
+  font: 400 14.5px var(--sans); color: var(--text); animation: cm-in var(--dur-fast) var(--ease-out); }
 .cm[hidden] { display: none; }
 @keyframes cm-in { from { opacity: 0; transform: translateY(4px); } }
 :root[data-theme="dark"] .cm { background: var(--card-2); border-color: color-mix(in srgb, var(--line) 60%, #fff 8%); box-shadow: 0 14px 40px rgba(0, 0, 0, .5); }
@@ -450,7 +450,7 @@
 .ns-crit .ns-bod { animation: nsbob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes nsbob { 50% { transform: translateY(-.35px); } }
 .ns-crit .ns-eyes { animation: blink 3.8s infinite; transform-box: fill-box; transform-origin: 50% 50%; }
-.ns.starting .ns-crit .ns-bod { animation: hop .75s ease-out infinite; }
+.ns.starting .ns-crit .ns-bod { animation: hop var(--dur-slower) var(--ease-out) infinite; }
 .ns-card { width: 400px; max-width: 100%; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; max-height: 252px; overflow-y: auto; }
 .ns-row { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 50px; padding: 0 16px;
   font: 400 14.5px var(--sans); color: var(--text); border-top: 1px solid var(--line); }
@@ -466,7 +466,7 @@
 .ns-starts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 600px; margin-top: 18px; padding: 0 16px; }
 .ns-starts[hidden] { display: none; }
 .ns-start { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 99px;
-  border: 1px solid var(--line); background: var(--pillbg); color: var(--t2); font: 400 14px var(--sans); white-space: nowrap; transition: transform .08s, background-color .2s; }
+  border: 1px solid var(--line); background: var(--pillbg); color: var(--t2); font: 400 14px var(--sans); white-space: nowrap; transition: transform .08s, background-color var(--dur-base); }
 .ns-start:active { transform: scale(.98); background: var(--card-2); }
 
 /* ---- another session is waiting: a chip in the header ---- */
@@ -484,7 +484,7 @@
 /* .pin-card, .pin-dots, .pin-msg and .pin-keys (the pad itself) are in core.css, shared with the lock screen */
 
 /* the composer's mic while Claude Home is listening (voice-ui adds .voice-live) */
-#app-claude #svMic.voice-live { color: #fff; background: var(--clay); box-shadow: 0 0 0 4px color-mix(in srgb, var(--clay) 28%, transparent); animation: mic-live 1.4s ease-in-out infinite; }
+#app-claude #svMic.voice-live { color: #fff; background: var(--clay); box-shadow: 0 0 0 4px color-mix(in srgb, var(--clay) 28%, transparent); animation: mic-live var(--dur-calm) ease-in-out infinite; }
 @keyframes mic-live { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--clay) 12%, transparent); } }
 
 /* the thinking indicator, like Claude desktop's: a small cluster of clay dots that twinkle in turn
@@ -493,10 +493,10 @@
 .think-dots i { position: absolute; left: 50%; top: 50%; border-radius: 50%; background: var(--clay);
   transform: translate(-50%, -50%); animation: td-blink 1.6s ease-in-out infinite; }
 .think-dots i:nth-child(1) { width: 5px; height: 5px; margin: -6px 0 0 -5px; animation-delay: 0s; }
-.think-dots i:nth-child(2) { width: 6px; height: 6px; margin: 1px 0 0 2px; animation-delay: .32s; }
-.think-dots i:nth-child(3) { width: 4px; height: 4px; margin: -8px 0 0 6px; animation-delay: .64s; }
+.think-dots i:nth-child(2) { width: 6px; height: 6px; margin: 1px 0 0 2px; animation-delay: var(--dur-slow); }
+.think-dots i:nth-child(3) { width: 4px; height: 4px; margin: -8px 0 0 6px; animation-delay: var(--dur-slower); }
 .think-dots i:nth-child(4) { width: 3.5px; height: 3.5px; margin: 7px 0 0 -6px; animation-delay: .96s; }
-.think-dots i:nth-child(5) { width: 3px; height: 3px; margin: 6px 0 0 8px; animation-delay: 1.28s; }
+.think-dots i:nth-child(5) { width: 3px; height: 3px; margin: 6px 0 0 8px; animation-delay: var(--dur-calm); }
 @keyframes td-blink { 0%, 100% { opacity: .25; transform: translate(-50%, -50%) scale(.7); } 45% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); } }
 @keyframes td-turn { to { transform: rotate(360deg); } }
 
