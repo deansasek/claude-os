@@ -2,6 +2,7 @@
 # These hold tokens, addresses, the PIN, or your own household data.
 .ha-config.json
 .calendar-config.json
+calendar-local.json
 .hub-pin
 .hub-pin.*
 .pc-bridge.json
