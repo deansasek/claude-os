@@ -95,7 +95,7 @@ jobs:
             Step 2. Fix.
             - Read CLAUDE.md first. Follow its code rules and visual style rules.
             - Make the smallest change that fixes the issue. Find the code with Glob and Grep.
-            - If the change is already in the file, make no edit and say so in one short sentence on the issue: "No change needed: <reason>." Do not ask for replies. Do not write pr.md in that case. Also use the Write tool to write the same reason, in one short sentence, to ${{ runner.temp }}/no-change.txt.
+            - If the change is already in the file, make no edit. Do not comment on the issue. Do not ask for replies. Do not write pr.md in that case. Use the Write tool to write the reason in one short sentence to ${{ runner.temp }}/no-change.txt. The workflow posts the result.
             - Do not edit .github/, .claude/, CLAUDE.md, .mcp.json, host/, package.json,
               package-lock.json, tsconfig.json, or signing files (*.jks, *.keystore,
               keystore.properties). Do not add test files.
@@ -614,14 +614,12 @@ jobs:
             no-change)
               reason=""
               f="$RUNNER_TEMP/no-change-dl/no-change.txt"
-              if [ -s "$f" ]; then reason=$(head -n 1 "$f" | tr -d '\r' | cut -c1-300); fi
-              {
-                echo "No change made. The fix gate did not run because no file changed. No pull request opened."
-                if [ -n "$reason" ]; then
-                  echo
-                  echo "Reason: ${reason}"
-                fi
-              } > "$body" ;;
+              if [ -s "$f" ]; then reason=$(head -n 1 "$f" | tr -d '\r' | sed -E 's/\.+$//' | cut -c1-300); fi
+              if [ -n "$reason" ]; then
+                echo "No change made: ${reason}. The gate did not run. No pull request opened." > "$body"
+              else
+                echo "No change made. The fix gate did not run because no file changed. No pull request opened." > "$body"
+              fi ;;
             gate-failed)
               f="$RUNNER_TEMP/gate-report-dl/gate-report.md"
               if [ -s "$f" ]; then cp "$f" "$body"; else echo "The gate did not finish." > "$body"; fi
