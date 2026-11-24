@@ -42,9 +42,11 @@ Write `None.` under `## Findings` when there are no findings.
 
 1. Find the pull request number from the prompt.
 2. Write the template to `$RUNNER_TEMP/review-verdict.md`.
-3. Post it with GitHub:
-   - Approved: `gh pr review <number> --approve --body-file "$RUNNER_TEMP/review-verdict.md"`
-   - Denied: `gh pr review <number> --request-changes --body-file "$RUNNER_TEMP/review-verdict.md"`
+3. Check the labels: `gh pr view <number> --json labels --jq '.labels[].name'`.
+4. Post it with GitHub:
+   - Approved, and the PR has no `ai-generated` label: `gh pr review <number> --approve --body-file "$RUNNER_TEMP/review-verdict.md"`
+   - Approved, and the PR has the `ai-generated` label: `gh pr review <number> --comment --body-file "$RUNNER_TEMP/review-verdict.md"`. Never approve an AI-made PR. A person approves and merges it.
+   - Denied: `gh pr review <number> --request-changes --body-file "$RUNNER_TEMP/review-verdict.md"`, with or without the label.
 
 GitHub shows a denial as "Request changes". The template keeps the word **Denied** so the verdict reads clearly in the review body.
 
