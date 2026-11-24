@@ -678,6 +678,17 @@ jobs:
           claude_args: '--model claude-haiku-5-5 --max-turns 5 --allowedTools "Bash(gh issue comment:*)"'
           label_trigger: ai-fix
 
+      # No change made. After the result comment, mark the issue dont-do and close it
+      # as not planned. The report job uses github.token, which has issues: write.
+      - name: Mark the no-change issue dont-do and close it
+        if: always() && steps.decide.outputs.kind == 'no-change'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label dont-do
+          gh issue close "$ISSUE" --repo "$GITHUB_REPOSITORY" --reason "not planned"
+
       - name: Remove the ai-fix label
         if: always()
         env:
