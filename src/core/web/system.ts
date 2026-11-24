@@ -71,7 +71,7 @@ export const prefs = {
   get alerts(): Record<AlertKind, AlertWay> {
     const way = (k: AlertKind, dflt: AlertWay = 'banner'): AlertWay => {
       const v = store.get(`os.alert.${k}`);
-      return v === 'chime' || v === 'critter' || v === 'off' ? v : dflt;
+      return v === 'chime' || v === 'critter' || v === 'banner' || v === 'off' ? v : dflt;
     };
     return { done: way('done'), approval: way('approval'), timer: way('timer'), event: way('event', 'chime') };
   },
