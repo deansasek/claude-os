@@ -1,23 +1,49 @@
 <header class="app-hd">   <!-- the shell draws the icon and "Radio" (core/web/app-header.ts) -->
 </header>
 
-<div class="rd">
-  <div class="rd-now" id="rdNow" hidden>
-    <span class="rd-dot" aria-hidden="true"></span>
-    <div class="rd-now-text"><small>On air</small><b id="rdNowName"></b></div>
-    <button class="rd-stop" id="rdStop">Stop</button>
-  </div>
+<!-- a media player in two bands: favourites along the top, then the now-playing card (left) and the station search (right) -->
+<div class="rd-page">
+  <section class="rd-favs-band">
+    <h3 class="rd-k">Favourites</h3>
+    <div class="rd-favs" id="rdFavs"></div>
+    <p class="rd-empty" id="rdFavsEmpty">Tap the heart on a station to keep it here.</p>
+  </section>
 
-  <button class="rd-search" id="rdSearch"><span class="rd-search-text" id="rdQuery">Search stations</span></button>
-  <p class="rd-msg" id="rdMsg" hidden></p>
+  <div class="rd-main">
+    <!-- the now-playing card -->
+    <section class="rd-now" id="rdNow">
+      <div class="rd-now-top">
+        <div class="rd-art" id="rdArt" aria-hidden="true"></div>
+        <div class="rd-now-text">
+          <span class="rd-kick" id="rdKick">Radio</span>
+          <h2 class="rd-name" id="rdName">Nothing playing</h2>
+          <p class="rd-title" id="rdTitle"></p>
+          <p class="rd-msg" id="rdMsg" role="status" hidden></p>
+        </div>
+        <button class="rd-heart" id="rdNowFav" aria-label="Add to Favourites" aria-pressed="false" hidden></button>
+      </div>
 
-  <div class="rd-scroll">
-    <h3 class="rd-h">Favourites</h3>
-    <ul class="rd-list" id="rdFavs"></ul>
-    <p class="rd-empty" id="rdFavsEmpty">Tap the star on a station to keep it here.</p>
+      <div class="rd-controls">
+        <button class="rd-btn" id="rdPrev" aria-label="Previous favourite"></button>
+        <button class="rd-btn rd-main-btn" id="rdToggle" aria-label="Play"></button>
+        <button class="rd-btn" id="rdNext" aria-label="Next favourite"></button>
+        <span class="rd-gap"></span>
+        <button class="rd-stop" id="rdStop">Stop</button>
+      </div>
 
-    <h3 class="rd-h" id="rdResHead">Most voted stations</h3>
-    <ul class="rd-list" id="rdRes"></ul>
-    <p class="rd-empty" id="rdResEmpty" hidden></p>
+      <label class="rd-vol">
+        <span class="rd-vol-ic" id="rdVolIc" aria-hidden="true"></span>
+        <input type="range" min="0" max="100" step="1" id="rdVol" aria-label="Volume">
+        <em class="num" id="rdVolV"></em>
+      </label>
+    </section>
+
+    <!-- search and results -->
+    <aside class="rd-find">
+      <button class="rd-search" id="rdSearch"><span class="rd-search-ic" id="rdSearchIc" aria-hidden="true"></span><span class="rd-search-text" id="rdQuery">Search stations</span></button>
+      <h3 class="rd-k" id="rdResHead">Most voted stations</h3>
+      <div class="rd-res" id="rdRes"></div>
+      <p class="rd-empty" id="rdResEmpty" hidden></p>
+    </aside>
   </div>
 </div>
