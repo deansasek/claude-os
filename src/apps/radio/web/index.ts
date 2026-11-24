@@ -19,7 +19,7 @@ import {
   volumeFromDevice,
 } from './player.ts';
 import { httpsUrl, playable, playableStations } from './stations.ts';
-import { FAV_EMPTY, TOP_COUNT, homeShelves, tileHue, topFacets, type Load, type ShelfPlan } from './shelves.ts';
+import { FAV_EMPTY, TOP_COUNT, homeShelves, moreLikeThis, tileHue, topFacets, type Load, type ShelfPlan } from './shelves.ts';
 
 const API = `/api/${manifest.id}`;
 const FAVS_KEY = 'radio.favs';
@@ -103,6 +103,40 @@ let nowOpen = false;
 function openNow(): void { nowOpen = true; $('rdNp').hidden = false; render(); }
 function closeNow(): void { if (!nowOpen) return; nowOpen = false; $('rdNp').hidden = true; }
 
+// More like this: the stations of a station's first genre, asked once per genre.
+const byTag = new Map<string, Station[] | 'loading' | 'error'>();
+
+function ensureMoreLike(tag: string): void {
+  if (byTag.has(tag)) return;
+  byTag.set(tag, 'loading');
+  getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent(`stations/bytag/${tag}`)}`)
+    .then(r => { if (r.status !== 'ok') throw new Error(r.error); byTag.set(tag, playableStations(r.stations)); })
+    .catch(() => { byTag.set(tag, 'error'); })
+    .finally(() => { if (view.kind === 'station') render(); });
+}
+
+function moreStation(id: string): Station | undefined {
+  for (const v of byTag.values()) {
+    if (Array.isArray(v)) { const hit = v.find(s => s.id === id); if (hit) return hit; }
+  }
+  return undefined;
+}
+
+/** The More like this shelf for a station: its first genre's stations, without the station. Hidden on error or when empty. */
+function moreHtml(s: Station): string {
+  const tag = s.tags?.[0];
+  if (!tag) return '';
+  ensureMoreLike(tag);
+  const got = byTag.get(tag);
+  if (got === 'error') return '';
+  if (got === undefined || got === 'loading') {
+    return `<section class="rd-shelf rd-more"><div class="rd-shelf-head"><h3>More like this</h3></div><div class="rd-row">${'<div class="rd-sk"></div>'.repeat(6)}</div></section>`;
+  }
+  const more = moreLikeThis(got, s.id);
+  if (!more.length) return '';
+  return `<section class="rd-shelf rd-more"><div class="rd-shelf-head"><h3>More like this</h3></div><div class="rd-row">${more.map(stationCard).join('')}</div></section>`;
+}
+
 function loadList(key: string): Station[] {
   try {
     const list = JSON.parse(store.get(key) || '[]');
@@ -130,7 +164,7 @@ const isFav = (id: string): boolean => favs.some(f => f.id === id);
 function find(id: string): Station | undefined {
   const page = view.kind === 'station' && view.station.id === id ? view.station : undefined;
   return favs.find(s => s.id === id) ?? recent.find(s => s.id === id) ?? list.find(s => s.id === id) ?? home.top.find(s => s.id === id)
-    ?? page ?? (current?.id === id ? current : undefined);
+    ?? page ?? (current?.id === id ? current : undefined) ?? moreStation(id);
 }
 
 function setState(next: PlayState): void {
@@ -526,6 +560,7 @@ function stationPage(s: Station): string {
       ${live ? '<button class="rd-cta ghost" data-act="stop">Stop</button>' : ''}
     </div>
     ${tags ? `<div class="rd-tags">${tags}</div>` : ''}
+    ${moreHtml(s)}
   </div>`;
 }
 
