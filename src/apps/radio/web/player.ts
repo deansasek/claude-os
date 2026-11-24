@@ -27,6 +27,21 @@ export function titleLine(hasStation: boolean, state: PlayState, streamTitle = '
   return streamTitle.trim() || 'Live radio';
 }
 
+/** What the bar and the drawer card show: the station, its state line and the buttons they need. */
+export type BarModel = { title: string; subtitle: string; art: string; playing: boolean; canStep: boolean; live: boolean };
+
+/** One model for the bottom bar and the drawer card, so the two never disagree. Live is false when nothing plays. */
+export function barModel(current: Station | null, state: PlayState, streamTitle: string, favs: readonly unknown[]): BarModel {
+  return {
+    title: current ? current.name : 'Nothing playing',
+    subtitle: titleLine(!!current, state, streamTitle),
+    art: current?.favicon ?? '',
+    playing: state === 'playing' || state === 'buffering',
+    canStep: canStepFavourites(favs),
+    live: !!current && state !== 'off',
+  };
+}
+
 /** The rail's glance: the station on the air, or the app's own name when the radio is off. */
 export function railLabel(station: Station | null, state: PlayState, appName: string): string {
   return station && state !== 'off' ? station.name : appName;
