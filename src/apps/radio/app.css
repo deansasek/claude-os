@@ -233,6 +233,8 @@
 #app-radio .rd-facet-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 16px; }
 
 /* ---- header tabs: Home and Search, in .app-hd-after; the chosen one is ink ---- */
+/* the Search field leaves room for the Home and Search tabs at its right end */
+#app-radio .rd-find .rd-search { margin-right: 236px; }
 #app-radio .rd-htabs { position: absolute; right: var(--app-r); top: calc(var(--app-label-y) - 10px); z-index: 2; display: flex; gap: 8px; }
 #app-radio .rd-htab { all: unset; box-sizing: border-box; cursor: pointer; height: 44px; padding: 0 16px; border-radius: 12px; display: inline-flex;
   align-items: center; font: 500 16px var(--sans); color: var(--t2); }
