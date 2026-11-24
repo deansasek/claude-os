@@ -10,6 +10,7 @@ import path from 'node:path';
 import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts';
 import { occurrences, parseIcs, type RawEvent } from './ics.ts';
+import { tagCalendar } from '../web/calendars.ts';
 
 const FILE = path.join(HUB, '.calendar-config.json');
 const TIMEOUT_MS = 10_000;
@@ -155,7 +156,7 @@ const ymd = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).
  * The events that overlap [from, to) (ms), in order, from the same cache as events(). Used by Claude's calendar_range tool.
  * Read-only, and capped at MAX_SHOWN.
  */
-export async function eventsBetween(from: number, to: number, cap = MAX_SHOWN, force = false): Promise<{ status: 'not_set' | 'error' | 'ok'; events: { title: string; start: number; end: number; allDay: boolean; location?: string }[]; error?: string; stale?: boolean }> {
+export async function eventsBetween(from: number, to: number, cap = MAX_SHOWN, force = false): Promise<{ status: 'not_set' | 'error' | 'ok'; events: { title: string; start: number; end: number; allDay: boolean; location?: string; calendar?: string }[]; error?: string; stale?: boolean }> {
   if (!cfg.address) return { status: 'not_set', events: [] };
   await ensure(force);
   const c = cache && cache.address === cfg.address && Date.now() - cache.at < KEEP_MS ? cache : null;
@@ -163,7 +164,7 @@ export async function eventsBetween(from: number, to: number, cap = MAX_SHOWN, f
   const out = occurrences(c.events, from, to)
     .filter(o => o.start < to && (o.end > from || (o.end === o.start && o.start >= from)))
     .sort((a, b) => a.start - b.start || a.title.localeCompare(b.title));
-  return { status: 'ok', events: out.slice(0, cap), ...(lastError ? { error: lastError, stale: true } : {}) };
+  return { status: 'ok', events: tagCalendar(out.slice(0, cap), 'ics'), ...(lastError ? { error: lastError, stale: true } : {}) };
 }
 
 /** Today's and tomorrow's events (the PC's days), sorted: today first; all-day events first, then by start time. */

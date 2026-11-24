@@ -27,10 +27,22 @@
   font: 400 14px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* the view itself: scrolls inside its own area */
-#app-calendar .cal-body { position: absolute; left: var(--app-l); right: var(--app-r); top: calc(var(--app-body) + 84px); bottom: var(--app-strip-b);
+#app-calendar .cal-body { position: absolute; left: var(--app-l); right: var(--app-r); top: calc(var(--app-body) + 128px); bottom: var(--app-strip-b);
   overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 #app-calendar .cal-body::-webkit-scrollbar { display: none; }
 #app-calendar .cal-none { padding: 14px 0; font: italic 400 18px var(--serif); color: var(--t3); }
+
+/* the calendar selector: one chip per calendar. A hollow dot is a hidden calendar. */
+#app-calendar .cal-cals { position: absolute; left: var(--app-l); right: var(--app-r); top: calc(var(--app-body) + 84px); height: 44px;
+  display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+#app-calendar .cal-cals::-webkit-scrollbar { display: none; }
+#app-calendar .cal-cal { all: unset; box-sizing: border-box; cursor: pointer; position: relative; flex: none; min-height: 44px; padding: 6px 14px 6px 12px;
+  border-radius: 14px; border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 8px; font: 500 14px var(--sans); color: var(--t4); background: var(--bg); }
+#app-calendar .cal-cal.on { color: var(--text); background: var(--card); }
+#app-calendar .cal-cal:active { background: var(--card-2); }
+#app-calendar .cal-cal:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+#app-calendar .cal-cal i { width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; background: var(--c); border: 1px solid var(--c); }
+#app-calendar .cal-cal:not(.on) i { background: transparent; }
 
 /* Day: a list of the day's events */
 #app-calendar .cal-list { list-style: none; margin: 0; padding: 0; }
