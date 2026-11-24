@@ -23,7 +23,7 @@ import { device, onTablet, onVolume, voice } from './device.ts';
 import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
 import type { Battery } from './device.ts';
 import { clock, untilText } from './format.ts';
-import { CLOCK_TIMER_KEY, clockTimerLeftMs, clockTimerText } from './clock-timer.ts';
+import { clockTimerText, readClockTimers, runningLeftMs } from './clock-timer.ts';
 import { Keyboard } from './keyboard.ts';
 import { lockBusy, lockShowing, requireUnlock } from './lock.ts';
 import { motionMs, reducedMotion } from './motion.ts';
@@ -359,9 +359,9 @@ export function nextAlarm(): NextAlarm | null {
   } catch { return null; }
 }
 
-/** A Clock timer that is running: its time left in ms, or null (Clock keeps its state under clock.timer). */
+/** The soonest running Clock timer: its time left in ms, or null (the Clock keeps the list under clock.timers). */
 function timerLeft(): number | null {
-  return clockTimerLeftMs(store.get(CLOCK_TIMER_KEY), Date.now());
+  return runningLeftMs(readClockTimers(k => store.get(k)), Date.now());
 }
 /** "4 min", "1h 05m": the ambient screen repaints once a minute, so it counts in minutes. */
 const leftText = (ms: number): string => (ms < 3600e3 ? `${Math.max(1, Math.ceil(ms / 60e3))} min` : untilText(ms));
@@ -491,7 +491,7 @@ function hmText(s: string): string {
 
 /** The Clock app's running timer, as the drawer shows it: "4:59", or "1:04:59" from an hour up. */
 export function timerLeftText(): string | null {
-  return clockTimerText(store.get(CLOCK_TIMER_KEY), Date.now());
+  return clockTimerText(readClockTimers(k => store.get(k)), Date.now());
 }
 
 /** The timer tile: the countdown while the Clock app's timer runs (repainted each second while the drawer is open). */

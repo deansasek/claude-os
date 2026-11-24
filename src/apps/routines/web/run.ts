@@ -89,8 +89,7 @@ async function doStep(s: Step, deadline: number): Promise<string> {
     case 'timer': {
       const clock = getClock();
       if (!clock) return 'The clock isn’t ready, so no timer.';
-      if (clock.timerLeft() != null) return 'A timer is already running, so I left it.';
-      clock.startTimer(s.minutes * 60e3);
+      clock.startTimer(s.minutes * 60e3);   // a new timer in the Clock's list; the ones already running keep going
       return `Timer set for ${s.minutes} minute${s.minutes === 1 ? '' : 's'}.`;
     }
     case 'pause': await sleep(Math.min(s.seconds * 1000, deadline - Date.now())); return '';

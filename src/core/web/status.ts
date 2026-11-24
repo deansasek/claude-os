@@ -14,10 +14,11 @@ import { onStore, store } from './dom.ts';
 import { hubReachable, onHubReachable } from './hub-link.ts';
 import { browser, device, onResume, onTablet, voice, type Battery, type BrowserEvent } from './device.ts';
 import { clock } from './format.ts';
+import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, readClockTimers } from './clock-timer.ts';
 import { voiceUi } from './voice-ui.ts';
 import { I, batteryGlyph, controlCenterOpen, notifications, onNotificationsChange, onSystemChange, openControlCenter, prefs, quietNow, wifiBars } from './system.ts';
 
-const K_TIMER = 'clock.timer', K_RING = 'clock.ring', K_SEEN = 'os.notesSeen';   // the Clock app's timer and ringing; when notices were last seen
+const K_RING = 'clock.ring', K_SEEN = 'os.notesSeen';   // the Clock app's ringing; when notices were last seen
 const RING_C = 2 * Math.PI * 11;                                                 // the download ring's circumference (r = 11)
 
 // the icons: the drawer's language (system.ts I), on the same 32 grid
@@ -92,10 +93,9 @@ function readDevice(): void {
 /** The Clock app's saved timer and ringing state (localStorage, so cheap to read every second). */
 function readClock(): void {
   let end = 0;
-  try {
-    const t = JSON.parse(store.get(K_TIMER) || 'null') as { end?: number | null } | null;
-    if (t?.end && t.end > Date.now()) end = t.end;
-  } catch { /* no timer */ }
+  for (const t of readClockTimers(k => store.get(k))) {   // the soonest running timer
+    if (t.end && t.end > Date.now() && (!end || t.end < end)) end = t.end;
+  }
   let ringing = false;
   try { ringing = !!JSON.parse(store.get(K_RING) || 'null'); } catch { /* not ringing */ }
   st.timerEnd = end;
@@ -224,7 +224,7 @@ export function initStatus(): void {
   onSystemChange(() => { if (controlCenterOpen()) markSeen(); readDevice(); recompute(); paint(); });
   onNotificationsChange(() => { recompute(); paint(); });
   // the Clock app's timer or ringing changed: pick up the new state now, and start (or stop) the one-second countdown
-  onStore(k => { if (k === K_TIMER || k === K_RING) tick(); });
+  onStore(k => { if (k === CLOCK_TIMERS_KEY || k === CLOCK_TIMER_KEY || k === K_RING) tick(); });
   addEventListener('hub:ambient-off', () => tick());   // the ambient screen went away: the time is right at once
   recompute();
   readVoice();

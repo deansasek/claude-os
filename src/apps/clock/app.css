@@ -110,6 +110,19 @@
 #app-clock.ck-tset .ck-run, #app-clock:not(.ck-tset) #ckTimerSet { display: none; }
 #app-clock.ck-tset [data-pane="timer"] .ck-runonly { display: none; }
 #app-clock.ck-tset [data-pane="timer"] .ck-btns { margin-top: calc(14px + 4px * var(--tall)); }
+/* the list of timers under the dial: one row each, the focused row in ink; the new row is dashed */
+#app-clock .ck-tlist { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+#app-clock .ck-tlist:empty { display: none; }
+#app-clock .ck-trow { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px;
+  min-height: 48px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card);
+  color: var(--text); font: 500 16px/20px var(--sans); transition: border-color var(--dur-base) var(--ease-out); }
+#app-clock .ck-trow.on { border-color: var(--text); }
+#app-clock .ck-trow .ck-tname { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#app-clock .ck-trow .ck-tleft { font: 600 18px/20px var(--serif); letter-spacing: -.01em; }
+#app-clock .ck-trow .ck-tstate { font: 500 13px/16px var(--sans); color: var(--t3); min-width: 56px; text-align: right; }
+#app-clock .ck-trow.new { justify-content: center; border-style: dashed; color: var(--t2); }
+#app-clock .ck-trow:active { transform: scale(.98); }
+@media (prefers-reduced-motion: reduce) { #app-clock .ck-trow { transition: none; } }
 #app-clock .ck-prog { position: relative; height: 6px; margin: 2px 0 4px; max-width: 520px; border-radius: 99px; background: var(--track);
   box-shadow: inset 0 0 0 1px var(--track-edge); overflow: hidden; }
 #app-clock .ck-prog i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--blue); transition: width 1s linear; }   /* bars are blue everywhere */
