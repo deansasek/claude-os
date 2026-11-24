@@ -227,3 +227,7 @@
 #app-radio .rd-tile2 b { font: 500 20px/24px var(--serif); color: var(--text); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 #app-radio .rd-tile2 b::first-letter { text-transform: uppercase; }
 #app-radio .rd-tile2 span { margin-top: auto; font: 400 13px/18px var(--sans); color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---- Show all lists: station rows in two columns (428 each), facet rows in four (about 200 each) ---- */
+#app-radio .rd-station-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+#app-radio .rd-facet-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 16px; }
