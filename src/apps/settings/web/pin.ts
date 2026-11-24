@@ -3,6 +3,7 @@
 // new PIN twice; Change and Remove ask for the current PIN first. Five wrong tries on the PC give a 30-second wait.
 import { getJson, postJson, report } from '../../../core/web/dom.ts';
 import { rememberPinSet } from '../../../core/web/lock.ts';
+import { clearLocalRecord, syncLocalPin } from '../../../core/web/pin-local.ts';
 import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from '../../../core/web/pin-pad.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
 import type { PinResult, PinStatus } from '../api.ts';
@@ -33,7 +34,11 @@ const cooldownText = (): string => {
 /** The row: Off or On, and the buttons that go with it. Read again each time the Security page opens. */
 export async function paintPinRow(): Promise<void> {
   try { status = await getJson<PinStatus>('/api/settings/pin'); } catch { status = null; }
-  if (status) rememberPinSet(status.set);
+  if (status) {
+    rememberPinSet(status.set);
+    // the tablet's copy of the PIN hash follows the PC: set or changed → fetch it, removed → forget it (pin-local.ts)
+    if (status.set) void syncLocalPin(); else clearLocalRecord();
+  }
   const on = status?.set === true;
   $('stPinState').textContent = status ? (on ? 'On' : 'Off') : '–';
   $('stPinNote').textContent = status

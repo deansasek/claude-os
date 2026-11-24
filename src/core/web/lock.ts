@@ -1,19 +1,22 @@
 // The ClaudeOS PIN lock. When the screen wakes from the ambient screen and a PIN is set (Settings → Security), a
 // full-screen pad asks for it before anything shows. Not on app switches. The PIN is checked on the PC
-// (/api/settings/pin/check), which keeps the PIN file. If the PC can't be reached the lock says so and waits for
-// "Try again": it never opens on its own. Back does not close it (system.ts), and nothing can open behind it (shell.ts).
+// (/api/settings/pin/check), which keeps the PIN file. If the PC can't be reached and this tablet has its own copy of
+// the PIN hash (pin-local.ts), the PIN is checked here. With no copy the lock says so and waits for "Try again": it
+// never opens on its own. Back does not close it (system.ts), and nothing can open behind it (shell.ts).
 import { critterSvg } from './critter-svg.ts';
 import { esc, stageHeight, store } from './dom.ts';
 import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from './pin-pad.ts';
 import { glanceLine } from './lock-glance.ts';
 import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
 import { I, nextAlarm, notifications, timerLeftText } from './system.ts';
+import { checkLocally, clearLocalRecord, hasLocalPin, localLockedFor } from './pin-local.ts';
 
 interface Status { set: boolean; lockedFor: number }
 interface Result { ok: boolean; lockedFor?: number; left?: number; error?: string }
 type Phase = 'checking' | 'pin' | 'cooldown' | 'retry';
 
 const UNREACHABLE = 'Can’t reach your PC to check the PIN. Try again when it’s back.';
+const ON_TABLET = 'Can’t reach your PC. Enter the PIN to unlock on this tablet.';
 const TIMEOUT_MS = 8000;
 
 const KNOWN_KEY = 'os.pinSet';        // '1' when the last check found a PIN set on the PC (so the lock shows at once)
@@ -213,12 +216,21 @@ async function checkStatus(): Promise<void> {
     if (r.status === 404) st = { set: false, lockedFor: 0 };
     else if (r.ok) { const j = await r.json() as Status; if (typeof j.set === 'boolean') st = j; }
   } catch { st = null; }
-  if (!st) { retry(); return; }
+  if (!st) { if (hasLocalPin()) askOnTablet(); else retry(); return; }
   rememberPinSet(st.set);
-  if (!st.set) { close(); return; }
+  if (!st.set) { clearLocalRecord(); close(); return; }
+  void syncLocalPin();   // the tablet's copy follows the PC's PIN (pin-local.ts)
   if (el) el.hidden = false;
   if (st.lockedFor > 0) cooldown(st.lockedFor);
   else { phase = 'pin'; paint(); }
+}
+
+/** The PC can't be reached but this tablet has its PIN copy: the pad asks here (pin-local.ts). */
+function askOnTablet(): void {
+  if (el) el.hidden = false;
+  const left = localLockedFor();
+  if (left > 0) { cooldown(left); return; }
+  phase = 'pin'; msg = ON_TABLET; paint();
 }
 
 async function post(url: string, body: unknown): Promise<Result | null> {
@@ -239,8 +251,16 @@ async function done(): Promise<void> {
   phase = 'checking'; msg = '';
   paint();
   const r = await post('/api/settings/pin/check', { pin });
+  if (r) { typed = ''; handle(r); return; }
+  // The PC can't be reached: check against the tablet's own copy, when there is one (pin-local.ts)
+  const local = hasLocalPin() ? await checkLocally(pin) : null;
   typed = '';
-  if (!r) { retry(); return; }
+  if (!local) { retry(); return; }
+  handle(local);
+}
+
+/** Show what a check said: unlocked, a cooldown, or a wrong try with the tries left. */
+function handle(r: Result): void {
   if (r.ok || r.error === 'no_pin') { close(); return; }
   if (r.error === 'locked') { cooldown(r.lockedFor || 30); return; }
   phase = 'pin';

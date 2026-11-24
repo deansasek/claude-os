@@ -10,7 +10,7 @@ import { listProjects, projectFolder } from '../../claude/server/hubsessions.ts'
 import { getInstructions, setInstructions } from './instructions.ts';
 import { getProfile, readProfilePhoto, removePhoto, savePhoto, setProfile, setWelcomeDone, welcomeDone } from './profile.ts';
 import { addCustomMcp, addFolder, knownServer, pluginsView, probe, removeCustomMcp, removeFolder, setOn } from './plugins.ts';
-import { checkPin, pinStatus, removePin, setPin } from './pin.ts';
+import { checkPin, pinRecord, pinStatus, removePin, setPin } from './pin.ts';
 import { readBackup, saveBackup } from './backup.ts';
 import { installPlugin, marketView, refreshMarket, uninstallPlugin } from './market.ts';
 
@@ -66,6 +66,7 @@ const app: ServerApp = {
     { method: 'GET', path: 'storage', handle: () => ({ photos: bytesIn(PHOTOS) }) },
     // The ClaudeOS PIN lock (see ./pin.ts): read from the file on every call, so a deleted file clears it
     { method: 'GET', path: 'pin', handle: () => pinStatus() },
+    { method: 'GET', path: 'pin/record', handle: () => pinRecord() },   // the tablet's copy (core/web/pin-local.ts)
     { method: 'POST', path: 'pin/check', handle: ({ body }) => checkPin(body?.pin) },
     { method: 'POST', path: 'pin', handle: ({ body }) => setPin(body?.pin, body?.current) },
     { method: 'POST', path: 'pin/remove', handle: ({ body }) => removePin(body?.pin) },
