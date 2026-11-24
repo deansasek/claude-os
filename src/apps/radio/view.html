@@ -5,7 +5,8 @@
   </div></div>
 </header>
 
-<!-- the main view: Home is a stack of shelves (Favourites, Recently played, Top stations, Genres, Countries). Search
+<!-- the main view: Home is the landing: a greeting, filter chips, then Recently played (square covers), Made for you
+     (two rows of tiles), Your top stations (the favourites, as rows), Genres and Countries. Search
      is its own view: the field, recent searches and Browse all when empty, or the results. The list views (Top, a
      genre, a country, a station's own page) take the same space. Back in a list returns one level. The player bar sits
      along the bottom of the page. -->
@@ -33,6 +34,7 @@
       <p class="rd-title" id="rdTitle"></p>
       <p class="rd-msg" id="rdMsg" role="status" hidden></p>
     </div>
+    <span class="rd-live" id="rdLive" hidden>Live</span>
     <button class="rd-heart" id="rdNowFav" aria-label="Add to Favourites" aria-pressed="false" hidden></button>
   </div>
 
