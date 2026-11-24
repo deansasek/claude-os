@@ -100,6 +100,8 @@ The build reads two passwords from the environment:
 
 The build stops with a message if a file or a variable is missing. Keep `android/hub-new.keystore` and `android/hub.lineage`, and keep a backup copy of both keystores outside the repository. The keystores are not in git. If you lose `android/hub-new.keystore`, Android refuses every later update.
 
+Release signing is planned to read the keystores from repo secrets. No release workflow does this yet. See #441.
+
 The lineage was made once with `apksigner rotate`:
 
 ```
