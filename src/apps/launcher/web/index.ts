@@ -20,6 +20,7 @@ import { installedApps, isPinned, launchAndroid, pinnable, setPinned, type AppCo
 import { onBack, openApp, openSettings } from '../../../core/web/system.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import { appArt } from '../../../core/web/app-art.ts';
+import { readLists } from '../../lists/web/readers.ts';
 import { cleanLayout, type LauncherLayout, type LauncherLayoutResult, type LauncherScreen } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { searchAll, type Hit, type SearchSources } from './search.ts';
@@ -410,8 +411,7 @@ async function loadSearchData(): Promise<void> {
   if (Date.now() - loadedAt < 60e3) return;   // read again at most once a minute
   loadedAt = Date.now();
   try {
-    const r = await getJson<{ ok: boolean; lists: { id: string; name: string; items: { text: string }[] }[] }>('/api/lists/lists');
-    lists = r.ok ? r.lists.map(l => ({ id: l.id, name: l.name, items: l.items.map(i => i.text) })) : [];
+    lists = (await readLists()).map(l => ({ id: l.id, name: l.name, items: l.items.map(i => i.text) }));
   } catch { lists = []; }
   try {
     const u = await getJson<{ sessions?: { id: string | null; title: string; folder: string }[] }>('/api/claude/usage');

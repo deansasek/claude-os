@@ -7,6 +7,9 @@ import {
   type FamilyList, type ListItem, type ListsResult,
 } from '../api.ts';
 
+/** The localStorage key of the tablet's copy of the lists. Read by the Lists page and by readers.ts. */
+export const COPY_KEY = 'lists.copy';
+
 export type OpPath = 'add' | 'tick' | 'remove' | 'edit' | 'clear-done' | 'new-list' | 'delete-list';
 /** One change, as the route and body the PC takes (server/index.ts). */
 export interface Op { path: OpPath; body: Record<string, unknown> }
