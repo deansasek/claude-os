@@ -434,7 +434,8 @@ function openPicker(): void {
 async function setUnits(u: Units): Promise<void> {
   pickUnits = u;
   paintUnits();
-  if (isOk(wx)) { try { await sendLocation({ units: u }); } catch { /* keep showing the old units */ } }
+  // Save the unit even when no forecast is loaded (no city yet, or an error): the PC keeps it in meter-config.json.
+  try { await sendLocation({ units: u }); } catch { /* the chosen unit stays on screen; the next change saves it */ }
   renderWx();
   appSettingsChanged();   // Settings → Apps → Weather shows the new units
 }
