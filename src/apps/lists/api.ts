@@ -59,6 +59,23 @@ export function renameItem(l: FamilyList, id: unknown, rawText: unknown): ListIt
   return it;
 }
 
+/** Put a removed item back at its old place, with its old id, tick and time (Undo). Refused when its id or text is on
+ *  the list. index: the place it had, clamped to the end of the list. Pure: no file. */
+export function restoreItemAt(l: FamilyList, raw: unknown, index: unknown): ListItem | string {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  if (typeof r.id !== 'string' || !ITEM_ID.test(r.id)) return 'That isn’t an item.';
+  const text = cleanText(r.text);
+  if (!text) return 'Type the item text.';
+  if (text.length > MAX_TEXT) return `That’s too long: ${MAX_TEXT} characters at most.`;
+  if (l.items.some(i => i.id === r.id || i.text.toLowerCase() === text.toLowerCase())) return `${text} is already on ${l.name}.`;
+  if (l.items.length >= MAX_ITEMS) return `${l.name} is full (${MAX_ITEMS} items). Clear the ticked ones or remove some first.`;
+  const at = typeof r.at === 'string' && !Number.isNaN(Date.parse(r.at)) ? r.at : new Date().toISOString();
+  const item: ListItem = { id: r.id, text, done: l.kind === 'check' && r.done === true, at };
+  const pos = typeof index === 'number' && Number.isInteger(index) ? Math.min(Math.max(index, 0), l.items.length) : l.items.length;
+  l.items.splice(pos, 0, item);
+  return item;
+}
+
 /** A list id from a name: "Garden jobs" → "garden-jobs"; a different one if that is taken. */
 export function idFor(name: string, lists: { id: string }[]): string {
   let base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
