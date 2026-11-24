@@ -5,6 +5,8 @@
 import { critterSvg } from './critter-svg.ts';
 import { esc, stageHeight, store } from './dom.ts';
 import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from './pin-pad.ts';
+import { glanceLine } from './lock-glance.ts';
+import { nextAlarm, notifications, timerLeftText } from './system.ts';
 
 interface Status { set: boolean; lockedFor: number }
 interface Result { ok: boolean; lockedFor?: number; left?: number; error?: string }
@@ -50,6 +52,7 @@ function build(): void {
       <div class="lock-date"></div>
       ${critterSvg('lock-crit')}
       <div class="lock-caption">ClaudeOS is locked</div>
+      <div class="lock-glance"></div>
     </div>
     <div class="lock-pad">
       <div class="pin-dots"></div>
@@ -92,6 +95,14 @@ function paintClock(): void {
   }
   $('.lock-time').innerHTML = `${esc(hour)}:${esc(minute)}${period ? `<small>${esc(period)}</small>` : ''}`;
   $('.lock-date').textContent = d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+  paintGlance();
+}
+
+/** The glance line: notification count, next alarm and running timer (counts and times only). */
+function paintGlance(): void {
+  if (!el) return;
+  const alarm = nextAlarm();
+  $('.lock-glance').textContent = glanceLine(notifications().length, alarm ? alarm.text : null, timerLeftText());
 }
 
 function startClock(): void {

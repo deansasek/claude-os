@@ -322,7 +322,7 @@ interface SavedAlarm { h: number; m: number; on: boolean; days?: number[]; snooz
 const labelText = (a: SavedAlarm): string => (typeof a.label === 'string' ? a.label.trim().slice(0, 40) : '');
 /** The next alarm that rings within 12 hours (a snoozed one first): its words ("Alarm 7:00 AM tomorrow") and its label. */
 interface NextAlarm { text: string; label: string }
-function nextAlarm(): NextAlarm | null {
+export function nextAlarm(): NextAlarm | null {
   try {
     let list = JSON.parse(store.get('clock.alarms') || 'null') as SavedAlarm[] | null;
     if (!Array.isArray(list)) { const one = JSON.parse(store.get('clock.alarm') || 'null') as SavedAlarm | null; list = one ? [one] : []; }
@@ -475,7 +475,7 @@ function hmText(s: string): string {
 }
 
 /** The Clock app's running timer, as the drawer shows it: "4:59", or "1:04:59" from an hour up. */
-function timerLeftText(): string | null {
+export function timerLeftText(): string | null {
   try {
     const t = JSON.parse(store.get('clock.timer') || 'null') as { end?: number | null } | null;
     if (!t?.end || t.end <= Date.now()) return null;
