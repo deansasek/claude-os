@@ -1,9 +1,10 @@
 ﻿name: Claude Issue Fix
 
 # Triage an issue. If the issue is complete, the AI agent writes a fix in the
-# working tree. A gate checks the patch. The publish job then pushes a branch
-# and opens a pull request with the App token. When the repo variable
-# AI_FIX_DRY_RUN is "true", publish only comments the dry-run text.
+# working tree and the PR text in pr.md. A gate checks the patch and the PR text.
+# The publish job pushes a branch and opens a pull request as Claude. The report
+# job posts one result comment as Claude. When the repo variable AI_FIX_DRY_RUN
+# is "true", publish opens no pull request and the report says so.
 #
 # Runs when a person with write access adds the ai-fix label to an issue.
 # Use workflow_dispatch to run it by hand.
@@ -103,6 +104,23 @@ jobs:
             - Do not run git. Do not commit, push, or open a pull request.
             - Do not comment on the issue after the fix. The workflow reports the result.
 
+            Step 3. PR text. Do this only when the fix is complete.
+            - Use the Write tool to create the file ${{ runner.temp }}/pr.md.
+            - If the issue needs more information, do not write this file.
+            - Line 1: the PR title in Conventional Commits form. Example:
+              docs(fix-gate): list the gate rules in the file header
+            - Line 2: blank.
+            - Line 3 onward: the body. Use exactly these headings, in this order:
+              ## Why
+              One to three short sentences. State the problem.
+              ## What
+              One bullet per concrete change. Name the file, what changed, and what it does.
+              Do not paste code.
+              ## Tests
+              The exact commands you ran and their result. Or write "None." and the reason.
+            - Do not write "Fixes #N". The workflow adds it.
+            - Do not write AI attribution, tool names, or co-author lines.
+
             Write in short sentences. Active voice. No filler.
           claude_args: '--model claude-haiku-5-5 --max-turns 40 --allowedTools "Read Glob Grep Edit Write Bash(gh issue view:*) Bash(gh issue comment:*) Bash(gh issue edit:*)"'
           label_trigger: ai-fix
@@ -111,7 +129,7 @@ jobs:
           show_full_output: true
 
       # Save the working tree as a patch. Staging with git add -A is needed
-      # so new files appear in the diff.
+      # so new files appear in the diff. Keep pr.md when the agent wrote it.
       - name: Capture the patch
         id: capture
         if: success()
@@ -123,6 +141,9 @@ jobs:
           git diff --cached --binary --no-renames > "$dir/fix.patch"
           git diff --cached --numstat --no-renames > "$dir/numstat.txt"
           git rev-parse HEAD > "$dir/base.txt"
+          if [ -s "$RUNNER_TEMP/pr.md" ]; then
+            cp "$RUNNER_TEMP/pr.md" "$dir/pr.md"
+          fi
           if [ -s "$dir/fix.patch" ]; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
@@ -137,7 +158,7 @@ jobs:
           path: ${{ runner.temp }}/fix-run/
           if-no-files-found: ignore
 
-  # Check the patch rules and run the repo checks. No secrets in this job.
+  # Check the patch rules and the PR text, then run the repo checks. No secrets in this job.
   gate:
     needs: agent
     if: vars.AI_ENABLED == 'true' && needs.agent.outputs.has_changes == 'true'
@@ -171,7 +192,7 @@ jobs:
         with:
           node-version: 22.x
 
-      # Read the issue title. Only the gate uses it, to build the PR title.
+      # Read the issue title. The gate copies it for publish, which builds the branch name.
       - name: Read the issue title
         env:
           GH_TOKEN: ${{ github.token }}
@@ -189,8 +210,8 @@ jobs:
           git apply --index "$RUNNER_TEMP/fix-run/fix.patch"
           git diff --cached --raw --no-renames > "$RUNNER_TEMP/raw.txt"
 
-      # The title and body come from fixed text in this gate. Publish opens
-      # the pull request with the same title and body.
+      # The agent writes the PR title and body in pr.md. The gate checks them.
+      # Publish opens the pull request with the same title and body.
       - name: Run the patch rules
         id: rules
         if: always()
@@ -236,14 +257,15 @@ jobs:
             };
           });
 
-          // Fixed PR title and body for this gate. The title is the issue title, lower-cased.
-          const issueTitle = fs.readFileSync(`${env.RUNNER_TEMP}/issue-title.txt`, 'utf8').split('\n')[0].trim().toLowerCase();
-          const title = `fix(claude): ${issueTitle || 'resolve issue'}`;
-          const body = [
-            '## Why', `Fixes issue #${env.ISSUE}.`, '',
-            '## What', 'Applies the patch from the AI fix agent.', '',
-            '## Tests', 'The gate runs npm ci, npm run check, npm run check:tests and npm test.', '',
-          ].join('\n');
+          // Line 1 of pr.md is the PR title. The rest is the PR body.
+          const prPath = `${dir}/pr.md`;
+          if (!fs.existsSync(prPath) || fs.readFileSync(prPath, 'utf8').trim() === '') {
+            finish(false, 'Reason: no PR text. The agent did not write pr.md.');
+            process.exit(0);
+          }
+          const prLines = fs.readFileSync(prPath, 'utf8').replace(/\r/g, '').split('\n');
+          const title = prLines[0].trim();
+          const body = `${prLines.slice(1).join('\n').trim()}\n`;
 
           // Save the PR title and body for the publish job.
           const draft = `${env.RUNNER_TEMP}/pr-draft`;
@@ -319,7 +341,7 @@ jobs:
           add "npm test" "$TEST"
           echo "result=$result" >> "$GITHUB_OUTPUT"
 
-      # Keep the report as a file. The report job posts it as the Claude App.
+      # Keep the report as a file. The report job posts it as Claude.
       # Add ai-blocked when the gate fails. A label does not post a comment.
       - name: Write the gate report and add ai-blocked
         if: always()
@@ -341,9 +363,9 @@ jobs:
           path: ${{ runner.temp }}/gate-report.md
           if-no-files-found: ignore
 
-  # Open the pull request. Runs only when the gate passes. The App token is
-  # minted in this job and used only in the push and pull request steps.
-  # When AI_FIX_DRY_RUN is "true", this job only comments the dry-run text.
+  # Open the pull request as Claude. Runs only when the gate passes. The Claude
+  # token comes from the claude action in this job and is used only in the push
+  # and pull request steps. When AI_FIX_DRY_RUN is "true", this job opens nothing.
   publish:
     needs: gate
     if: vars.AI_ENABLED == 'true' && needs.gate.outputs.result == 'pass'
@@ -353,28 +375,16 @@ jobs:
       contents: read
       issues: write
       pull-requests: read
+      id-token: write
     env:
       GH_TOKEN: ${{ github.token }}
       ISSUE: ${{ github.event.issue.number || inputs.issue }}
     outputs:
       pr_url: ${{ steps.pr.outputs.pr_url }}
+      skipped: ${{ steps.plan.outputs.skip }}
+      branch: ${{ steps.plan.outputs.branch }}
 
     steps:
-      # Mint the App token first. Comments in this job use it. Checkout does not.
-      - name: Create the App token
-        id: app-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.FIX_APP_ID }}
-          private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
-
-      - name: Post the dry-run comment
-        if: vars.AI_FIX_DRY_RUN == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Dry run. The fix passes the gate. No pull request opened yet."
-
       - name: Download the fix run files
         if: vars.AI_FIX_DRY_RUN != 'true'
         uses: actions/download-artifact@v4
@@ -395,7 +405,7 @@ jobs:
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-      # Do not keep the token from the checkout. The App token is minted later.
+      # Do not keep the token from the checkout. The Claude token is minted later.
       - name: Checkout the base commit
         if: vars.AI_FIX_DRY_RUN != 'true'
         uses: actions/checkout@v7
@@ -411,8 +421,8 @@ jobs:
           name: pr-draft
           path: ${{ runner.temp }}/pr-draft
 
-      # The branch name comes from the issue title. Stop when the branch
-      # exists or an open pull request already uses it.
+      # The branch name comes from the issue title. Skip when the branch
+      # exists or an open pull request already uses it. The report job says so.
       - name: Plan the branch
         id: plan
         if: vars.AI_FIX_DRY_RUN != 'true'
@@ -432,13 +442,8 @@ jobs:
           fi
           echo "BRANCH=$branch" >> "$GITHUB_ENV"
           echo "SKIP=$skip" >> "$GITHUB_ENV"
-
-      - name: Stop when the branch or pull request exists
-        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP == 'true'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Fix not pushed. Branch ${BRANCH} exists or a pull request for it is open. Check it before you add the ai-fix label again."
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
       # Commit as the App bot. The App id comes from a secret and is not printed.
       - name: Apply the patch and commit
@@ -454,10 +459,22 @@ jobs:
           git config user.email "${APP_ID}+claudeos-bot[bot]@users.noreply.github.com"
           git commit --quiet -F "$RUNNER_TEMP/pr-draft/title.txt"
 
+      # Mint the token that pushes and opens the pull request. The claude action
+      # gives the token as github_token. No other token is used for these steps.
+      - name: Mint the Claude token
+        id: claude-token
+        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Reply with OK.
+          claude_args: '--model claude-haiku-5-5 --max-turns 1'
+
       - name: Push the branch
         if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
         env:
-          TOKEN: ${{ steps.app-token.outputs.token }}
+          TOKEN: ${{ steps.claude-token.outputs.github_token }}
         run: |
           set -euo pipefail
           git push --quiet "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
@@ -467,7 +484,7 @@ jobs:
         id: pr
         if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.claude-token.outputs.github_token }}
         run: |
           set -euo pipefail
           title=$(head -n 1 "$RUNNER_TEMP/pr-draft/title.txt")
@@ -478,9 +495,9 @@ jobs:
           url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" --title "$title" --body-file "$body" --label ai-generated --label ai-review | tail -n 1)
           echo "pr_url=$url" >> "$GITHUB_OUTPUT"
 
-  # Post one result comment as the Claude App, then remove ai-fix so the label
-  # can be added again. The comment is the PR link or the gate report. A run
-  # with no pull request and a passing gate posts no comment from this job.
+  # Write one result report, post it as Claude with the claude action, then remove
+  # ai-fix so the label can be added again. The report is the PR link, the gate
+  # reason, a skip notice, the dry-run text, or a publish failure notice.
   report:
     needs: [agent, gate, publish]
     if: always() && vars.AI_ENABLED == 'true'
@@ -489,8 +506,9 @@ jobs:
     permissions:
       contents: read
       issues: write
+      id-token: write
+      pull-requests: read
     env:
-      GH_TOKEN: ${{ github.token }}
       ISSUE: ${{ github.event.issue.number || inputs.issue }}
 
     steps:
@@ -503,14 +521,35 @@ jobs:
           name: gate-report
           path: ${{ runner.temp }}/gate-report-dl
 
-      # Choose the comment and write its body. No token is used here.
-      - name: Write the result comment
+      # Download the PR title and the changed file list only when publish opened a PR.
+      - name: Download the PR title
+        if: needs.publish.outputs.pr_url != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-draft
+          path: ${{ runner.temp }}/pr-draft
+
+      - name: Download the fix run files
+        if: needs.publish.outputs.pr_url != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: fix-run
+          path: ${{ runner.temp }}/fix-run
+
+      # Choose the comment and write report.md. No token is used here.
+      - name: Write the report
         id: decide
         if: always()
         env:
           GATE_RESULT: ${{ needs.gate.result }}
           GATE_OUT: ${{ needs.gate.outputs.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
           PR_URL: ${{ needs.publish.outputs.pr_url }}
+          SKIPPED: ${{ needs.publish.outputs.skipped }}
+          BRANCH: ${{ needs.publish.outputs.branch }}
+          DRY_RUN: ${{ vars.AI_FIX_DRY_RUN }}
         run: |
           set -u
           kind=none
@@ -518,35 +557,55 @@ jobs:
             kind=pr
           elif [ "$GATE_RESULT" != skipped ] && [ "$GATE_OUT" != pass ]; then
             kind=gate-failed
+          elif [ "$PUBLISH_RESULT" = failure ]; then
+            kind=publish-failed
+          elif [ "$SKIPPED" = true ]; then
+            kind=skipped
+          elif [ "$DRY_RUN" = true ] && [ "$GATE_OUT" = pass ]; then
+            kind=dry-run
           fi
           echo "kind=$kind" >> "$GITHUB_OUTPUT"
           body="$RUNNER_TEMP/report.md"
           case "$kind" in
             pr)
-              echo "Fix ready for review: ${PR_URL}. The pull request does not merge by itself. A person reviews and merges it." > "$body" ;;
+              title=$(head -n 1 "$RUNNER_TEMP/pr-draft/title.txt" | tr -d '\r')
+              {
+                echo "Fix ready for review: ${PR_URL}"
+                echo
+                echo "PR title: ${title}"
+                echo
+                echo "Changed files:"
+                while IFS=$'\t' read -r _ _ path; do echo "- ${path}"; done < "$RUNNER_TEMP/fix-run/numstat.txt"
+                echo
+                echo "The pull request does not merge by itself. A person reviews and merges it."
+              } > "$body" ;;
             gate-failed)
               f="$RUNNER_TEMP/gate-report-dl/gate-report.md"
               if [ -s "$f" ]; then cp "$f" "$body"; else echo "The gate did not finish." > "$body"; fi
-              printf '\nStop reason: the gate did not pass. No pull request opened.\n' >> "$body" ;;
+              printf '\nStop reason: the gate did not pass. No pull request opened.\nNext step: a person checks the failed rule above and updates the issue or the fix. Then add the ai-fix label again.\n' >> "$body" ;;
+            publish-failed)
+              echo "The publish step failed. No pull request opened. Check the run log." > "$body" ;;
+            skipped)
+              echo "Fix not pushed. Branch ${BRANCH} exists or a pull request for it is open. Check it before you add the ai-fix label again." > "$body" ;;
+            dry-run)
+              echo "Dry run. The fix passes the gate. No pull request opened yet." > "$body" ;;
           esac
 
-      - name: Create the App token
-        id: app-token
+      - name: Post the result comment as Claude
         if: steps.decide.outputs.kind != 'none'
-        uses: actions/create-github-app-token@v2
+        uses: anthropics/claude-code-action@v1
         with:
-          app-id: ${{ secrets.FIX_APP_ID }}
-          private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
-
-      - name: Post the result comment as the Claude App
-        if: steps.decide.outputs.kind != 'none'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          set -u
-          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/report.md"
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Post one comment on issue ${{ github.event.issue.number || inputs.issue }} in ${{ github.repository }}.
+            Use gh issue comment ${{ github.event.issue.number || inputs.issue }} --repo ${{ github.repository }} --body-file ${{ runner.temp }}/report.md.
+            Post only that. Do not edit or add anything else.
+          claude_args: '--model claude-haiku-5-5 --max-turns 5 --allowedTools "Bash(gh issue comment:*)"'
+          label_trigger: ai-fix
 
       - name: Remove the ai-fix label
         if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label ai-fix
