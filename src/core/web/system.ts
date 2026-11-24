@@ -446,6 +446,7 @@ function build(stage: HTMLElement): void {
 // ---------- control center ----------
 const $s = (id: string) => document.getElementById(id) as HTMLElement;
 let ccOpen = false;
+let quietUntil = 0;   // the HUD stays down until then: the app that moved the volume shows its own slider
 
 function paintCC(): void {
   const now = new Date();
@@ -947,6 +948,9 @@ function bindBanner(stage: HTMLElement): void {
 
 // ---------- volume HUD: a small pill when the tablet's volume changes (keys or this page), gone after a moment ----------
 let volTimer: number | undefined;
+/** An app that sets the volume itself (the Radio slider) calls this first, so the system volume HUD does not cover its slider. */
+export function quietVolumeHud(ms = 2000): void { quietUntil = Date.now() + ms; }
+
 function showVolume(level: number): void {
   const l = Math.max(0, Math.min(1, level)), hud = $s('volHud');
   $s('volFill').style.width = `${l * 100}%`;
@@ -1180,7 +1184,7 @@ export function initSystem(stage: HTMLElement, h: SystemHooks): void {
   bindBanner(stage);
   watchBattery();
   // the control center has its own volume slider, so the HUD stays out of its way while it's open
-  onVolume(level => { if (!ccOpen) showVolume(level); });
+  onVolume(level => { if (!ccOpen && Date.now() >= quietUntil) showVolume(level); });
   onNowPlaying(() => { if (ccOpen) paintMedia(); if (ambientOn) paintAmbientMedia(); });
   // a toggle made anywhere (a tile, Settings, low power kicking in) repaints the open tiles
   onSystemChange(() => { if (ccOpen) paintCC(); });

@@ -8,6 +8,7 @@
 import { esc, getJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { device, onVolume } from '../../../core/web/device.ts';
+import { quietVolumeHud } from '../../../core/web/system.ts';
 import { setMediaActions, setNowPlaying } from '../../../core/web/media.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -248,6 +249,7 @@ function stop(): void {
 // The slider drives the device media volume. The stream plays at full level (audio.volume stays 1).
 function setVolume(v: number): void {
   volume = volumeFrom(v);
+  quietVolumeHud();   // the radio slider shows the level, so the system volume HUD stays down
   try { device.setVolume('media', volume / 100); } catch { /* not on the tablet: the slider only shows the value */ }
   renderVolume();
 }
