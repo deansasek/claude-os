@@ -157,9 +157,11 @@ public class MainActivity extends Activity {
     });
   }
   private String url;
-  // pageSource: pc (default), auto or bundle. Only bundle serves the page from the APK (PageAssets).
+  // pageSource: pc (default), auto or bundle. bundle serves the page from the APK; auto does so while the PC is down (pcPageFailed).
   private volatile String pageSource = PageAssets.DEFAULT_SOURCE;
   private PageAssets pageAssets;
+  private volatile boolean bundleFallback = false;   // auto: the bundled page stands in for the PC until the probe sees it answer
+  private boolean firstLoad = true;                  // no page has booted or fallen back yet; only then may a slow boot fall back
   private View cover;                 // the cream cover over the page until it has loaded (see coverView)
   private boolean coverGone = false;
   private boolean showingOffline = false;
@@ -243,7 +245,7 @@ public class MainActivity extends Activity {
     });
     // escape hatch when the Hub page can't load: tap the "looking for your PC" screen 7 times quickly
     web.setOnTouchListener((v, ev) -> {
-      if (showingOffline && ev.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {
+      if ((showingOffline || bundleFallback) && ev.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) {
         long now = System.currentTimeMillis();
         if (now - firstTap > 4000) { firstTap = now; taps = 0; }
         if (++taps >= 7) { taps = 0; maintenance(); }
@@ -314,7 +316,7 @@ public class MainActivity extends Activity {
     @Override public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
       Uri u = r.getUrl();
       String method = r.getMethod();
-      if (u != null && PageAssets.SOURCE_BUNDLE.equals(pageSource) && isServer(u.toString())
+      if (u != null && servesBundle() && isServer(u.toString())
           && ("GET".equals(method) || "HEAD".equals(method))) {
         return pageAssets.serve(u.getPath());   // a page file from the APK; null for /api/ and /apk/ (the PC answers)
       }
@@ -334,10 +336,10 @@ public class MainActivity extends Activity {
       bridge.setAllowed(isServer(u));
     }
     @Override public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError e) {
-      if (r.isForMainFrame()) showOffline();
+      if (r.isForMainFrame()) pcPageFailed();
     }
     @Override public void onReceivedHttpError(WebView v, WebResourceRequest r, WebResourceResponse resp) {
-      if (r.isForMainFrame() && resp.getStatusCode() >= 500) showOffline();
+      if (r.isForMainFrame() && resp.getStatusCode() >= 500) pcPageFailed();
     }
     /** The page's renderer died: reload quietly instead of letting Android show "has stopped". */
     @Override public boolean onRenderProcessGone(WebView v, android.webkit.RenderProcessGoneDetail d) {
@@ -379,12 +381,30 @@ public class MainActivity extends Activity {
 
   /** The Hub page has started (Bridge.booted): stop watching, and forget the failed tries. */
   void pageBooted() {
-    ui.post(() -> { ui.removeCallbacks(bootTimedOut); bootFails = 0; });
+    ui.post(() -> { ui.removeCallbacks(bootTimedOut); bootFails = 0; firstLoad = false; });
+  }
+
+  /**
+   * The PC page failed to load (main frame error or 5xx). In auto, with a bundle in the APK, show the bundled page and
+   * probe for the PC. Otherwise (pc, bundle, or no bundle) show the offline screen, as before.
+   */
+  private void pcPageFailed() {
+    if (bundleFallback) return;   // already on the bundled page; the probe is running
+    if (!PageAssets.SOURCE_AUTO.equals(pageSource) || !pageAssets.hasBundle()) { showOffline(); return; }
+    firstLoad = false;
+    bundleFallback = true;
+    Log.w(TAG, "the PC did not answer; showing the bundled page until it does");
+    loadHub();
+    ui.postDelayed(this::probe, 5000);
   }
 
   /** The page never said it had started: show ClaudeOS's own screen, and reload the Hub after a backoff (3s, 6s, 12s, then 30s). */
   private void onBootTimedOut() {
     if (showingOffline) return;   // the offline screen is up; the probe brings the Hub back when the PC answers
+    if (firstLoad && !bundleFallback && PageAssets.SOURCE_AUTO.equals(pageSource) && pageAssets.hasBundle()) {
+      pcPageFailed();             // auto: the first load did not boot in time; the bundled page takes over
+      return;
+    }
     bootFails++;
     Log.w(TAG, "the Hub page did not start within " + (BOOT_WATCH_MS / 1000) + "s; reloading (try " + bootFails + ")");
     showingOffline = true;        // so the 7-tap escape to Android's settings still works on this screen
@@ -418,8 +438,8 @@ public class MainActivity extends Activity {
       } catch (Exception ignored) { }
       final boolean ok = up;
       ui.post(() -> {
-        if (!showingOffline) return;   // the Hub was loaded some other way meanwhile
-        if (ok) loadHub();
+        if (!showingOffline && !bundleFallback) return;   // the Hub was loaded some other way meanwhile
+        if (ok) { bundleFallback = false; loadHub(); }     // the PC answers again: load its page
         else ui.postDelayed(this::probe, 5000);
       });
     }).start();
@@ -1134,6 +1154,11 @@ public class MainActivity extends Activity {
   private void setPageSource(String raw) {
     pageSource = PageAssets.sourceOf(raw);
     getSharedPreferences("hub", MODE_PRIVATE).edit().putString("pageSource", pageSource).apply();
+  }
+
+  /** True when the APK's page answers the Hub origin: pageSource bundle, or auto while the PC is down. */
+  private boolean servesBundle() {
+    return PageAssets.SOURCE_BUNDLE.equals(pageSource) || (PageAssets.SOURCE_AUTO.equals(pageSource) && bundleFallback);
   }
 
   /**
