@@ -140,14 +140,23 @@ async function runSteps(r: Routine): Promise<void> {
   if (mine === token) setState(null);
 }
 
-/** Start a routine by id (read from the PC, so only a saved one runs). False when there is no such routine. */
-export async function runRoutine(id: string): Promise<boolean> {
+/** Why a routine did not start: not in the list, no steps, or the PC did not answer and no copy is recent. */
+export type StartResult = 'started' | 'gone' | 'empty' | 'offline';
+
+/** Start a routine by id (read from the PC, so only a saved one runs). Says why when it does not start. */
+export async function startRoutine(id: string): Promise<StartResult> {
   let list: Routine[];
-  try { list = await loadRoutines(true); } catch { try { list = await loadRoutines(); } catch { return false; } }
+  try { list = await loadRoutines(true); } catch { try { list = await loadRoutines(); } catch { return 'offline'; } }
   const r = list.find(x => x.id === id);
-  if (!r || !r.steps.length) return false;
+  if (!r) return 'gone';
+  if (!r.steps.length) return 'empty';
   void runSteps(r);
-  return true;
+  return 'started';
+}
+
+/** Start a routine by id. False when it does not start (see startRoutine for why). */
+export async function runRoutine(id: string): Promise<boolean> {
+  return (await startRoutine(id)) === 'started';
 }
 
 /** End the routine that is running, if any (the speech it started is left to finish). */

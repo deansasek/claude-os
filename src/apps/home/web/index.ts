@@ -11,7 +11,7 @@ import { esc, getJson, onStore, params, postJson, report, store } from '../../..
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { HaResult, HaScenes } from '../../home-assistant/api.ts';
 import type { CalEvent, CalEvents } from '../../calendar/api.ts';
-import { loadRoutines, onRunState, runRoutine, runState, stopRoutine } from '../../routines/web/run.ts';
+import { loadRoutines, onRunState, startRoutine, runState, stopRoutine } from '../../routines/web/run.ts';
 import { device, onResume, onTablet } from '../../../core/web/device.ts';
 import { INK, inkSay, inkedBlob, inkedShape, rng } from '../../../core/web/ink.ts';
 import { nickname } from '../../../core/web/profile.ts';
@@ -665,7 +665,12 @@ async function loadRoutineActs(): Promise<void> {
 }
 function tapRoutine(id: string): void {
   if (runState()?.id === id) { stopRoutine(); return; }
-  void runRoutine(id).then(ok => { if (!ok) { say('That routine is gone.'); void loadRoutineActs(); } else act('hop', true); });
+  void startRoutine(id).then(res => {
+    if (res === 'started') { act('hop', true); return; }
+    if (res === 'gone') { say('That routine is gone.'); void loadRoutineActs(); return; }
+    if (res === 'empty') say('That routine has no steps yet.');
+    else say('The PC isn’t answering, so that routine can’t start.');
+  });
 }
 
 async function setScene(id: string): Promise<void> {
