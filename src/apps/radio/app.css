@@ -1,42 +1,105 @@
-/* ===== Radio ===== (everything scoped to #app-radio) */
+/* ===== Radio ===== (everything scoped to #app-radio)
+   A media player in two bands, on Home's grid (core's --app-l/--app-r/--app-body, the first label on --app-label-y):
+     favourites  a row of small cards along the top (or one quiet line when there are none)
+     main        the now-playing card on the left; the search and its results in a 360px column on the right
+   Warm neutrals and 1px hairlines; the serif for station names, the sans for labels; clay only for "on air". */
 #app-radio [hidden] { display: none !important; }
 
-#app-radio .rd { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
-  display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+#app-radio .rd-page { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
+  display: grid; grid-template-rows: auto minmax(0, 1fr); row-gap: calc(16px + 6px * var(--tall));
+  padding-top: calc(var(--app-label-y) - var(--app-body)); }
+#app-radio .rd-main { display: grid; grid-template-columns: minmax(0, 1fr) 360px; column-gap: 48px; min-height: 0; }
 
-/* the station on the air: a dot, its name, and Stop */
-#app-radio .rd-now { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px;
-  background: var(--card); box-shadow: 0 0 0 1px var(--line); }
-#app-radio .rd-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--clay); flex: none; }
-#app-radio .rd-now-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-#app-radio .rd-now-text small { font: 500 12px var(--sans); color: var(--t3); }
-#app-radio .rd-now-text b { font: 600 17px var(--sans); color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#app-radio .rd-stop { all: unset; box-sizing: border-box; cursor: pointer; min-height: 44px; padding: 0 18px; border-radius: 99px;
-  display: inline-flex; align-items: center; font: 500 15px var(--sans); color: var(--t2); background: var(--card-2); }
-#app-radio .rd-stop:active { background: var(--line); }
+#app-radio .rd-k { margin: 0 0 8px; font: 400 14px/20px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-empty { margin: 0; min-height: 56px; display: flex; align-items: center; font: italic 400 17px/1.3 var(--serif); color: var(--t3); }
 
-/* the search field: a button that opens ClaudeOS's keyboard */
-#app-radio .rd-search { all: unset; box-sizing: border-box; cursor: text; min-height: 48px; padding: 0 18px; border-radius: 99px;
-  display: flex; align-items: center; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
-#app-radio .rd-search-text { font: 400 16px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a station's colour block: its first letter in the serif on a muted tone (the directory sends no logo we keep) */
+#app-radio .rd-chip, #app-radio .rd-art { flex: none; display: inline-flex; align-items: center; justify-content: center;
+  background: hsl(var(--hue, 30) 32% 88%); color: hsl(var(--hue, 30) 30% 34%); font-family: var(--serif); }
+:root[data-theme="dark"] #app-radio :is(.rd-chip, .rd-art) { background: hsl(var(--hue, 30) 18% 26%); color: hsl(var(--hue, 30) 30% 78%); }
+#app-radio .rd-chip { width: 36px; height: 36px; border-radius: 10px; font-size: 18px; font-weight: 500; }
 
-#app-radio .rd-msg { margin: 0; font: 400 14px var(--sans); color: var(--clay-deep); }
+/* ---- favourites: small cards in one row that scrolls sideways ---- */
+#app-radio .rd-favs { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
+#app-radio .rd-favs::-webkit-scrollbar { display: none; }
+#app-radio .rd-fav { all: unset; box-sizing: border-box; cursor: pointer; flex: none; display: flex; align-items: center; gap: 10px;
+  max-width: 220px; height: 56px; padding: 0 16px 0 10px; border-radius: 14px; background: var(--card); border: 1px solid var(--line);
+  transition: transform var(--dur-fast) var(--ease-out); }
+#app-radio .rd-fav:active { transform: scale(.97); background: var(--card-2); }
+#app-radio .rd-fav.on { border-color: var(--clay); }
+#app-radio .rd-fav-name { min-width: 0; font: 500 16px var(--serif); letter-spacing: -.005em; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-#app-radio .rd-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
-#app-radio .rd-scroll::-webkit-scrollbar { display: none; }
-#app-radio .rd-h { margin: 14px 0 6px; font: 600 13px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--t3); }
-#app-radio .rd-list { list-style: none; margin: 0; padding: 0; }
-#app-radio .rd-empty { margin: 6px 0; font: 400 15px var(--sans); color: var(--t3); }
+/* ---- the now-playing card ---- */
+#app-radio .rd-now { min-width: 0; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;
+  gap: 20px; padding: calc(24px + 4px * var(--tall)) 28px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); }
+#app-radio .rd-now-top { display: flex; align-items: flex-start; gap: 24px; min-width: 0; }
+#app-radio .rd-art { width: calc(120px + 16px * var(--tall)); height: calc(120px + 16px * var(--tall)); border-radius: 18px;
+  font-size: 56px; font-weight: 500; }
+#app-radio .rd-art.blank { background: var(--card-2); color: var(--t3); }
+#app-radio .rd-art.blank svg { width: 56px; height: 56px; }
+#app-radio .rd-now-text { flex: 1; min-width: 0; padding-top: 6px; }
+#app-radio .rd-kick { display: inline-flex; align-items: center; gap: 8px; font: 400 14px/20px var(--sans); color: var(--t3); }
+#app-radio .rd-now.live .rd-kick::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--clay); }
+#app-radio .rd-now.buffering .rd-kick::before { animation: rd-pulse 1.2s ease-in-out infinite; }
+#app-radio .rd-name { margin: 4px 0 6px; font: 500 calc(40px + 4px * var(--tall))/1.1 var(--serif); letter-spacing: -.025em; color: var(--text);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+#app-radio .rd-title { margin: 0; font: italic 400 20px/1.35 var(--serif); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-msg { margin: 8px 0 0; font: 400 15px/1.35 var(--sans); color: var(--clay-deep); }
+:root[data-theme="dark"] #app-radio .rd-msg { color: var(--clay); }
 
-#app-radio .rd-row { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
-#app-radio .rd-play { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 0; min-height: 56px; padding: 6px 4px;
-  display: flex; flex-direction: column; justify-content: center; }
-#app-radio .rd-play:active { background: var(--card-2); }
-#app-radio .rd-name { font: 500 17px var(--sans); color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#app-radio .rd-sub { font: 400 13px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#app-radio .rd-live { font: 600 12px var(--sans); color: var(--clay-deep); }
-#app-radio .rd-row.on .rd-name { color: var(--clay-deep); }
-#app-radio .rd-star { all: unset; box-sizing: border-box; cursor: pointer; width: 52px; height: 56px; flex: none;
+/* the heart: on a result card and in the now-playing card; a favourite is clay */
+#app-radio .rd-heart { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 48px; height: 48px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center; color: var(--t3); }
-#app-radio .rd-star svg { width: 24px; height: 24px; }
-#app-radio .rd-star.on { color: var(--clay); }
+#app-radio .rd-heart svg { width: 24px; height: 24px; }
+#app-radio .rd-heart:active { background: var(--card-2); }
+#app-radio .rd-heart.on { color: var(--clay); }
+
+/* transport: previous, play/pause (ink, the one primary control), next; Stop at the right end */
+#app-radio .rd-controls { display: flex; align-items: center; gap: 16px; }
+#app-radio .rd-gap { flex: 1; }
+#app-radio .rd-btn { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 56px; height: 56px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; color: var(--text); border: 1px solid var(--line);
+  transition: transform var(--dur-fast) var(--ease-out); }
+#app-radio .rd-btn svg { width: 24px; height: 24px; }
+#app-radio .rd-btn:active { transform: scale(.94); background: var(--card-2); }
+#app-radio .rd-btn.rd-main-btn { width: 76px; height: 76px; border: 0; background: var(--text); color: var(--bg); }
+#app-radio .rd-btn.rd-main-btn svg { width: 30px; height: 30px; }
+#app-radio .rd-btn.rd-main-btn:active { background: var(--text); opacity: .85; }
+#app-radio .rd-stop { all: unset; box-sizing: border-box; cursor: pointer; flex: none; height: 48px; padding: 0 20px; border-radius: 12px;
+  display: inline-flex; align-items: center; border: 1px solid var(--line); font: 500 15px var(--sans); color: var(--text); }
+#app-radio .rd-stop:active { background: var(--card-2); }
+#app-radio :is(.rd-btn, .rd-stop):disabled { cursor: default; opacity: .35; transform: none; }
+
+/* volume: 0..100, saved on this tablet */
+#app-radio .rd-vol { display: flex; align-items: center; gap: 14px; min-height: 44px; }
+#app-radio .rd-vol-ic { flex: none; display: inline-flex; width: 24px; height: 24px; color: var(--t2); }
+#app-radio .rd-vol-ic svg { width: 100%; height: 100%; }
+#app-radio .rd-vol em { flex: none; width: 32px; text-align: right; font: 400 14px var(--sans); font-style: normal; color: var(--t3); }
+#app-radio .rd-vol input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 0; height: 44px; margin: 0; background: transparent; }
+#app-radio .rd-vol input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--text) var(--p, 80%), var(--line) var(--p, 80%)); }
+#app-radio .rd-vol input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border-radius: 50%;
+  background: var(--bg); border: 1px solid var(--t4); }
+
+/* ---- search and results ---- */
+#app-radio .rd-find { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#app-radio .rd-search { all: unset; box-sizing: border-box; cursor: text; flex: none; display: flex; align-items: center; gap: 10px;
+  height: 52px; padding: 0 16px; margin-bottom: 18px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+#app-radio .rd-search-ic { flex: none; display: inline-flex; width: 22px; height: 22px; color: var(--t3); }
+#app-radio .rd-search-ic svg { width: 100%; height: 100%; }
+#app-radio .rd-search-text { min-width: 0; font: 400 16px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-search-text.set { color: var(--text); }
+#app-radio .rd-res { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-bottom: 8px; scrollbar-width: none; }
+#app-radio .rd-res::-webkit-scrollbar { display: none; }
+#app-radio .rd-card { flex: none; display: flex; align-items: center; gap: 4px; padding-right: 4px; border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line); }
+#app-radio .rd-card.on { border-color: var(--clay); }
+#app-radio .rd-card-play { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 0; min-height: 60px; padding: 8px 4px 8px 12px;
+  display: flex; align-items: center; gap: 12px; border-radius: 14px 0 0 14px; }
+#app-radio .rd-card-play:active { background: var(--card-2); }
+#app-radio .rd-card-text { min-width: 0; display: flex; flex-direction: column; }
+#app-radio .rd-card-text b { font: 500 16px/1.3 var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-card-text span { font: 400 13px/1.3 var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@keyframes rd-pulse { 50% { opacity: .25; } }
