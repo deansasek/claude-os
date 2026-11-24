@@ -460,11 +460,10 @@ jobs:
           claude_args: '--model claude-haiku-5-5 --max-turns 20 --allowedTools "Read Bash(git:*) Bash(gh pr:*) Bash(gh issue:*)"'
           show_full_output: true
 
-  # Write one result report. Edit the Claude comment from the agent run into the
-  # report. If none is found, post a new comment as Claude. Then remove ai-fix so
-  # the label can be added again. The report is the PR link with its Why, What and
-  # Tests sections, the gate reason, a no-change notice, a skip notice, the dry-run
-  # text, or a publish failure notice. A needs-info stop posts nothing here.
+  # Post one new comment for PR opened, gate stop, publish failure, skip, or dry run.
+  # Never edit or delete an existing comment. No change: mark the issue dont-do and
+  # close it as not planned. Needs-info: post nothing. Then remove ai-fix so the
+  # label can be added again.
   report:
     needs: [agent, gate, publish]
     if: always() && vars.AI_ENABLED == 'true'
@@ -498,15 +497,6 @@ jobs:
           else
             echo "no_change=false" >> "$GITHUB_OUTPUT"
           fi
-
-      # Download the agent's reason for the no-change result, when it wrote one.
-      - name: Download the no-change reason
-        if: steps.info.outputs.no_change == 'true'
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: fix-run
-          path: ${{ runner.temp }}/no-change-dl
 
       # Download the gate report only when the gate ran and did not pass.
       - name: Download the gate report
@@ -597,29 +587,9 @@ jobs:
                 echo "Fix ready for review: ${PR_URL}"
                 echo "Title: ${title}"
                 echo
-                echo "## Why"
-                section Why
-                echo
-                echo "## What"
-                section What
-                echo
-                echo "## Tests"
-                section Tests
-                echo
                 echo "Changed files:"
                 while IFS=$'\t' read -r _ _ path; do echo "- ${path}"; done < "$RUNNER_TEMP/fix-run/numstat.txt"
-                echo
-                echo "The pull request does not merge by itself. A person reviews and merges it."
               } > "$body" ;;
-            no-change)
-              reason=""
-              f="$RUNNER_TEMP/no-change-dl/no-change.txt"
-              if [ -s "$f" ]; then reason=$(head -n 1 "$f" | tr -d '\r' | sed -E 's/\.+$//' | cut -c1-300); fi
-              if [ -n "$reason" ]; then
-                echo "No change made: ${reason}. The gate did not run. No pull request opened." > "$body"
-              else
-                echo "No change made. The fix gate did not run because no file changed. No pull request opened." > "$body"
-              fi ;;
             gate-failed)
               f="$RUNNER_TEMP/gate-report-dl/gate-report.md"
               if [ -s "$f" ]; then cp "$f" "$body"; else echo "The gate did not finish." > "$body"; fi
@@ -631,43 +601,14 @@ jobs:
             dry-run)
               echo "Dry run. The fix passes the gate. No pull request opened yet." > "$body" ;;
           esac
-          if [ "$kind" != none ]; then
+          if [ "$kind" != none ] && [ "$kind" != no-change ]; then
             printf '\n[View job](https://github.com/%s/actions/runs/%s)\n' "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> "$body"
           fi
 
-      # Find the Claude comment that the agent run posted. Match the run link and
-      # the Claude author. Save the first match. An empty id means no match.
-      - name: Find the Claude comment from this run
-        id: find
-        if: steps.decide.outputs.kind != 'none'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          set -u
-          filter='.[] | select((.user.login == "claude" or .user.login == "claude[bot]") and (.body | test("actions/runs/'"$RUN_ID"'([^0-9]|$)"))) | .id'
-          ids=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${ISSUE}/comments" --jq "$filter") || ids=""
-          id=$(printf '%s\n' "$ids" | head -n 1)
-          printf '%s\n' "$id" > "$RUNNER_TEMP/claude-comment-id.txt"
-          echo "id=$id" >> "$GITHUB_OUTPUT"
-
-      # Edit the agent's Claude comment into the final result. The claude action runs
-      # Claude with its own token, so Claude's gh call edits the comment as claude[bot].
-      - name: Edit the Claude comment into the result
-        if: steps.decide.outputs.kind != 'none' && steps.find.outputs.id != ''
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          prompt: |
-            Edit issue comment ${{ steps.find.outputs.id }} on ${{ github.repository }} with the contents of ${{ runner.temp }}/report.md.
-            Use gh api -X PATCH repos/${{ github.repository }}/issues/comments/${{ steps.find.outputs.id }} -F body=@${{ runner.temp }}/report.md.
-            Do nothing else.
-          claude_args: '--model claude-haiku-5-5 --max-turns 5 --allowedTools "Read Bash(gh api:*)"'
-          label_trigger: ai-fix
-
-      # No agent comment was found. Post the result as a new comment, as Claude.
+      # Post one new comment with the result, as Claude. Never edit or delete an
+      # existing comment. Skip needs-info and no-change: the agent's own comment stays.
       - name: Post the result as a new comment
-        if: steps.decide.outputs.kind != 'none' && steps.find.outputs.id == ''
+        if: steps.decide.outputs.kind != 'none' && steps.decide.outputs.kind != 'no-change'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -678,8 +619,8 @@ jobs:
           claude_args: '--model claude-haiku-5-5 --max-turns 5 --allowedTools "Bash(gh issue comment:*)"'
           label_trigger: ai-fix
 
-      # No change made. After the result comment, mark the issue dont-do and close it
-      # as not planned. The report job uses github.token, which has issues: write.
+      # No change made. Keep the agent's own comment as it is. Only mark the issue
+      # dont-do and close it as not planned. The report job uses github.token, which has issues: write.
       - name: Mark the no-change issue dont-do and close it
         if: always() && steps.decide.outputs.kind == 'no-change'
         env:
