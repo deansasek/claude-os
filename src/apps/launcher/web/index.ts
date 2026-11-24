@@ -18,10 +18,12 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import { androidApps, onTablet, type AndroidApp } from '../../../core/web/device.ts';
 import { motionMs, reducedMotion } from '../../../core/web/motion.ts';
 import { installedApps, isPinned, launchAndroid, pinnable, setPinned, type AppContext, type HubApp } from '../../../core/web/shell.ts';
-import { onBack, openApp } from '../../../core/web/system.ts';
+import { onBack, openApp, openSettings } from '../../../core/web/system.ts';
+import { Keyboard } from '../../../core/web/keyboard.ts';
 import { appArt } from '../../../core/web/app-art.ts';
 import { cleanLayout, type LauncherLayout, type LauncherLayoutResult, type LauncherScreen } from '../api.ts';
 import { manifest } from '../manifest.ts';
+import { searchAll, type Hit, type SearchSources } from './search.ts';
 
 const ICON = appIcon('apps');
 const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg>';
@@ -398,6 +400,63 @@ function toggleAllowed(pkg: string): void {
   paint();
 }
 
+// ---------- search (search.ts matches; lists and Claude sessions are read from the PC when search opens) ----------
+let query = '';
+let hits: Hit[] = [];
+let lists: SearchSources['lists'] = [];
+let sessions: SearchSources['sessions'] = [];
+let loadedAt = 0;
+
+async function loadSearchData(): Promise<void> {
+  if (Date.now() - loadedAt < 60e3) return;   // read again at most once a minute
+  loadedAt = Date.now();
+  try {
+    const r = await getJson<{ ok: boolean; lists: { id: string; name: string; items: { text: string }[] }[] }>('/api/lists/lists');
+    lists = r.ok ? r.lists.map(l => ({ id: l.id, name: l.name, items: l.items.map(i => i.text) })) : [];
+  } catch { lists = []; }
+  try {
+    const u = await getJson<{ sessions?: { id: string | null; title: string; folder: string }[] }>('/api/claude/usage');
+    sessions = (u.sessions ?? []).filter(s => !!s.id).map(s => ({ id: s.id!, title: s.title, folder: s.folder }));
+  } catch { sessions = []; }
+  if (query) paintResults();
+}
+
+function sources(): SearchSources {
+  return { apps: allTiles().map(t => ({ key: t.key, name: t.name })), lists, sessions };
+}
+
+/** The results replace the grid while a search has words in it. */
+function paintResults(): void {
+  const on = query.trim() !== '';
+  hits = on ? searchAll(query, sources()) : [];
+  $('lnGrid').hidden = on;
+  $('lnResults').hidden = !on;
+  $('lnResults').innerHTML = !on ? '' : hits.length
+    ? hits.map((h, i) => `<button class="ln-result hit" data-hit="${i}"><b>${esc(h.label)}</b><span>${esc(h.sub)}</span></button>`).join('')
+    : `<p class="ln-empty">Nothing matches “${esc(query)}”.</p>`;
+  $('lnSearchText').textContent = query || 'Search';
+  $('lnSearch').classList.toggle('has', on);
+  $('lnSearchClear').hidden = !on;
+  if (on) $('lnEmpty').hidden = true;
+}
+
+function clearSearch(): void {
+  query = '';
+  paintResults();
+}
+
+/** Open a result: an app, a Settings section, or the Lists or Claude app (which opens its own list or session screen). */
+function openHit(h: Hit): void {
+  report(`launcher:search:${h.kind}`);
+  if (h.kind === 'app') {
+    if (h.ref.startsWith('c:')) { openApp(h.ref.slice(2)); return; }
+    const a = tabApps.find(x => `a:${x.id}` === h.ref);
+    if (a) launchAndroid(a);
+  } else if (h.kind === 'setting') openSettings(h.ref);
+  else if (h.kind === 'list' || h.kind === 'item') openApp('lists');
+  else openApp('claude');
+}
+
 // ---------- mount ----------
 function mount(context: AppContext): void {
   ctx = context;
@@ -411,6 +470,21 @@ function mount(context: AppContext): void {
   $('lnSheetDone').addEventListener('click', closeSheet);
   $('lnInstall').addEventListener('click', installApps);
   $('lnShade').addEventListener('click', closeSheet);
+  $('lnSearch').addEventListener('click', () => {
+    void loadSearchData();
+    Keyboard.open({
+      value: query, placeholder: 'Search apps, settings, lists', done: 'Done', max: 40,
+      onChange: text => { query = text; paintResults(); },
+    });
+  });
+  $('lnSearchClear').addEventListener('click', clearSearch);
+  $('lnResults').addEventListener('click', e => {
+    const i = (e.target as HTMLElement).closest<HTMLElement>('[data-hit]')?.dataset.hit;
+    if (i === undefined) return;
+    const h = hits[+i];
+    clearSearch();
+    if (h) openHit(h);
+  });
   // Back (system.ts): the Add apps sheet closes first, then edit mode ends (as Done does); then Home
   onBack(() => {
     if (!ctx.isVisible()) return false;
@@ -446,6 +520,8 @@ function onShow(): void { loadTablet(); paint(); void pull(); }
 function onHide(): void {
   if (editing || drag) stopEditing();
   if (!$('lnSheet').hidden) closeSheet();
+  if (Keyboard.isOpen) Keyboard.close('nav');
+  if (query) clearSearch();
 }
 
 const app: HubApp = { ...manifest, icon: ICON, mount, onShow, onHide };
