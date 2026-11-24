@@ -604,6 +604,7 @@ function paintAlerts(): void {
   setSeg('alert-done', a.done);
   setSeg('alert-approval', a.approval);
   setSeg('alert-timer', a.timer);
+  setSeg('alert-event', a.event);
   setSwitch('stBanners', prefs.banners);
 }
 
@@ -1693,8 +1694,8 @@ function mount(context: AppContext): void {
 /** A segmented control was tapped: what its choice does. */
 function handleSeg(id: string, v: string): void {
   switch (id) {
-    case 'alert-done': case 'alert-approval': case 'alert-timer': {
-      const kind = id === 'alert-done' ? 'done' : id === 'alert-approval' ? 'approval' : 'timer';
+    case 'alert-done': case 'alert-approval': case 'alert-timer': case 'alert-event': {
+      const kind = id === 'alert-done' ? 'done' : id === 'alert-approval' ? 'approval' : id === 'alert-event' ? 'event' : 'timer';
       prefs.setAlert(kind, v as 'chime' | 'critter' | 'banner' | 'off');
       report(`settings:alert:${kind}:${v}`);
       paintAlerts();

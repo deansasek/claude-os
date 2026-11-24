@@ -5,12 +5,14 @@
 // claude.ai calendar connector answers for today and tomorrow (GET /api/calendar/connector). Each connector read is a
 // Claude turn, so it happens only when the app opens, when Refresh is tapped, or when the view moves to another day.
 // The 5-minute timer never makes a connector read.
-import { esc, getJson, postJson } from '../../../core/web/dom.ts';
+import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
+import { alertFor } from '../../../core/web/system.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
-import type { CalConfigResult, CalStatus } from '../api.ts';
+import type { CalConfigResult, CalEvents, CalStatus } from '../api.ts';
+import { dueNotices, eventKey, noticeText, pruneNotified, type Notified } from './event-notice.ts';
 import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 
@@ -454,6 +456,32 @@ function armRemove(): void {
   removeTimer = window.setTimeout(disarmRemove, 20000);
   appSettingsChanged();
 }
+
+// ---------- starts-soon notices: checked in the background once an ICS address is set (no connector read) ----------
+// The events come from the PC's ICS read, so the check runs while the calendar app is closed. A notice goes through
+// alertFor (system.ts), which keeps Do Not Disturb, focus modes, quiet hours and muted apps. The told events are kept
+// in local storage, so a reload does not tell them again (event-notice.ts).
+const NOTICED_KEY = 'cal.noticed';
+const NOTICE_CHECK_MS = 60e3;
+const readNotified = (): Notified => { try { return JSON.parse(store.get(NOTICED_KEY) || '{}') as Notified; } catch { return {}; } };
+
+async function checkSoon(): Promise<void> {
+  let r: CalEvents | null = null;
+  try { r = await getJson<CalEvents>(`${API}/events`); } catch { return; }
+  if (r?.status !== 'ok') return;   // not set up, or the read failed: nothing to tell
+  const now = Date.now();
+  const told = pruneNotified(readNotified(), now);
+  for (const e of dueNotices(r.events, now, told)) {
+    const start = Date.parse(e.start);
+    told[eventKey(e)] = start;
+    store.set(NOTICED_KEY, JSON.stringify(told));   // saved before the notice, so a reload never repeats it
+    const { title, body } = noticeText(e, timeFmt.format(new Date(start)));
+    alertFor('event', { title, body, app: manifest.id }, undefined, ctx ? ctx.isVisible() : false);
+  }
+  store.set(NOTICED_KEY, JSON.stringify(told));
+}
+setTimeout(() => void checkSoon(), 5e3);
+setInterval(() => void checkSoon(), NOTICE_CHECK_MS);
 
 // ---------- the app ----------
 function start(): void { stop(); timer = window.setInterval(() => { void load(false, true); }, REFRESH_MS); }

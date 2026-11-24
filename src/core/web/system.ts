@@ -39,7 +39,7 @@ let hooks: SystemHooks;
 /** Quiet hours: chimes and spoken alerts stop from `from` to `to` on the chosen days (0 = Sunday). */
 export interface QuietHours { on: boolean; days: number[]; from: string; to: string; pauseWake: boolean }
 /** What happens when Claude finishes, asks for an OK, or a timer or alarm goes off. */
-type AlertKind ='done' | 'approval' | 'timer';
+type AlertKind ='done' | 'approval' | 'timer' | 'event';
 type AlertWay ='chime' | 'critter' | 'banner' | 'off';
 
 // ---------- preferences ----------
@@ -69,11 +69,11 @@ export const prefs = {
   set brightness(v: number) { store.set('os.brightness', String(v)); applyBrightness(); },
   // Notifications, Wellbeing, Appearance (Settings)
   get alerts(): Record<AlertKind, AlertWay> {
-    const way = (k: AlertKind): AlertWay => {
+    const way = (k: AlertKind, dflt: AlertWay = 'banner'): AlertWay => {
       const v = store.get(`os.alert.${k}`);
-      return v === 'chime' || v === 'critter' || v === 'off' ? v : 'banner';
+      return v === 'chime' || v === 'critter' || v === 'off' ? v : dflt;
     };
-    return { done: way('done'), approval: way('approval'), timer: way('timer') };
+    return { done: way('done'), approval: way('approval'), timer: way('timer'), event: way('event', 'chime') };
   },
   setAlert(k: AlertKind, w: AlertWay): void { store.set(`os.alert.${k}`, w); },
   /** Chimes on or off: an alert set to Chime is silent when this is off (its notice still lands in the list). */
