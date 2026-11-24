@@ -5,7 +5,8 @@
 import { getJson, postJson, store } from '../../../core/web/dom.ts';
 import { onTablet } from '../../../core/web/device.ts';
 import type { FamilyList, ListsResult } from '../api.ts';
-import { COPY_KEY, QUEUE_KEY, type Op, type OpPath } from './local.ts';
+import { COPY_KEY, type Op, type OpPath } from './local.ts';
+import { appendOp } from './queue.ts';
 import { afterWrite, pickLists } from './read.ts';
 
 function tabletCopy(): FamilyList[] | null {
@@ -32,11 +33,7 @@ export async function writeList(path: OpPath, body: Record<string, unknown>): Pr
   if (copy) {
     const next = afterWrite(copy, op, r);
     if (next.lists !== copy) store.set(COPY_KEY, JSON.stringify(next.lists));
-    if (next.queue) {
-      let q: Op[] = [];
-      try { q = JSON.parse(store.get(QUEUE_KEY) || '[]') as Op[]; } catch { q = []; }
-      store.set(QUEUE_KEY, JSON.stringify([...q, { path, body }]));
-    }
+    if (next.queue) appendOp({ path, body });
   }
   if (err) throw err;
   return r as ListsResult;

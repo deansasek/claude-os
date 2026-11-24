@@ -21,7 +21,8 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack } from '../../../core/web/system.ts';
 import { MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, isBuiltIn, type FamilyList, type ListItem, type ListsResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
-import { COPY_KEY, QUEUE_KEY, applyOp, remapIds, type Op, type OpPath } from './local.ts';
+import { COPY_KEY, applyOp, type Op, type OpPath } from './local.ts';
+import { appendOp, readQueue, remapQueue, removeOp } from './queue.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 20e3;
@@ -55,12 +56,12 @@ const listNow = (): FamilyList | undefined => lists.find(l => l.id === current) 
 const readKey = <T>(k: string): T | null => { try { return JSON.parse(store.get(k) || 'null') as T | null; } catch { return null; } };
 const copy = onTablet ? readKey<FamilyList[]>(COPY_KEY) : null;
 if (Array.isArray(copy)) { lists = copy; loaded = true; }
-let queue: Op[] = (onTablet && readKey<Op[]>(QUEUE_KEY)) || [];
 /** Changes apply on the tablet first once it has its copy (taken from the PC on the first run). */
 const local = (): boolean => onTablet && store.get(COPY_KEY) != null;
+// Only the copy is written here. The queue is written by queue.ts alone (read first, then one change), so a change
+// queued by a voice write while this page is open is kept.
 function keep(): void {
   store.set(COPY_KEY, JSON.stringify(lists));
-  store.set(QUEUE_KEY, queue.length ? JSON.stringify(queue) : null);
 }
 
 // ---------- talking to the PC ----------
@@ -77,18 +78,17 @@ function take(r: ListsResult | null | undefined): void {
 /** Send the queued changes to the PC in order, then take its lists. Stops (the queue waits) while the PC is away. */
 let flushing = false;
 async function flush(): Promise<void> {
-  if (flushing || !queue.length) return;
+  if (flushing || !readQueue().length) return;
   flushing = true;
   try {
-    while (queue.length) {
-      const op = queue[0];
+    // read the stored queue for each entry: a change queued meanwhile (voice) is sent too, and only the sent entry is removed
+    for (let op = readQueue()[0]; op; op = readQueue()[0]) {
       let r: ListsResult;
       try { r = await postJson<ListsResult>(`${API}/${op.path}`, op.body); } catch { return; }
       if (!r || (!r.ok && r.retry)) return;   // the PC couldn't read or save its file: try again later
-      queue.shift();                  // done, or refused (Claude removed the item meanwhile): the PC's lists will show it
-      if (op.path === 'add' && r.item && r.item.id !== op.body.id) remapIds(queue, 'id', op.body.id, r.item.id);
-      if (op.path === 'new-list' && r.list && r.list !== op.body.id) remapIds(queue, 'list', op.body.id, r.list);
-      keep();
+      removeOp(op.key!);              // done, or refused (Claude removed the item meanwhile): the PC's lists will show it
+      if (op.path === 'add' && r.item && r.item.id !== op.body.id) remapQueue('id', op.body.id, r.item.id);
+      if (op.path === 'new-list' && r.list && r.list !== op.body.id) remapQueue('list', op.body.id, r.list);
     }
   } finally { flushing = false; }
   void refresh();
@@ -108,11 +108,11 @@ function paintSuggest(): void {
 }
 
 async function refresh(): Promise<void> {
-  if (local() && queue.length) { await flush(); render(); return; }   // flush takes the PC's lists once the queue is sent
+  if (local() && readQueue().length) { await flush(); render(); return; }   // flush takes the PC's lists once the queue is sent
   const g = gen;
   try {
     const r = await getJson<ListsResult>(`${API}/lists`);
-    if (g !== gen || swipe || queue.length) return;
+    if (g !== gen || swipe || readQueue().length) return;
     if (local() && r.ok && r.stored === false) take(await postJson<ListsResult>(`${API}/restore`, { lists }));
     else take(r);
     note = r.ok ? '' : r.error ?? '';
@@ -127,7 +127,7 @@ async function send(path: OpPath, body: Record<string, unknown>): Promise<ListsR
     const op: Op = { path, body: { ...body } };
     const r = applyOp(lists, op);
     note = r.ok ? '' : r.error ?? 'That didn’t work.';
-    if (r.ok) { lists = r.lists; queue.push(op); keep(); void flush(); }
+    if (r.ok) { lists = r.lists; keep(); appendOp(op); void flush(); }
     render();
     return r;
   }
