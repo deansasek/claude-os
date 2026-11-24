@@ -20,7 +20,7 @@ import { appLabel, groupNotices, parseMutedApps, toggleMutedApp, withoutNotice }
 import { orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
 import { device, onTablet, onVolume, voice } from './device.ts';
-import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
+import { mediaActions, mediaState, nowPlaying, onNowPlaying, pauseMedia, playMedia, skipMedia, stopMedia } from './media.ts';
 import type { Battery } from './device.ts';
 import { clock, untilText } from './format.ts';
 import { clockTimerText, readClockTimers, runningLeftMs } from './clock-timer.ts';
@@ -272,6 +272,7 @@ export const I = {
   mic: svg('<rect x="12" y="4.5" width="8" height="14" rx="4"/><path d="M7.5 15a8.5 8.5 0 0 0 17 0M16 23.5v4"/>'),
   gauge: svg('<path d="M6 22a10 10 0 0 1 20 0"/><path d="M16 22l5-6"/>'),
   timer: svg('<circle cx="16" cy="18" r="10"/><path d="M16 13.5V18l3 2M13 4h6M16 4v4"/>'),
+  stop: svg('<rect x="9" y="9" width="14" height="14" rx="2" fill="currentColor"/>'),
 };
 
 /** Signal bars for the status row (0–4). */
@@ -568,13 +569,16 @@ function paintTiles(): void {
 function paintMedia(): void {
   const el = $s('ccMedia'), m = nowPlaying(), a = mediaActions();
   if (!m) { el.hidden = true; el.innerHTML = ''; return; }
+  // each button shows only when the session offers its call: prev, skip (next) and stop come from the app
+  const playing = mediaState() === 'playing' || mediaState() === 'buffering';
   el.hidden = false;
   el.innerHTML = `${m.art ? `<img class="cc-media-art" src="${esc(m.art)}" alt="">` : '<span class="cc-media-art"></span>'}
     <div class="cc-media-text"><b>${esc(m.title)}</b><span>${esc(m.subtitle)}</span></div>
     <div class="cc-media-btns">
       ${a?.prev ? `<button class="cc-media-btn" data-media="prev" aria-label="Previous">${I.prev}</button>` : ''}
-      <button class="cc-media-btn" data-media="toggle" aria-label="${m.playing ? 'Pause' : 'Play'}">${m.playing ? I.pause : I.play}</button>
-      ${a?.next ? `<button class="cc-media-btn" data-media="next" aria-label="Next">${I.next}</button>` : ''}
+      <button class="cc-media-btn" data-media="toggle" aria-label="${playing ? 'Pause' : 'Play'}">${playing ? I.pause : I.play}</button>
+      ${a?.next ? `<button class="cc-media-btn" data-media="next" aria-label="Skip">${I.next}</button>` : ''}
+      ${a?.stop ? `<button class="cc-media-btn" data-media="stop" aria-label="Stop">${I.stop}</button>` : ''}
     </div>`;
 }
 
@@ -793,10 +797,15 @@ function bindCC(stage: HTMLElement): void {
   // the card's buttons run the playing app's actions; a failed one is ignored, as the other tiles are
   $s('ccMedia').addEventListener('click', ev => {
     const b = (ev.target as Element).closest<HTMLElement>('[data-media]');
-    const a = mediaActions();
-    if (!b || !a) return;
-    const fn = b.dataset.media === 'toggle' ? a.toggle : b.dataset.media === 'next' ? a.next : a.prev;
-    try { fn?.(); } catch { /* ignore */ }
+    if (!b) return;
+    const playing = mediaState() === 'playing' || mediaState() === 'buffering';
+    const kind = b.dataset.media;
+    try {
+      if (kind === 'toggle') { if (playing) pauseMedia(); else playMedia(); }
+      else if (kind === 'next') skipMedia();
+      else if (kind === 'stop') stopMedia();
+      else mediaActions()?.prev?.();
+    } catch { /* ignore */ }
   });
   // a logo that does not load is removed, so the card shows the blank block
   $s('ccMedia').addEventListener('error', ev => { if (ev.target instanceof HTMLImageElement) ev.target.remove(); }, true);

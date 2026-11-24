@@ -16,6 +16,7 @@ export interface MediaSession {
   subscribe(fn: (info: MediaInfo | null) => void): void;
   play(): void;
   pause(): void;
+  next(): void;
   stop(): void;
 }
 
@@ -79,6 +80,7 @@ export function createMediaSession(): MediaSession {
       const s = playState(info);
       if (s === 'playing' || s === 'buffering') run(() => controls?.toggle());
     },
+    next() { run(() => controls?.next?.()); },
     stop() { run(() => controls?.stop?.()); },
   };
 }
