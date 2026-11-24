@@ -28,7 +28,7 @@ export function titleLine(hasStation: boolean, state: PlayState, streamTitle = '
 }
 
 /** What the bar and the drawer card show: the station, its state line and the buttons they need. */
-export type BarModel = { title: string; subtitle: string; art: string; playing: boolean; canStep: boolean; live: boolean };
+export type BarModel = { title: string; subtitle: string; art: string; playing: boolean; buffering: boolean; canStep: boolean; live: boolean };
 
 /** One model for the bottom bar and the drawer card, so the two never disagree. Live is false when nothing plays. */
 export function barModel(current: Station | null, state: PlayState, streamTitle: string, favs: readonly unknown[]): BarModel {
@@ -37,6 +37,7 @@ export function barModel(current: Station | null, state: PlayState, streamTitle:
     subtitle: titleLine(!!current, state, streamTitle),
     art: current?.favicon ?? '',
     playing: state === 'playing' || state === 'buffering',
+    buffering: state === 'buffering',
     canStep: canStepFavourites(favs),
     live: !!current && state !== 'off',
   };
