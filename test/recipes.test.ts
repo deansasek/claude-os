@@ -2,7 +2,9 @@
 // Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cookStep, parseRecipe, pantryPrompt, textRecipe, type Recipe } from '../src/apps/recipes/web/recipe.ts';
+import fs from 'node:fs';
+import path from 'node:path';
+import { cookStep, keepPhoto, parseRecipe, pantryPrompt, textRecipe, type Recipe } from '../src/apps/recipes/web/recipe.ts';
 
 const JSON_RECIPE = {
   name: 'Lemon pasta',
@@ -59,4 +61,22 @@ test('the pantry prompt names the have items, the want items, and asks for the s
   assert.match(p, /"steps"/);
   assert.match(p, /Write no other text\./);
   assert.doesNotMatch(pantryPrompt(['eggs'], []), /I can also buy/);
+});
+
+// #296: an adapted recipe keeps the source recipe's photo. It does not take the TheMealDB id.
+test('an adapted recipe keeps the photo of the source recipe, and only that', () => {
+  const adapted: Recipe = { name: 'Lemon pasta, gluten-free', serves: '2', time: '20 min', ingredients: [], steps: ['Cook.'] };
+  const photo = 'https://www.themealdb.com/images/media/meals/abc.jpg';
+  assert.deepEqual(keepPhoto(adapted, photo), { ...adapted, image: photo });
+  assert.equal(keepPhoto(adapted, photo).mealId, undefined);
+  assert.equal(keepPhoto(adapted, undefined), adapted);   // no photo on the source: nothing is added
+  assert.equal(keepPhoto(adapted, '').image, undefined);
+});
+
+test('the reply of an adapt request gets the source photo, and the photo is kept with the pending request', () => {
+  const app = fs.readFileSync(path.join(import.meta.dirname, '..', 'src', 'apps', 'recipes', 'web', 'index.ts'), 'utf8');
+  assert.match(app, /askClaude\(adaptPrompt\(r, text\), 'adapt', r\.image \?\? ''\)/);
+  assert.match(app, /const photo = pendingKind === 'adapt' \? pendingPhoto : '';/);
+  assert.match(app, /recipe: keepPhoto\(parsed\.recipe, photo\)/);
+  assert.match(app, /store\.set\(PENDING_PHOTO_KEY, photo \|\| null\)/);
 });

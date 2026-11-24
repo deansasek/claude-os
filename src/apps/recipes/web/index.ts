@@ -17,13 +17,14 @@ import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { PANTRY_MAX } from './pantry.ts';
 import {
-  RECIPE_PROMPT, adaptPrompt, cookStep, fromStored, pantryPrompt, parseRecipe, recipeOfDay, textRecipe, tonightPrompt, type Recipe,
+  RECIPE_PROMPT, adaptPrompt, cookStep, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, textRecipe, tonightPrompt, type Recipe,
 } from './recipe.ts';
 
 const API = `/api/${manifest.id}`;
 const LIST_KEY = 'recipes.list';
 const PENDING_KEY = 'recipes.pending';         // when the last Claude request was sent (ISO time)
 const PENDING_KIND_KEY = 'recipes.pendingKind'; // which request: create, adapt or tonight
+const PENDING_PHOTO_KEY = 'recipes.pendingPhoto'; // the photo of the recipe an adapt request changes ('' for none)
 const TIMERS_KEY = 'recipes.timers';
 const PANTRY_KEY = 'recipes.pantry';         // the “What do you have” chips: { name, kind }
 const COOK_VIEW_KEY = 'recipes.cookView';    // 'book' for the cookbook page in cook mode; unset for the plain view
@@ -52,6 +53,7 @@ let recipes: Recipe[] = readJson<unknown[]>(LIST_KEY, []).map(fromStored).filter
 let screen: Screen = { t: 'discover' };
 let pending: string | null = store.get(PENDING_KEY);
 let pendingKind: PendingKind = (store.get(PENDING_KIND_KEY) as PendingKind | null) ?? 'create';
+let pendingPhoto: string = store.get(PENDING_PHOTO_KEY) ?? '';
 let draft: Draft | null = null;          // a reply waiting for Save or Discard
 let msg = '';
 let askTime = false;                     // Suggest for tonight: the time choice is open
@@ -101,12 +103,15 @@ function checkReply(): void {
   if (!ctx || !pending || nativeBusy()) return;
   const since = Date.parse(pending);
   const reply = nativeView().transcript.filter(e => e.kind === 'assistant' && e.at && Date.parse(e.at) >= since).pop();
+  const photo = pendingKind === 'adapt' ? pendingPhoto : '';
+  pendingPhoto = '';
+  store.set(PENDING_PHOTO_KEY, null);
   setPending(null);
   if (!reply) {
     msg = 'Claude did not reply. Try again.';
   } else {
     const parsed = parseRecipe(reply.text);
-    draft = parsed.ok ? { kind: 'recipe', recipe: parsed.recipe } : { kind: 'text', text: reply.text };
+    draft = parsed.ok ? { kind: 'recipe', recipe: keepPhoto(parsed.recipe, photo) } : { kind: 'text', text: reply.text };
   }
   toTop();
   render();
@@ -120,13 +125,15 @@ function claudeReady(): boolean {
   return false;
 }
 
-function askClaude(prompt: string, kind: PendingKind): void {
+function askClaude(prompt: string, kind: PendingKind, photo = ''): void {
   msg = '';
   askTime = false;
   if (claudeReady()) {
     try {
       nativeSend(prompt);
       setPending(new Date().toISOString(), kind);   // stay in Recipes: the reply shows on this page (checkReply)
+      pendingPhoto = photo;
+      store.set(PENDING_PHOTO_KEY, photo || null);
     } catch {
       msg = 'Claude could not start on this tablet.';
     }
@@ -140,7 +147,7 @@ function adaptWithClaude(r: Recipe): void {
   if (!claudeReady()) { toTop(); render(); return; }
   Keyboard.open({
     placeholder: 'How should Claude change it? For four people, gluten-free…', done: 'Ask Claude', max: 200,
-    onDone: text => { if (text.trim()) askClaude(adaptPrompt(r, text), 'adapt'); },
+    onDone: text => { if (text.trim()) askClaude(adaptPrompt(r, text), 'adapt', r.image ?? ''); },
   });
 }
 
