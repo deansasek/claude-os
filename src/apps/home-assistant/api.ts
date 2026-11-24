@@ -56,7 +56,7 @@ export interface HaEntity {
 
 export interface HaStatus {
   configured: boolean;          // an address and a token are saved
-  demo: boolean;                // showing made-up devices
+  demo: boolean;                // the made-up house: only under CLAUDEOS_HA_DEMO=1 (tests); the page does not read it
   connected: boolean | null;    // the last call to Home Assistant worked; null when none was made yet (or in demo)
   address: string;              // the saved address (never the token)
   token: string;                // the token masked, e.g. "••••3f9a", or "" when none is saved

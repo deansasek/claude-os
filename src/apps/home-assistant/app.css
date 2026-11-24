@@ -1,12 +1,8 @@
 /* ===== Home Assistant ===== (everything scoped to #app-home-assistant) */
 #app-home-assistant [hidden] { display: none !important; }
 
-/* the header: a quiet "Demo" pill, and Edit / Done (in edit mode also Add room and Add device) */
+/* the header: Edit / Done (in edit mode also Add room and Add device) */
 #app-home-assistant .app-hd-right { gap: 8px; }
-#app-home-assistant .ha-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 99px;
-  font: 500 12px var(--sans); letter-spacing: .02em; color: var(--t4); background: var(--card); box-shadow: 0 0 0 1px var(--line); white-space: nowrap; }
-#app-home-assistant .ha-pill.bad { color: var(--clay-deep); }
-:root[data-theme="dark"] #app-home-assistant .ha-pill.bad { color: var(--clay); }
 #app-home-assistant .ha-hbtn { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-flex; align-items: center;
   min-height: 44px; padding: 7px 16px; border-radius: 99px; font: 500 14px var(--sans); white-space: nowrap;
   background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }

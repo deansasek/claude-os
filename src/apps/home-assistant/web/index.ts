@@ -7,13 +7,14 @@
 // lists everything Home Assistant reports. Every change is saved on the PC at once (.ha-layout.json).
 //
 // Being on Home never lets Claude control a device: that is only the allowlist in Settings > Apps > Home Assistant
-// ("Devices Claude can control"), which is also where the address, the access token and demo mode are set.
+// ("Devices Claude can control"), which is also where the address and the access token are set. With no address or
+// token yet, the page shows a set-up screen with a button to Settings, and no devices.
 import { esc, getJson, postJson } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
-import { onBack } from '../../../core/web/system.ts';
+import { onBack, openSettings } from '../../../core/web/system.ts';
 import {
   MAX_DEVICE_NAME, MAX_HOME_SCENES, MAX_ROOMS, MAX_ROOM_NAME, isSceneDomain,
   type HaDashboard, type HaDevices, type HaEntity, type HaHomeScenesResult, type HaLayout, type HaLayoutResult, type HaResult,
@@ -182,12 +183,10 @@ function sections(): Section[] {
 
 function render(): void {
   if (!ctx || drag) return;   // never rebuild the tiles under a finger
-  const demo = dash?.demo ?? status?.demo ?? true;
-  const bad = !demo && (status?.connected === false || dash?.status === 'error');
-  const mode = $('haMode');
-  mode.textContent = demo ? 'Demo' : bad ? 'Not connected' : '';
-  mode.hidden = !mode.textContent;
-  mode.classList.toggle('bad', bad);
+  // no address or token yet: a set-up screen, no tiles and no edit mode
+  const unset = dash?.status === 'not_set_up';
+  if (unset) editing = false;
+  $('haEdit').hidden = unset;
   $('haEdit').textContent = editing ? 'Done' : 'Edit';
   $('haEdit').classList.toggle('on', editing);
   $('haAdd').hidden = !editing;
@@ -195,12 +194,12 @@ function render(): void {
   $('haHint').hidden = !editing;
 
   const err = dash?.status === 'error' ? plain(dash.error) : '';
-  $('haNote').hidden = !(note || err);
+  $('haNote').hidden = unset || !(note || err);
   $('haNote').textContent = note || err;
 
   const l = layout();
   const nothing = !!dash && !l.rooms.length && !ids(l).length;
-  const shown = sections().filter(s => editing || s.ids.length);
+  const shown = unset ? [] : sections().filter(s => editing || s.ids.length);
   $('haRooms').innerHTML = nothing && !editing ? '' : shown.map(s => {
     const tools = editing && !s.other
       ? `<button class="ha-link hit" data-act="rename-room">Rename</button>${s.ids.length ? '' : '<button class="ha-link hit danger" data-act="delete-room">Delete</button>'}`
@@ -213,7 +212,12 @@ function render(): void {
       + `<div class="ha-room-hd"><h2 class="ha-room-name" title="${esc(s.name)}">${esc(s.name)}</h2>${tools}</div>`
       + `<div class="ha-grid" data-room="${esc(s.id)}">${tiles}${drop}</div></section>`;
   }).join('');
-  $('haEmpty').hidden = !(nothing && !editing);
+  $('haEmpty').hidden = !(unset || (nothing && !editing));
+  $('haEmptyTitle').textContent = unset ? 'Connect Home Assistant' : 'Nothing on Home yet';
+  $('haEmptyText').textContent = unset
+    ? 'Add its address and access token in Settings. Your lights and devices show here after that.'
+    : 'Add the lights, switches and other devices you want to see here.';
+  $('haEmptyGo').textContent = unset ? 'Open Settings' : 'Add devices';
   if (sheet) renderSheet();
 }
 
@@ -234,7 +238,7 @@ async function loadDevices(): Promise<void> {
   if (devicesBusy) return;
   devicesBusy = true;
   try { devices = await getJson<HaDevices>(`${API}/devices`); devicesAt = Date.now(); }
-  catch { devices = { status: 'error', demo: status?.demo ?? true, devices: [], error: 'Can’t reach the PC right now.' }; devicesAt = Date.now(); }
+  catch { devices = { status: 'error', demo: false, devices: [], error: 'Can’t reach the PC right now.' }; devicesAt = Date.now(); }
   finally { devicesBusy = false; }
   await loadScenes();
   await loadStatus();
@@ -305,7 +309,7 @@ async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
   await refresh();
 }
 
-async function saveConfig(body: { address?: string; token?: string; demo?: boolean }): Promise<void> {
+async function saveConfig(body: { address?: string; token?: string }): Promise<void> {
   try {
     const r = await postJson<HaStatus & { ok: boolean; message?: string }>(`${API}/config`, body);
     status = r;
@@ -327,7 +331,7 @@ async function runTest(): Promise<void> {
 
 async function loadScenes(): Promise<void> {
   try { sceneList = await getJson<HaScenes>(`${API}/scenes`); }
-  catch { sceneList = { status: 'error', demo: status?.demo ?? true, scenes: [], home: [], error: 'Can’t reach the PC right now.' }; }
+  catch { sceneList = { status: 'error', demo: false, scenes: [], home: [], error: 'Can’t reach the PC right now.' }; }
 }
 
 /** Put a scene on the Home screen's quick actions, or take it off. The Home screen picks it up when it next shows. */
@@ -675,10 +679,9 @@ function setEditing(on: boolean): void {
 function settingRows(): SettingRow[] {
   if (Date.now() - devicesAt > DEVICES_STALE_MS) void loadDevices();
   const s = status;
-  const demo = s?.demo ?? true;
   const rows: SettingRow[] = [
-    { kind: 'info', id: 'mode', title: 'Status', detail: demo ? 'Demo mode: Home shows a made-up house so you can try it. Nothing real is switched.' : s?.error ? plain(s.error) : undefined,
-      value: () => (demo ? 'Demo' : s?.connected ? 'Connected' : s?.connected === false ? 'Not connected' : 'Not tested yet') },
+    { kind: 'info', id: 'mode', title: 'Status', detail: s?.error ? plain(s.error) : s?.configured ? undefined : 'Add the address and the access token to connect.',
+      value: () => (!s?.configured ? 'Not set up' : s.connected ? 'Connected' : s.connected === false ? 'Not connected' : 'Not tested yet') },
     { kind: 'action', id: 'address', title: 'Address', detail: 'For example http://homeassistant.local:8123',
       value: () => s?.address || 'Not set', label: s?.address ? 'Change' : 'Add',
       run: () => Keyboard.open({ value: s?.address ?? '', placeholder: 'http://homeassistant.local:8123', done: 'Save', max: 200,
@@ -690,11 +693,6 @@ function settingRows(): SettingRow[] {
       run: () => Keyboard.open({ placeholder: 'Type the access token', done: 'Save', max: 400, mask: true,
         onDone: v => { void saveConfig({ token: v }); } }) },
     { kind: 'action', id: 'test', title: 'Test connection', detail: testMsg || 'Checks the address and the token.', label: 'Test', run: () => { void runTest(); } },
-    { kind: 'switch', id: 'demo', title: 'Demo mode',
-      detail: s?.configured
-        ? 'Show a made-up house instead of your home. Its rooms and devices are kept apart from your real ones.'
-        : 'A made-up house to try Home with. On until an address and a token are saved.',
-      get: () => demo, set: v => { void saveConfig({ demo: v }); } },
   ];
   const dev = devices;
   const allowable = (dev?.devices ?? []).filter(d => d.controllable);
@@ -710,7 +708,7 @@ function settingRows(): SettingRow[] {
   // the Home screen's quick actions: up to three scenes
   const sl = sceneList;
   rows.push({ kind: 'info', id: 'scenesHead', title: 'Scenes on the Home screen',
-    detail: sceneMsg || `Up to ${MAX_HOME_SCENES} scenes show as one-tap buttons on the Home screen.${demo ? ' In demo mode these are the demo scenes.' : ''}`,
+    detail: sceneMsg || `Up to ${MAX_HOME_SCENES} scenes show as one-tap buttons on the Home screen.`,
     value: () => (!sl ? 'Loading…' : sl.status === 'error' ? 'Couldn’t load' : `${sl.home.length} of ${MAX_HOME_SCENES}`) });
   if (sl?.status === 'ok' && !sl.scenes.length) rows.push({ kind: 'info', id: 'scenesNone', title: 'No scenes yet', detail: 'Make scenes in Home Assistant, and they show up here.', value: () => '' });
   for (const sc of sl?.status === 'ok' ? sl.scenes : []) {
@@ -741,7 +739,12 @@ const app: HubApp = {
     $('haEdit').addEventListener('click', () => setEditing(!editing));
     $('haAdd').addEventListener('click', () => openSheet({ kind: 'add' }));
     $('haAddRoom').addEventListener('click', addRoom);
-    $('haEmptyGo').addEventListener('click', () => openSheet({ kind: 'add' }));
+    // no set-up yet: the empty screen opens Settings at this app's page; otherwise it opens "Add devices"
+    $('haEmptyGo').addEventListener('click', () => {
+      if (dash?.status !== 'not_set_up') { openSheet({ kind: 'add' }); return; }
+      openSettings('apps');
+      dispatchEvent(new CustomEvent('hub:app-settings', { detail: manifest.id }));
+    });
     $('haSheet').addEventListener('click', onSheetClick);
     // Back (system.ts): the sheet closes first, then edit mode ends
     onBack(() => {
@@ -750,7 +753,7 @@ const app: HubApp = {
       if (editing) { setEditing(false); return true; }
       return false;
     }, 10);
-    registerAppSettings({ app: manifest.id, name: manifest.name, icon: ICON, blurb: 'Address, access token, demo mode and the devices Claude can control', rows: settingRows });
+    registerAppSettings({ app: manifest.id, name: manifest.name, icon: ICON, blurb: 'Address, access token and the devices Claude can control', rows: settingRows });
     void loadStatus().then(() => { render(); appSettingsChanged(); });
     void loadDevices();
   },
