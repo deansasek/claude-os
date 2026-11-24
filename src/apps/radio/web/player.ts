@@ -49,6 +49,13 @@ export function volumeFrom(value: unknown): number {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 80;
 }
 
+/** The device media volume (0..1, as device.volume() and onVolume report) as a slider value 0..100. Null when the level is missing or not a number. */
+export function volumeFromDevice(level: unknown): number | null {
+  if (level === null || level === undefined || level === '') return null;
+  const n = Number(level);
+  return Number.isFinite(n) ? Math.round(Math.min(1, Math.max(0, n)) * 100) : null;
+}
+
 /** The sleep timer's choices in minutes; 0 is off. */
 export const SLEEP_CHOICES = [0, 15, 30, 60] as const;
 

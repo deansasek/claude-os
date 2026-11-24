@@ -7,6 +7,7 @@
 // and it keeps playing when the app closes.
 import { esc, getJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
+import { device, onVolume } from '../../../core/web/device.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '../api.ts';
@@ -14,13 +15,13 @@ import { manifest } from '../manifest.ts';
 import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, nextChoice } from './catalogue.ts';
 import {
   type PlayState, SLEEP_CHOICES, failMessage, initial, railLabel, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
+  volumeFromDevice,
 } from './player.ts';
 import { httpsUrl, playable, playableStations } from './stations.ts';
 
 const API = `/api/${manifest.id}`;
 const FAVS_KEY = 'radio.favs';
 const RECENT_KEY = 'radio.recent';
-const VOL_KEY = 'radio.volume';
 const ICON = appIcon('radio');
 const FAILED = failMessage(undefined);
 const NO_DIRECTORY = 'No connection to the radio directory.';
@@ -64,7 +65,7 @@ let current: Station | null = null;      // the station in the card; it stays af
 let state: PlayState = 'off';
 let message = '';                        // a short line in the card: why a station did not play
 let streamTitle = '';                    // what the stream says is on (ICY metadata), while it plays
-let volume = volumeFrom(store.get(VOL_KEY));
+let volume = volumeFrom(null);           // the device media volume; set from the tablet on mount and by onVolume
 let sleepAt: number | null = null;       // when the sleep timer stops the radio
 let sleepMin = 0;                        // the sleep choice last made
 let audio: HTMLAudioElement | null = null;
@@ -115,7 +116,6 @@ function getAudio(): HTMLAudioElement {
   if (audio) return audio;
   const a = new Audio();
   a.preload = 'none';
-  a.volume = volume / 100;
   a.addEventListener('waiting', () => { if (state === 'playing') setState('buffering'); });
   a.addEventListener('playing', () => { if (state !== 'off' && state !== 'paused') setState('playing'); });
   a.addEventListener('error', () => { if (state !== 'off') fail(failMessage(a.error?.code)); });
@@ -167,10 +167,10 @@ function stop(): void {
   setState('off');
 }
 
+// The slider drives the device media volume. The stream plays at full level (audio.volume stays 1).
 function setVolume(v: number): void {
   volume = volumeFrom(v);
-  store.set(VOL_KEY, String(volume));
-  if (audio) audio.volume = volume / 100;
+  try { device.setVolume('media', volume / 100); } catch { /* not on the tablet: the slider only shows the value */ }
   renderVolume();
 }
 
@@ -532,6 +532,11 @@ const app: HubApp = {
       if (t instanceof HTMLImageElement) t.remove();
     }, true);
     setInterval(tickSleep, 15e3);
+    try {
+      const v = volumeFromDevice(device.volume().media);
+      if (v !== null) volume = v;
+    } catch { /* not on the tablet */ }
+    onVolume(level => { const v = volumeFromDevice(level); if (v !== null) { volume = v; renderVolume(); } });
     renderVolume();
     render();
   },

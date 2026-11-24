@@ -3,7 +3,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Station } from '../src/apps/radio/api.ts';
-import { initial, railLabel, stationHue, stepFavourite, titleLine, volumeFrom } from '../src/apps/radio/web/player.ts';
+import { readFileSync } from 'node:fs';
+import { initial, railLabel, stationHue, stepFavourite, titleLine, volumeFrom, volumeFromDevice } from '../src/apps/radio/web/player.ts';
 
 const st = (id: string): Station => ({ id, name: `Station ${id}`, url: `https://${id}.example/s`, country: '', codec: '', bitrate: 0 });
 const favs = [st('a'), st('b'), st('c')];
@@ -47,4 +48,18 @@ test('the colour block is steady and the volume is 0 to 100', () => {
   assert.equal(volumeFrom(-4), 0);
   assert.equal(volumeFrom(null), 80);
   assert.equal(volumeFrom('loud'), 80);
+});
+
+test('the device media level (0..1) maps to the slider 0..100; a missing level is null', () => {
+  assert.equal(volumeFromDevice(0.35), 35);
+  assert.equal(volumeFromDevice(1.4), 100);
+  assert.equal(volumeFromDevice(-0.2), 0);
+  assert.equal(volumeFromDevice(undefined), null);
+  assert.equal(volumeFromDevice(''), null);
+  assert.equal(volumeFromDevice('loud'), null);
+});
+
+test('the old radio.volume store key is ignored: radio no longer reads it', () => {
+  const src = readFileSync(new URL('../src/apps/radio/web/index.ts', import.meta.url), 'utf8');
+  assert.equal(src.includes('radio.volume'), false);
 });
