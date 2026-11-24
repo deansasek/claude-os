@@ -18,6 +18,7 @@
 import { esc, getJson, report, store } from './dom.ts';
 import { appLabel, groupNotices, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { orderTiles, TILE_IDS } from './quick-order.ts';
+import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
 import { device, onTablet, onVolume, voice } from './device.ts';
 import type { Battery } from './device.ts';
 import { clock, untilText } from './format.ts';
@@ -261,6 +262,7 @@ export const I = {
   bell: svg('<path d="M9 21V14a7 7 0 0 1 14 0v7l2 2.5H7z"/><path d="M13.5 26.5a2.6 2.6 0 0 0 5 0"/>'),
   awake: svg('<path d="M3.5 16s4.5-7.5 12.5-7.5S28.5 16 28.5 16s-4.5 7.5-12.5 7.5S3.5 16 3.5 16z"/><circle cx="16" cy="16" r="3.5"/>'),
   clock: svg('<circle cx="16" cy="16" r="11"/><path d="M16 9v7l4.5 3"/>'),
+  target: svg('<circle cx="16" cy="16" r="10.5"/><circle cx="16" cy="16" r="5"/><circle cx="16" cy="16" r="1" fill="currentColor"/>'),
   mic: svg('<rect x="12" y="4.5" width="8" height="14" rx="4"/><path d="M7.5 15a8.5 8.5 0 0 0 17 0M16 23.5v4"/>'),
   gauge: svg('<path d="M6 22a10 10 0 0 1 20 0"/><path d="M16 22l5-6"/>'),
   timer: svg('<circle cx="16" cy="18" r="10"/><path d="M16 13.5V18l3 2M13 4h6M16 4v4"/>'),
@@ -375,6 +377,9 @@ function build(stage: HTMLElement): void {
        <button class="cc-tile" data-tile="theme" data-hold="appearance"><i class="cc-ic" id="ccThemeIcon"></i><b>Appearance</b><span>–</span></button>
        <button class="cc-tile" data-tile="desk" data-hold="security"><i class="cc-ic">${I.desk}</i><b>Desk mode</b><span>–</span></button>
        <button class="cc-tile" data-tile="timer"><i class="cc-ic">${I.timer}</i><b>Timer</b><span>Not running</span></button>
+       <button class="cc-tile" data-tile="focus-work"><i class="cc-ic">${I.target}</i><b>Work focus</b><span>Off</span></button>
+       <button class="cc-tile" data-tile="focus-family"><i class="cc-ic">${I.target}</i><b>Family focus</b><span>Off</span></button>
+       <button class="cc-tile" data-tile="focus-sleep"><i class="cc-ic">${I.target}</i><b>Sleep focus</b><span>Off</span></button>
        <button class="cc-tile" data-tile="keep"><i class="cc-ic">${I.awake}</i><b>Keep awake</b><span>Off</span></button>
        <button class="cc-tile" data-tile="clock"><i class="cc-ic">${I.clock}</i><b>Clock</b><span>–</span></button>
        <button class="cc-tile" data-tile="settings"><i class="cc-ic">${I.gear}</i><b>Settings</b><span>All options</span></button>`
@@ -512,6 +517,14 @@ function applyTileOrder(): void {
     if (el) box.appendChild(el);   // appending each in turn lays them out in the saved order
   }
 }
+/**
+ * A focus mode on (its id) or off (null). The mode sets Do Not Disturb, banners and chimes, and the apps it hides,
+ * all at once (focus-modes.ts). Turning it off puts those back on. Routines are not changed.
+ */
+export function setFocus(id: string | null): void {
+  for (const [k, v] of Object.entries(modeSettings(id))) store.set(k, v);
+  sysChanged();
+}
 /** Keep awake: on or off, kept in the store and set on the tablet (the tile shows it). */
 function keepAwakeToggle(): void {
   const on = store.get('os.keepAwake') !== '1';
@@ -526,6 +539,7 @@ function paintTiles(): void {
   if (!onTablet) return;
   tileState('keep', store.get('os.keepAwake') === '1', store.get('os.keepAwake') === '1' ? 'On' : 'Off');
   tileState('clock', false, timeText(new Date()));
+  for (const m of FOCUS_MODES) { const on = store.get('os.focusMode') === m.id; tileState(`focus-${m.id}`, on, on ? 'On' : 'Off'); }
   try {
     const w = device.wifi();
     tileState('wifi', !!w.ssid, w.enabled ? (w.ssid || 'Not connected') : 'Off');
@@ -749,6 +763,7 @@ function bindCC(stage: HTMLElement): void {
     if (t === 'low') prefs.lowPower = !prefs.lowPower;
     if (t === 'timer') { closeControlCenter(); hooks.openApp('clock'); dispatchEvent(new CustomEvent('hub:clock-tab', { detail: 'timer' })); }
     if (t === 'settings') openSettings();
+    if (t.startsWith('focus-')) { const id = t.slice(6); setFocus(store.get('os.focusMode') === id ? null : id); paintCC(); }
     if (t === 'keep') { keepAwakeToggle(); paintCC(); }
     if (t === 'clock') { closeControlCenter(); hooks.openApp('clock'); }
   });

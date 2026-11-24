@@ -12,6 +12,10 @@ import { lockShowing } from './lock.ts';
 import { closeControlCenter, initSystem, notify, wake } from './system.ts';
 import { initTheme } from './theme.ts';
 import { reportHubCheck } from './hub-link.ts';
+import { hiddenApps } from './focus-modes.ts';
+
+/** The apps a focus mode hides right now (os.focusApps). */
+const focusHidden = (): string[] => hiddenApps(store.get('os.focusApps'));
 
 /** What the core hands an app when it mounts. */
 export interface AppContext {
@@ -76,7 +80,8 @@ export function setPinned(id: string, on: boolean): void {
 
 function railKeys(): string[] {
   const fixed = fixedIds();
-  return [...fixed, ...pins, ...opened.filter(k => !fixed.includes(k) && !pins.includes(k))];
+  const hidden = focusHidden();   // a focus mode takes its apps off the rail (they stay on the Apps screen only when shown)
+  return [...fixed, ...pins, ...opened.filter(k => !fixed.includes(k) && !pins.includes(k))].filter(k => fixed.includes(k) || !hidden.includes(k));
 }
 
 function androidBtn(app: AndroidApp): HTMLElement {
@@ -287,7 +292,8 @@ function watchVersion(): void {
 
 /** Claude Home's own apps, in rail order (the Apps screen lists them). */
 export function installedApps(): { id: string; name: string; icon: string }[] {
-  return apps.map(a => ({ id: a.id, name: a.name, icon: a.icon }));
+  const hidden = focusHidden();
+  return apps.filter(a => !hidden.includes(a.id) || fixedIds().includes(a.id)).map(a => ({ id: a.id, name: a.name, icon: a.icon }));
 }
 
 export async function startHub(list: HubApp[]): Promise<void> {
@@ -355,6 +361,8 @@ export async function startHub(list: HubApp[]): Promise<void> {
   });
   // back from an Android app: the Claude Home app on screen is the most recent again
   onResume(() => { if (current) { markOpen(current); renderRail(); } });
+  // a focus mode changed which apps show (focus-modes.ts): the rail is drawn again
+  addEventListener('hub:store', (e: Event) => { if ((e as CustomEvent).detail === 'os.focusApps') renderRail(); });
 
   document.addEventListener('pointerdown', () => { lastTouch = Date.now(); }, true);
   document.addEventListener('touchstart', () => report('touch'), { passive: true, once: true });
