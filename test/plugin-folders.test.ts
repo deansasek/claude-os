@@ -4,11 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 
-// The plugin module keeps its state in the hub folder (plugins-state.json). Remove that file before and after the run.
-const HUB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const STATE = path.join(HUB, 'plugins-state.json');
+// The plugin module keeps its state in the hub folder. The test uses a temp file, so the real plugins-state.json is never touched.
+const SCRATCH = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-plugins-'));
+const STATE = path.join(SCRATCH, 'plugins-state.json');
+process.env.CLAUDEOS_PLUGINS_STATE_FILE = STATE;
 fs.rmSync(STATE, { force: true });
 const P = await import('../src/apps/settings/server/plugins.ts');
 

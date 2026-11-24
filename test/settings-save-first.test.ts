@@ -4,18 +4,21 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { after, test } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import os from 'node:os';
 
-// The modules keep their files in the hub folder. Remove those files before and after the run.
-const HUB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PROFILE = path.join(HUB, 'profile.json');
-const INSTRUCTIONS = path.join(HUB, 'instructions.txt');
+// Temp files only: the real profile and instructions live in the hub folder and no test may touch them.
+const SCRATCH = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-profile-'));
+const PROFILE = path.join(SCRATCH, 'profile.json');
+const INSTRUCTIONS = path.join(SCRATCH, 'instructions.txt');
+process.env.CLAUDEOS_PROFILE_FILE = PROFILE;
+process.env.CLAUDEOS_PROFILE_PHOTO = path.join(SCRATCH, 'profile-photo.jpg');
+process.env.CLAUDEOS_INSTRUCTIONS_FILE = INSTRUCTIONS;
 const clean = () => { fs.rmSync(PROFILE, { force: true }); fs.rmSync(INSTRUCTIONS, { force: true }); };
 clean();
 const Profile = await import('../src/apps/settings/server/profile.ts');
 const Instructions = await import('../src/apps/settings/server/instructions.ts');
 
-after(clean);
+after(() => { clean(); fs.rmSync(SCRATCH, { recursive: true, force: true }); });
 
 // Block the file: a directory where the file should be cannot be written over.
 function blockPath(file: string, run: () => void): void {
