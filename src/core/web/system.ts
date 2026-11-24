@@ -20,6 +20,7 @@ import { appLabel, groupNotices, parseMutedApps, toggleMutedApp, withoutNotice }
 import { orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
 import { device, onTablet, onVolume, voice } from './device.ts';
+import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
 import type { Battery } from './device.ts';
 import { clock, untilText } from './format.ts';
 import { Keyboard } from './keyboard.ts';
@@ -257,6 +258,10 @@ export const I = {
   gear: svg('<path d="M6 10h11M23 10h3M6 22h3M15 22h11"/><circle cx="20" cy="10" r="3"/><circle cx="12" cy="22" r="3"/>'),
   rest: svg('<path d="M24 19.5A9.5 9.5 0 0 1 12.5 8a9.5 9.5 0 1 0 11.5 11.5z"/><path d="M20 6h4l-4 4h4"/>'),
   bright: svg('<circle cx="16" cy="16" r="4.5"/><path d="M16 5v2.5M16 24.5V27M5 16h2.5M24.5 16H27M8.2 8.2l1.8 1.8M22 22l1.8 1.8M8.2 23.8L10 22M22 10l1.8-1.8"/>'),
+  play: svg('<path d="M11 7v18l14-9z" fill="currentColor"/>'),
+  pause: svg('<path d="M11 7v18M21 7v18"/>'),
+  prev: svg('<path d="M8 7v18"/><path d="M24 8v16l-12-8z" fill="currentColor"/>'),
+  next: svg('<path d="M24 7v18"/><path d="M8 8v16l12-8z" fill="currentColor"/>'),
   vol: svg('<path d="M6 13v6h5l6 5V8l-6 5H6z"/><path d="M21.5 12.5a5 5 0 0 1 0 7M24.5 9.5a9 9 0 0 1 0 13"/>'),
   mute: svg('<path d="M6 13v6h5l6 5V8l-6 5H6z"/><path d="M21 13l6 6M27 13l-6 6"/>'),
   bell: svg('<path d="M9 21V14a7 7 0 0 1 14 0v7l2 2.5H7z"/><path d="M13.5 26.5a2.6 2.6 0 0 0 5 0"/>'),
@@ -395,6 +400,7 @@ function build(stage: HTMLElement): void {
         <div class="cc-status" id="ccStatus"></div>
       </div>
       <div class="cc-tiles${onTablet ? '' : ' two'}" id="ccTiles">${tiles}</div>
+      <div class="cc-media" id="ccMedia" hidden></div>
       ${onTablet ? `<div class="cc-sliders">
         <label class="cc-slide"><i class="cc-ic">${I.bright}</i><input type="range" min="2" max="100" id="ccBright" aria-label="Brightness"></label>
         <label class="cc-slide"><i class="cc-ic" id="ccVolIcon">${I.vol}</i><input type="range" min="0" max="100" id="ccVol" aria-label="Volume"></label>
@@ -449,6 +455,7 @@ function paintCC(): void {
   $s('ccDate').textContent = now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
   let status = '';
   paintTiles();
+  paintMedia();
   if (onTablet) {
     try {
       const w = device.wifi();
@@ -562,6 +569,20 @@ function paintTiles(): void {
     }
   } catch { /* ignore */ }
   paintTimer();
+}
+
+/** The now-playing card: the playing app's title and buttons. Hidden when nothing plays (media.ts). */
+function paintMedia(): void {
+  const el = $s('ccMedia'), m = nowPlaying(), a = mediaActions();
+  if (!m) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = `${m.art ? `<img class="cc-media-art" src="${esc(m.art)}" alt="">` : '<span class="cc-media-art"></span>'}
+    <div class="cc-media-text"><b>${esc(m.title)}</b><span>${esc(m.subtitle)}</span></div>
+    <div class="cc-media-btns">
+      ${a?.prev ? `<button class="cc-media-btn" data-media="prev" aria-label="Previous">${I.prev}</button>` : ''}
+      <button class="cc-media-btn" data-media="toggle" aria-label="${m.playing ? 'Pause' : 'Play'}">${m.playing ? I.pause : I.play}</button>
+      ${a?.next ? `<button class="cc-media-btn" data-media="next" aria-label="Next">${I.next}</button>` : ''}
+    </div>`;
 }
 
 function paintRange(id: string, v: number): void {
@@ -776,6 +797,16 @@ function bindCC(stage: HTMLElement): void {
     bind('ccBright', v => { prefs.brightness = Math.max(.02, v); });
     bind('ccVol', v => { device.setVolume('media', v); $s('ccVolIcon').innerHTML = v > 0 ? I.vol : I.mute; });
   }
+  // the card's buttons run the playing app's actions; a failed one is ignored, as the other tiles are
+  $s('ccMedia').addEventListener('click', ev => {
+    const b = (ev.target as Element).closest<HTMLElement>('[data-media]');
+    const a = mediaActions();
+    if (!b || !a) return;
+    const fn = b.dataset.media === 'toggle' ? a.toggle : b.dataset.media === 'next' ? a.next : a.prev;
+    try { fn?.(); } catch { /* ignore */ }
+  });
+  // a logo that does not load is removed, so the card shows the blank block
+  $s('ccMedia').addEventListener('error', ev => { if (ev.target instanceof HTMLImageElement) ev.target.remove(); }, true);
   $s('ccClear').addEventListener('click', clearNotifications);
   $s('ccAll').addEventListener('click', () => openSettings('notifications'));
   swipeNotices($s('ccList'));
@@ -1148,6 +1179,7 @@ export function initSystem(stage: HTMLElement, h: SystemHooks): void {
   watchBattery();
   // the control center has its own volume slider, so the HUD stays out of its way while it's open
   onVolume(level => { if (!ccOpen) showVolume(level); });
+  onNowPlaying(() => { if (ccOpen) paintMedia(); });
   // a toggle made anywhere (a tile, Settings, low power kicking in) repaints the open tiles
   onSystemChange(() => { if (ccOpen) paintCC(); });
   stage.classList.toggle('on-tablet', onTablet);
