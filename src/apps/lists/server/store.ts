@@ -11,9 +11,11 @@ import path from 'node:path';
 import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import { recordBought } from './history.ts';
 import {
-  BUILT_IN, ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, isBuiltIn,
+  BUILT_IN, ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, idFor, isBuiltIn, renameItem,
   type FamilyList, type ListItem, type ListKind, type ListsResult,
 } from '../api.ts';
+
+export { idFor, renameItem };   // in api.ts, so the page can use the same rules
 
 // CLAUDEOS_LISTS_FILE is for the tests only: a scratch file instead of the family's lists.
 export const FILE = process.env.CLAUDEOS_LISTS_FILE || path.join(HUB, '.lists.json');
@@ -172,20 +174,6 @@ export function removeItem(listRef: unknown, id: unknown): ListsResult {
   });
 }
 
-/** Change one item's text on a list (in place; pure, no file): the changed item, or why not.
- *  The same text on another item is refused, so a list never holds the same thing twice. */
-export function renameItem(l: FamilyList, id: unknown, rawText: unknown): ListItem | string {
-  if (typeof id !== 'string' || !ITEM_ID.test(id)) return 'That isn’t an item.';
-  const it = l.items.find(i => i.id === id);
-  if (!it) return `That isn’t on ${l.name}.`;
-  const text = cleanText(rawText);
-  if (!text) return 'Type the new text.';
-  if (text.length > MAX_TEXT) return `That’s too long: ${MAX_TEXT} characters at most.`;
-  if (l.items.some(i => i.id !== id && i.text.toLowerCase() === text.toLowerCase())) return `${text} is already on ${l.name}.`;
-  it.text = text;
-  return it;
-}
-
 /** Change an item's text. Its id, tick and place on the list stay. */
 export function editItem(listRef: unknown, id: unknown, rawText: unknown): ListsResult {
   return change(lists => {
@@ -207,16 +195,6 @@ export function clearDone(listRef: unknown): ListsResult {
     l.items = l.items.filter(i => !i.done);
     return { removed: n };
   });
-}
-
-/** A list id from a name: "Garden jobs" → "garden-jobs"; a different one if that is taken. */
-export function idFor(name: string, lists: FamilyList[]): string {
-  let base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  if (!/^[a-z]/.test(base)) base = `l-${base}`.replace(/-+$/, '');
-  base = base.slice(0, 20).replace(/-+$/, '') || 'list';
-  let id = base, n = 2;
-  while (lists.some(l => l.id === id)) id = `${base}-${n++}`;
-  return id;
 }
 
 /** Make a new (tick-off) list. */

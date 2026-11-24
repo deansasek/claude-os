@@ -43,6 +43,30 @@ export interface ListsResult {
   removed?: number;                    // clear-done: how many went
 }
 
+/** Change one item's text on a list (in place; pure, no file): the changed item, or why not.
+ *  The same text on another item is refused, so a list never holds the same thing twice. */
+export function renameItem(l: FamilyList, id: unknown, rawText: unknown): ListItem | string {
+  if (typeof id !== 'string' || !ITEM_ID.test(id)) return 'That isn’t an item.';
+  const it = l.items.find(i => i.id === id);
+  if (!it) return `That isn’t on ${l.name}.`;
+  const text = cleanText(rawText);
+  if (!text) return 'Type the new text.';
+  if (text.length > MAX_TEXT) return `That’s too long: ${MAX_TEXT} characters at most.`;
+  if (l.items.some(i => i.id !== id && i.text.toLowerCase() === text.toLowerCase())) return `${text} is already on ${l.name}.`;
+  it.text = text;
+  return it;
+}
+
+/** A list id from a name: "Garden jobs" → "garden-jobs"; a different one if that is taken. */
+export function idFor(name: string, lists: { id: string }[]): string {
+  let base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  if (!/^[a-z]/.test(base)) base = `l-${base}`.replace(/-+$/, '');
+  base = base.slice(0, 20).replace(/-+$/, '') || 'list';
+  let id = base, n = 2;
+  while (lists.some(l => l.id === id)) id = `${base}-${n++}`;
+  return id;
+}
+
 /** Plain text: no control characters, single spaces, trimmed (not cut: the server refuses what is too long). */
 export function cleanText(v: unknown): string {
   if (typeof v !== 'string') return '';
