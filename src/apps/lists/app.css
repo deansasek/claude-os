@@ -19,7 +19,7 @@
 #app-lists .ls-tab:active { background: var(--card-2); }
 #app-lists .ls-tab.on { background: var(--text); color: var(--bg); box-shadow: none; }
 #app-lists .ls-tab:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
-#app-lists .ls-tab-n { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 99px; display: inline-flex; align-items: center; justify-content: center;
+#app-lists .ls-tab-n { min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center;
   font: 600 12px var(--sans); background: var(--bg); color: var(--t3); }
 #app-lists .ls-tab.on .ls-tab-n { background: rgba(250, 249, 245, .18); color: var(--bg); }
 :root[data-theme="dark"] #app-lists .ls-tab.on .ls-tab-n { background: rgba(20, 20, 19, .14); }
@@ -49,7 +49,7 @@
   background: var(--danger-fill); color: var(--paper); font: 500 14px var(--sans); }
 #app-lists .ls-row-fg { position: relative; display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 4px 0 4px 4px;
   background: var(--bg); touch-action: pan-y; -webkit-user-select: none; user-select: none; }
-#app-lists .ls-row-fg.snap { transition: transform .2s ease; }
+#app-lists .ls-row-fg.snap { transition: transform var(--dur-base) var(--ease-std); }
 #app-lists .ls-tick { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: 14px; }
 #app-lists .ls-box { flex: none; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 1.8px solid var(--t4);
   display: flex; align-items: center; justify-content: center; color: var(--bg); }
@@ -99,11 +99,11 @@
 
 /* the ClaudeOS sheet (the same look as Home's and Settings' sheets) */
 #app-lists .ls-sheet { position: absolute; inset: 0; z-index: 12; display: flex; align-items: center; justify-content: center;
-  background: rgba(20, 20, 19, .22); animation: ls-fade .2s ease-out; }
+  background: rgba(20, 20, 19, .22); animation: ls-fade var(--dur-base) var(--ease-out); }
 :root[data-theme="dark"] #app-lists .ls-sheet { background: rgba(0, 0, 0, .45); }
 @keyframes ls-fade { from { opacity: 0; } }
 #app-lists .ls-sheet-card { width: 440px; max-width: calc(100% - 32px); padding: 22px 24px 18px; border-radius: 18px; box-sizing: border-box;
-  background: var(--bg); border: 1px solid var(--line); box-shadow: 0 16px 48px rgba(20, 20, 19, .2); animation: ls-pop .25s cubic-bezier(.2, .8, .2, 1); }
+  background: var(--bg); border: 1px solid var(--line); box-shadow: 0 16px 48px rgba(20, 20, 19, .2); animation: ls-pop var(--dur-base) var(--ease-out); }
 :root[data-theme="dark"] #app-lists .ls-sheet-card { background: var(--card); box-shadow: 0 16px 48px rgba(0, 0, 0, .5); }
 @keyframes ls-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
 #app-lists .ls-sheet-card h3 { margin: 0 0 6px; font: 500 22px/1.25 var(--serif); color: var(--text); }
