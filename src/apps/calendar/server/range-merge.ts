@@ -4,7 +4,7 @@
 import type { ConnEvent } from './connector-parse.ts';
 import { tagCalendar } from '../web/calendars.ts';
 
-export interface RangeEvent { title: string; start: number; end: number; allDay: boolean; location?: string; calendar?: string }
+export interface RangeEvent { id?: string; title: string; start: number; end: number; allDay: boolean; location?: string; calendar?: string }
 export interface RangeAnswer { status: 'ok' | 'not_set' | 'error'; events: RangeEvent[]; error?: string; stale?: boolean }
 export type ConnectorRead = { status: 'ok'; events: ConnEvent[] } | { status: 'error'; error: string };
 

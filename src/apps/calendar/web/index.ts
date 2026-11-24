@@ -17,6 +17,7 @@ import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, pruneNotified,
 import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 import { flagsOf, tagCalendar, visibleEvents, type CalendarInfo } from './calendars.ts';
+import { editable, formCanShow, ownEvent } from './edit.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 5 * 60e3;
@@ -25,7 +26,7 @@ export const CALENDAR_ICON = appIcon('calendar');
 
 type View = 'day' | 'week' | 'month' | 'year';
 /** One event in ms, as the PC sends it. */
-interface Ev { title: string; start: number; end: number; allDay: boolean; location?: string; calendar?: string }
+interface Ev { id?: string; title: string; start: number; end: number; allDay: boolean; location?: string; calendar?: string }
 interface RangeAnswer { status: 'ok' | 'not_set' | 'error'; events?: Ev[]; error?: string; stale?: boolean }
 interface ConnAnswer { status?: string; events?: Ev[]; error?: string }
 
@@ -46,6 +47,11 @@ let timer: number | undefined;
 // Removing the calendar forgets its secret address on the PC, so it asks twice.
 let removeArmed = false;
 let removeTimer = 0;
+
+// The event open in its details sheet (a ClaudeOS event), and whether its Delete has been tapped once.
+let detailId: string | null = null;
+let deleteArmed = false;
+let detailErr = '';
 
 // ---------- dates ----------
 const pad = (n: number): string => String(n).padStart(2, '0');
@@ -231,13 +237,16 @@ function goToday(): void {
 }
 
 // ---------- drawing ----------
+/** The attribute that opens an event's details: only a ClaudeOS event has one. External events are not tappable. */
+const evData = (e: Ev): string => (ownEvent(e) ? ` data-ev="${esc(e.id ?? '')}"` : '');
+
 function evRow(e: Ev, day: Date): string {
   const now = Date.now(), isToday = sameDay(day, new Date());
   const past = isToday && !e.allDay && e.end <= now;
   const on = isToday && !e.allDay && e.start <= now && e.end > now;
   const time = e.allDay ? 'All day' : timeFmt.format(new Date(e.start));
   const sub = !e.allDay && e.end > e.start ? `to ${timeFmt.format(new Date(e.end))}` : '';
-  return `<li class="cal-ev${past ? ' past' : ''}${on ? ' now' : ''}"><span class="cal-time">${esc(time)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>`
+  return `<li class="cal-ev${past ? ' past' : ''}${on ? ' now' : ''}"${evData(e)}><span class="cal-time">${esc(time)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>`
     + `<span><div class="cal-title-ev">${esc(e.title)}</div>${e.location ? `<div class="cal-where">${esc(e.location)}</div>` : ''}</span></li>`;
 }
 
@@ -252,7 +261,7 @@ function weekHtml(): string {
   for (let i = 0; i < 7; i++) {
     const d = addDays(first, i), list = eventsOn(d);
     const body = list.length
-      ? list.map(e => `<div class="cal-chip${e.allDay ? ' all' : ''}"><small>${e.allDay ? 'All day' : esc(timeFmt.format(new Date(e.start)))}</small>${esc(e.title)}</div>`).join('')
+      ? list.map(e => `<div class="cal-chip${e.allDay ? ' all' : ''}"${evData(e)}><small>${e.allDay ? 'All day' : esc(timeFmt.format(new Date(e.start)))}</small>${esc(e.title)}</div>`).join('')
       : '<p class="cal-none">Nothing</p>';
     cols.push(`<div class="cal-wcol"><button class="cal-wh${sameDay(d, new Date()) ? ' today' : ''}" data-day="${keyOf(d)}">`
       + `<small>${esc(weekdayFmt.format(d))}</small><b>${d.getDate()}</b></button>${body}</div>`);
@@ -265,7 +274,7 @@ function monthHtml(): string {
   for (let i = 0; i < 7; i++) cells.push(`<div class="cal-mh">${esc(weekdayLong.format(addDays(first, i)))}</div>`);
   for (let i = 0; i < 42; i++) {
     const d = addDays(first, i), list = eventsOn(d), out = d.getMonth() !== month;
-    const pills = list.slice(0, 2).map(e => `<span class="cal-pill">${esc(e.title)}</span>`).join('');
+    const pills = list.slice(0, 2).map(e => `<span class="cal-pill"${evData(e)}>${esc(e.title)}</span>`).join('');
     const more = list.length > 2 ? `<span class="cal-more">+${list.length - 2} more</span>` : '';
     cells.push(`<button class="cal-cell${out ? ' out' : ''}" data-day="${keyOf(d)}"><b${sameDay(d, new Date()) ? ' class="today"' : ''}>${d.getDate()}</b>${pills}${more}</button>`);
   }
@@ -319,13 +328,32 @@ interface Draft { title: string; date: string; start: string; end: string; allDa
 let draft: Draft = { title: '', date: '', start: '09:00', end: '09:30', allDay: false, where: '' };
 let addSending = false;
 
+// The same form adds an event, or saves changes to one ClaudeOS event (editingId is its id then).
+let editingId: string | null = null;
+
+function setAddMode(editing: boolean): void {
+  $('calAddHead').textContent = editing ? 'Edit event' : 'Add an event';
+  $('calAddConfirmHead').textContent = editing ? 'Save in ClaudeOS?' : 'Add to ClaudeOS?';
+  $('calAddNote').textContent = editing ? 'It is saved in ClaudeOS, not in Google.' : 'It is added to ClaudeOS, not to Google.';
+  $('calAddYes').textContent = editing ? 'Yes, save it' : 'Yes, add it';
+}
+
 function openAdd(): void {
   draft = { title: '', date: keyOf(anchor), start: '09:00', end: '09:30', allDay: false, where: '' };
+  editingId = null;
+  setAddMode(false);
   $('calAdd').hidden = false;
   backToForm();
 }
 
-function closeAdd(): void { $('calAdd').hidden = true; }
+function closeAdd(): void { editingId = null; $('calAdd').hidden = true; }
+
+/** The add form's draft for an existing event, so Edit starts from its current values. */
+function draftOf(e: Ev): Draft {
+  const s = new Date(e.start), t = new Date(e.end);
+  const hm = (d: Date): string => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return { title: e.title, date: keyOf(s), start: hm(s), end: e.allDay ? '09:30' : hm(t), allDay: !!e.allDay, where: e.location ?? '' };
+}
 
 function renderAdd(note: string): void {
   $('calAddTitleV').textContent = draft.title || 'Tap to type';
@@ -429,26 +457,99 @@ function backToForm(): void {
   renderAdd('');
 }
 
-/** Writes the event to the ClaudeOS calendar on the PC, only after Yes. The PC checks it again (local-add). */
+/** Writes the event to the ClaudeOS calendar on the PC, only after Yes: a new event (local-add) or the changes to one (local-update). The PC checks it again. */
 async function addEvent(): Promise<void> {
   if (addSending) return;
   const r = draftEvent();
   if (!r.ok) { backToForm(); renderAdd(r.error); return; }
   addSending = true;
+  const id = editingId;
+  const body = { title: draft.title, start: r.start, end: r.end, allDay: draft.allDay, location: draft.where };
   let answer: { status?: string; event?: unknown; error?: string } | null = null;
   try {
-    answer = await postJson<{ status?: string; event?: unknown; error?: string }>(`${API}/local-add`,
-      { title: draft.title, start: r.start, end: r.end, allDay: draft.allDay, location: draft.where });
+    answer = id
+      ? await postJson<{ status?: string; event?: unknown; error?: string }>(`${API}/local-update`, { id, ...body })
+      : await postJson<{ status?: string; event?: unknown; error?: string }>(`${API}/local-add`, body);
   } catch { answer = null; }
   addSending = false;
   if (answer?.status === 'ok') {
     closeAdd();
     await load();   // the range again, so the new event is drawn at once
-    msg = `Added “${draft.title}” to ClaudeOS.`;
+    msg = id ? `Saved “${draft.title}” in ClaudeOS.` : `Added “${draft.title}” to ClaudeOS.`;
     render();
   } else {
     backToForm();
-    renderAdd(answer?.error ?? 'Couldn’t add it. Try again in a moment.');
+    renderAdd(answer?.error ?? 'Couldn’t save it. Try again in a moment.');
+  }
+}
+
+// ---------- an event's details: Edit and Delete, only for a ClaudeOS event (edit.ts) ----------
+function openDetail(id: string): void {
+  const e = events.find(x => x.id === id);
+  if (!e || !ownEvent(e)) return;
+  detailId = id;
+  deleteArmed = false;
+  detailErr = '';
+  paintDetail();
+  $('calDetail').hidden = false;
+}
+
+function closeDetail(): void {
+  detailId = null;
+  deleteArmed = false;
+  detailErr = '';
+  $('calDetail').hidden = true;
+}
+
+function paintDetail(): void {
+  const e = events.find(x => x.id === detailId);
+  if (!e) { closeDetail(); return; }
+  const day = dayFmt.format(new Date(e.start));
+  $('calDetailTitle').textContent = e.title;
+  $('calDetailWhen').textContent = e.allDay ? `All day on ${day}` : `${day}, ${timeFmt.format(new Date(e.start))} to ${timeFmt.format(new Date(e.end))}`;
+  $('calDetailWhere').hidden = !e.location;
+  $('calDetailWhere').textContent = e.location ?? '';
+  const canEdit = formCanShow(e);
+  $('calDetailNote').hidden = canEdit;
+  $('calDetailEdit').hidden = !canEdit;
+  const del = $('calDetailDelete');
+  del.textContent = deleteArmed ? 'Tap again to delete' : 'Delete';
+  del.classList.toggle('armed', deleteArmed);
+  const warn = deleteArmed ? 'This removes the event from ClaudeOS. It can’t be undone.' : '';
+  $('calDetailMsg').hidden = !(warn || detailErr);
+  $('calDetailMsg').textContent = detailErr || warn;
+}
+
+/** Edit: the add form, filled with the event. Review and Yes save it through local-update. */
+function openEdit(): void {
+  const e = events.find(x => x.id === detailId);
+  if (!e || !e.id || !editable(e)) return;
+  draft = draftOf(e);
+  editingId = e.id;
+  closeDetail();
+  setAddMode(true);
+  $('calAdd').hidden = false;
+  backToForm();
+}
+
+/** Delete: the first tap asks again, the second removes the event (local-delete) and reloads the range. */
+async function deleteDetail(): Promise<void> {
+  const e = events.find(x => x.id === detailId);
+  if (!e || !e.id || addSending) return;
+  if (!deleteArmed) { deleteArmed = true; detailErr = ''; paintDetail(); return; }
+  addSending = true;
+  let answer: { status?: string; error?: string } | null = null;
+  try { answer = await postJson<{ status?: string; error?: string }>(`${API}/local-delete`, { id: e.id }); } catch { answer = null; }
+  addSending = false;
+  if (answer?.status === 'ok') {
+    closeDetail();
+    await load();
+    msg = `Deleted “${e.title}” from ClaudeOS.`;
+    render();
+  } else {
+    deleteArmed = false;
+    detailErr = answer?.error ?? 'Couldn’t delete it. Try again in a moment.';
+    paintDetail();
   }
 }
 
@@ -564,10 +665,14 @@ const app: HubApp = {
     $('calPick').addEventListener('click', e => { if (e.target === $('calPick')) closePicker(); });
     // Back (system.ts): an open day or time picker closes first; otherwise Back goes on to Home
     onBack(() => {
+      if (!$('calDetail').hidden) { closeDetail(); return true; }
       if ($('calPick').hidden) return false;
       closePicker();
       return true;
     });
+    $('calDetailClose').addEventListener('click', closeDetail);
+    $('calDetailEdit').addEventListener('click', openEdit);
+    $('calDetailDelete').addEventListener('click', () => void deleteDetail());
     $('calPickCard').addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (!b) return;
@@ -581,9 +686,11 @@ const app: HubApp = {
     $('calAddNo').addEventListener('click', backToForm);
     $('calAddYes').addEventListener('click', () => void addEvent());
     for (const v of ['day', 'week', 'month', 'year'] as View[]) $(`calV-${v}`).addEventListener('click', () => setView(v));
-    // a day, a week's header, a month cell, or a month name in the Year view
+    // a ClaudeOS event opens its details; a day, a week's header, a month cell, or a month name in the Year view
     $('calBody').addEventListener('click', e => {
       const t = e.target as HTMLElement;
+      const own = t.closest<HTMLElement>('[data-ev]');
+      if (own?.dataset.ev) { openDetail(own.dataset.ev); return; }
       const day = t.closest<HTMLElement>('[data-day]');
       if (day?.dataset.day) { setDay(fromKey(day.dataset.day)); return; }
       const month = t.closest<HTMLElement>('[data-month]');

@@ -20,9 +20,6 @@ function dateFor(day: 'today' | 'tomorrow'): string {
 
 export type ConnectorAnswer = { status: 'ok'; events: ConnEvent[]; cached: boolean } | { status: 'error'; error: string };
 
-/** Drop every cached day, after the calendar changes (an event was added). */
-export function forgetConnectorCache(): void { cache.clear(); }
-
 /** The cached events for a day, with no Claude turn: a miss when nothing fresh is cached. Timed routines use this. */
 export function cachedConnectorEvents(day: 'today' | 'tomorrow'): ConnectorAnswer | { status: 'miss' } {
   const hit = cache.get(day);

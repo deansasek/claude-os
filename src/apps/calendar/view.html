@@ -31,7 +31,7 @@
 <!-- Add event: filled in here, checked, and written to the ClaudeOS calendar only after Yes -->
 <div class="cal-add" id="calAdd" hidden>
   <div class="cal-add-card" id="calAddForm">
-    <h2>Add an event</h2>
+    <h2 id="calAddHead">Add an event</h2>
     <button class="cal-field hit" id="calAddTitle">Name: <b id="calAddTitleV">Tap to type</b></button>
     <button class="cal-field hit" id="calAddDate">Day: <b id="calAddDateV"></b></button>
     <button class="cal-field hit" id="calAddAllDay">All day: <b id="calAddAllDayV">No</b></button>
@@ -45,9 +45,9 @@
     </div>
   </div>
   <div class="cal-add-card" id="calAddConfirm" hidden>
-    <h2>Add to ClaudeOS?</h2>
+    <h2 id="calAddConfirmHead">Add to ClaudeOS?</h2>
     <p class="cal-add-msg" id="calAddSummary"></p>
-    <p class="cal-add-note">It is added to ClaudeOS, not to Google.</p>
+    <p class="cal-add-note" id="calAddNote">It is added to ClaudeOS, not to Google.</p>
     <div class="cal-add-row">
       <button class="cal-btn" id="calAddNo">Back</button>
       <button class="cal-btn cal-btn-primary" id="calAddYes">Yes, add it</button>
@@ -55,5 +55,21 @@
   </div>
   <div class="cal-pick" id="calPick" hidden>
     <div class="cal-pick-card" id="calPickCard"></div>
+  </div>
+</div>
+
+<!-- an event on the ClaudeOS calendar: its details, Edit (the add form, filled in) and Delete (tapped twice) -->
+<div class="cal-add" id="calDetail" hidden>
+  <div class="cal-add-card">
+    <h2 id="calDetailTitle"></h2>
+    <p class="cal-add-msg" id="calDetailWhen"></p>
+    <p class="cal-add-msg" id="calDetailWhere" hidden></p>
+    <p class="cal-add-note" id="calDetailNote" hidden>This event runs over more than one day, so it can’t be changed here.</p>
+    <p class="cal-add-msg" id="calDetailMsg" hidden></p>
+    <div class="cal-add-row">
+      <button class="cal-btn cal-btn-danger" id="calDetailDelete">Delete</button>
+      <button class="cal-btn" id="calDetailClose">Back</button>
+      <button class="cal-btn cal-btn-primary" id="calDetailEdit">Edit</button>
+    </div>
   </div>
 </div>
