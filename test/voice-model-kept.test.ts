@@ -9,8 +9,8 @@ import { test } from 'node:test';
 
 const HUB = path.resolve(import.meta.dirname, '..');
 const KIOSK = path.join(HUB, 'android', 'src', 'hub', 'kiosk');
-const voice = fs.readFileSync(path.join(KIOSK, 'VoiceService.java'), 'utf8');
-const bridge = fs.readFileSync(path.join(KIOSK, 'Bridge.java'), 'utf8');
+const voice = fs.readFileSync(path.join(KIOSK, 'VoiceService.java'), 'utf8').replace(/\r\n/g, '\n');
+const bridge = fs.readFileSync(path.join(KIOSK, 'Bridge.java'), 'utf8').replace(/\r\n/g, '\n');
 
 /** The text of run()'s finally block, from its `} finally {` to the stopSelf post. */
 function finallyBlock(src: string): string {
@@ -47,7 +47,7 @@ test('a new run takes the kept model and recognisers back before it loads a mode
 
 test('warm-up runs only for a recogniser that was not kept', () => {
   assert.match(voice, /if \(listenRec == null\) \{ listenRec = new Recognizer\(model, RATE\); warm\(listenRec\); \}/);
-  assert.match(voice, /if \(speakRec == null\) \{ speakRec = new Recognizer\(model, RATE\); warm\(speakRec\); \}/);
+  assert.match(voice, /if \(speakRec == null\) warmSpeakLater\(\);/);
 });
 
 test('Settings turning the wake word off frees the kept model', () => {

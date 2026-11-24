@@ -214,6 +214,12 @@ public class VoiceService extends Service {
   // mic could overflow. Instead two live for as long as the service does, warmed once at start-up with a short
   // recorded phrase list, and are reset between uses: one for listening to you, one for barge-in while speaking.
   private Recognizer listenRec, speakRec;
+  // The barge-in recogniser warms on its own thread after the mic opens (warmSpeakLater). That thread leaves its
+  // recogniser in speakWarmed under warmLock; takeFull(true) takes it when speakRec is still missing.
+  private final Object warmLock = new Object();
+  private Recognizer speakWarmed;
+  private Thread speakWarmThread;
+  private volatile boolean warmAbort = false;   // set when the run ends, so a warm-up still running stops early
 
   // the recorded phrase, decoded once for both recognisers (empty if the asset can't be read)
   private short[] warmSamples;
@@ -236,7 +242,7 @@ public class VoiceService extends Service {
     short[] s = warmSamples();
     short[] c = new short[RATE / 10];   // one 100 ms buffer, reused for every chunk
     try {
-      for (int at = 0; at < s.length; at += RATE / 10) {
+      for (int at = 0; at < s.length && !warmAbort; at += RATE / 10) {
         int n = Math.min(RATE / 10, s.length - at);
         System.arraycopy(s, at, c, 0, n);
         r.acceptWaveForm(c, n);
@@ -252,9 +258,30 @@ public class VoiceService extends Service {
   }
   private Recognizer takeFull(boolean forSpeaking) throws Exception {
     Recognizer r = forSpeaking ? speakRec : listenRec;
-    if (r == null) { r = new Recognizer(model, RATE); if (forSpeaking) speakRec = r; else listenRec = r; }
+    if (r == null && forSpeaking) r = takeWarmed();
+    if (r == null) r = new Recognizer(model, RATE);
+    if (forSpeaking) speakRec = r; else listenRec = r;
     r.reset();
     return r;
+  }
+
+  private Recognizer takeWarmed() {
+    synchronized (warmLock) { Recognizer r = speakWarmed; speakWarmed = null; return r; }
+  }
+
+  /** Warm the barge-in recogniser on its own thread, so the mic never waits for it. Its result waits in speakWarmed. */
+  private void warmSpeakLater() {
+    Model m = model;
+    speakWarmThread = new Thread(() -> {
+      Recognizer r = null;
+      try { r = new Recognizer(m, RATE); warm(r); }
+      catch (Exception e) { Log.w(TAG, "barge-in warm-up", e); }
+      synchronized (warmLock) {
+        if (r != null && !warmAbort) speakWarmed = r;   // (a run that already ended gets it closed here instead)
+        else if (r != null) r.close();
+      }
+    }, "hub-voice-warm");
+    speakWarmThread.start();
   }
   private long fed = 0;                        // samples given to `wake` since it was made
   private final short[] ring = new short[RATE * 8];
@@ -335,6 +362,7 @@ public class VoiceService extends Service {
         model = keptModel; listenRec = keptListen; speakRec = keptSpeak;
         keptModel = null; keptListen = null; keptSpeak = null;
         dropKept = false;
+        warmAbort = false;
       }
       if (model == null) {
         String path = StorageService.sync(this, "model-en-us", "model");   // unpacks from the APK once
@@ -363,12 +391,13 @@ public class VoiceService extends Service {
         }
       } catch (Exception e) { Log.w(TAG, "audio effects", e); }
       effects = fx.toString();
-      // warm the two long-lived recognisers before listening (a few seconds, once; a kept pair is already warm)
+      // warm the listen recogniser before the mic opens (once; a kept one is already warm). The barge-in recogniser
+      // warms behind the mic, below, so the first request does not wait for it.
       long tw = System.currentTimeMillis();
       if (listenRec == null) { listenRec = new Recognizer(model, RATE); warm(listenRec); }
-      if (speakRec == null) { speakRec = new Recognizer(model, RATE); warm(speakRec); }
-      Log.i(TAG, "recognisers ready in " + (System.currentTimeMillis() - tw) + " ms");
+      Log.i(TAG, "listen recogniser ready in " + (System.currentTimeMillis() - tw) + " ms");
       rec.startRecording();
+      if (speakRec == null) warmSpeakLater();
       lastError = null; lastCode = null;
       if (listenFirst > 0) startListen(listenFirst, false); else idle();
       short[] buf = new short[RATE / 10];   // 100 ms
@@ -401,6 +430,10 @@ public class VoiceService extends Service {
       if (rec != null) { try { rec.stop(); } catch (Exception ignored) { } rec.release(); }
       closeAll();
       running = false;
+      warmAbort = true;   // a barge-in warm-up still running stops at its next buffer, then hands over or closes its result
+      if (speakWarmThread != null) { try { speakWarmThread.join(); } catch (InterruptedException ignored) { } speakWarmThread = null; }
+      Recognizer spare = takeWarmed();
+      if (spare != null) { if (speakRec == null) speakRec = spare; else spare.close(); }
       synchronized (VoiceService.class) {
         if (model != null && !failed && !dropKept && !wakeOn(this)) {   // wake word off: keep the model for the next tap
           keptModel = model; keptListen = listenRec; keptSpeak = speakRec;
