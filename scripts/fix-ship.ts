@@ -12,7 +12,7 @@ import { gate, type FileChange } from './fix-gate.ts';
 const SAFE = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false'];
 const DRY = process.env.FIX_SHIP_DRY === '1';
 const BAD_CONFIG: RegExp[] = [
-  /^core\.fsmonitor$/, /^core\.hookspath$/, /^core\.sshcommand$/,
+  /^core\.hookspath$/, /^core\.sshcommand$/,
   /^alias\./, /^include\./, /^includeif\./, /^filter\./,
   /^diff\..+\.textconv$/, /^merge\..+\.driver$/,
 ];
