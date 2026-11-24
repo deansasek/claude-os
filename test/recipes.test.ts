@@ -2,7 +2,7 @@
 // Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cookStep, parseRecipe, textRecipe, type Recipe } from '../src/apps/recipes/web/recipe.ts';
+import { cookStep, parseRecipe, pantryPrompt, textRecipe, type Recipe } from '../src/apps/recipes/web/recipe.ts';
 
 const JSON_RECIPE = {
   name: 'Lemon pasta',
@@ -50,4 +50,13 @@ test('a cook-mode step shows its number and clamps to the steps', () => {
   assert.equal(cookStep(recipe, 2).last, true);
   assert.equal(cookStep(recipe, 9).text, 'three');
   assert.equal(cookStep(recipe, -4).text, 'one');
+});
+
+test('the pantry prompt names the have items, the want items, and asks for the same JSON reply', () => {
+  const p = pantryPrompt(['eggs', 'milk'], ['cheese']);
+  assert.match(p, /mostly these ingredients I have: eggs, milk\./);
+  assert.match(p, /I can also buy: cheese\. The recipe may use them\./);
+  assert.match(p, /"steps"/);
+  assert.match(p, /Write no other text\./);
+  assert.doesNotMatch(pantryPrompt(['eggs'], []), /I can also buy/);
 });

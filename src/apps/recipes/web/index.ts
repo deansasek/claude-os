@@ -16,7 +16,7 @@ import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { PANTRY_MAX } from './pantry.ts';
 import {
-  RECIPE_PROMPT, adaptPrompt, cookStep, fromStored, parseRecipe, recipeOfDay, textRecipe, tonightPrompt, type Recipe,
+  RECIPE_PROMPT, adaptPrompt, cookStep, fromStored, pantryPrompt, parseRecipe, recipeOfDay, textRecipe, tonightPrompt, type Recipe,
 } from './recipe.ts';
 
 const API = `/api/${manifest.id}`;
@@ -33,7 +33,7 @@ const NATIVE_OFF = 'Turn on “Run Claude chats on this tablet” under Settings
 const HEART = (on: boolean) => `<svg viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/></svg>`;
 const LENS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>';
 
-type PendingKind = 'create' | 'adapt' | 'tonight';
+type PendingKind = 'create' | 'adapt' | 'tonight' | 'pantry';
 interface CookTimer { id: string; name: string; end: number }
 type Draft = { kind: 'recipe'; recipe: Recipe } | { kind: 'text'; text: string };
 type Screen = { t: 'discover' } | { t: 'detail'; r: Recipe } | { t: 'cook'; r: Recipe; step: number };
@@ -239,6 +239,7 @@ const WAITING: Record<PendingKind, string> = {
   create: 'Waiting for Claude’s recipe…',
   adapt: 'Waiting for Claude’s changed recipe…',
   tonight: 'Waiting for Claude’s idea for tonight…',
+  pantry: 'Waiting for Claude’s recipe from your ingredients…',
 };
 
 function draftHtml(d: Draft): string {
@@ -387,7 +388,8 @@ function pantryHtml(): string {
   else if (foundState === 'ok') body = `<ul class="rc-grid">${found.map((r, i) => cardHtml(r, 'pan', i, missingNote(foundMissing[i] ?? []))).join('')}</ul>`;
   return `<div class="rc-pantry">`
     + `<div class="rc-pantry-row">${field}${want}</div>${chips}${sugHtml}`
-    + `<div class="rc-actions"><button class="rc-btn pri" data-act="pantry-find"${pantry.length ? '' : ' disabled'}>Find recipes</button></div>`
+    + `<div class="rc-actions"><button class="rc-btn pri" data-act="pantry-find"${pantry.length ? '' : ' disabled'}>Find recipes</button>`
+    + `<button class="rc-btn" data-act="pantry-ask">Ask Claude</button></div>`
     + body + `</div>`;
 }
 
@@ -533,6 +535,12 @@ function onClick(ev: Event): void {
       break;
     case 'want-toggle': wantMode = !wantMode; break;
     case 'pantry-find': void findPantry(); return;
+    case 'pantry-ask': {
+      const have = pantry.filter(c => c.kind === 'have').map(c => c.name);
+      if (!have.length) { msg = 'Add what you have.'; break; }
+      askClaude(pantryPrompt(have, pantry.filter(c => c.kind === 'want').map(c => c.name)), 'pantry');
+      return;
+    }
     case 'cancel-wait': setPending(null); break;
     case 'discover': go({ t: 'discover' }); break;
     case 'open': { const r = pick(src, i); if (r) go({ t: 'detail', r }); break; }
