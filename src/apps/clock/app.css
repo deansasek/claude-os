@@ -266,7 +266,7 @@
 #app-clock[data-view="ring"] .ck-left .lhead b { font-size: 17px; }
 #app-clock[data-view="ring"] .ck-btns { margin-top: 18px; gap: 14px; }
 /* the alarm's Stop keeps the clay: the one loud thing on the page */
-#app-clock[data-view="ring"] #ckRingStop { background: var(--clay); border-color: var(--clay); color: #fff; }
+#app-clock[data-view="ring"] #ckRingStop { background: var(--clay); border-color: var(--clay); color: var(--bg); }
 @keyframes ck-pulse { 50% { opacity: .55; } }
 #app-clock .ck-ringnote { font: 400 22px var(--serif); color: var(--t2); margin-top: 6px; line-height: 1.35; max-width: 760px; }
 
