@@ -1,6 +1,16 @@
 // Gate rules for the AI issue-fix flow. Each patch must pass these checks before a PR opens.
 // Pure functions only: no network, no git calls, no file writes. Callers pass plain data.
 // gate() runs the rules in order and reports the first rule that fails.
+// Rules, in check order:
+//   1. denied-path: a changed file is protected (see isDeniedPath).
+//   2. package-json: package.json changes only add test file names to "test".
+//   3. no-change: the patch has no files or no changed lines.
+//   4. symlink: the patch adds or changes a symlink.
+//   5. file-count: the patch changes more than MAX_FILES files.
+//   6. line-count: the patch changes more than MAX_LINES lines.
+//   7. pr-title: the PR title is not Conventional Commits.
+//   8. pr-body: the PR body lacks a ## Why, ## What, or ## Tests heading.
+//   9. pr-attribution: the PR body has AI attribution text.
 
 export interface FileChange {
   path: string;
