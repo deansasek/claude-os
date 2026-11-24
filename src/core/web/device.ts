@@ -3,6 +3,8 @@
 // so `onTablet` is false and everything that needs the tablet stays hidden.
 // Every call is synchronous and returns JSON; `{ error }` becomes a thrown Error.
 
+import { recordClip } from './clipboard-history.ts';
+
 interface HubDeviceApi {
   info(): string; battery(): string;
   wifi(): string; wifiScan(): string; wifiNetworks(): string;
@@ -393,7 +395,7 @@ export const browser = {
   reader: (tab: string) => bmore(a => a.browserReader(tab)),
   snapshot: (tab: string) => bmore(a => a.browserSnapshot(tab)),
   share: (title: string, url: string) => bmore(a => a.browserShare(title, url)),
-  copy: (text: string) => bmore(a => a.browserCopy(text)),
+  copy: (text: string) => { bmore(a => a.browserCopy(text)); if (bapi) recordClip(text); },
   /** action: newtab, copy, share, download (a link), save (an image). */
   contextAction: (tab: string, action: string, url = '', image = '') => bmore(a => a.browserContextAction(tab, action, url, image)),
   openFile: (uri: string, mime = '') => bmore(a => a.browserOpenFile(uri, mime)),

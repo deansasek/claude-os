@@ -7,6 +7,7 @@
 import { esc, getJson, report } from '../../../core/web/dom.ts';
 import { browser, voice } from '../../../core/web/device.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
+import { recordClip } from '../../../core/web/clipboard-history.ts';
 import { markdown } from '../../../core/web/markdown.ts';
 import { alertFor, notify, onBack, openApp } from '../../../core/web/system.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
@@ -669,6 +670,7 @@ export async function copyText(text: string): Promise<boolean> {
 
 async function copyMsg(text: string, key: string): Promise<void> {
   const ok = await copyText(text);
+  if (ok) recordClip(text);
   report(ok ? 'copy' : 'copy-failed');
   // the time on the row says so for a moment, then goes back to how long ago
   const el = [...$('svLog').querySelectorAll<HTMLElement>('[data-when]')].find(x => x.dataset.when === key);
@@ -692,6 +694,7 @@ function openReplyLink(href: string): void {
 async function copyCode(btn: HTMLElement): Promise<void> {
   const code = btn.closest('.md-code')?.querySelector('code')?.textContent ?? '';
   const ok = await copyText(code);
+  if (ok) recordClip(code);
   report(ok ? 'copy' : 'copy-failed');
   btn.textContent = ok ? 'Copied' : 'Couldn’t copy';
   window.setTimeout(() => { if (btn.isConnected) btn.textContent = 'Copy'; }, 1500);
