@@ -460,8 +460,9 @@ jobs:
 
   # Write one result report. Edit the Claude comment from the agent run into the
   # report. If none is found, post a new comment as Claude. Then remove ai-fix so
-  # the label can be added again. The report is the PR link, the gate reason, a
-  # skip notice, the dry-run text, or a publish failure notice.
+  # the label can be added again. The report is the PR link with its Why, What and
+  # Tests sections, the gate reason, a skip notice, the dry-run text, or a publish
+  # failure notice.
   report:
     needs: [agent, gate, publish]
     if: always() && vars.AI_ENABLED == 'true'
@@ -546,10 +547,30 @@ jobs:
           case "$kind" in
             pr)
               title=$(head -n 1 "$RUNNER_TEMP/pr-draft/title.txt" | tr -d '\r')
+              draft="$RUNNER_TEMP/pr-draft/body.md"
+              # Print the lines under the "## $1" heading, up to the next "## " heading.
+              # Print "Not given." when the section is missing or empty.
+              section() {
+                text=$(awk -v h="## $1" '
+                  { line = $0; sub(/[ \t\r]+$/, "", line) }
+                  line == h { on = 1; next }
+                  on && /^## / { exit }
+                  on { print }
+                ' "$draft" | sed -e '/./,$!d' -e ':a' -e '/^[[:space:]]*$/{$d;N;ba' -e '}')
+                if [ -n "$text" ]; then printf '%s\n' "$text"; else echo "Not given."; fi
+              }
               {
                 echo "Fix ready for review: ${PR_URL}"
+                echo "Title: ${title}"
                 echo
-                echo "PR title: ${title}"
+                echo "## Why"
+                section Why
+                echo
+                echo "## What"
+                section What
+                echo
+                echo "## Tests"
+                section Tests
                 echo
                 echo "Changed files:"
                 while IFS=$'\t' read -r _ _ path; do echo "- ${path}"; done < "$RUNNER_TEMP/fix-run/numstat.txt"
