@@ -1,16 +1,21 @@
 /* ===== Radio ===== (everything scoped to #app-radio)
-   A media player in two bands, on Home's grid (core's --app-l/--app-r/--app-body, the first label on --app-label-y):
-     top         favourites (left) and recently played (right), each a row of small cards (or one quiet line)
-     main        the now-playing card on the left; the catalogue on the right: search, tabs, a grid of station
-                 cards or of genres/countries/languages, a station's own page, and the Radio Browser credit
+   A media player in three zones, on Home's grid (core's --app-l/--app-r/--app-body, the first label on --app-label-y):
+     left        the hero (the now-playing card, wide and top); under it the strip: favourites, then recently played, in one row
+                 of small cards that scrolls sideways
+     right       the browse column, full height: search, tabs, a grid of station cards or of genres/countries/languages,
+                 a station's own page, and the Radio Browser credit
    Warm neutrals and 1px hairlines; the serif for station names, the sans for labels; clay only for "on air". */
 #app-radio [hidden] { display: none !important; }
 
 #app-radio .rd-page { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
-  display: grid; grid-template-rows: auto minmax(0, 1fr); row-gap: calc(16px + 6px * var(--tall));
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); column-gap: 40px; min-height: 0;
   padding-top: calc(var(--app-label-y) - var(--app-body)); }
-#app-radio :is(.rd-main, .rd-top) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); column-gap: 40px; min-height: 0; }
-#app-radio .rd-top .rd-favs-band { min-width: 0; }
+/* the left column: the hero, then the strip; the browse column (.rd-find) is the right column, full height */
+#app-radio .rd-left { display: flex; flex-direction: column; gap: calc(16px + 6px * var(--tall)); min-width: 0; min-height: 0; }
+#app-radio .rd-left .rd-now { flex: 1 1 auto; }
+#app-radio .rd-strip { flex: none; display: flex; gap: 28px; overflow-x: auto; scrollbar-width: none; }
+#app-radio .rd-strip::-webkit-scrollbar { display: none; }
+#app-radio .rd-favs-band { flex: none; min-width: 0; }
 
 #app-radio .rd-k { margin: 0 0 8px; font: 400 14px/20px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #app-radio .rd-empty { margin: 0; min-height: 56px; display: flex; align-items: center; font: italic 400 17px/1.3 var(--serif); color: var(--t3); }
@@ -22,8 +27,7 @@
 #app-radio .rd-chip { width: 36px; height: 36px; border-radius: 10px; font-size: 18px; font-weight: 500; }
 
 /* ---- favourites: small cards in one row that scrolls sideways ---- */
-#app-radio .rd-favs { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; }
-#app-radio .rd-favs::-webkit-scrollbar { display: none; }
+#app-radio .rd-favs { display: flex; gap: 10px; }
 #app-radio .rd-fav { all: unset; box-sizing: border-box; cursor: pointer; flex: none; display: flex; align-items: center; gap: 10px;
   max-width: 220px; height: 56px; padding: 0 16px 0 10px; border-radius: 14px; background: var(--card); border: 1px solid var(--line);
   transition: transform var(--dur-fast) var(--ease-out); }
