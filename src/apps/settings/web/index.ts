@@ -19,6 +19,7 @@ import { monitorLines } from './monitor.ts';
 import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, setTileOrder, sleep, swipeNotices, tileOrder, toggleMuteApp } from '../../../core/web/system.ts';
 import { appLabel } from '../../../core/web/notes-group.ts';
 import { moveTile, TILE_NAMES } from '../../../core/web/quick-order.ts';
+import { loadSettings, restoreSettings, saveSettings } from './backup.ts';
 import type { QuietHours } from '../../../core/web/system.ts';
 import { clock, untilText, whenText } from '../../../core/web/format.ts';
 import { setThemeMode, themeMode } from '../../../core/web/theme.ts';
@@ -149,7 +150,7 @@ function show(raw: string): void {
   if (s === 'usage') void loadUsage();
   if (s === 'yourclaude') void loadInstructions();
   if (s === 'plugins') void loadPlugins();
-  if (s === 'storage') void paintStorage();
+  if (s === 'storage') { void paintStorage(); void paintBackupNote(); }
   if (s === 'security') void paintPinRow();
 }
 
@@ -1023,6 +1024,29 @@ function paintKeyboard(): void {
 }
 
 // ---------- Storage ----------
+// ---------- Settings backup (Storage): save to the PC, restore on request (backup.ts) ----------
+async function paintBackupNote(): Promise<void> {
+  const b = await loadSettings();
+  $('stBkNote').textContent = !b ? 'Can’t reach your PC' : b.saved
+    ? `${new Date(b.saved).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ${Object.keys(b.values).length} settings`
+    : 'Not saved yet';
+}
+function initBackup(): void {
+  $('stBkSave').addEventListener('click', async () => {
+    $('stBkMsg').textContent = 'Saving…';
+    const r = await saveSettings();
+    $('stBkMsg').textContent = r.ok ? `Saved ${r.count} settings to your PC.` : (r.error ?? 'Couldn’t save.');
+    void paintBackupNote();
+  });
+  $('stBkRestore').addEventListener('click', () => {
+    confirmSheet('Restore settings from your PC?', 'The settings on this tablet are replaced with the ones saved on your PC. The page then reloads.', 'Restore', async () => {
+      const n = await restoreSettings();
+      if (n < 0) { $('stBkMsg').textContent = 'Can’t reach your PC. Try again when it’s back.'; return; }
+      location.reload();
+    });
+  });
+}
+
 async function paintStorage(): Promise<void> {
   let st: StorageInfo | null = null;
   if (nativeHas('storage')) { try { st = device.storage(); } catch { st = null; } }
@@ -1372,6 +1396,7 @@ function mount(context: AppContext): void {
     const app = (e.target as HTMLElement).closest<HTMLElement>('[data-app]')?.dataset.app;
     if (app && app !== 'settings') openApp(app);
   });
+  initBackup();
   $('stTiles').addEventListener('click', e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-move]');
     if (!b?.dataset.move) return;
