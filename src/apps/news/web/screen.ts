@@ -1,6 +1,7 @@
 // The News screen's choices, with no DOM: which state the page shows, the top story, the shelves, the notes for
-// feeds that failed, the time a saved shelf was fetched, and whether a story can be opened. Tested in
-// test/news-screen.test.ts. The page (web/index.ts) paints these choices and sets the text with textContent.
+// feeds that failed, the time a saved shelf was fetched, whether a story can be opened, and the reader's text.
+// The feed's own words are passed through unchanged (feed terms, #357). Tested in test/news-screen.test.ts.
+// The page (web/index.ts) paints these choices and sets the text with textContent.
 import type { NewsFeedResponse, NewsItem } from '../api.ts';
 
 export interface Shelf { sourceId: string; name: string; stories: NewsItem[]; stale: boolean; when: string | null }
@@ -11,6 +12,12 @@ export type NewsScreen =
 
 export const ERROR_TEXT = 'The news feeds did not answer. Check that the computer running ClaudeOS is connected to the internet. Tap Try again.';
 export const NO_FEED_TEXT = 'ClaudeOS could not read the news from the computer. Tap Try again.';
+export const NO_SUMMARY_TEXT = 'The feed gave no summary for this story.';
+
+// Feed terms (#357): no feed picture is shown until the owner confirms the BBC image licence. The code path stays.
+export const SHOW_IMAGES = false;
+// Feed terms (#357): the page asks for the feed no more often than this, while it is on screen or when it is shown.
+export const POLL_MS = 15 * 60e3;
 
 /** The screen for one answer from /api/news/feed (null when the request itself failed). */
 export function screenFor(res: NewsFeedResponse | null): NewsScreen {
@@ -27,6 +34,27 @@ export function screenFor(res: NewsFeedResponse | null): NewsScreen {
     text: `${s.name} did not load${s.error ? `: ${s.error}` : ''}.${s.stale ? ' Showing the stories it had before.' : ' Its stories are not shown.'}`,
   }));
   return { state: 'stories', headline, shelves, notes, updated: res.updated };
+}
+
+/** Every story on the screen, by id, for the reader sheet. */
+export function storiesById(s: Extract<NewsScreen, { state: 'stories' }>): Map<string, NewsItem> {
+  return new Map([s.headline, ...s.shelves.flatMap(x => x.stories)].map(i => [i.id, i] as const));
+}
+
+/** The picture for a story: never while SHOW_IMAGES is off. The page then shows the letter block. */
+export function pictureFor(item: NewsItem): string | null {
+  return SHOW_IMAGES ? item.image : null;
+}
+
+/** What the reader sheet shows: the feed's own title and description, unchanged, and the link (or null). */
+export function readerFor(item: NewsItem, now: number): { source: string; when: string; title: string; description: string; link: string | null } {
+  return {
+    source: item.source,
+    when: ago(item.published, now),
+    title: item.title,
+    description: item.description || NO_SUMMARY_TEXT,
+    link: linkFor(item),
+  };
 }
 
 /** The link a story opens in the Browser app: http or https only, else null (no Read button). */

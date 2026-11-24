@@ -1,9 +1,13 @@
 // The News screen's rules, with no DOM: the states (ok, partial, error), the headline and shelves, the notes for a
-// failed feed, the saved time on a stale shelf, and the Read link (none for a story without a link). Run with: npm test
+// failed feed, the saved time on a stale shelf, the Read link (none for a story without a link), the feed terms
+// (no picture, text unchanged, a tile opens the reader, poll at most every 15 minutes). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { NewsFeedResponse, NewsItem } from '../src/apps/news/api.ts';
-import { ago, linkFor, screenFor, ERROR_TEXT, NO_FEED_TEXT } from '../src/apps/news/web/screen.ts';
+import { parseFeed } from '../src/apps/news/web/rss.ts';
+import {
+  ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, SHOW_IMAGES, storiesById, ERROR_TEXT, NO_FEED_TEXT, NO_SUMMARY_TEXT,
+} from '../src/apps/news/web/screen.ts';
 
 const T = '2026-11-24T10:00:00Z';
 const story = (id: string, sourceId: string, extra: Partial<NewsItem> = {}): NewsItem => ({
@@ -94,4 +98,53 @@ test('ago says how old a story is in plain words', () => {
   assert.equal(ago('2026-11-21T10:00:00Z', now), '3 d ago');
   assert.equal(ago(null, now), '');
   assert.equal(ago('not a date', now), '');
+});
+
+test('feed terms: no feed picture is shown while SHOW_IMAGES is off', () => {
+  assert.equal(SHOW_IMAGES, false);
+  assert.equal(pictureFor(story('a', 'bbc', { image: 'https://img.example.com/a.jpg' })), null);
+  assert.equal(pictureFor(story('a', 'bbc', { image: null })), null);
+});
+
+test('feed terms: the feed title and description reach the reader unchanged, with no cut', () => {
+  const long = 'Word '.repeat(120).trim();   // 599 characters
+  const xml = `<rss><channel><item><title>Exact &amp; title</title><link>https://example.com/x</link>
+    <description><![CDATA[<p>${long}</p>]]></description><pubDate>Tue, 24 Nov 2026 09:00:00 GMT</pubDate></item></channel></rss>`;
+  const [item] = parseFeed(xml, { id: 'bbc', name: 'BBC News' });
+  assert.equal(item.title, 'Exact & title');
+  assert.equal(item.description, long);
+  const s = screenFor({ status: 'ok', updated: T, items: [item], sources: [bbc()] });
+  if (s.state !== 'stories') assert.fail('expected stories');
+  assert.equal(s.headline.title, item.title);
+  assert.equal(s.headline.description, long);
+  const r = readerFor(item, Date.parse(T));
+  assert.equal(r.title, 'Exact & title');
+  assert.equal(r.description, long);
+  assert.equal(r.source, 'BBC News');
+});
+
+test('feed terms: a story with no summary gets the plain note, not a made-up summary', () => {
+  assert.equal(readerFor(story('a', 'bbc', { description: '' }), Date.parse(T)).description, NO_SUMMARY_TEXT);
+});
+
+test('a tile opens the reader with that story, and the reader links to its original', () => {
+  const res: NewsFeedResponse = {
+    status: 'ok', updated: T,
+    items: [story('a', 'bbc'), story('b', 'npr', { title: 'NPR tile', description: 'NPR words.' }), story('c', 'bbc')],
+    sources: [bbc(), npr()],
+  };
+  const s = screenFor(res);
+  if (s.state !== 'stories') assert.fail('expected stories');
+  const byId = storiesById(s);
+  // every tile on the screen (the shelves) finds its story; the headline is in the map too
+  for (const shelf of s.shelves) for (const tileStory of shelf.stories) assert.ok(byId.has(tileStory.id));
+  const r = readerFor(byId.get('b')!, Date.parse(T));
+  assert.equal(r.title, 'NPR tile');
+  assert.equal(r.description, 'NPR words.');
+  assert.equal(r.link, 'https://example.com/b');
+  assert.equal(r.source, 'NPR');
+});
+
+test('the page asks for the feed no more often than every 15 minutes', () => {
+  assert.ok(POLL_MS >= 15 * 60e3);
 });
