@@ -256,11 +256,12 @@ function pickScene(i: number | null): void {
   });
 }
 
-function addStep(kind: StepKind): void {
+function addStep(kind: StepKind, mode?: string): void {
   if (draft.steps.length >= MAX_STEPS) return;
   if (kind === 'say') { editSay(null); return; }
   if (kind === 'scene') { pickScene(null); return; }
-  draft.steps.push(kind === 'timer' ? { kind, minutes: 5 } : kind === 'pause' ? { kind, seconds: 3 } : kind === 'lists' ? { kind, list: 'shopping' } : kind === 'quiet' ? { kind, on: true } : { kind } as Step);
+  draft.steps.push(kind === 'timer' ? { kind, minutes: 5 } : kind === 'pause' ? { kind, seconds: 3 } : kind === 'lists' ? { kind, list: 'shopping' } : kind === 'quiet' ? { kind, on: true }
+    : kind === 'focus' ? { kind, mode: mode === 'family' || mode === 'sleep' ? mode : 'work' } : { kind } as Step);
   render();
 }
 
@@ -358,8 +359,9 @@ const app: HubApp = {
     });
     $('rtSteps').addEventListener('click', onStepsClick);
     $('rtAdd').addEventListener('click', ev => {
-      const k = (ev.target as Element).closest<HTMLElement>('[data-add]')?.dataset.add as StepKind | undefined;
-      if (k) addStep(k);
+      const chip = (ev.target as Element).closest<HTMLElement>('[data-add]');
+      const k = chip?.dataset.add as StepKind | undefined;
+      if (k) addStep(k, chip?.dataset.mode);
     });
     $('rtSave').addEventListener('click', () => { void save(); });
     $('rtDelete').addEventListener('click', askDelete);
