@@ -304,3 +304,6 @@
 #app-radio .rd-np-up-art { width: 72px; height: 72px; border-radius: 12px; border: 1px solid var(--line); font-size: 30px; }
 #app-radio .rd-np-up-name { font: 400 13px/18px var(--sans); color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #app-radio .rd-np-up:active .rd-np-up-art { opacity: .85; }
+
+/* ---- More like this, at the foot of a station's page: the same station cards in their own row ---- */
+#app-radio .rd-station .rd-more { margin-top: 6px; }

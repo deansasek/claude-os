@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Facet } from '../src/apps/radio/api.ts';
-import { FACET_COUNT, TOP_COUNT, TOP_ERROR, WARM_HUES, homeShelves, tileHue, topFacets, type HomeInput } from '../src/apps/radio/web/shelves.ts';
+import { FACET_COUNT, MORE_COUNT, TOP_COUNT, TOP_ERROR, WARM_HUES, homeShelves, moreLikeThis, tileHue, topFacets, type HomeInput } from '../src/apps/radio/web/shelves.ts';
 
 const full: HomeInput = { favs: 3, recent: 4, top: 'ok', topCount: 100, genres: 'ok', genreCount: 40, countries: 'ok', countryCount: 30 };
 const plan = (over: Partial<HomeInput>) => homeShelves({ ...full, ...over });
@@ -55,4 +55,13 @@ test('the top twelve facets by count, most first', () => {
 test('a category tile has a steady warm hue from the warm set', () => {
   assert.equal(tileHue('Jazz'), tileHue('Jazz'));
   for (const name of ['Jazz', 'News', 'Pop', 'Classical', 'Talk']) assert.ok((WARM_HUES as readonly number[]).includes(tileHue(name)));
+});
+
+test('More like this leaves the station itself out and holds twenty cards', () => {
+  const list = Array.from({ length: 25 }, (_, i) => ({ id: `s${i}` }));
+  const more = moreLikeThis(list, 's3');
+  assert.equal(more.some(s => s.id === 's3'), false);
+  assert.equal(more.length, MORE_COUNT);
+  assert.equal(more[0].id, 's0');
+  assert.equal(moreLikeThis([{ id: 'only' }], 'only').length, 0);
 });

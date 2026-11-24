@@ -67,3 +67,10 @@ export function tileHue(name: string): number {
   for (const ch of name) h = (h * 31 + ch.codePointAt(0)!) >>> 0;
   return WARM_HUES[h % WARM_HUES.length];
 }
+
+export const MORE_COUNT = 20;   // More like this: the cards on the station page
+
+/** The stations for More like this: the genre's list without the station itself, the first MORE_COUNT. */
+export function moreLikeThis<T extends { id: string }>(list: readonly T[], stationId: string): T[] {
+  return list.filter(s => s.id !== stationId).slice(0, MORE_COUNT);
+}
