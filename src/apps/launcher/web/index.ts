@@ -11,8 +11,7 @@
 // with local storage as the offline copy: when the PC can't be reached the copy is used, and sent once it can.
 // Which Android apps are allowed is never part of the layout: that list stays on the tablet (lock task depends on it).
 //
-// TODO: while an Android app is open, a small floating "back to Claude Home" button over it (a later step,
-// on the Android side: an overlay started from Launcher.launch()).
+// While an Android app is open, BackButton (android/src/hub/kiosk/BackButton.java) draws the floating "back to Claude Home" button.
 import { esc, getJson, renderSparks, report, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { androidApps, onTablet, type AndroidApp } from '../../../core/web/device.ts';
