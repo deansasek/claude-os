@@ -84,12 +84,6 @@ export function pinStatus(): PinStatus {
   return s ? { set: true, lockedFor: secondsLeft(s.lockedUntil) } : { set: false, lockedFor: 0 };
 }
 
-/** The salted hash, for the tablet's own check when the PC can't be reached (core/web/pin-local.ts). Never the PIN. */
-export function pinRecord(): { set: boolean; salt?: string; hash?: string; iterations?: number } {
-  const s = load();
-  return s ? { set: true, salt: s.salt, hash: s.hash, iterations: ITERATIONS } : { set: false };
-}
-
 /** A short fingerprint of the PIN as it is stored now: it changes when the PIN is set, changed or removed. Null if none. */
 export function pinFingerprint(): string | null {
   const s = load();

@@ -219,7 +219,6 @@ async function checkStatus(): Promise<void> {
   if (!st) { if (hasLocalPin()) askOnTablet(); else retry(); return; }
   rememberPinSet(st.set);
   if (!st.set) { clearLocalRecord(); close(); return; }
-  void syncLocalPin();   // the tablet's copy follows the PC's PIN (pin-local.ts)
   if (el) el.hidden = false;
   if (st.lockedFor > 0) cooldown(st.lockedFor);
   else { phase = 'pin'; paint(); }

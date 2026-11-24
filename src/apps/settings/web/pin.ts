@@ -3,7 +3,7 @@
 // new PIN twice; Change and Remove ask for the current PIN first. Five wrong tries on the PC give a 30-second wait.
 import { getJson, postJson, report } from '../../../core/web/dom.ts';
 import { rememberPinSet } from '../../../core/web/lock.ts';
-import { clearLocalRecord, syncLocalPin } from '../../../core/web/pin-local.ts';
+import { clearLocalRecord, saveLocalPin } from '../../../core/web/pin-local.ts';
 import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from '../../../core/web/pin-pad.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
 import type { PinResult, PinStatus } from '../api.ts';
@@ -36,8 +36,8 @@ export async function paintPinRow(): Promise<void> {
   try { status = await getJson<PinStatus>('/api/settings/pin'); } catch { status = null; }
   if (status) {
     rememberPinSet(status.set);
-    // the tablet's copy of the PIN hash follows the PC: set or changed → fetch it, removed → forget it (pin-local.ts)
-    if (status.set) void syncLocalPin(); else clearLocalRecord();
+    // the tablet's copy is made when a PIN is set or changed on this tablet (saveLocalPin); gone on the PC → forget it
+    if (!status.set) clearLocalRecord();
   }
   const on = status?.set === true;
   $('stPinState').textContent = status ? (on ? 'On' : 'Off') : '–';
@@ -115,10 +115,11 @@ async function attempt(call: () => Promise<PinResult>): Promise<PinResult | null
   return null;
 }
 
-async function finish(call: () => Promise<PinResult>, tag: string): Promise<void> {
+async function finish(call: () => Promise<PinResult>, tag: string, pin?: string): Promise<void> {
   if (!(await attempt(call))) return;
   report(tag);
   closeSheet();
+  if (pin) void saveLocalPin(pin);
   void paintPinRow();
 }
 
@@ -129,7 +130,7 @@ async function done(): Promise<void> {
   if (step === 'confirm') {
     if (pin !== firstNew) { step = 'new'; firstNew = ''; typed = ''; msg = 'Those don’t match. Start again.'; paintSheet(); return; }
     const cur = mode === 'change' ? current : undefined;
-    await finish(() => postJson<PinResult>('/api/settings/pin', { pin, current: cur }), `settings:pin:${mode}`);
+    await finish(() => postJson<PinResult>('/api/settings/pin', { pin, current: cur }), `settings:pin:${mode}`, pin);
     return;
   }
   if (mode === 'remove') { await finish(() => postJson<PinResult>('/api/settings/pin/remove', { pin }), 'settings:pin:remove'); return; }

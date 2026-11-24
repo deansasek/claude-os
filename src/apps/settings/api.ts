@@ -8,7 +8,6 @@
 //   POST /api/settings/instructions       {text}: saved (empty clears it), returns {text}
 //   GET  /api/settings/storage            what the PC keeps for ClaudeOS: {photos} in bytes
 //   GET  /api/settings/pin                the ClaudeOS PIN lock: PinStatus {set, lockedFor}
-//   GET  /api/settings/pin/record         the PIN's salted hash for the tablet's own check: {set, salt, hash, iterations}
 //   POST /api/settings/pin/check          {pin}: PinResult (the lock screen's check)
 //   POST /api/settings/pin                {pin, current?}: set or change it (current is needed once one is set)
 //   POST /api/settings/pin/remove         {pin}: remove it (the current PIN)

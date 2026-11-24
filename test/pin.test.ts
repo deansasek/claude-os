@@ -74,14 +74,3 @@ test('removing the PIN needs the current PIN, then the file is gone and nothing 
   assert.equal(fs.existsSync(file), false);
   assert.equal(P.checkPin('1234').error, 'no_pin');
 });
-
-test('pinRecord gives the salted hash for the tablet\'s own check, and nothing when no PIN is set', () => {
-  assert.deepEqual(P.pinRecord(), { set: false });
-  P.setPin('1234', '');
-  const rec = P.pinRecord();
-  assert.equal(rec.set, true);
-  assert.equal(typeof rec.salt, 'string');
-  assert.equal(rec.iterations, 200000);
-  assert.equal(rec.hash?.length, 64);
-  assert.equal(JSON.stringify(rec).includes('1234'), false);   // never the PIN itself
-});

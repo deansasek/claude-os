@@ -1,15 +1,16 @@
 // The tablet's own copy of the ClaudeOS PIN check, for when the PC can't be reached (lock.ts). It keeps only the
-// salted PBKDF2 hash that the PC gives (GET /api/settings/pin/record) and the wrong-try count, never the PIN. The same
-// rule as the PC (settings/server/pin.ts): five wrong tries in a row start a 30-second cooldown.
-// The copy is refreshed each time the PC says a PIN is set (lock.ts, settings/web/pin.ts) and removed when it is gone.
+// salted PBKDF2 hash and the wrong-try count, never the PIN. The hash is made here, from the PIN typed on this tablet
+// (saveLocalPin), so the PC never sends it. The same rule as the PC (settings/server/pin.ts): five wrong tries in a row
+// start a 30-second cooldown. The copy is removed when the PIN is gone.
 // No DOM imports here: test/pin-local.test.ts runs this file in node.
-import { hexToBytes, pbkdf2Hex } from './pbkdf2.ts';
+import { bytesToHex, hexToBytes, pbkdf2Hex } from './pbkdf2.ts';
 
 export interface PinRecord { salt: string; hash: string; iterations: number }
 export interface LocalState { fails: number; lockedUntil: number }
 export interface LocalResult { ok: boolean; error?: 'locked' | 'wrong'; left?: number; lockedFor: number }
 
 const MAX_TRIES = 5, COOLDOWN_MS = 30 * 1000;
+const ITERATIONS = 200000;                  // the same count as the PC (settings/server/pin.ts)
 const RECORD_KEY = 'os.pinRecord', STATE_KEY = 'os.pinTries';
 const FRESH: LocalState = { fails: 0, lockedUntil: 0 };
 
@@ -96,15 +97,11 @@ export async function checkLocally(pin: string): Promise<LocalResult | null> {
   return result;
 }
 
-/** Fetch the PC's record and keep it. The PC being unreachable keeps the copy as it is. */
-export async function syncLocalPin(): Promise<void> {
-  try {
-    const r = await fetch('/api/settings/pin/record', { cache: 'no-store', signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return;
-    const j = await r.json() as { set?: boolean } & Partial<PinRecord>;
-    if (j.set === false) { clearLocalRecord(); return; }
-    if (typeof j.salt === 'string' && typeof j.hash === 'string' && typeof j.iterations === 'number') {
-      saveLocalRecord({ salt: j.salt, hash: j.hash, iterations: j.iterations });
-    }
-  } catch { /* the PC can't be reached: keep the copy */ }
+/** Make the tablet's copy from the PIN just set or changed here. A random salt; the slow hash runs after a paint. */
+export async function saveLocalPin(pin: string): Promise<void> {
+  const salt = new Uint8Array(16);
+  crypto.getRandomValues(salt);             // works on a plain http page (only crypto.subtle is missing there)
+  await new Promise(resolve => setTimeout(resolve, 30));
+  const saltHex = bytesToHex(salt);
+  saveLocalRecord({ salt: saltHex, hash: pbkdf2Hex(pin, saltHex, ITERATIONS), iterations: ITERATIONS });
 }
