@@ -19,9 +19,11 @@ export const getInstructions = (): string => text;
 
 /** Save the instructions (empty clears them). Returns what is saved now. */
 export function setInstructions(v: unknown): string {
-  text = clean(v);
-  if (text) fs.writeFileSync(FILE, text);
+  // Write the file first: a failed write throws and leaves the saved text as it was.
+  const next = clean(v);
+  if (next) fs.writeFileSync(FILE, next);
   else { try { fs.rmSync(FILE, { force: true }); } catch { /* already gone */ } }
+  text = next;
   return text;
 }
 
