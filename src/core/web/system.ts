@@ -23,6 +23,7 @@ import { device, onTablet, onVolume, voice } from './device.ts';
 import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
 import type { Battery } from './device.ts';
 import { clock, untilText } from './format.ts';
+import { CLOCK_TIMER_KEY, clockTimerLeftMs, clockTimerText } from './clock-timer.ts';
 import { Keyboard } from './keyboard.ts';
 import { lockBusy, lockShowing, requireUnlock } from './lock.ts';
 import { motionMs, reducedMotion } from './motion.ts';
@@ -360,11 +361,7 @@ export function nextAlarm(): NextAlarm | null {
 
 /** A Clock timer that is running: its time left in ms, or null (Clock keeps its state under clock.timer). */
 function timerLeft(): number | null {
-  try {
-    const t = JSON.parse(store.get('clock.timer') || 'null') as { end?: number | null } | null;
-    const ms = t?.end ? t.end - Date.now() : 0;
-    return ms > 0 ? ms : null;
-  } catch { return null; }
+  return clockTimerLeftMs(store.get(CLOCK_TIMER_KEY), Date.now());
 }
 /** "4 min", "1h 05m": the ambient screen repaints once a minute, so it counts in minutes. */
 const leftText = (ms: number): string => (ms < 3600e3 ? `${Math.max(1, Math.ceil(ms / 60e3))} min` : untilText(ms));
@@ -494,13 +491,7 @@ function hmText(s: string): string {
 
 /** The Clock app's running timer, as the drawer shows it: "4:59", or "1:04:59" from an hour up. */
 export function timerLeftText(): string | null {
-  try {
-    const t = JSON.parse(store.get('clock.timer') || 'null') as { end?: number | null } | null;
-    if (!t?.end || t.end <= Date.now()) return null;
-    const s = Math.ceil((t.end - Date.now()) / 1000), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
-    const p = (n: number) => String(n).padStart(2, '0');
-    return h ? `${h}:${p(m)}:${p(s % 60)}` : `${m}:${p(s % 60)}`;
-  } catch { return null; }
+  return clockTimerText(store.get(CLOCK_TIMER_KEY), Date.now());
 }
 
 /** The timer tile: the countdown while the Clock app's timer runs (repainted each second while the drawer is open). */
