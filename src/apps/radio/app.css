@@ -1,0 +1,42 @@
+/* ===== Radio ===== (everything scoped to #app-radio) */
+#app-radio [hidden] { display: none !important; }
+
+#app-radio .rd { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
+  display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+
+/* the station on the air: a dot, its name, and Stop */
+#app-radio .rd-now { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 16px;
+  background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+#app-radio .rd-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--clay); flex: none; }
+#app-radio .rd-now-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+#app-radio .rd-now-text small { font: 500 12px var(--sans); color: var(--t3); }
+#app-radio .rd-now-text b { font: 600 17px var(--sans); color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-stop { all: unset; box-sizing: border-box; cursor: pointer; min-height: 44px; padding: 0 18px; border-radius: 99px;
+  display: inline-flex; align-items: center; font: 500 15px var(--sans); color: var(--t2); background: var(--card-2); }
+#app-radio .rd-stop:active { background: var(--line); }
+
+/* the search field: a button that opens ClaudeOS's keyboard */
+#app-radio .rd-search { all: unset; box-sizing: border-box; cursor: text; min-height: 48px; padding: 0 18px; border-radius: 99px;
+  display: flex; align-items: center; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+#app-radio .rd-search-text { font: 400 16px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+#app-radio .rd-msg { margin: 0; font: 400 14px var(--sans); color: var(--clay-deep); }
+
+#app-radio .rd-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
+#app-radio .rd-scroll::-webkit-scrollbar { display: none; }
+#app-radio .rd-h { margin: 14px 0 6px; font: 600 13px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--t3); }
+#app-radio .rd-list { list-style: none; margin: 0; padding: 0; }
+#app-radio .rd-empty { margin: 6px 0; font: 400 15px var(--sans); color: var(--t3); }
+
+#app-radio .rd-row { display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+#app-radio .rd-play { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 0; min-height: 56px; padding: 6px 4px;
+  display: flex; flex-direction: column; justify-content: center; }
+#app-radio .rd-play:active { background: var(--card-2); }
+#app-radio .rd-name { font: 500 17px var(--sans); color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-sub { font: 400 13px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-live { font: 600 12px var(--sans); color: var(--clay-deep); }
+#app-radio .rd-row.on .rd-name { color: var(--clay-deep); }
+#app-radio .rd-star { all: unset; box-sizing: border-box; cursor: pointer; width: 52px; height: 56px; flex: none;
+  display: flex; align-items: center; justify-content: center; color: var(--t3); }
+#app-radio .rd-star svg { width: 24px; height: 24px; }
+#app-radio .rd-star.on { color: var(--clay); }

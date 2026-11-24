@@ -9,6 +9,7 @@ import camera from './apps/camera/web/index.ts';
 import photos from './apps/photos/web/index.ts';
 import homeAssistant from './apps/home-assistant/web/index.ts';
 import lists from './apps/lists/web/index.ts';
+import radio from './apps/radio/web/index.ts';
 import calendar from './apps/calendar/web/index.ts';
 import routines from './apps/routines/web/index.ts';
 import settings from './apps/settings/web/index.ts';
@@ -31,8 +32,8 @@ import { initPowerSheet } from './core/web/power-sheet.ts';
 // devices are switched by the PC). The first-run welcome shows once the app has mounted (startHub resolves after that),
 // if the PC hasn't recorded it.
 void startHub(onTablet
-  ? [home, launcher, claude, weather, clock, browserApp, camera, photos, homeAssistant, lists, calendar, routines, settings]
-  : [home, launcher, claude, weather, clock, photos, homeAssistant, lists, calendar, routines]).then(() => {
+  ? [home, launcher, claude, weather, clock, browserApp, camera, photos, homeAssistant, lists, radio, calendar, routines, settings]
+  : [home, launcher, claude, weather, clock, photos, homeAssistant, lists, radio, calendar, routines]).then(() => {
     maybeWelcome();
     initPowerSheet({ reboot: device.reboot, screenOff: device.screenOff, onBack });   // a long press of the power button
     initCliSignin({   // the tablet's Claude CLI sign-in (Settings → Apps → Claude → Sign in)

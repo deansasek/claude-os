@@ -1,0 +1,23 @@
+<header class="app-hd">   <!-- the shell draws the icon and "Radio" (core/web/app-header.ts) -->
+</header>
+
+<div class="rd">
+  <div class="rd-now" id="rdNow" hidden>
+    <span class="rd-dot" aria-hidden="true"></span>
+    <div class="rd-now-text"><small>On air</small><b id="rdNowName"></b></div>
+    <button class="rd-stop" id="rdStop">Stop</button>
+  </div>
+
+  <button class="rd-search" id="rdSearch"><span class="rd-search-text" id="rdQuery">Search stations</span></button>
+  <p class="rd-msg" id="rdMsg" hidden></p>
+
+  <div class="rd-scroll">
+    <h3 class="rd-h">Favourites</h3>
+    <ul class="rd-list" id="rdFavs"></ul>
+    <p class="rd-empty" id="rdFavsEmpty">Tap the star on a station to keep it here.</p>
+
+    <h3 class="rd-h" id="rdResHead">Most voted stations</h3>
+    <ul class="rd-list" id="rdRes"></ul>
+    <p class="rd-empty" id="rdResEmpty" hidden></p>
+  </div>
+</div>
