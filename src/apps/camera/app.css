@@ -37,7 +37,7 @@ html.cam-live, html.cam-live body { background: transparent !important; }
 #app-camera .cam-note { font-size: 13px; line-height: 1.35; color: var(--t3); text-align: center; max-width: 240px; }
 #app-camera .cam-text { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px;
   font-size: 14px; color: var(--t3); padding: 4px 12px; }
-#app-camera .cam-look { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 18px; border-radius: 99px;
+#app-camera .cam-look { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 18px; border-radius: 14px;
   background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); font: 500 15px var(--sans);
   transition: background-color var(--dur-base) var(--ease-out); }
 #app-camera .cam-look:active { background: var(--card-2); }
@@ -72,7 +72,7 @@ html.look-live #app-camera .app-hd, html.look-live #app-camera .cam { display: n
 /* the whole screen is the picture: a hole with nothing around it */
 #app-camera .lk-view { position: absolute; inset: 0; background: transparent; }
 #app-camera .lk-top { position: absolute; left: 24px; right: 24px; top: 20px; display: flex; align-items: center; justify-content: space-between; }
-#app-camera .lk-state { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 12px; border-radius: 99px;
+#app-camera .lk-state { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px 8px 12px; border-radius: 14px;
   background: var(--card); box-shadow: 0 0 0 1px var(--line); font: 400 17px var(--serif); color: var(--text); }
 #app-camera .lk-spark { width: 18px; height: 18px; color: var(--t2); }
 #app-camera .lk-spark .spark-rays { fill: var(--t2); }
@@ -81,7 +81,7 @@ html.look-live #app-camera .app-hd, html.look-live #app-camera .cam { display: n
 #app-camera .look.listening .lk-spark .spark-rays { fill: var(--clay); }
 @keyframes lk-turn { to { transform: rotate(360deg); } }
 #app-camera .lk-end { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px;
-  padding: 9px 22px; border-radius: 99px; background: var(--text); color: var(--bg); font: 500 15px var(--sans); }
+  padding: 9px 22px; border-radius: 14px; background: var(--text); color: var(--bg); font: 500 15px var(--sans); }
 /* what was heard and the photo Claude looks at, then the answer: a column under the state */
 #app-camera .lk-feed { position: absolute; left: 24px; top: 84px; width: min(520px, calc(100% - 48px)); display: flex; flex-direction: column; gap: 10px; }
 #app-camera .lk-seen { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 14px; align-self: flex-start; max-width: 100%;

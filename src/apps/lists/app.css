@@ -4,7 +4,7 @@
 /* the header: Clear ticked (when there are some) and New list */
 #app-lists .app-hd-right { gap: 8px; }
 #app-lists .ls-hbtn { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-flex; align-items: center;
-  min-height: 44px; padding: 7px 16px; border-radius: 99px; font: 500 14px var(--sans); white-space: nowrap;
+  min-height: 44px; padding: 7px 16px; border-radius: 14px; font: 500 14px var(--sans); white-space: nowrap;
   background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
 #app-lists .ls-hbtn:active { background: var(--card-2); }
 #app-lists .ls-hbtn:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
@@ -14,7 +14,7 @@
   display: flex; align-items: center; gap: 8px; overflow-x: auto; overscroll-behavior: contain; scrollbar-width: none; }
 #app-lists .ls-tabs::-webkit-scrollbar { display: none; }
 #app-lists .ls-tab { all: unset; box-sizing: border-box; cursor: pointer; position: relative; flex: none; display: inline-flex; align-items: center; gap: 8px;
-  height: 44px; padding: 0 18px; border-radius: 99px; font: 500 15px var(--sans); color: var(--t2); white-space: nowrap;
+  height: 44px; padding: 0 18px; border-radius: 12px; font: 500 15px var(--sans); color: var(--t2); white-space: nowrap;
   background: var(--card); box-shadow: 0 0 0 1px var(--line); }
 #app-lists .ls-tab:active { background: var(--card-2); }
 #app-lists .ls-tab.on { background: var(--text); color: var(--bg); box-shadow: none; }
@@ -91,9 +91,9 @@
 /* "Removed milk · Undo": a few seconds, over the add bar */
 #app-lists .ls-undo { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--app-strip-b) + 68px); z-index: 5;
   display: flex; align-items: center; gap: 6px; max-width: 560px; padding: 0 6px 0 18px; height: 48px; box-sizing: border-box;
-  border-radius: 99px; background: var(--text); color: var(--bg); font: 400 15px var(--sans); box-shadow: 0 8px 24px rgba(20, 20, 19, .18); }
+  border-radius: 14px; background: var(--text); color: var(--bg); font: 400 15px var(--sans); box-shadow: 0 8px 24px rgba(20, 20, 19, .18); }
 #app-lists .ls-undo-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#app-lists .ls-undo-btn { all: unset; cursor: pointer; flex: none; height: 40px; padding: 0 14px; border-radius: 99px; font: 600 15px var(--sans); color: var(--blush); }
+#app-lists .ls-undo-btn { all: unset; cursor: pointer; flex: none; height: 40px; padding: 0 14px; border-radius: 14px; font: 600 15px var(--sans); color: var(--blush); }
 :root[data-theme="dark"] #app-lists .ls-undo-btn { color: var(--clay-deep); }
 #app-lists .ls-undo-btn:active { background: rgba(250, 249, 245, .12); }
 
