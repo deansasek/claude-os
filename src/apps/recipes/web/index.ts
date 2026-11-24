@@ -66,9 +66,9 @@ let seq = 0;                             // the latest search wins
 
 // What do you have: the chips (kept), the Want to buy switch, the field's text, the ingredient names from the hub, and the results
 let pantry: Chip[] = readJson<Chip[]>(PANTRY_KEY, [])
-  .filter(c => !!c && typeof c.name === 'string' && (c.kind === 'have' || c.kind === 'want')).slice(0, PANTRY_MAX);
-let wantMode = false;                   // on: a new chip is “want” (outlined); off: “have” (filled)
-let pantryText = '';
+  .filter(c => !!c && typeof c.name === 'string').map(c => ({ name: c.name, kind: 'have' as const })).slice(0, PANTRY_MAX);
+let sheetOpen = false;                  // the shelf sheet: every ingredient TheMealDB knows, tap to pick
+let shelfQuery = '';                    // the sheet's search text
 let names: string[] = [];
 let namesState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
 let found: Recipe[] = [];               // the ranked recipes, and the names each one lacks (foundMissing, in step)
@@ -246,8 +246,9 @@ function draftHtml(d: Draft): string {
     const r = d.recipe;
     return `<section class="rc-card"><span class="rc-kicker">Claude’s recipe</span><h2 class="rc-title">${esc(r.name)}</h2>`
       + `<p class="rc-sub">${esc(meta(r)) || 'No serves or time given'} · ${r.ingredients.length} ingredients · ${r.steps.length} steps</p>`
-      + `<div class="rc-actions"><button class="rc-btn pri" data-act="save-draft">Save recipe</button>`
-      + `<button class="rc-btn" data-act="discard-draft">Not this one</button></div></section>`;
+      + `<div class="rc-actions"><button class="rc-btn pri" data-act="open-draft">Open recipe</button>`
+      + `<button class="rc-btn" data-act="save-draft">Save recipe</button>`
+      + `<button class="rc-btn quiet" data-act="discard-draft">Not this one</button></div></section>`;
   }
   return `<section class="rc-card"><span class="rc-kicker">Claude’s reply</span>`
     + `<p class="rc-sub">This reply is not a recipe this app can read. Save it as text, or discard it.</p>`
@@ -275,13 +276,18 @@ function noticesHtml(): string {
 // ---------- What do you have ----------
 const nameKey = (s: string): string => s.trim().replace(/\s+/g, ' ').toLowerCase();
 
-/** Adds a chip unless the name is empty, already there, or the picker is full. The kind follows the Want to buy switch. */
-function addChip(text: string): void {
+/** Picks a name off the shelf, or takes it off again. A full picker takes no new name. */
+function togglePick(text: string): void {
   const name = text.trim().replace(/\s+/g, ' ').slice(0, 40);
-  if (!name || pantry.length >= PANTRY_MAX || pantry.some(c => nameKey(c.name) === nameKey(name))) return;
-  pantry = [...pantry, { name, kind: wantMode ? 'want' : 'have' }];
+  const k = nameKey(name);
+  if (!k) return;
+  if (pantry.some(c => nameKey(c.name) === k)) pantry = pantry.filter(c => nameKey(c.name) !== k);
+  else if (pantry.length < PANTRY_MAX) pantry = [...pantry, { name, kind: 'have' }];
+  else return;
   savePantry();
   resetFound();
+  paintPicker();
+  paintSheet();
 }
 
 /** The chips changed, so the last results no longer match them. A find still running is ignored. */
@@ -303,31 +309,86 @@ async function loadNames(): Promise<void> {
     names = [];
     namesState = 'error';
   }
-  paintPicker();
+  paintSheet();
 }
 
-/** Up to six ingredient names that start with the typed text, then the ones that contain it. Chips already added are left out. */
-function suggestions(): string[] {
-  const t = nameKey(pantryText);
-  if (!t) return [];
-  const taken = new Set(pantry.map(c => nameKey(c.name)));
-  const starts: string[] = [], inside: string[] = [];
-  for (const n of names) {
-    const k = nameKey(n);
-    if (taken.has(k)) continue;
-    if (k.startsWith(t)) starts.push(n);
-    else if (k.includes(t)) inside.push(n);
-  }
-  return [...starts, ...inside].slice(0, 6);
+/** The shelf: every ingredient name TheMealDB knows, or the ones that match the sheet's search (capped so the list stays light). */
+function shelfNames(): string[] {
+  const q = nameKey(shelfQuery);
+  const list = q ? names.filter(n => nameKey(n).includes(q)) : names;
+  return list.slice(0, q ? 200 : 150);
 }
 
-function openPantryKeyboard(): void {
+function openShelfSearch(): void {
   Keyboard.open({
-    value: pantryText, placeholder: 'An ingredient, like “eggs”', done: 'Add', max: 40,
-    onChange: t => { pantryText = t; paintPicker(); },
-    onDone: t => { pantryText = ''; addChip(t); paintPicker(); },
-    onClose: () => { pantryText = ''; paintPicker(); },
+    value: shelfQuery, placeholder: 'Search ingredients', done: 'Done', max: 40,
+    onChange: t => { shelfQuery = t; paintSheet(); },
+    onDone: t => { shelfQuery = t; paintSheet(); },
+    onClose: () => paintSheet(),
   });
+}
+
+let sheet: HTMLElement | null = null;
+
+/** The sheet covers the page body. It lists the shelf, the picks, and the Find button. Built once, on first open. */
+function buildSheet(): void {
+  if (sheet || !ctx) return;
+  sheet = document.createElement('div');
+  sheet.className = 'rc-sheet';
+  sheet.hidden = true;
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.setAttribute('aria-label', 'What do you have');
+  sheet.addEventListener('click', onSheetClick);
+  ctx.root.appendChild(sheet);
+}
+
+function paintSheet(): void {
+  if (!sheet) return;
+  sheet.hidden = !sheetOpen;
+  if (!sheetOpen) return;
+  const picked = pantry.map(c => `<button class="rc-chip have" data-act="pick" data-name="${esc(c.name)}">${esc(c.name)} ×</button>`).join('');
+  const full = pantry.length >= PANTRY_MAX;
+  const status = namesState === 'loading' ? '<p class="rc-empty">Loading ingredients…</p>'
+    : namesState === 'error' ? '<p class="rc-empty">Ingredients are not available. Try again.</p>' : '';
+  const shelf = shelfNames().map(n => {
+    const on = pantry.some(c => nameKey(c.name) === nameKey(n));
+    return `<li><button class="rc-shelf-b${on ? ' on' : ''}" data-act="pick" data-name="${esc(n)}" aria-pressed="${on}">${esc(n)}</button></li>`;
+  }).join('');
+  sheet.innerHTML = `<div class="rc-sheet-hd"><h2 class="rc-sheet-title">What do you have</h2>`
+    + `<button class="rc-btn quiet" data-act="sheet-close">Done</button></div>`
+    + `<button class="rc-search rc-sheet-search" data-act="shelf-type">${LENS}`
+    + `<span class="rc-search-text${shelfQuery ? ' on' : ''}">${esc(shelfQuery || 'Search ingredients')}</span></button>`
+    + `<div class="rc-picked">${picked || '<p class="rc-sub">Tap what you have.</p>'}</div>`
+    + `<p class="rc-sub">${full ? `${PANTRY_MAX} at most. Tap one to take it off.` : `Up to ${PANTRY_MAX}.`}</p>`
+    + status
+    + `<ul class="rc-shelf">${shelf}</ul>`
+    + (!shelfQuery && names.length > 150 ? '<p class="rc-sub">Search for more.</p>' : '')
+    + `<div class="rc-sheet-ft"><button class="rc-btn pri" data-act="pantry-find"${pantry.length ? '' : ' disabled'}>Find recipes</button></div>`;
+}
+
+function openSheet(): void {
+  buildSheet();
+  sheetOpen = true;
+  if (namesState === 'idle' || namesState === 'error') void loadNames();
+  paintSheet();
+}
+
+function closeSheet(): void {
+  sheetOpen = false;
+  shelfQuery = '';
+  paintSheet();
+}
+
+function onSheetClick(ev: Event): void {
+  const b = (ev.target as Element).closest<HTMLElement>('[data-act]');
+  if (!b) return;
+  switch (b.dataset.act) {
+    case 'shelf-type': openShelfSearch(); return;
+    case 'pick': togglePick(b.dataset.name ?? ''); return;
+    case 'sheet-close': closeSheet(); return;
+    case 'pantry-find': closeSheet(); void findPantry(); return;
+  }
 }
 
 /** Asks the hub for the recipes that use the "have" names. Nothing to ask with: nothing runs. */
@@ -365,18 +426,10 @@ const missingNote = (list: string[]): string => {
 };
 
 function pantryHtml(): string {
-  const full = pantry.length >= PANTRY_MAX;
-  const field = `<button class="rc-pfield" data-act="pantry-type"${full ? ' disabled' : ''}>`
-    + `<span class="rc-pfield-text${pantryText && !full ? ' on' : ''}">${esc(full ? `${PANTRY_MAX} at most` : pantryText || 'Add an ingredient')}</span></button>`;
-  const want = `<button class="rc-want${wantMode ? ' on' : ''}" data-act="want-toggle" aria-pressed="${wantMode}">Want to buy</button>`;
-  const chips = pantry.length
-    ? `<div class="rc-chips">${pantry.map((c, i) => `<span class="rc-chip ${c.kind}">${esc(c.name)}`
-      + `<button class="rc-chip-x" data-act="chip-x" data-i="${i}" aria-label="Remove ${esc(c.name)}">×</button></span>`).join('')}</div>`
-    : '';
-  const sug = suggestions();
-  const sugHtml = sug.length
-    ? `<div class="rc-sugs">${sug.map(n => `<button class="rc-sug" data-act="pantry-add" data-name="${esc(n)}">${esc(n)}</button>`).join('')}</div>`
-    : '';
+  const picked = pantry.map(c => c.name).join(', ');
+  const pick = `<button class="rc-pick" data-act="pantry-type">`
+    + `<span class="rc-pick-text${pantry.length ? ' on' : ''}">${esc(picked || 'Choose from the shelf')}</span>`
+    + `<span class="rc-sub">${pantry.length ? `${pantry.length} of ${PANTRY_MAX} picked. Tap to change.` : 'Tap to pick from every ingredient.'}</span></button>`;
   let body = '';
   if (!pantry.some(c => c.kind === 'have')) body = '<p class="rc-empty">Add what you have.</p>';
   else if (foundState === 'loading') {
@@ -386,7 +439,7 @@ function pantryHtml(): string {
   else if (foundState === 'ok' && !found.length) body = '<p class="rc-empty">No recipes use all of these. Ask Claude.</p>';
   else if (foundState === 'ok') body = `<ul class="rc-grid">${found.map((r, i) => cardHtml(r, 'pan', i, missingNote(foundMissing[i] ?? []))).join('')}</ul>`;
   return `<div class="rc-pantry">`
-    + `<div class="rc-pantry-row">${field}${want}</div>${chips}${sugHtml}`
+    + pick
     + `<div class="rc-actions"><button class="rc-btn pri" data-act="pantry-find"${pantry.length ? '' : ' disabled'}>Find recipes</button>`
     + `<button class="rc-btn" data-act="pantry-ask">Ask Claude</button></div>`
     + body + `</div>`;
@@ -521,18 +574,11 @@ function onClick(ev: Event): void {
       if (draft) { keep(draft.kind === 'recipe' ? draft.recipe : textRecipe(draft.text)); toTop(); }
       break;
     case 'discard-draft': draft = null; break;
-    case 'pantry-type': openPantryKeyboard(); return;
-    case 'pantry-add':
-      addChip(b.dataset.name ?? '');
-      pantryText = '';
-      if (Keyboard.isOpen) Keyboard.close('chosen');
+    case 'open-draft':
+      // the recipe page has its own Save (save-this); the draft goes once it is open
+      if (draft?.kind === 'recipe') { go({ t: 'detail', r: draft.recipe }); draft = null; }
       break;
-    case 'chip-x':
-      pantry = pantry.filter((_, k) => k !== i);
-      savePantry();
-      resetFound();
-      break;
-    case 'want-toggle': wantMode = !wantMode; break;
+    case 'pantry-type': openSheet(); return;
     case 'pantry-find': void findPantry(); return;
     case 'pantry-ask': {
       const have = pantry.filter(c => c.kind === 'have').map(c => c.name);
