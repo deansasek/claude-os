@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { delimiter, dirname, join, relative, sep } from 'node:path';
 import {
-  androidJar, binPath, buildTools, fail, here, jdkTool, keystorePath, keystoreProblem, platformTools, run, tools,
+  androidJar, binPath, buildTools, fail, here, jdkTool, keystorePath, keystoreProblem, lineagePath, newKeystorePath, platformTools, run, tools,
 } from './toolchain.ts';
 
 function args(argv: string[]): { install: boolean; device: string } {
@@ -140,13 +140,21 @@ function main(): void {
 
   run(zipalign, ['-p', '-f', '4', unsigned, join(out, 'aligned.apk')], 'zipalign');
 
-  // the app's signing key, kept next to this script (updates must be signed with the same key)
-  const ks = keystorePath;
-  // the password comes from the environment, never from this file (see docs/SETUP.md)
-  if (!process.env.CLAUDEOS_KEYSTORE_PASS) fail('Set CLAUDEOS_KEYSTORE_PASS to the signing key password (docs/SETUP.md).');
+  // Key rotation (APK Signature Scheme v3): the original key (hub.keystore) signs first, the new key
+  // (hub-new.keystore) is the next signer, and hub.lineage proves the hand-over, so an installed app
+  // signed with the original key accepts the update. Both keys sit next to this script.
+  // The passwords come from the environment, never from this file (see docs/SETUP.md).
+  if (!process.env.CLAUDEOS_KEYSTORE_PASS) fail('Set CLAUDEOS_KEYSTORE_PASS to the original signing key password (docs/SETUP.md).');
+  if (!process.env.CLAUDEOS_KEYSTORE_PASS_NEW) fail('Set CLAUDEOS_KEYSTORE_PASS_NEW to the new signing key password (docs/SETUP.md).');
   const apk = join(out, 'claude-hub.apk');
   run(apksigner, [
-    'sign', '--ks', ks, '--ks-pass', 'env:CLAUDEOS_KEYSTORE_PASS', '--key-pass', 'env:CLAUDEOS_KEYSTORE_PASS',
+    'sign',
+    '--ks', keystorePath, '--ks-key-alias', 'hub',
+    '--ks-pass', 'env:CLAUDEOS_KEYSTORE_PASS', '--key-pass', 'env:CLAUDEOS_KEYSTORE_PASS',
+    '--next-signer',
+    '--ks', newKeystorePath, '--ks-key-alias', 'hub',
+    '--ks-pass', 'env:CLAUDEOS_KEYSTORE_PASS_NEW', '--key-pass', 'env:CLAUDEOS_KEYSTORE_PASS_NEW',
+    '--lineage', lineagePath,
     '--out', apk, join(out, 'aligned.apk'),
   ], 'apksigner');
   console.log(`built ${apk} (${Math.round(statSync(apk).size / 1024).toLocaleString('en-US')} KB)`);

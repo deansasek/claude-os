@@ -20,16 +20,29 @@ export function fail(message: string): never {
   process.exit(1);
 }
 
-/** The app's signing key. Every update must be signed with this same key. */
+/** The app's original signing key. The lineage starts at this key (APK Signature Scheme v3 rotation). */
 export const keystorePath = join(here, 'hub.keystore');
+/** The app's current signing key. The lineage rotates to this key. */
+export const newKeystorePath = join(here, 'hub-new.keystore');
+/** The signing-certificate lineage: proof that the original key hands over to the new key. Public certificates only. */
+export const lineagePath = join(here, 'hub.lineage');
 
 /**
- * Returns the message to stop the build with when the signing keystore is missing, or null when it exists.
- * The build never makes a new key: Android refuses an update signed with a different key.
+ * Returns the message to stop the build with when a signing file is missing, or null when all exist.
+ * The files are looked up in dir (android/ by default): hub.keystore, hub-new.keystore and hub.lineage.
+ * The build never makes a new key: Android refuses an update signed with a key outside the lineage.
  */
-export function keystoreProblem(ks: string = keystorePath): string | null {
-  if (existsSync(ks)) return null;
-  return 'android/hub.keystore is missing. Restore the backup copy. A new key would make Android refuse every update.';
+export function keystoreProblem(dir: string = here): string | null {
+  if (!existsSync(join(dir, 'hub.keystore'))) {
+    return 'android/hub.keystore is missing. Restore the backup copy. The lineage needs the original key, and a new key would make Android refuse every update.';
+  }
+  if (!existsSync(join(dir, 'hub-new.keystore'))) {
+    return 'android/hub-new.keystore is missing. Restore the backup copy. It is the current signing key in android/hub.lineage.';
+  }
+  if (!existsSync(join(dir, 'hub.lineage'))) {
+    return 'android/hub.lineage is missing. Restore it from git. Without the lineage, Android refuses an update signed with the new key.';
+  }
+  return null;
 }
 
 // ---- tool locations ----
