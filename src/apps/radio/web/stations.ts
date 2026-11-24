@@ -26,7 +26,27 @@ export function stationFrom(rec: any): Station | null {
     country: typeof rec.country === 'string' ? rec.country : '',
     codec: typeof rec.codec === 'string' ? rec.codec.toUpperCase() : '',
     bitrate: Number.isFinite(bitrate) && bitrate > 0 ? bitrate : 0,
+    favicon: httpsUrl(rec.favicon) ?? '',
+    language: typeof rec.language === 'string' ? languageLine(rec.language) : '',
+    tags: typeof rec.tags === 'string' ? tagList(rec.tags) : [],
   };
+}
+
+/** "english,german" as "English, German". */
+function languageLine(value: string): string {
+  return value.split(',').map(s => s.trim()).filter(Boolean).slice(0, 3)
+    .map(s => s[0].toUpperCase() + s.slice(1)).join(', ').slice(0, 60);
+}
+
+/** "pop,rock,,pop" as ["pop", "rock"]: at most six short genres, no repeats. */
+function tagList(value: string): string[] {
+  const out: string[] = [];
+  for (const t of value.split(',')) {
+    const tag = t.trim().toLowerCase();
+    if (tag && tag.length <= 30 && !out.includes(tag)) out.push(tag);
+    if (out.length === 6) break;
+  }
+  return out;
 }
 
 /** Keep only the Radio Browser records that play: https streams with a name. The order is kept. */
@@ -38,6 +58,6 @@ export function playableStations(records: unknown[]): Station[] {
 export function playable(list: Station[]): Station[] {
   return list.flatMap(s => {
     const url = httpsUrl(s.url);
-    return url ? [{ ...s, url }] : [];
+    return url ? [{ ...s, url, favicon: httpsUrl(s.favicon) ?? '' }] : [];
   });
 }
