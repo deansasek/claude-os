@@ -25,19 +25,20 @@ import java.util.Set;
  * Only the files listed in page/manifest.json are served. A listed file comes from the APK. Any other
  * path is a 404. /api/ and /apk/ are not page files: serve() returns null, so the PC answers them.
  *
- * The pageSource setting: pc (default), auto or bundle. bundle always serves the bundle; auto serves it while the PC is down.
+ * The pageSource setting: bundle (default), auto or pc. bundle always serves the bundle; auto serves it while the PC is
+ * down; pc always asks the PC for the page (the developer path for live edits).
  */
 final class PageAssets {
   static final String SOURCE_PC = "pc";
   static final String SOURCE_AUTO = "auto";
   static final String SOURCE_BUNDLE = "bundle";
-  /** The source used when the setting is unset or unknown. */
-  static final String DEFAULT_SOURCE = SOURCE_PC;
+  /** The source used when the setting is unset or unknown: the page the APK holds. */
+  static final String DEFAULT_SOURCE = SOURCE_BUNDLE;
 
-  /** Reads the pageSource value: "auto" and "bundle" in any case; anything else is the default, pc. */
+  /** Reads the pageSource value: "pc", "auto" and "bundle" in any case; anything else is the default, bundle. */
   static String sourceOf(String raw) {
     String v = raw == null ? "" : raw.trim().toLowerCase(Locale.ROOT);
-    if (SOURCE_AUTO.equals(v) || SOURCE_BUNDLE.equals(v)) return v;
+    if (SOURCE_PC.equals(v) || SOURCE_AUTO.equals(v) || SOURCE_BUNDLE.equals(v)) return v;
     return DEFAULT_SOURCE;
   }
 

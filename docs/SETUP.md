@@ -68,7 +68,7 @@ node android/build.ts
 
 `setup-tools.ts` accepts the Android SDK licence for you. Re-running any step is safe: finished parts are skipped.
 
-The tablet loads the hub from the address in `config.json`: `host` and `port`. Set `host` to this PC's address on your home network before you build (for example `192.168.1.20`). `0.0.0.0` won't work there, and the build stops with a message if it's set.
+The tablet starts ClaudeOS from the page inside the APK, so it boots with the PC off. The PC serves the `/api/` routes and the APK updates. The tablet reads `host` and `port` from `config.json` for those. Set `host` to this PC's address on your home network before you build (for example `192.168.1.20`). `0.0.0.0` won't work there, and the build stops with a message if it's set. A web change reaches the tablet only in a new APK. To load the page from the PC instead, start the app with `pageSource=pc`: `adb shell am start -n hub.kiosk/.MainActivity --es pageSource pc`.
 
 To install the APK on a tablet connected over USB or Wi-Fi debugging:
 
@@ -108,4 +108,4 @@ apksigner rotate --out android/hub.lineage --old-signer --ks android/hub.keystor
 
 ## The tablet
 
-The full-screen Android tablet is optional and comes in a later release. Until then, open the page in the tablet's browser.
+The tablet app starts ClaudeOS from the page in the APK. It asks the PC only for `/api/` routes and APK updates.

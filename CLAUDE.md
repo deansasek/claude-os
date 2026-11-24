@@ -137,3 +137,4 @@ ClaudeOS follows the Anthropic style (warm, quiet, editorial, flat). Use the tok
 
 - ClaudeOS is the tablet's **device owner** (`hub.kiosk/.AdminReceiver`) and runs in lock task mode. Don't change the Android package id `hub.kiosk`: device owner is tied to it.
 - The project folder is still `Claude Home` and the hub server runs from the repository root under `host/ClaudeHubHost.exe`. Restart the server with `node host/hubctl.ts restart`.
+- The tablet starts from the page inside the APK (`pageSource` defaults to `bundle`). The PC serves only the `/api/` routes and APK updates. A web change reaches the tablet only in a new APK. `pageSource=pc` loads the page from the PC for live edits, and `auto` uses the PC page and falls back to the APK's page when the PC is down.
