@@ -6,7 +6,7 @@ export interface NewsItem {
   title: string;
   link: string | null;
   published: string | null;
-  description: string;   // plain text, at most 300 characters
+  description: string;   // the feed's summary as plain text (tags and entities removed), never cut
   image: string | null;  // an http(s) image URL, when the feed gives one
   source: string;        // the feed's name, e.g. "BBC News"
   sourceId: string;      // the feed's id, e.g. "bbc"

@@ -8,10 +8,7 @@ import { browser } from '../../../core/web/device.ts';
 import { openApp } from '../../../core/web/system.ts';
 import type { NewsFeedResponse, NewsItem } from '../api.ts';
 import { manifest } from '../manifest.ts';
-import { ago, linkFor, screenFor, type NewsScreen, type Shelf } from './screen.ts';
-
-const REFRESH_MS = 10 * 60e3;    // while the page is on screen
-const SHOWN_MS = 5 * 60e3;       // coming back to the page after this long refreshes it
+import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, storiesById, type NewsScreen, type Shelf } from './screen.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -29,11 +26,12 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''):
   return e;
 }
 
-/** The top story's picture: the feed's image when it gave one, else a letter block with the source's initial. */
+/** The story's picture: the feed's image only when screen.ts allows it, else a letter block with the source's initial. */
 function media(item: NewsItem, cls: string): HTMLElement {
-  if (item.image) {
+  const pic = pictureFor(item);
+  if (pic) {
     const img = el('img', cls);
-    img.src = item.image;
+    img.src = pic;
     img.alt = '';
     img.referrerPolicy = 'no-referrer';
     img.loading = 'lazy';
@@ -42,13 +40,21 @@ function media(item: NewsItem, cls: string): HTMLElement {
   return el('span', `${cls} nw-letter`, item.source.charAt(0) || 'N');
 }
 
-function hero(item: NewsItem): HTMLElement {
-  const b = el('button', 'nw-hero');
+/** The feed's name, credited on the story. With a link, it is a button that opens the original story. */
+function sourceCredit(item: NewsItem): HTMLElement {
+  if (!linkFor(item)) return el('span', 'nw-src', item.source);
+  const b = el('button', 'nw-src nw-src-go', item.source);
   b.type = 'button';
+  b.setAttribute('aria-label', `Read the original story at ${item.source}`);
+  return b;
+}
+
+function hero(item: NewsItem): HTMLElement {
+  const b = el('div', 'nw-hero');
   b.dataset.id = item.id;
   const body = el('span', 'nw-hero-body');
   const m = el('span', 'nw-meta');
-  m.append(el('span', 'nw-src', item.source));
+  m.append(sourceCredit(item));
   const when = ago(item.published, Date.now());
   if (when) m.append(el('span', 'nw-when', when));
   body.append(el('span', 'nw-kicker', 'Top story'), el('span', 'nw-hero-title', item.title), m);
@@ -56,11 +62,13 @@ function hero(item: NewsItem): HTMLElement {
   return b;
 }
 
+// A tile opens the reader sheet. Its source name opens the original story.
 function tile(item: NewsItem): HTMLElement {
-  const b = el('button', 'nw-tile');
-  b.type = 'button';
+  const b = el('div', 'nw-tile');
   b.dataset.id = item.id;
-  b.append(el('span', 'nw-tile-title', item.title), el('span', 'nw-tile-when', ago(item.published, Date.now())));
+  const top = el('span', 'nw-tile-top');
+  top.append(media(item, 'nw-tile-media'), sourceCredit(item));
+  b.append(top, el('span', 'nw-tile-title', item.title), el('span', 'nw-tile-when', ago(item.published, Date.now())));
   return b;
 }
 
@@ -88,7 +96,7 @@ function paintStories(s: Extract<NewsScreen, { state: 'stories' }>): void {
   $('nwNotes').hidden = !s.notes.length;
   $('nwHead').replaceChildren(hero(s.headline));
   $('nwShelves').replaceChildren(...s.shelves.map(shelf));
-  stories = new Map([s.headline, ...s.shelves.flatMap(x => x.stories)].map(i => [i.id, i] as const));
+  stories = storiesById(s);
 }
 
 function paintError(text: string): void {
@@ -111,32 +119,49 @@ async function load(): Promise<void> {
   else paintStories(s);
 }
 
-// ---------- the reader sheet ----------
+// ---------- opening the original story ----------
 function closeSheet(): void { $('nwSheet').hidden = true; }
 
+function showLink(link: string): void {
+  $('nwSheetLink').textContent = link;
+  $('nwSheetLink').hidden = false;
+}
+
+/** Sends the link to the Browser app. Returns false when the Browser app cannot take it here. */
+function openLink(link: string): boolean {
+  const sent = browser.openUrl(link);
+  report(sent ? 'news-read' : 'news-read-unavailable');
+  if (sent) { closeSheet(); openApp('browser'); }
+  return sent;
+}
+
+/** A source name tap: open the original story, or show the reader with the link as text when the Browser app cannot take it. */
+function openOriginal(id: string): void {
+  const item = stories.get(id);
+  const link = item ? linkFor(item) : null;
+  if (!link || openLink(link)) return;
+  openStory(id);
+  showLink(link);
+}
+
+// ---------- the reader sheet ----------
 function openStory(id: string): void {
   const item = stories.get(id);
   if (!item) return;
-  const link = linkFor(item);
-  $('nwSheetSrc').textContent = item.source;
-  $('nwSheetTime').textContent = ago(item.published, Date.now());
+  const r = readerFor(item, Date.now());
+  $('nwSheetSrc').textContent = r.source;
+  $('nwSheetTime').textContent = r.when;
   $('nwSheetTitle').textContent = item.title;
-  $('nwSheetDesc').textContent = item.description || 'The feed gave no summary for this story.';
+  $('nwSheetDesc').textContent = r.description;
   const act = $('nwSheetAct');
   act.replaceChildren();
   $('nwSheetLink').hidden = true;
   // a story without an http or https link gets no Read button
-  if (link) {
+  if (r.link) {
+    const link = r.link;
     const read = el('button', 'nw-read', `Read at ${item.source}`);
     read.type = 'button';
-    read.addEventListener('click', () => {
-      const sent = browser.openUrl(link);
-      report(sent ? 'news-read' : 'news-read-unavailable');
-      if (sent) { closeSheet(); openApp('browser'); return; }
-      // the Browser app can't take the link here: show it as text so it can be copied
-      $('nwSheetLink').textContent = link;
-      $('nwSheetLink').hidden = false;
-    });
+    read.addEventListener('click', () => { if (!openLink(link)) showLink(link); });
     act.append(read);
   }
   $('nwSheet').hidden = false;
@@ -147,8 +172,11 @@ function openStory(id: string): void {
 function mount(context: AppContext): void {
   ctx = context;
   const pick = (e: Event) => {
-    const b = (e.target as Element).closest<HTMLElement>('[data-id]');
-    if (b) openStory(b.dataset.id!);
+    const t = e.target as Element;
+    const id = t.closest<HTMLElement>('[data-id]')?.dataset.id;
+    if (!id) return;
+    if (t.closest('.nw-src-go')) openOriginal(id);
+    else openStory(id);
   };
   $('nwHead').addEventListener('click', pick);
   $('nwShelves').addEventListener('click', pick);
@@ -157,15 +185,15 @@ function mount(context: AppContext): void {
   });
   $('nwRetry').addEventListener('click', () => { report('news-retry'); void load(); });
   void load();
-  // every 10 minutes while the page is on screen
-  setInterval(() => { if (ctx.isVisible()) void load(); }, REFRESH_MS);
+  // the feed is asked for at most every POLL_MS while the page is on screen (checked each minute)
+  setInterval(() => { if (ctx.isVisible() && Date.now() - loadedAt >= POLL_MS) void load(); }, 60e3);
 }
 
 const app: HubApp = {
   ...manifest,
   icon: appIcon('news'),
   mount,
-  onShow() { if (Date.now() - loadedAt > SHOWN_MS) void load(); },
+  onShow() { if (Date.now() - loadedAt >= POLL_MS) void load(); },
   onHide() { closeSheet(); },
   onClose() { closeSheet(); },
 };

@@ -42,6 +42,12 @@
 #app-news .nw-tile-title { font: 500 16px/22px var(--serif); color: var(--text);
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 #app-news .nw-tile-when { font: 400 13px/18px var(--sans); color: var(--t3); }
+#app-news .nw-tile-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#app-news .nw-tile-media { flex: none; width: 32px; height: 32px; border-radius: 10px; font-size: 16px; line-height: 1; }
+
+/* the source name is a link to the original story: underlined, not a button look */
+#app-news .nw-src-go { all: unset; box-sizing: border-box; cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+  font: 400 14px/20px var(--sans); color: var(--t2); }
 
 /* ---------- no stories: a plain message and the critter ---------- */
 #app-news .nw-empty { display: flex; align-items: center; gap: 32px; }

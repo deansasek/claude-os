@@ -5,7 +5,6 @@ import type { NewsItem } from '../api.ts';
 export interface FeedSource { id: string; name: string }
 
 const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
-const SUMMARY_MAX = 300;
 
 /** Replace &amp;, &#39;, &#x2019; and the like. Unknown names stay as they are. */
 export function decodeEntities(text: string): string {
@@ -87,7 +86,7 @@ export function parseFeed(xml: string, source: FeedSource): NewsItem[] {
       title,
       link,
       published: dateOf(block),
-      description: summary.slice(0, SUMMARY_MAX),
+      description: summary,   // the feed's own words: never cut or summarised
       image: imageOf(block),
       source: source.name,
       sourceId: source.id,
