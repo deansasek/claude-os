@@ -21,7 +21,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack } from '../../../core/web/system.ts';
 import { MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, isBuiltIn, type FamilyList, type ListItem, type ListsResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
-import { COPY_KEY, applyOp, remapIds, type Op, type OpPath } from './local.ts';
+import { COPY_KEY, QUEUE_KEY, applyOp, remapIds, type Op, type OpPath } from './local.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 20e3;
@@ -52,7 +52,6 @@ let undoT: number | undefined;
 const listNow = (): FamilyList | undefined => lists.find(l => l.id === current) ?? lists[0];
 
 // ---------- the tablet's copy ----------
-const QUEUE_KEY = 'lists.queue';    // changes the PC hasn't got yet, oldest first
 const readKey = <T>(k: string): T | null => { try { return JSON.parse(store.get(k) || 'null') as T | null; } catch { return null; } };
 const copy = onTablet ? readKey<FamilyList[]>(COPY_KEY) : null;
 if (Array.isArray(copy)) { lists = copy; loaded = true; }

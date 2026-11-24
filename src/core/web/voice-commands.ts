@@ -37,7 +37,7 @@ import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay } from './voice-weather.ts';
 import { findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
-import { readLists } from '../../apps/lists/web/readers.ts';
+import { readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 import { matchOpenApp } from './voice-open.ts';
@@ -427,7 +427,7 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
   const name = c.list === 'shopping' ? 'the shopping list' : c.list === 'todo' ? 'the to-do list' : `the ${(customName ?? 'list').toLowerCase()} list`;
   try {
     if (c.op === 'add') {
-      const r = await postJson<ListsResult>('/api/lists/add', { list: c.list, text: c.text });
+      const r = await writeList('add', { list: c.list, text: c.text });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t add that to ${name}.` };
       return { say: `Added ${c.text.replace(/^./, ch => ch.toLowerCase())} to ${name}.`, react: 'hop' };
     }
@@ -438,7 +438,7 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, true);
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
-      const r = await postJson<ListsResult>('/api/lists/tick', { list: c.list, id: hit.id, done: true });
+      const r = await writeList('tick', { list: c.list, id: hit.id, done: true });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
       return { say: `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`, react: 'hop' };
     }
@@ -446,7 +446,7 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       // one add per item, the same route the Lists app uses; the reply says what went on
       let ok = 0;
       for (const text of c.texts) {
-        const r = await postJson<ListsResult>('/api/lists/add', { list: c.list, text });
+        const r = await writeList('add', { list: c.list, text });
         if (r?.ok) ok++;
       }
       if (!ok) return { say: `I couldn’t add those to ${name}.` };
@@ -455,7 +455,7 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       return { say: ok === words.length ? `Added ${said} to ${name}.` : `Added ${ok} of ${words.length} to ${name}.`, react: 'hop' };
     }
     if (c.op === 'clear') {
-      const r = await postJson<ListsResult>('/api/lists/clear-done', { list: c.list });
+      const r = await writeList('clear-done', { list: c.list });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t clear ${name}.` };
       return { say: `Cleared the ticked items on ${name}.`, react: 'hop' };
     }
@@ -466,7 +466,7 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, false);
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
-      const r = await postJson<ListsResult>('/api/lists/remove', { list: c.list, id: hit.id });
+      const r = await writeList('remove', { list: c.list, id: hit.id });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t remove that from ${name}.` };
       return { say: `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`, react: 'hop' };
     }
@@ -496,7 +496,7 @@ const spokenName = (l: { id: string; name: string }): string =>
 
 /** POST /api/lists/edit and the reply to say. */
 async function editSay(list: string, id: string, was: string, to: string, name: string): Promise<CommandResult> {
-  const r = await postJson<ListsResult>('/api/lists/edit', { list, id, text: to });
+  const r = await writeList('edit', { list, id, text: to });
   if (!r?.ok) return { say: r?.error ?? `I couldn’t change that on ${name}.` };
   return { say: `Changed ${lower(was)} to ${lower(r.item?.text ?? to)} on ${name}.`, react: 'hop' };
 }
