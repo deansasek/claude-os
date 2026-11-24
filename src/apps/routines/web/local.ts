@@ -1,0 +1,50 @@
+// The tablet's own copy of the routines (docs/specs/pc-hub-retirement.md, step 2). Pure: no DOM, no fetch, no storage.
+// A change applies here first (applyOp) and waits in a queue; web/sync.ts sends the queue to the PC in order when the PC
+// answers, then takes the PC's routines, which also hold what Claude changed there meanwhile.
+// The rules match the PC's (server/store.ts), which checks every change again. A scene that is not on Home is refused
+// there, so the PC's list replaces the tablet's copy once the queue is sent.
+import { MAX_ROUTINES, ROUTINE_ID, cleanRoutine, phraseKey, type Routine } from '../api.ts';
+
+export type OpPath = 'save' | 'delete';
+/** One change, as the route and body the PC takes (server/index.ts): save {routine}, delete {id}. */
+export interface Op { path: OpPath; body: Record<string, unknown> }
+export interface OpResult { ok: boolean; routines: Routine[]; error?: string }
+
+/** A new routine's id, made on the tablet from its name; the PC keeps it when it is free (server/store.ts saveRoutine). */
+export function newRoutineId(name: string): string {
+  const slug = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 20).replace(/-+$/, '');
+  const stem = /^[a-z]/.test(slug) ? slug : 'routine';
+  return `${stem}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/** Apply one change to a copy of the routines. Fills in the id of a new routine (op.body.routine.id), so the PC uses the same. */
+export function applyOp(routines: Routine[], op: Op): OpResult {
+  const next = JSON.parse(JSON.stringify(routines)) as Routine[];
+  if (op.path === 'delete') {
+    const i = next.findIndex(r => r.id === op.body.id);
+    if (i >= 0) next.splice(i, 1);
+    return { ok: true, routines: next };
+  }
+  const raw = (op.body.routine ?? {}) as Record<string, unknown>;
+  const c = cleanRoutine(raw);
+  if ('error' in c) return { ok: false, routines, error: c.error };
+  const at = next.findIndex(r => r.id === raw.id);   // -1 for a new routine (no id, or one not saved yet)
+  if (next.some((r, i) => i !== at && phraseKey(r.name) === phraseKey(c.name))) {
+    return { ok: false, routines, error: `There’s already a routine called ${c.name}.` };
+  }
+  if (at < 0 && next.length >= MAX_ROUTINES) return { ok: false, routines, error: `There are already ${MAX_ROUTINES} routines. Delete one first.` };
+  const id = at >= 0 ? String(raw.id) : typeof raw.id === 'string' && ROUTINE_ID.test(raw.id) ? raw.id : newRoutineId(c.name);
+  const saved: Routine = { id, ...c };
+  if (at >= 0) next[at] = saved; else next.push(saved);
+  raw.id = id;
+  return { ok: true, routines: next };
+}
+
+/** The PC gave a routine another id than the tablet's: later queued changes use the PC's id. */
+export function remapIds(queue: Op[], from: string, to: string): void {
+  for (const op of queue) {
+    if (op.body.id === from) op.body.id = to;
+    const r = op.body.routine as Record<string, unknown> | undefined;
+    if (r && r.id === from) r.id = to;
+  }
+}
