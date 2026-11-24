@@ -3,7 +3,8 @@
 //
 // Two Claude Code hooks carry it (scripts/claude-os-pc-hook.ts installs them in ~/.claude/settings.json):
 //   Stop (asyncRewake)   runs in the background after each turn and long-polls the hub. When the tablet sends a
-//                        reply, the hook prints it to stderr and exits 2, which wakes that same session with it.
+//                        reply, the hook posts it into that same session as a user message (scripts/session-relay.ts).
+//                        If that fails, it prints it to stderr and exits 2, which wakes the session with it as a note.
 //   PermissionRequest    while the tablet drives the session, asks the hub first; the tablet's answer is the
 //                        decision. No answer in time: no decision, so the PC shows its own prompt as usual.
 // Nothing here imports the hub, so the hook script can load it without starting anything.

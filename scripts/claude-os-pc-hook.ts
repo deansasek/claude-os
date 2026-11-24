@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { relayIfEnabled } from './session-relay.ts';
+import { relayReply } from './session-relay.ts';
 import { PERMISSION_HOOK_TIMEOUT_S, STOP_HOOK_TIMEOUT_S, permissionOutput, withBridgeHooks, withoutBridgeHooks, type WaitAnswer } from '../src/apps/claude/server/pclink.ts';
 
 const SCRIPT = fileURLToPath(import.meta.url);
@@ -45,12 +45,12 @@ async function post(route: string, body: Record<string, unknown>, ms: number): P
   } catch { return null; }
 }
 
-/** Background Stop hook: wait for a reply from the tablet; print it and exit 2 to wake this session with it. */
+/** Background Stop hook: wait for a reply from the tablet and post it into this session as a user message
+ *  (scripts/session-relay.ts). If the relay fails: print it and exit 2 to wake this session with it as a hook note. */
 async function stopHook(): Promise<number> {
   const input = await stdinJson();
   const session = typeof input.session_id === 'string' ? input.session_id : '';
   if (!session) return 0;
-  await relayIfEnabled(input);   // prototype; does nothing unless host/logs/session-relay.enabled exists
   const waiter = crypto.randomUUID(), until = Date.now() + (STOP_HOOK_TIMEOUT_S - 60) * 1000;
   let fresh = true, downSince = 0;
   while (Date.now() < until) {
@@ -65,6 +65,8 @@ async function stopHook(): Promise<number> {
     downSince = 0; fresh = false;
     const a = r.answer as WaitAnswer;
     if (a?.kind === 'reply' && typeof a.text === 'string') {
+      // a real user message through the session's messaging socket; if that fails, the Stop-hook note below
+      if (await relayReply(a.text)) return 0;
       await new Promise<void>(done => process.stderr.write(a.text, () => done()));
       return 2;
     }
