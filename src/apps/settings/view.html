@@ -42,6 +42,7 @@
       <button data-sec="wellbeing"><span class="ic" data-icon="wellbeing"></span>Wellbeing</button>
       <button data-sec="security"><span class="ic" data-icon="security"></span>Security<em id="stKioskLeft"></em></button>
       <button data-sec="about"><span class="ic" data-icon="about"></span>About</button>
+      <button data-sec="monitor"><span class="ic" data-icon="monitor"></span>System monitor</button>
       <button data-sec="developer"><span class="ic" data-icon="developer"></span>Developer</button>
     </div>
   </nav>
@@ -546,6 +547,19 @@
     </section>
 
     <!-- Developer: wireless debugging (ADB over Wi-Fi), switched here so developer options are never opened -->
+    <!-- System monitor: the hub's uptime, the PC link, the open apps (Close) and the apps that did not start (Restart) -->
+    <section class="st-sec" data-sec="monitor">
+      <h2>System monitor</h2>
+      <p class="st-lede">How the PC and ClaudeOS are doing, and which apps are open on this tablet.</p>
+      <div class="st-row"><div class="st-txt"><b>Hub</b><span id="stMonUptime">Checking…</span></div></div>
+      <div class="st-row"><div class="st-txt"><b>PC link</b><span id="stMonPc">Checking…</span></div></div>
+      <h3 class="label">Open apps</h3>
+      <div id="stMonOpen"></div>
+      <h3 class="label">Didn’t start</h3>
+      <p class="st-note" id="stMonFailedText"></p>
+      <div id="stMonFailed"></div>
+    </section>
+
     <section class="st-sec" data-sec="developer">
       <h2>Developer</h2>
       <p class="st-lede">Lets the PC connect to this tablet over Wi-Fi, for development.</p>
