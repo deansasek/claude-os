@@ -29,6 +29,15 @@ export function screenFor(res: NewsFeedResponse | null): NewsScreen {
   return { state: 'stories', headline, shelves, notes, updated: res.updated };
 }
 
+/** The link a story opens in the Browser app: http or https only, else null (no Read button). */
+export function linkFor(item: NewsItem): string | null {
+  if (!item.link) return null;
+  try {
+    const u = new URL(item.link);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : null;
+  } catch { return null; }
+}
+
 /** How long ago a story came out, in plain words ("5 min ago"). Empty when the feed gave no valid date. */
 export function ago(iso: string | null, now: number): string {
   if (!iso) return '';
