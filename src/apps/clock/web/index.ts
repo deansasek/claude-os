@@ -20,7 +20,7 @@ import { registerAppSettings } from '../../../core/web/app-settings.ts';
 import { alertFor, critterSpeak, onBack, openApp } from '../../../core/web/system.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import { dur, lengthWords, words } from './timer-text.ts';
-import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, parseClockTimers, runningLeftMs, type ClockTimer } from '../../../core/web/clock-timer.ts';
+import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, nextTimerName, parseClockTimers, runningLeftMs, type ClockTimer } from '../../../core/web/clock-timer.ts';
 
 type Mode = 'clock' | 'timer' | 'stopwatch' | 'alarm';
 type View = Mode | 'edit' | 'ring';
@@ -366,7 +366,7 @@ function timerStart(ms?: number, name?: string): void {
 /** A new timer in the list, running and in front. It gets the given name, or "Timer" and its number. */
 function addTimer(ms: number, name?: string): void {
   if (timers.length >= MAX_TIMERS) { say('The list is full. Stop a timer first.'); return; }
-  const t: ClockTimer = { id: newId(), name: name || `Timer ${timers.length + 1}`, dur: ms, end: Date.now() + ms, left: null };
+  const t: ClockTimer = { id: newId(), name: name || nextTimerName(timers), dur: ms, end: Date.now() + ms, left: null };
   timers.push(t);
   timer = t;
   saveTimers();

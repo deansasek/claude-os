@@ -2,7 +2,7 @@
 // the soonest running timer and its countdown. Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { clockTimerText, parseClockTimers, readClockTimers, runningLeftMs, type ClockTimer } from '../src/core/web/clock-timer.ts';
+import { clockTimerText, nextTimerName, parseClockTimers, readClockTimers, runningLeftMs, type ClockTimer } from '../src/core/web/clock-timer.ts';
 
 const NOW = 1_000_000;
 const t = (id: string, end: number | null, left: number | null = null, dur = 300_000): ClockTimer => ({ id, name: id, dur, end, left });
@@ -56,4 +56,12 @@ test('the countdown text rounds up to the second and shows hours from an hour up
   assert.equal(clockTimerText([t('a', NOW + 59_000)], NOW), '0:59');
   assert.equal(clockTimerText([t('a', NOW + 3_899_000)], NOW), '1:04:59');
   assert.equal(clockTimerText([], NOW), null);
+});
+
+test('a new timer gets the lowest "Timer N" no listed timer has', () => {
+  assert.equal(nextTimerName([]), 'Timer 1');
+  const named = (name: string): ClockTimer => ({ ...t(name, null), name });
+  assert.equal(nextTimerName([named('Timer 1'), named('Timer 2')]), 'Timer 3');
+  assert.equal(nextTimerName([named('Timer 1'), named('Timer 3')]), 'Timer 2');
+  assert.equal(nextTimerName([named('Pasta'), named('Timer 2')]), 'Timer 1');
 });
