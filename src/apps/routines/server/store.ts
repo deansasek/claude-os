@@ -13,7 +13,7 @@ import path from 'node:path';
 import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import { scenes, sceneOnHome } from '../../home-assistant/server/ha.ts';
 import {
-  MAX_ROUTINES, ROUTINE_ID, cleanRoutine, findRoutine, phraseKey, type Routine, type RoutinesResult, type Step,
+  MAX_NAME, MAX_ROUTINES, ROUTINE_ID, cleanRoutine, findRoutine, phraseKey, type Routine, type RoutinesResult, type Step,
 } from '../api.ts';
 
 // CLAUDEOS_ROUTINES_FILE is for the tests only: a scratch file instead of the family's routines.
@@ -57,26 +57,42 @@ function persist(routines: Routine[]): boolean {
   }
 }
 
-/** The routines from the file (the built-ins when there is no file; they are saved with the first change); null when the
- *  file can't be read. Reading never creates the file, so a lost file shows as missing and the tablet can restore it. */
-async function load(): Promise<Routine[] | null> {
+/** The routines from the file (the built-ins when there is no file; they are saved with the first change), and the labels of
+ *  the stored entries that are left out (they can't be read, or they repeat a name). null when the file can't be read.
+ *  Reading never creates the file, so a lost file shows as missing and the tablet can restore it. */
+async function loadFile(): Promise<{ routines: Routine[]; skipped: string[] } | null> {
   let text: string;
   try { text = fs.readFileSync(FILE, 'utf8'); } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') return null;
-    return defaults();
+    return { routines: await defaults(), skipped: [] };
   }
   try {
     const raw = JSON.parse(text.replace(/^﻿/, '')) as { routines?: unknown };
     if (!raw || !Array.isArray(raw.routines)) return null;
-    const out: Routine[] = [];
-    for (const r of raw.routines) {
-      if (out.length >= MAX_ROUTINES) break;
+    const out: Routine[] = [], skipped: string[] = [];
+    raw.routines.forEach((r, i) => {
       const c = cleanStored(r);
-      if (c && !out.some(o => o.id === c.id || phraseKey(o.name) === phraseKey(c.name))) out.push(c);
-    }
-    return out;
+      if (c && out.length < MAX_ROUTINES && !out.some(o => o.id === c.id || phraseKey(o.name) === phraseKey(c.name))) out.push(c);
+      else skipped.push(entryLabel(r, i));
+    });
+    return { routines: out, skipped };
   } catch { return null; }
 }
+
+/** A stored entry's name for a message, or its place in the file. */
+function entryLabel(raw: unknown, i: number): string {
+  const name = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).name : undefined;
+  return typeof name === 'string' && name.trim() ? `“${name.trim().slice(0, MAX_NAME)}”` : `entry ${i + 1}`;
+}
+
+/** The routines from the file only (see loadFile). */
+async function load(): Promise<Routine[] | null> {
+  return (await loadFile())?.routines ?? null;
+}
+
+/** A save or delete would drop these entries from the file, so it is refused and the file is left as it is. */
+const kept = (skipped: string[]): string =>
+  `${skipped.join(', ')} in .routines.json can’t be kept as it is, so nothing was saved. Fix or remove it there, then try again.`;
 
 const UNREADABLE = 'The routines file on the PC couldn’t be read, so nothing was changed.';
 
@@ -110,9 +126,11 @@ export function idFor(name: string, list: Routine[]): string {
 
 /** Add a routine (no id, or an id not saved yet) or replace one (its id). Everything is checked again here. */
 export async function saveRoutine(raw: unknown): Promise<RoutinesResult> {
-  const list = await load();
-  if (!list) return { ok: false, routines: [], error: UNREADABLE, retry: true };
+  const loaded = await loadFile();
+  if (!loaded) return { ok: false, routines: [], error: UNREADABLE, retry: true };
+  const list = loaded.routines;
   const fail = (error: string): RoutinesResult => ({ ok: false, routines: list, error });
+  if (loaded.skipped.length) return fail(kept(loaded.skipped));
   const c = cleanRoutine(raw);
   if ('error' in c) return fail(c.error);
   for (const s of c.steps) {
@@ -143,8 +161,10 @@ export async function saveRoutine(raw: unknown): Promise<RoutinesResult> {
 }
 
 export async function deleteRoutine(idRaw: unknown): Promise<RoutinesResult> {
-  const list = await load();
-  if (!list) return { ok: false, routines: [], error: UNREADABLE, retry: true };
+  const loaded = await loadFile();
+  if (!loaded) return { ok: false, routines: [], error: UNREADABLE, retry: true };
+  const list = loaded.routines;
+  if (loaded.skipped.length) return { ok: false, routines: list, error: kept(loaded.skipped) };
   if (typeof idRaw !== 'string' || !ROUTINE_ID.test(idRaw)) return { ok: false, routines: list, error: 'That isn’t a routine.' };
   const at = list.findIndex(r => r.id === idRaw);
   if (at < 0) return { ok: true, routines: list };   // already gone

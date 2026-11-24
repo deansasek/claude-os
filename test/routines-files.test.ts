@@ -55,3 +55,24 @@ test('a file that cannot be read is reported and left as it is', async () => {
   assert.equal(r.ok, false);
   assert.equal(fs.readFileSync(file, 'utf8'), '{not json');
 });
+
+test('a save or delete is refused, and the file kept, when a stored routine cannot be read', async () => {
+  // "lights" is not a step kind: its entry can't be read, and a save would drop it from the file
+  const bad = { routines: [...seed.routines, { id: 'lights-night', name: 'Lights', phrases: ['lights'], steps: [{ kind: 'lights' }] }] };
+  fs.writeFileSync(file, JSON.stringify(bad));
+  const before = fs.readFileSync(file, 'utf8');
+  const s = await R.saveRoutine({ name: 'Morning walk', phrases: ['morning walk'], steps: [{ kind: 'weather' }] });
+  assert.equal(s.ok, false);
+  assert.match(s.error ?? '', /“Lights”/);
+  const d = await R.deleteRoutine('bedtime');
+  assert.equal(d.ok, false);
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+});
+
+test('the routines that can be read still show when another entry cannot', async () => {
+  const bad = { routines: [...seed.routines, { id: 'lights-night', name: 'Lights', phrases: ['lights'], steps: [{ kind: 'lights' }] }] };
+  fs.writeFileSync(file, JSON.stringify(bad));
+  const r = await R.readRoutines();
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.routines.map(x => x.id), ['bedtime']);
+});
