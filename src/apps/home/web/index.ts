@@ -19,6 +19,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { ago, batteryGlyph, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
+import { weatherAfterRead } from './weather-read.ts';
 import { busyOf, needsYou, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
@@ -127,7 +128,11 @@ let sky: Sky | null = null;
 async function loadWeather(force = false): Promise<void> {
   if (!force && Date.now() - wxAt < 10 * 60e3) return;
   wxAt = Date.now();
-  try { wx = await getJson<Forecast>('/api/weather/forecast'); wxFailed = false; }
+  try {
+    const r = weatherAfterRead(wx, await getJson<Forecast>('/api/weather/forecast'));
+    wx = r.wx; wxFailed = r.failed;
+    if (r.failed) wxAt = Date.now() - 8 * 60e3;   // a route error: try again in a couple of minutes
+  }
   catch { wxFailed = true; wxAt = Date.now() - 8 * 60e3; /* try again in a couple of minutes */ }
   paintWeather();
 }
