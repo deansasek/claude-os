@@ -17,6 +17,18 @@
    offsetLeft/Top is its cell in the grid (the drag places the lifted tile from that, web/index.ts slot()) */
 #app-launcher .ln-grid { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 #app-launcher .ln-grid[hidden] { display: none; }
+#app-launcher .ln-searchrow { display: flex; align-items: center; gap: 8px; margin: 0 0 18px; max-width: 560px; }
+#app-launcher .ln-search { all: unset; box-sizing: border-box; position: relative; flex: 1; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); font: 400 17px/1 var(--sans); color: var(--t4); cursor: pointer; }
+#app-launcher .ln-search svg { width: 20px; height: 20px; flex: none; }
+#app-launcher .ln-search.has #lnSearchText { color: var(--text); }
+#app-launcher .ln-search-x { all: unset; box-sizing: border-box; position: relative; width: 44px; height: 44px; border-radius: 99px; text-align: center; font-size: 26px; line-height: 44px; color: var(--t3); cursor: pointer; }
+#app-launcher .ln-search-x[hidden] { display: none; }
+#app-launcher .ln-results { display: flex; flex-direction: column; max-width: 560px; }
+#app-launcher .ln-results[hidden] { display: none; }
+#app-launcher .ln-result { all: unset; box-sizing: border-box; position: relative; display: flex; flex-direction: column; gap: 2px; min-height: 56px; padding: 10px 4px; border-bottom: 1px solid var(--line); cursor: pointer; }
+#app-launcher .ln-result b { font: 500 17px/22px var(--sans); color: var(--text); }
+#app-launcher .ln-result span { font-size: 13px; color: var(--t3); }
+#app-launcher .ln-result:active { background: var(--card); }
 #app-launcher .ln-tile { all: unset; position: relative; box-sizing: border-box; cursor: pointer; height: 124px; min-width: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
   border-radius: 22px; background: var(--card); border: 1px solid transparent; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
