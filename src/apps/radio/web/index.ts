@@ -42,6 +42,7 @@ const I = {
   mute: svg('<path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/>'),
   search: svg('<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.6-4.6"/>'),
   up: svg('<path d="M6 14.5l6-6 6 6"/>'),
+  down: svg('<path d="M6 9.5l6 6 6-6"/>'),
   heart: (on: boolean) => svg('<path d="M12 19.5s-7-4.3-7-9.4A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.1c0 5.1-7 9.4-7 9.4z"/>', on),
 };
 
@@ -96,6 +97,11 @@ function loadSearches(): string[] {
     return [];
   }
 }
+
+// Now playing: a view over the main view and the bar, below the header row. It is hidden until the bar opens it.
+let nowOpen = false;
+function openNow(): void { nowOpen = true; $('rdNp').hidden = false; render(); }
+function closeNow(): void { if (!nowOpen) return; nowOpen = false; $('rdNp').hidden = true; }
 
 function loadList(key: string): Station[] {
   try {
@@ -388,6 +394,7 @@ function onFilter(which: string): void {
 
 function onPageClick(ev: Event): void {
   const t = ev.target as Element;
+  closeNow();   // a tap on the header tabs or a list leaves Now playing
   const d = (attr: string) => t.closest<HTMLElement>(`[data-${attr}]`)?.dataset[attr];
   const heart = d('heart');
   if (heart) { toggleFav(heart); return; }
@@ -530,18 +537,21 @@ function setHtml(el: HTMLElement, html: string): void {
 }
 
 function renderVolume(): void {
-  const input = $<HTMLInputElement>('rdVol');
-  if (document.activeElement !== input) input.value = String(volume);
-  input.style.setProperty('--p', `${volume}%`);
-  $('rdVolIc').innerHTML = volume === 0 ? I.mute : I.vol;
+  for (const [slider, icon] of [['rdVol', 'rdVolIc'], ['rdNpVol', 'rdNpVolIc']] as const) {
+    const input = $<HTMLInputElement>(slider);
+    if (document.activeElement !== input) input.value = String(volume);
+    input.style.setProperty('--p', `${volume}%`);
+    $(icon).innerHTML = volume === 0 ? I.mute : I.vol;
+  }
 }
 
 function renderSleep(): void {
-  const b = $<HTMLButtonElement>('rdSleep');
-  b.textContent = sleepAt ? `Sleep ${sleepLeft(sleepAt, Date.now())} min` : 'Sleep';
-  b.classList.toggle('on', !!sleepAt);
-  b.setAttribute('aria-label', sleepAt ? `Sleep timer: ${sleepLeft(sleepAt, Date.now())} minutes left. Tap to change.` : 'Sleep timer: off. Tap for 15 minutes.');
-  b.disabled = state === 'off';
+  for (const b of [$<HTMLButtonElement>('rdSleep'), $<HTMLButtonElement>('rdNpSleep')]) {
+    b.textContent = sleepAt ? `Sleep ${sleepLeft(sleepAt, Date.now())} min` : 'Sleep';
+    b.classList.toggle('on', !!sleepAt);
+    b.setAttribute('aria-label', sleepAt ? `Sleep timer: ${sleepLeft(sleepAt, Date.now())} minutes left. Tap to change.` : 'Sleep timer: off. Tap for 15 minutes.');
+    b.disabled = state === 'off';
+  }
 }
 
 /** The first match, large: its art, its name and line, and Play and Save. */
@@ -615,6 +625,50 @@ function renderCatalogue(): void {
   $('rdResEmpty').hidden = !emptyText;
 }
 
+/** One upcoming Favourite in the Now playing list: its logo and name. A tap plays it. */
+function upCard(s: Station): string {
+  return `<button class="rd-np-up" data-play="${esc(s.id)}" aria-label="Play ${esc(s.name)}">${logo(s, 'rd-logo rd-np-up-art')}<span class="rd-np-up-name">${esc(s.name)}</span></button>`;
+}
+
+/** The Now playing view: the art, the name and state, the transport and the volume, and what plays next in Favourites. */
+function renderNow(): void {
+  if (!nowOpen) return;
+  const s = current;
+  const m = barModel(s, state, streamTitle, favs);
+  const art = $('rdNpArt');
+  art.style.setProperty('--hue', String(s ? stationHue(s.name) : 30));
+  art.classList.toggle('blank', !s);
+  setHtml(art, s ? `${esc(initial(s.name))}${s.favicon ? `<img src="${esc(s.favicon)}" alt="" referrerpolicy="no-referrer">` : ''}` : ICON);
+  $('rdNpName').textContent = m.title;
+  $('rdNpState').textContent = m.subtitle;
+  $('rdNpDetails').textContent = s ? [s.country, s.language, qualityLine(s)].filter(Boolean).join(' · ') : '';
+  $('rdNpKick').classList.toggle('live', m.live);
+  $('rdNpKick').classList.toggle('buffering', state === 'buffering');
+  const fav = $('rdNpFav');
+  fav.hidden = !s;
+  if (s) {
+    const on = isFav(s.id);
+    fav.innerHTML = I.heart(on);
+    fav.classList.toggle('on', on);
+    fav.setAttribute('aria-pressed', String(on));
+    fav.setAttribute('aria-label', on ? 'Remove from Favourites' : 'Add to Favourites');
+  }
+  const toggleBtn = $<HTMLButtonElement>('rdNpToggle');
+  toggleBtn.innerHTML = m.playing ? I.pause : I.play;
+  toggleBtn.setAttribute('aria-label', m.playing ? 'Pause' : 'Play');
+  toggleBtn.disabled = !s && !favs.length && !list.length;
+  $<HTMLButtonElement>('rdNpPrev').disabled = !m.canStep;
+  $<HTMLButtonElement>('rdNpNext').disabled = !m.canStep;
+  $<HTMLButtonElement>('rdNpStop').disabled = !m.live;
+  $('rdNpUpNext').hidden = !m.canStep;
+  if (m.canStep) {
+    // the favourites in stepFavourite's order, from the one after the station on air; that station is left out
+    const at = s ? favs.findIndex(f => f.id === s.id) : -1;
+    const next = favs.map((_, i) => favs[(at + 1 + i) % favs.length]).filter(f => f.id !== s?.id);
+    setHtml($('rdNpNextList'), next.map(upCard).join(''));
+  }
+}
+
 function render(): void {
   const s = current;
   const live = state !== 'off';
@@ -651,6 +705,7 @@ function render(): void {
   $('rdQuery').textContent = query || 'Search stations';
   $('rdQuery').classList.toggle('set', !!query);
   renderCatalogue();
+  renderNow();
 }
 
 const app: HubApp = {
@@ -668,12 +723,27 @@ const app: HubApp = {
     $('rdSleep').addEventListener('click', cycleSleep);
     $('rdBack').addEventListener('click', back);
     $('rdNowFav').addEventListener('click', () => { if (current) toggleFav(current.id); });
-    const openPage = () => {
-      if (current) go({ kind: 'station', station: current, back: view.kind === 'station' ? view.back : view });
-    };
-    $('rdArtBtn').addEventListener('click', openPage);
+
+    $('rdArtBtn').addEventListener('click', openNow);
+    $('rdNowText').addEventListener('click', openNow);
     $('rdExpand').innerHTML = I.up;
-    $('rdExpand').addEventListener('click', openPage);
+    $('rdExpand').addEventListener('click', openNow);
+    $('rdNpClose').innerHTML = I.down;
+    $('rdNpPrev').innerHTML = I.prev;
+    $('rdNpNext').innerHTML = I.next;
+    $('rdNpClose').addEventListener('click', closeNow);
+    $('rdNpToggle').addEventListener('click', toggle);
+    $('rdNpPrev').addEventListener('click', () => step(-1));
+    $('rdNpNext').addEventListener('click', () => step(1));
+    $('rdNpStop').addEventListener('click', stop);
+    $('rdNpSleep').addEventListener('click', cycleSleep);
+    $('rdNpFav').addEventListener('click', () => { if (current) toggleFav(current.id); });
+    $('rdNpVol').addEventListener('input', ev => setVolume(Number((ev.target as HTMLInputElement).value)));
+    $('rdNpNextList').addEventListener('click', ev => {
+      const id = (ev.target as Element).closest<HTMLElement>('[data-play]')?.dataset.play;
+      const s = id ? find(id) : undefined;
+      if (s) play(s);
+    });
     $('rdVol').addEventListener('input', ev => setVolume(Number((ev.target as HTMLInputElement).value)));
     for (const id of ['rdShelves', 'rdTabs', 'rdFilters', 'rdRes']) $(id).addEventListener('click', onPageClick);
     // a logo that does not load is removed, so the station's letter shows instead (error does not bubble: capture it)
