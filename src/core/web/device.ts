@@ -15,6 +15,7 @@ interface HubDeviceApi {
   apps(): string; setAppHidden(pkg: string, hidden: boolean): string;
   reboot(): string; maintenance(): string;
   screenOff?(): string;   // newer app builds: the power menu's Turn off screen
+  updateAvailable?(): string; updateCheck?(): string;   // newer app builds: Settings → About → Software
   // newer app builds: chats on the tablet's own Claude CLI (apps/claude/web/native.ts) and its sign-in (cli-signin.ts)
   cliSigninStart?(): string; cliAuthState?(check: boolean): string;
   cliSigninCode?(code: string): string; cliSigninClipboard?(): string; cliSigninState?(): string;
@@ -105,6 +106,10 @@ export const device = {
   reboot: () => call<{ ok: boolean }>(a => a.reboot()),
   /** The screen off now (Android's lock, with no lock screen: the power button wakes it). Throws on older app builds. */
   screenOff: () => call<{ ok: boolean }>(a => a.screenOff!()),
+  /** Check only: this build and the newest one the PC offers (installs nothing). Throws on older app builds. */
+  updateAvailable: () => call<{ status: string; installed?: number; latest?: number }>(a => a.updateAvailable!()),
+  /** Start the update the PC offers (the person confirms first). Throws on older app builds. */
+  updateCheck: () => call<{ status: string; from?: number; to?: number; versionCode?: number }>(a => a.updateCheck!()),
   maintenance: () => call<{ ok: boolean }>(a => a.maintenance()),
   /** Starts signing the tablet's Claude CLI in (core/web/cli-signin.ts follows the steps). Throws with the reason. */
   cliSigninStart: () => call<{ ok: boolean }>(a => a.cliSigninStart!()),
