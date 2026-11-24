@@ -399,7 +399,8 @@ public class VoiceService extends Service {
       rec.startRecording();
       if (speakRec == null) warmSpeakLater();
       lastError = null; lastCode = null;
-      if (listenFirst > 0) startListen(listenFirst, false); else idle();
+      // the first listen after a cold start picks its recogniser the same way as every later listen (beginRequest)
+      if (listenFirst > 0) { retriesLeft = 0; try { beginRequest(null, listenFirst, false); } catch (Exception e) { idle(); } } else idle();
       short[] buf = new short[RATE / 10];   // 100 ms
       while (running) {
         Runnable job;
