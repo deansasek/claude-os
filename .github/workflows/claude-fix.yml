@@ -363,24 +363,23 @@ jobs:
           path: ${{ runner.temp }}/gate-report.md
           if-no-files-found: ignore
 
-  # Open the pull request as Claude. Runs only when the gate passes. The Claude
-  # token comes from the claude action in this job and is used only in the push
-  # and pull request steps. When AI_FIX_DRY_RUN is "true", this job opens nothing.
+  # Open the pull request as Claude. Runs only when the gate passes. The claude
+  # action in this job applies the patch, commits, pushes, and opens the pull
+  # request as claude[bot]. When AI_FIX_DRY_RUN is "true", this job opens nothing.
   publish:
     needs: gate
     if: vars.AI_ENABLED == 'true' && needs.gate.outputs.result == 'pass'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      contents: read
+      contents: write
+      pull-requests: write
       issues: write
-      pull-requests: read
       id-token: write
     env:
       GH_TOKEN: ${{ github.token }}
       ISSUE: ${{ github.event.issue.number || inputs.issue }}
     outputs:
-      pr_url: ${{ steps.pr.outputs.pr_url }}
       skipped: ${{ steps.plan.outputs.skip }}
       branch: ${{ steps.plan.outputs.branch }}
 
@@ -405,7 +404,7 @@ jobs:
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-      # Do not keep the token from the checkout. The Claude token is minted later.
+      # Do not keep the token from the checkout. The claude action uses its own token.
       - name: Checkout the base commit
         if: vars.AI_FIX_DRY_RUN != 'true'
         uses: actions/checkout@v7
@@ -445,55 +444,19 @@ jobs:
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
-      # Commit as the App bot. The App id comes from a secret and is not printed.
-      - name: Apply the patch and commit
-        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
-        env:
-          APP_ID: ${{ secrets.FIX_APP_ID }}
-        run: |
-          set -euo pipefail
-          git apply "$RUNNER_TEMP/fix-run/fix.patch"
-          git switch -c "$BRANCH"
-          git add -A
-          git config user.name "claudeos-bot[bot]"
-          git config user.email "${APP_ID}+claudeos-bot[bot]@users.noreply.github.com"
-          git commit --quiet -F "$RUNNER_TEMP/pr-draft/title.txt"
-
-      # Mint the token that pushes and opens the pull request. The claude action
-      # gives the token as github_token. No other token is used for these steps.
-      - name: Mint the Claude token
-        id: claude-token
+      # Claude applies the patch, commits, pushes, and opens the pull request.
+      # The action sets the commit author to claude[bot]. The gate already checked the patch.
+      - name: Open the pull request as Claude
+        id: open
         if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            Reply with OK.
-          claude_args: '--model claude-haiku-5-5 --max-turns 1'
-
-      - name: Push the branch
-        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
-        env:
-          TOKEN: ${{ steps.claude-token.outputs.github_token }}
-        run: |
-          set -euo pipefail
-          git push --quiet "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
-
-      # Add the closing line so the issue closes when the pull request merges.
-      - name: Open the pull request
-        id: pr
-        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
-        env:
-          GH_TOKEN: ${{ steps.claude-token.outputs.github_token }}
-        run: |
-          set -euo pipefail
-          title=$(head -n 1 "$RUNNER_TEMP/pr-draft/title.txt")
-          body="$RUNNER_TEMP/pr-draft/body.md"
-          if ! grep -qx "Fixes #${ISSUE}" "$body"; then
-            printf '\nFixes #%s\n' "$ISSUE" >> "$body"
-          fi
-          url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" --title "$title" --body-file "$body" --label ai-generated --label ai-review | tail -n 1)
-          echo "pr_url=$url" >> "$GITHUB_OUTPUT"
+            Open one pull request for issue ${{ github.event.issue.number || inputs.issue }} in ${{ github.repository }}.
+            The fix is a patch at $RUNNER_TEMP/fix-run/fix.patch. The base commit is in $RUNNER_TEMP/fix-run/base.txt. The PR title is line 1 of $RUNNER_TEMP/pr-draft/title.txt, and the PR body is the whole of $RUNNER_TEMP/pr-draft/body.md. Steps: (a) Run git checkout -b ${{ steps.plan.outputs.branch }} <base sha>, where the base sha is the first line of $RUNNER_TEMP/fix-run/base.txt. (b) git apply the patch. (c) git add -A, then git commit -F $RUNNER_TEMP/pr-draft/title.txt. (d) git push -u origin ${{ steps.plan.outputs.branch }}. (e) Append a line 'Fixes #${{ github.event.issue.number || inputs.issue }}' to $RUNNER_TEMP/pr-draft/body.md if it is not already in it, then run gh pr create --repo ${{ github.repository }} --base main --head ${{ steps.plan.outputs.branch }} --title "$(head -n 1 $RUNNER_TEMP/pr-draft/title.txt)" --body-file $RUNNER_TEMP/pr-draft/body.md --label ai-generated --label ai-review. (f) Print the PR URL. Do nothing else. If any step fails, stop and print the failing command's error.
+          claude_args: '--model claude-haiku-5-5 --max-turns 20 --allowedTools "Read Bash(git:*) Bash(gh pr:*) Bash(gh issue:*)"'
+          show_full_output: true
 
   # Write one result report, post it as Claude with the claude action, then remove
   # ai-fix so the label can be added again. The report is the PR link, the gate
@@ -521,9 +484,22 @@ jobs:
           name: gate-report
           path: ${{ runner.temp }}/gate-report-dl
 
+      # Find the pull request that the claude action opened. Read only, with github.token.
+      # Skip when publish did not run or when it skipped an existing branch.
+      - name: Find the pull request
+        id: find-pr
+        if: needs.publish.outputs.branch != '' && needs.publish.outputs.skipped != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ needs.publish.outputs.branch }}
+        run: |
+          set -u
+          url=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --json url --jq '.[0].url // ""' || true)
+          echo "pr_url=$url" >> "$GITHUB_OUTPUT"
+
       # Download the PR title and the changed file list only when publish opened a PR.
       - name: Download the PR title
-        if: needs.publish.outputs.pr_url != ''
+        if: steps.find-pr.outputs.pr_url != ''
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
@@ -531,7 +507,7 @@ jobs:
           path: ${{ runner.temp }}/pr-draft
 
       - name: Download the fix run files
-        if: needs.publish.outputs.pr_url != ''
+        if: steps.find-pr.outputs.pr_url != ''
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
@@ -546,7 +522,7 @@ jobs:
           GATE_RESULT: ${{ needs.gate.result }}
           GATE_OUT: ${{ needs.gate.outputs.result }}
           PUBLISH_RESULT: ${{ needs.publish.result }}
-          PR_URL: ${{ needs.publish.outputs.pr_url }}
+          PR_URL: ${{ steps.find-pr.outputs.pr_url }}
           SKIPPED: ${{ needs.publish.outputs.skipped }}
           BRANCH: ${{ needs.publish.outputs.branch }}
           DRY_RUN: ${{ vars.AI_FIX_DRY_RUN }}
@@ -557,7 +533,7 @@ jobs:
             kind=pr
           elif [ "$GATE_RESULT" != skipped ] && [ "$GATE_OUT" != pass ]; then
             kind=gate-failed
-          elif [ "$PUBLISH_RESULT" = failure ]; then
+          elif [ "$PUBLISH_RESULT" != skipped ] && [ "$SKIPPED" != true ] && [ "$DRY_RUN" != true ]; then
             kind=publish-failed
           elif [ "$SKIPPED" = true ]; then
             kind=skipped
