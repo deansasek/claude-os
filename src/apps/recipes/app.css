@@ -122,9 +122,9 @@
 #app-recipes .rc-ck-prog i.now { background: var(--clay); }
 
 /* the step page: plain is clean text on the page; book is a cookbook page in the serif with a page number */
-#app-recipes .rc-ck-page { display: flex; flex-direction: column; gap: 12px; min-height: 280px; padding: 16px 0 8px; }
+#app-recipes .rc-ck-page { display: flex; flex-direction: column; gap: 12px; min-height: 220px; padding: 16px 0 8px; }
 #app-recipes .rc-ck-page .label { margin: 0; }
-#app-recipes .rc-ck-text { margin: 0; max-width: 34em; font: 400 30px/1.45 var(--sans); color: var(--text); overflow-wrap: anywhere; }
+#app-recipes .rc-ck-text { margin: 0; max-width: 34em; font: 400 30px/1.45 var(--serif); color: var(--text); overflow-wrap: anywhere; }
 #app-recipes .rc-ck.book .rc-ck-page { gap: 16px; min-height: 360px; padding: 32px 40px 24px; border-radius: 24px;
   background: var(--card); border: 1px solid var(--line); }
 #app-recipes .rc-ck.book .rc-ck-text { flex: 1; max-width: none; font: 400 34px/1.45 var(--serif); letter-spacing: -.01em; }
@@ -149,7 +149,7 @@
 }
 
 /* the control bar: Previous, the step count, Next */
-#app-recipes .rc-ck-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }
+#app-recipes .rc-ck-bar { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 16px; }
 #app-recipes .rc-ck-bar .rc-ck-ctl:first-child { justify-self: start; }
 #app-recipes .rc-ck-bar .rc-ck-ctl:last-child { justify-self: end; }
 #app-recipes .rc-ck-count { font: 400 15px var(--sans); color: var(--t3); font-variant-numeric: tabular-nums; }
