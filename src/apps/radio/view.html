@@ -1,9 +1,10 @@
-<header class="app-hd">   <!-- the shell draws the icon and "Radio" (core/web/app-header.ts) -->
-  <div class="app-hd-after"><div class="rd-htabs" id="rdTabs" role="tablist">
-    <button class="rd-htab" data-tab="home">Home</button>
-    <button class="rd-htab" data-tab="search">Search</button>
-  </div></div>
+<header class="app-hd">   <!-- the shell draws the icon, "Radio" and the status (core/web/app-header.ts); the tabs sit on the page -->
 </header>
+
+<div class="rd-htabs" id="rdTabs" role="tablist">
+  <button class="rd-htab" data-tab="home">Home</button>
+  <button class="rd-htab" data-tab="search">Search</button>
+</div>
 
 <!-- the main view: Home is the landing: a greeting, filter chips, then Recently played (square covers), Made for you
      (two rows of tiles), Your top stations (the favourites, as rows), Genres and Countries. Search
