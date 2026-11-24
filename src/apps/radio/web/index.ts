@@ -13,7 +13,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
-import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, nextChoice } from './catalogue.ts';
+import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, addSearch, browsePick, nextChoice } from './catalogue.ts';
 import {
   type PlayState, SLEEP_CHOICES, barModel, failMessage, initial, railLabel, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
   volumeFromDevice,
@@ -24,9 +24,11 @@ import { FAV_EMPTY, TOP_COUNT, homeShelves, tileHue, topFacets, type Load, type 
 const API = `/api/${manifest.id}`;
 const FAVS_KEY = 'radio.favs';
 const RECENT_KEY = 'radio.recent';
+const SEARCHES_KEY = 'radio.searches';
 const ICON = appIcon('radio');
 const FAILED = failMessage(undefined);
 const NO_DIRECTORY = 'No connection to the radio directory.';
+const RADIO_DOWN = 'Radio Browser is not available. Try again.';
 const FACET_NAMES: Record<FacetKind, string> = { tags: 'Genres', countries: 'Countries', languages: 'Languages' };
 const BY: Record<FacetKind, string> = { tags: 'bytag', countries: 'bycountry', languages: 'bylanguage' };
 
@@ -80,6 +82,20 @@ let seq = 0;                             // the latest catalogue load wins
 let playSeq = 0;                         // the latest play wins
 let titleTimer = 0;
 const facetCache = new Map<FacetKind, Facet[]>();
+
+// Browse all (Search with no query and no filter): the genres, countries and languages, the eight largest of each.
+type Browse = Record<FacetKind, Facet[]>;
+let browse: Browse | 'loading' | 'error' = 'loading';
+let searches: string[] = loadSearches();   // the recent searches, newest first, at most six
+
+function loadSearches(): string[] {
+  try {
+    const list = JSON.parse(store.get(SEARCHES_KEY) || '[]');
+    return Array.isArray(list) ? list.filter((q): q is string => typeof q === 'string').slice(0, 6) : [];
+  } catch {
+    return [];
+  }
+}
 
 function loadList(key: string): Station[] {
   try {
@@ -256,6 +272,7 @@ function go(v: View): void {
 
 async function load(force = false): Promise<void> {
   if (view.kind === 'home') { await loadHome(force); return; }
+  if (view.kind === 'search' && !isFiltering()) { await loadBrowse(); return; }
   const key = viewKey(view);
   if (view.kind === 'station' || (!force && key === listKey && listState === 'ok')) return;
   const mine = ++seq;
@@ -321,9 +338,21 @@ async function loadHome(force = false): Promise<void> {
   render();
 }
 
+const isFiltering = (): boolean => !!(query || filters.country || filters.codec || filters.bitrate);
+
+async function loadBrowse(): Promise<void> {
+  if (browse !== 'loading' && browse !== 'error') { render(); return; }
+  const [t, c, l] = await Promise.allSettled([facetsOf('tags'), facetsOf('countries'), facetsOf('languages')]);
+  browse = t.status === 'fulfilled' && c.status === 'fulfilled' && l.status === 'fulfilled'
+    ? { tags: t.value, countries: c.value, languages: l.value } : 'error';
+  render();
+}
+
+// A query (or a filter) is remembered as a recent search; the Search view then shows results, or Browse all when empty.
 function search(q: string): void {
   query = q.trim().slice(0, 60);
-  go(query || filters.country || filters.codec || filters.bitrate ? { kind: 'search' } : { kind: 'home' });
+  if (query) { searches = addSearch(searches, query); store.set(SEARCHES_KEY, JSON.stringify(searches)); }
+  go({ kind: 'search' });
 }
 
 function toggleFav(id: string): void {
@@ -371,7 +400,11 @@ function onPageClick(ev: Event): void {
     return;
   }
   const tab = d('tab');
+  if (tab === 'search') { go({ kind: 'search' }); return; }
   if (tab) { query = ''; go(tab === 'home' ? { kind: 'home' } : tab === 'top' ? { kind: 'top' } : { kind: 'facets', facet: tab as FacetKind }); return; }
+  const recent = d('q');
+  if (recent) { search(recent); return; }
+  if (d('clear') !== undefined) { searches = []; store.set(SEARCHES_KEY, '[]'); render(); return; }
   const showAll = d('showall');
   if (showAll) { go(showAll === 'top' ? { kind: 'top' } : { kind: 'facets', facet: showAll as FacetKind }); return; }
   const shelfKind = d('kind');
@@ -511,9 +544,31 @@ function renderSleep(): void {
   b.disabled = state === 'off';
 }
 
+/** The first match, large: its art, its name and line, and Play and Save. */
+function topResult(s: Station): string {
+  const playing = onAir(s) && (state === 'playing' || state === 'buffering');
+  const fav = isFav(s.id);
+  const sub = [s.country, qualityLine(s)].filter(Boolean).join(' · ');
+  return `<div class="rd-top">${logo(s, 'rd-logo rd-top-art')}<div class="rd-top-text"><b>${esc(s.name)}</b><span>${esc(sub) || '&nbsp;'}</span></div>
+    <div class="rd-top-act"><button class="rd-cta" data-play="${esc(s.id)}">${playing ? 'Pause' : 'Play'}</button><button class="rd-cta ghost${fav ? ' on' : ''}" data-heart="${esc(s.id)}" aria-pressed="${fav}">${fav ? 'Saved' : 'Save'}</button></div></div>`;
+}
+
+/** The recent searches as chips, and a Clear. Empty when there are none. */
+function recentHtml(): string {
+  if (!searches.length) return '';
+  return `<div class="rd-recent">${searches.map(q => `<button class="rd-pill" data-q="${esc(q)}">${esc(q)}</button>`).join('')}<button class="rd-pill rd-clear" data-clear="1">Clear</button></div>`;
+}
+
+/** Browse all: a heading and four columns of tiles per kind; the last tile opens the whole list. */
+function browseHtml(b: Browse): string {
+  const sections: [FacetKind, string, string][] = [['tags', 'Genres', 'All genres'], ['countries', 'Countries', 'All countries'], ['languages', 'Languages', 'All languages']];
+  return sections.map(([kind, title, all]) => `<h3 class="rd-browse-head">${title}</h3><div class="rd-grid rd-browse-grid">${browsePick(b[kind]).map(f =>
+    `<button class="rd-tile2" data-kind="${kind}" data-name="${esc(f.name)}" style="--hue:${tileHue(f.name)}"><b>${esc(f.name)}</b><span>${f.count} stations</span></button>`).join('')}<button class="rd-tile2 rd-all" data-showall="${kind}"><b>${all}</b></button></div>`).join('');
+}
+
 function renderCatalogue(): void {
   const isHome = view.kind === 'home';
-  const tabOf = isHome ? 'home' : view.kind === 'top' ? 'top' : view.kind === 'facets' || view.kind === 'browse' ? view.facet : '';
+  const tabOf = isHome ? 'home' : view.kind === 'search' ? 'search' : '';
   for (const b of $('rdTabs').querySelectorAll<HTMLElement>('[data-tab]')) b.classList.toggle('on', b.dataset.tab === tabOf);
   $('rdBack').hidden = isHome;
   $('rdBarRow').hidden = isHome;
@@ -522,7 +577,7 @@ function renderCatalogue(): void {
   let head = 'Top stations';
   if (view.kind === 'facets') head = view.pick ? 'Pick a country' : FACET_NAMES[view.facet];
   else if (view.kind === 'browse') head = view.facet === 'tags' ? view.name[0].toUpperCase() + view.name.slice(1) : view.name;
-  else if (view.kind === 'search') head = query ? `Results for “${query}”` : 'Filtered stations';
+  else if (view.kind === 'search') head = !isFiltering() ? 'Browse all' : query ? `Results for “${query}”` : 'Filtered stations';
   else if (view.kind === 'station') head = 'Station';
   $('rdResHead').textContent = head;
 
@@ -540,14 +595,20 @@ function renderCatalogue(): void {
   let emptyText = '';
   if (isHome) { setHtml($('rdRes'), ''); $('rdResEmpty').hidden = true; return; }
   if (view.kind === 'station') html = stationPage(view.station);
+  else if (view.kind === 'search' && !isFiltering()) {
+    if (browse === 'loading') emptyText = 'Looking for stations…';
+    else if (browse === 'error') emptyText = RADIO_DOWN;
+    else html = recentHtml() + browseHtml(browse);
+  }
+  else if (view.kind === 'search' && listState === 'loading') html = `<div class="rd-grid rd-station-grid">${'<div class="rd-sk-row"></div>'.repeat(6)}</div>`;
   else if (listState === 'loading' || listState === 'idle') emptyText = 'Looking for stations…';
-  else if (listState === 'error') emptyText = listError || 'The radio directory did not answer.';
+  else if (listState === 'error') emptyText = RADIO_DOWN;
   else if (view.kind === 'facets') {
     html = facets.length ? `<div class="rd-grid rd-facet-grid">${facets.map(facetCard).join('')}</div>` : '';
     if (!facets.length) emptyText = 'The directory sent no list.';
   } else {
-    html = list.length ? `<div class="rd-grid rd-station-grid">${list.map(tile).join('')}</div>` : '';
-    if (!list.length) emptyText = view.kind === 'search' ? 'No stations match. Try another name or fewer filters.' : 'No stations found.';
+    html = list.length ? `${view.kind === 'search' ? topResult(list[0]) : ''}<div class="rd-grid rd-station-grid">${list.map(tile).join('')}</div>` : '';
+    if (!list.length) emptyText = view.kind === 'search' ? 'No stations match. Try fewer words.' : 'No stations found.';
   }
   setHtml($('rdRes'), html);
   $('rdResEmpty').textContent = emptyText;

@@ -1,6 +1,7 @@
 // The Radio catalogue's pure choices: the allow-list of directory paths, the mirror order, the sleep timer,
 // the recently played cap, the stream title and the search filters. Run with: npm test
 import assert from 'node:assert/strict';
+import { addSearch, browsePick } from '../src/apps/radio/web/catalogue.ts';
 import { test } from 'node:test';
 import type { Station } from '../src/apps/radio/api.ts';
 import { RECENT_MAX, addRecent, cataloguePath, facetsFrom, filtersFrom, mirrorOrder, nextChoice } from '../src/apps/radio/web/catalogue.ts';
@@ -81,4 +82,24 @@ test('genre and country lists drop empty and unsafe names, biggest first', () =>
   assert.deepEqual(got.map(f => f.name), ['pop', 'jazz']);
   const c = facetsFrom([{ name: 'Germany', iso_3166_1: 'DE', stationcount: 5 }], 'countries');
   assert.deepEqual(c, [{ name: 'Germany', code: 'DE', count: 5 }]);
+});
+
+test('Browse all shows the eight largest genres, countries or languages, most stations first', () => {
+  const list = Array.from({ length: 12 }, (_, i) => ({ name: `n${i}`, code: '', count: i }));
+  const pick = browsePick(list);
+  assert.equal(pick.length, 8);
+  assert.equal(pick[0].name, 'n11');
+  assert.equal(pick[7].name, 'n4');
+});
+
+test('recent searches keep six at most, newest first, with no repeats', () => {
+  let list: string[] = [];
+  for (const q of ['jazz', 'news', 'rock', 'talk', 'folk', 'soul', 'blues']) list = addSearch(list, q);
+  assert.equal(list.length, 6);
+  assert.equal(list[0], 'blues');
+  assert.equal(list.includes('jazz'), false);
+  list = addSearch(list, 'SOUL');
+  assert.equal(list[0], 'SOUL');
+  assert.equal(list.filter(x => x.toLowerCase() === 'soul').length, 1);
+  assert.deepEqual(addSearch(list, '   '), list);
 });

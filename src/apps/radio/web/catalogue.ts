@@ -82,3 +82,16 @@ export const RECENT_MAX = 20;
 export function addRecent(list: Station[], s: Station, max = RECENT_MAX): Station[] {
   return [s, ...list.filter(r => r.id !== s.id)].slice(0, max);
 }
+
+/** The first n genres, countries or languages by station count, most first: what Browse all shows (eight each). */
+export function browsePick<T extends { count: number }>(list: readonly T[], n = 8): T[] {
+  return [...list].sort((a, b) => b.count - a.count).slice(0, n);
+}
+
+/** The recent searches with q first, no repeats (case-insensitive), at most cap (six). A blank q changes nothing. */
+export const SEARCHES_MAX = 6;
+export function addSearch(list: readonly string[], q: string, cap = SEARCHES_MAX): string[] {
+  const t = q.trim();
+  if (!t) return list.slice(0, cap);
+  return [t, ...list.filter(x => x.toLowerCase() !== t.toLowerCase())].slice(0, cap);
+}
