@@ -10,9 +10,10 @@
 // A step that fails is said as one short sentence and the routine goes on. One routine runs at a time: a new one (or
 // "stop" said while it speaks) ends the one before.
 //
-// The routines are read from the PC (GET /api/routines/list) and kept for a minute, for voice matching; a change in
-// the Routines app sends hub:routines, which drops the copy. This module provides itself to voice-commands.ts
-// (provideRoutines) as soon as it loads, so voice, the Home screen and Claude's run_routine all start routines here.
+// The routines come from the tablet's copy (web/sync.ts), which works with the PC off. Without a copy yet (the first
+// run) they are read from the PC (GET /api/routines/list) and kept for a minute; a change in the Routines app sends
+// hub:routines, which drops that copy. This module provides itself to voice-commands.ts (provideRoutines) as soon as
+// it loads, so voice, the Home screen and Claude's run_routine all start routines here.
 import { getJson, postJson, store } from '../../../core/web/dom.ts';
 import { voice } from '../../../core/web/device.ts';
 import { calendarCommand, getClock, provideRoutines, weatherToday } from '../../../core/web/voice-commands.ts';
@@ -20,12 +21,18 @@ import { voiceUi } from '../../../core/web/voice-ui.ts';
 import { prefs, setFocus, sleep as showScreenSaver } from '../../../core/web/system.ts';
 import type { HaResult } from '../../home-assistant/api.ts';
 import { AT_WINDOW_MIN, STEP_MAX_MS, dayKey, dueRoutines, type Routine, type RoutinesResult, type Step } from '../api.ts';
+import { copyAge, hasCopy, localRoutines, pull } from './sync.ts';
 
 const CACHE_MS = 60e3;
 let cache: Routine[] | null = null, cacheAt = 0;
 
-/** The routines (the copy from the last minute, unless `fresh`). */
+/** The routines: the tablet's copy (pulled from the PC when it is a minute old, or with `fresh`), else the PC's copy
+ *  from the last minute. */
 export async function loadRoutines(fresh = false): Promise<Routine[]> {
+  if (hasCopy()) {
+    if (fresh || copyAge() > CACHE_MS) await pull();
+    return localRoutines() ?? [];
+  }
   if (!fresh && cache && Date.now() - cacheAt < CACHE_MS) return cache;
   const r = await getJson<RoutinesResult>('/api/routines/list');
   if (!r || !Array.isArray(r.routines)) throw new Error('no routines');

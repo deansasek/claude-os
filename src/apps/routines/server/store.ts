@@ -57,14 +57,13 @@ function persist(routines: Routine[]): boolean {
   }
 }
 
-/** The routines from the file (the built-ins, saved, when there is no file); null when the file can't be read. */
+/** The routines from the file (the built-ins when there is no file; they are saved with the first change); null when the
+ *  file can't be read. Reading never creates the file, so a lost file shows as missing and the tablet can restore it. */
 async function load(): Promise<Routine[] | null> {
   let text: string;
   try { text = fs.readFileSync(FILE, 'utf8'); } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') return null;
-    const d = await defaults();
-    if (!fs.existsSync(FILE)) persist(d);   // a request that read at the same moment may have made it already
-    return d;
+    return defaults();
   }
   try {
     const raw = JSON.parse(text.replace(/^﻿/, '')) as { routines?: unknown };
@@ -82,8 +81,21 @@ async function load(): Promise<Routine[] | null> {
 const UNREADABLE = 'The routines file on the PC couldn’t be read, so nothing was changed.';
 
 export async function readRoutines(): Promise<RoutinesResult> {
+  const stored = fs.existsSync(FILE);
   const r = await load();
-  return r ? { ok: true, routines: r } : { ok: false, routines: [], error: UNREADABLE };
+  return r ? { ok: true, routines: r, stored } : { ok: false, routines: [], error: UNREADABLE, retry: true };
+}
+
+/** The tablet's copy, when the PC has no routines file (a lost file, or a new PC). An existing file is never replaced. */
+export function restoreRoutines(raw: unknown): RoutinesResult {
+  if (fs.existsSync(FILE)) return { ok: false, routines: [], error: 'The PC already has routines.' };
+  const out: Routine[] = [];
+  for (const r of Array.isArray(raw) ? raw : []) {
+    const c = cleanStored(r);
+    if (c && out.length < MAX_ROUTINES && !out.some(o => o.id === c.id || phraseKey(o.name) === phraseKey(c.name))) out.push(c);
+  }
+  if (!out.length) return { ok: false, routines: [], error: 'That isn’t a set of routines.' };
+  return persist(out) ? { ok: true, routines: out, stored: true } : { ok: false, routines: out, error: 'The PC couldn’t save the routines.', retry: true };
 }
 
 /** An id from a name: "Good morning" → "good-morning"; a different one if that is taken. */
@@ -99,7 +111,7 @@ export function idFor(name: string, list: Routine[]): string {
 /** Add a routine (no id, or an id not saved yet) or replace one (its id). Everything is checked again here. */
 export async function saveRoutine(raw: unknown): Promise<RoutinesResult> {
   const list = await load();
-  if (!list) return { ok: false, routines: [], error: UNREADABLE };
+  if (!list) return { ok: false, routines: [], error: UNREADABLE, retry: true };
   const fail = (error: string): RoutinesResult => ({ ok: false, routines: list, error });
   const c = cleanRoutine(raw);
   if ('error' in c) return fail(c.error);
@@ -126,18 +138,18 @@ export async function saveRoutine(raw: unknown): Promise<RoutinesResult> {
     if (list.some(r => r.id === saved.id)) saved.id = idFor(c.name, list);
     list.push(saved);
   }
-  if (!persist(list)) return { ok: false, routines: (await load()) ?? list, error: 'The PC couldn’t save the routines.' };
+  if (!persist(list)) return { ok: false, routines: (await load()) ?? list, error: 'The PC couldn’t save the routines.', retry: true };
   return { ok: true, routines: clone(list), id: saved.id };
 }
 
 export async function deleteRoutine(idRaw: unknown): Promise<RoutinesResult> {
   const list = await load();
-  if (!list) return { ok: false, routines: [], error: UNREADABLE };
+  if (!list) return { ok: false, routines: [], error: UNREADABLE, retry: true };
   if (typeof idRaw !== 'string' || !ROUTINE_ID.test(idRaw)) return { ok: false, routines: list, error: 'That isn’t a routine.' };
   const at = list.findIndex(r => r.id === idRaw);
   if (at < 0) return { ok: true, routines: list };   // already gone
   list.splice(at, 1);
-  if (!persist(list)) return { ok: false, routines: (await load()) ?? list, error: 'The PC couldn’t save the routines.' };
+  if (!persist(list)) return { ok: false, routines: (await load()) ?? list, error: 'The PC couldn’t save the routines.', retry: true };
   return { ok: true, routines: list };
 }
 

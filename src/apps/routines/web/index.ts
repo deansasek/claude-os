@@ -1,5 +1,6 @@
 // The Routines app: list, edit, add and delete routines (a name, the phrases that run it, up to eight steps).
-// The routines live on the PC (.routines.json, server/store.ts), which checks every save again: names and phrases,
+// The routines live on the tablet (web/sync.ts), so the app works with the PC off. The PC's copy (.routines.json,
+// server/store.ts) is a sync target that Claude's tools also change; it checks every save again: names and phrases,
 // the steps, and that a scene is on the Home Assistant dashboard or the Home screen. Running happens in web/run.ts
 // (voice, the Home screen's tiles, Claude's run_routine, and Run now here all use it).
 //
@@ -18,6 +19,7 @@ import {
 } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { onRunState, runRoutine, runState, stopRoutine } from './run.ts';
+import { apply, hasCopy, localRoutines, onCopyChange, pull } from './sync.ts';
 
 const API = `/api/${manifest.id}`;
 const TIMER_LADDER = [1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 45, 60, 90, 120, 180, 240, 360, 480, 720];
@@ -60,9 +62,12 @@ function edit(r: Routine | null): void {
 // ---------- talking to the PC ----------
 async function refresh(): Promise<void> {
   try {
-    const r = await getJson<RoutinesResult>(`${API}/list`);
-    if (Array.isArray(r?.routines)) { routines = r.routines; loaded = true; }
-    if (!r.ok && r.error) note = r.error;
+    if (hasCopy()) { await pull(); routines = localRoutines() ?? routines; loaded = true; }   // the copy, with Claude's edits
+    else {
+      const r = await getJson<RoutinesResult>(`${API}/list`);   // the first run: the PC's routines, until the copy exists
+      if (Array.isArray(r?.routines)) { routines = r.routines; loaded = true; }
+      if (!r.ok && r.error) note = r.error;
+    }
     if (!dirty()) {   // nothing typed yet: show the saved one (or the first)
       const cur = draft.id ? routines.find(x => x.id === draft.id) : null;
       if (cur) edit(cur); else if (!draft.id && !draft.name && !draft.steps.length && routines[0]) edit(routines[0]);
@@ -83,9 +88,17 @@ async function save(): Promise<void> {
   if (busy) return;
   const c = cleanRoutine(draft);
   if ('error' in c) { note = c.error; render(); return; }
+  const routine: Record<string, unknown> = { ...(draft.id ? { id: draft.id } : {}), ...c };
+  const mine = apply({ path: 'save', body: { routine } });   // the tablet's copy: shows at once, sent to the PC later
+  if (mine) {
+    if (mine.ok) { routines = mine.routines; edit(routines.find(x => x.id === routine.id) ?? null); }
+    else note = mine.error ?? 'That didn’t save.';
+    render();
+    return;
+  }
   busy = true; render();
   try {
-    const r = await postJson<RoutinesResult>(`${API}/save`, { routine: { ...(draft.id ? { id: draft.id } : {}), ...c } });
+    const r = await postJson<RoutinesResult>(`${API}/save`, { routine });
     if (Array.isArray(r?.routines)) routines = r.routines;
     if (r?.ok) {
       const mine = routines.find(x => x.id === r.id);
@@ -97,6 +110,8 @@ async function save(): Promise<void> {
 }
 
 async function remove(id: string): Promise<void> {
+  const mine = apply({ path: 'delete', body: { id } });
+  if (mine) { routines = mine.routines; edit(routines[0] ?? null); render(); return; }
   busy = true; render();
   try {
     const r = await postJson<RoutinesResult>(`${API}/delete`, { id });
@@ -373,6 +388,7 @@ const app: HubApp = {
       return true;
     }, 10);
     onRunState(() => render());
+    onCopyChange(() => { if (hasCopy()) { routines = localRoutines() ?? routines; loaded = true; render(); } });
     render();
   },
   onShow() { void refresh(); void loadScenes(); },

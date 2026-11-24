@@ -1,6 +1,6 @@
 // Routines: a named list of steps that run in order when you say one of its phrases or tap it.
 // Shapes and limits shared by the page and the PC. Served to the browser: nothing secret lives here (the routines
-// themselves stay in .routines.json on the PC). The page checks only to give quick feedback; the server checks
+// live on the tablet (web/sync.ts) and in .routines.json on the PC). The page checks only to give quick feedback; the server checks
 // everything again (server/store.ts), including that a scene is on the dashboard or the Home screen.
 import type { FocusId } from '../../core/web/focus-modes.ts';
 
@@ -54,6 +54,8 @@ export interface RoutinesResult {
   routines: Routine[];
   error?: string;
   id?: string;                         // save: the routine's id (new or the same)
+  stored?: boolean;                    // list: the PC has a routines file (false: the tablet may restore its copy)
+  retry?: boolean;                     // the PC couldn't read or save its file: send the change again later
 }
 
 /** Plain text: no control characters, single spaces, trimmed. */
