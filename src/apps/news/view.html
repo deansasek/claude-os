@@ -18,3 +18,17 @@
   </div>
   <div class="nw-crit" id="nwCrit" aria-hidden="true"></div>
 </div>
+
+<!-- the reader sheet: one story's description, and a Read button when the story has a link -->
+<div class="nw-sheet" id="nwSheet" hidden>
+  <div class="nw-card" role="dialog" aria-modal="true" aria-labelledby="nwSheetTitle">
+    <div class="nw-sheet-top">
+      <p class="nw-meta"><span class="nw-src" id="nwSheetSrc"></span><span class="nw-when" id="nwSheetTime"></span></p>
+      <button class="nw-close" type="button" data-close>Close</button>
+    </div>
+    <h2 class="nw-sheet-title" id="nwSheetTitle"></h2>
+    <p class="nw-sheet-desc" id="nwSheetDesc"></p>
+    <p class="nw-link" id="nwSheetLink" hidden></p>
+    <div class="nw-sheet-act" id="nwSheetAct"></div>
+  </div>
+</div>

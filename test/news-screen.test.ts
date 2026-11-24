@@ -1,9 +1,9 @@
 // The News screen's rules, with no DOM: the states (ok, partial, error), the headline and shelves, the notes for a
-// failed feed, and the saved time on a stale shelf. Run with: npm test
+// failed feed, the saved time on a stale shelf, and the Read link (none for a story without a link). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { NewsFeedResponse, NewsItem } from '../src/apps/news/api.ts';
-import { ago, screenFor, ERROR_TEXT, NO_FEED_TEXT } from '../src/apps/news/web/screen.ts';
+import { ago, linkFor, screenFor, ERROR_TEXT, NO_FEED_TEXT } from '../src/apps/news/web/screen.ts';
 
 const T = '2026-11-24T10:00:00Z';
 const story = (id: string, sourceId: string, extra: Partial<NewsItem> = {}): NewsItem => ({
@@ -72,6 +72,18 @@ test('error: an ok answer with no stories is still an error, never an empty list
 
 test('error: a request that failed altogether shows the plain message', () => {
   assert.deepEqual(screenFor(null), { state: 'error', text: NO_FEED_TEXT });
+});
+
+test('a story with an http or https link can be read', () => {
+  assert.equal(linkFor(story('a', 'bbc')), 'https://example.com/a');
+  assert.equal(linkFor(story('a', 'bbc', { link: 'http://example.com/x' })), 'http://example.com/x');
+});
+
+test('a story without a link gets no Read link', () => {
+  assert.equal(linkFor(story('a', 'bbc', { link: null })), null);
+  assert.equal(linkFor(story('a', 'bbc', { link: '' })), null);
+  assert.equal(linkFor(story('a', 'bbc', { link: 'javascript:alert(1)' })), null);
+  assert.equal(linkFor(story('a', 'bbc', { link: 'not a link' })), null);
 });
 
 test('ago says how old a story is in plain words', () => {
