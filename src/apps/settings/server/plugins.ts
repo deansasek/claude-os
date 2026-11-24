@@ -484,7 +484,7 @@ export function addFolder(p: string): { ok: true } | { ok: false; error: string 
   const looksLikePlugin = isFile(path.join(folder, '.claude-plugin', 'plugin.json')) || isFile(path.join(folder, 'plugin.json'))
     || isDir(path.join(folder, 'skills')) || isDir(path.join(folder, 'commands')) || isDir(path.join(folder, 'agents'));
   if (!looksLikePlugin) return { ok: false, error: 'not_a_plugin' };
-  if (state.folders.includes(folder)) return { ok: true };
+  if (state.folders.some(f => sameFolder(f, folder))) return { ok: true };
   if (state.folders.length >= 50) return { ok: false, error: 'too_many' };
   state.folders.push(folder);
   saveState();
@@ -493,9 +493,10 @@ export function addFolder(p: string): { ok: true } | { ok: false; error: string 
 
 export function removeFolder(p: string): boolean {
   const folder = path.resolve(String(p ?? ''));
-  if (!state.folders.includes(folder)) return false;
-  state.folders = state.folders.filter(f => f !== folder);
-  state.off = state.off.filter(k => k !== `plugin:path:${folder}`);
+  if (!state.folders.some(f => sameFolder(f, folder))) return false;
+  // Remove every entry for this folder, whatever the letter case of its path.
+  state.folders = state.folders.filter(f => !sameFolder(f, folder));
+  state.off = state.off.filter(k => !(k.startsWith('plugin:path:') && sameFolder(k.slice('plugin:path:'.length), folder)));
   saveState();
   return true;
 }
