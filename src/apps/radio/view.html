@@ -27,8 +27,8 @@
 <!-- the player bar: the station (left), the transport (centre), the tools (right) -->
 <section class="rd-now rd-player" id="rdNow" aria-label="Player">
   <div class="rd-pl-station">
-    <button class="rd-art-btn" id="rdArtBtn" aria-label="Station page"><span class="rd-art" id="rdArt" aria-hidden="true"></span></button>
-    <div class="rd-now-text">
+    <button class="rd-art-btn" id="rdArtBtn" aria-label="Open Now playing"><span class="rd-art" id="rdArt" aria-hidden="true"></span></button>
+    <div class="rd-now-text" id="rdNowText">
       <h2 class="rd-name" id="rdName">Nothing playing</h2>
       <p class="rd-title" id="rdTitle"></p>
       <p class="rd-msg" id="rdMsg" role="status" hidden></p>
@@ -48,6 +48,41 @@
       <span class="rd-vol-ic" id="rdVolIc" aria-hidden="true"></span>
       <input type="range" min="0" max="100" step="1" id="rdVol" aria-label="Volume">
     </label>
-    <button class="rd-expand" id="rdExpand" aria-label="Open the station page"></button>
+    <button class="rd-expand" id="rdExpand" aria-label="Open Now playing"></button>
+  </div>
+</section>
+
+<!-- Now playing: covers the main view and the bar (below the header row). Opened from the bar, closed by the chevron. -->
+<section class="rd-np" id="rdNp" aria-label="Now playing" hidden>
+  <div class="rd-np-top"><button class="rd-np-close" id="rdNpClose" aria-label="Close Now playing"></button></div>
+  <div class="rd-np-body">
+    <div class="rd-np-left">
+      <span class="rd-art rd-np-art" id="rdNpArt" aria-hidden="true"></span>
+    </div>
+    <div class="rd-np-info">
+      <p class="rd-np-kick" id="rdNpKick">Now playing</p>
+      <h2 class="rd-np-name" id="rdNpName"></h2>
+      <p class="rd-np-state" id="rdNpState"></p>
+      <p class="rd-np-details" id="rdNpDetails"></p>
+      <div class="rd-np-row">
+        <button class="rd-heart rd-np-fav" id="rdNpFav" aria-label="Add to Favourites" aria-pressed="false" hidden></button>
+      </div>
+      <div class="rd-np-controls">
+        <button class="rd-btn" id="rdNpPrev" aria-label="Previous favourite"></button>
+        <button class="rd-btn rd-main-btn" id="rdNpToggle" aria-label="Play"></button>
+        <button class="rd-btn" id="rdNpNext" aria-label="Next favourite"></button>
+        <span class="rd-np-gap"></span>
+        <button class="rd-stop" id="rdNpSleep">Sleep</button>
+        <button class="rd-stop" id="rdNpStop">Stop</button>
+      </div>
+      <label class="rd-vol rd-np-vol">
+        <span class="rd-vol-ic" id="rdNpVolIc" aria-hidden="true"></span>
+        <input type="range" min="0" max="100" step="1" id="rdNpVol" aria-label="Volume">
+      </label>
+    </div>
+  </div>
+  <div class="rd-np-upnext" id="rdNpUpNext" hidden>
+    <p class="rd-np-uphead">Up next in Favourites</p>
+    <div class="rd-np-nextlist" id="rdNpNextList"></div>
   </div>
 </section>
