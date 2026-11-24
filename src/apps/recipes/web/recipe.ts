@@ -105,6 +105,11 @@ export function cookStep(r: Recipe, i: number): { heading: string; text: string;
 /** The reply format: the same words RECIPE_PROMPT uses, so parseRecipe reads every reply the same way. */
 const FORMAT = RECIPE_PROMPT.replace('Give me one recipe. ', '');
 
+/** The adapted recipe keeps the photo of the recipe it changes. Only the photo: the TheMealDB id would mark it as TheMealDB's. */
+export function keepPhoto(adapted: Recipe, source: string | undefined): Recipe {
+  return source ? { ...adapted, image: source } : adapted;
+}
+
 /** Asks Claude to change a recipe. The recipe goes as JSON without its photo address or id. */
 export function adaptPrompt(r: Recipe, change: string): string {
   const plain = { name: r.name, serves: r.serves, time: r.time, ingredients: r.ingredients, steps: r.steps };
