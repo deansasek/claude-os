@@ -64,7 +64,8 @@ export interface HaStatus {
 }
 
 /** The allowlisted (Claude) devices and their state. */
-export interface HaEntities { status: 'ok' | 'error'; demo: boolean; entities: HaEntity[]; error?: string }
+// status "not_set_up": no address or token saved yet; error says where to add them (Settings).
+export interface HaEntities { status: 'ok' | 'error' | 'not_set_up'; demo: boolean; entities: HaEntity[]; error?: string }
 
 /** Every device Home Assistant reports that may show on the dashboard; `allowed` is Claude's allowlist only. */
 export interface HaDevice {
@@ -73,7 +74,7 @@ export interface HaDevice {
   controllable: boolean;        // a control domain: may be switched (and allowed for Claude)
   dashboard: boolean;           // shown on the Home dashboard
 }
-export interface HaDevices { status: 'ok' | 'error'; demo: boolean; devices: HaDevice[]; error?: string }
+export interface HaDevices { status: 'ok' | 'error' | 'not_set_up'; demo: boolean; devices: HaDevice[]; error?: string }
 
 // ---------- the dashboard layout (.ha-layout.json on the PC; one for the demo house, one for the real one) ----------
 export interface HaRoom { id: string; name: string; devices: string[] }
@@ -94,10 +95,10 @@ export interface HaScene {
   home: boolean;                // one of the Home screen's quick actions
 }
 /** GET scenes: every scene Home Assistant reports, and the Home screen's picks in order. */
-export interface HaScenes { status: 'ok' | 'error'; demo: boolean; scenes: HaScene[]; home: string[]; error?: string }
+export interface HaScenes { status: 'ok' | 'error' | 'not_set_up'; demo: boolean; scenes: HaScene[]; home: string[]; error?: string }
 export interface HaHomeScenesResult { ok: boolean; home: string[]; error?: string }
 /** GET layout: the layout, and the state of every device on it. */
-export interface HaDashboard { status: 'ok' | 'error'; demo: boolean; layout: HaLayout; entities: HaEntity[]; error?: string }
+export interface HaDashboard { status: 'ok' | 'error' | 'not_set_up'; demo: boolean; layout: HaLayout; entities: HaEntity[]; error?: string }
 export interface HaLayoutResult { ok: boolean; layout: HaLayout; error?: string }
 
 export const MAX_ROOMS = 30;
@@ -106,6 +107,6 @@ export const MAX_DEVICE_NAME = 60;
 /** Room ids: "r" and a few letters or digits. */
 export const ROOM_ID = /^r[a-z0-9]{1,23}$/;
 
-export interface HaConfigUpdate { address?: string; token?: string; demo?: boolean }
+export interface HaConfigUpdate { address?: string; token?: string }
 export interface HaResult { ok: boolean; error?: string; entity?: HaEntity }
 export interface HaTestResult { ok: boolean; message: string }

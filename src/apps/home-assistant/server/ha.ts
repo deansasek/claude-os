@@ -32,7 +32,6 @@ const MAX_DEVICES = 400;
 interface Config {
   address: string;
   token: string;
-  demo?: boolean;          // asked for explicitly; demo is also on whenever no address is set
   allow: string[];         // the real house's allowlist
   allowDemo?: string[];    // the demo house's allowlist (all demo devices until changed)
 }
@@ -53,7 +52,6 @@ function load(): Config {
   return {
     address: typeof c.address === 'string' ? c.address : '',
     token: typeof c.token === 'string' ? c.token : '',
-    demo: typeof c.demo === 'boolean' ? c.demo : undefined,
     allow: Array.isArray(c.allow) ? c.allow.filter(x => typeof x === 'string') : [],
     allowDemo: Array.isArray(c.allowDemo) ? c.allowDemo.filter(x => typeof x === 'string') : undefined,
   };
@@ -65,7 +63,12 @@ function save(): void {
   catch (e) { console.log('home-assistant: could not save the config:', (e as NodeJS.ErrnoException).code ?? 'error'); }
 }
 
-export const isDemo = (): boolean => !cfg.address || !cfg.token || cfg.demo === true;
+// CLAUDEOS_HA_DEMO=1 is for the tests only: it shows the made-up house. A normal start never sets it, and no route
+// or saved config can turn it on. Read on each call, so a test can set and clear it.
+export const isDemo = (): boolean => process.env.CLAUDEOS_HA_DEMO === '1';
+/** No address or token saved (and not the test house): the app says so and makes nothing up. */
+export const notSetUp = (): boolean => !isDemo() && (!cfg.address || !cfg.token);
+export const NOT_SET_UP = 'Home Assistant isn’t set up yet. Add its address and access token in Settings > Apps > Home Assistant.';
 const mask = (t: string): string => (t ? `••••${t.slice(-4)}` : '');
 
 let lastOk: boolean | null = null, lastError = '';
@@ -98,18 +101,16 @@ export function saveConfig(u: HaConfigUpdate): HaStatus & { ok: boolean; message
   if (typeof u.address === 'string') {
     const a = cleanAddress(u.address.slice(0, 300));
     if (a == null) return { ...status(), ok: false, message: 'That doesn’t look like an address. Try http://homeassistant.local:8123' };
-    if (a !== cfg.address) { cfg.address = a; cfg.demo = a ? false : undefined; lastOk = null; lastError = ''; }
+    if (a !== cfg.address) { cfg.address = a; lastOk = null; lastError = ''; }
   }
   if (typeof u.token === 'string') {
     const t = u.token.trim();
     if (t.length > 1000 || /\s/.test(t)) return { ...status(), ok: false, message: 'That token has spaces in it or is too long.' };
     if (t !== cfg.token) { cfg.token = t; lastOk = null; lastError = ''; }
   }
-  if (typeof u.demo === 'boolean') cfg.demo = u.demo;
   save();
-  console.log(`home-assistant: settings saved (address ${cfg.address ? 'set' : 'empty'}, token ${cfg.token ? 'set' : 'empty'}, demo ${isDemo() ? 'on' : 'off'})`);
-  const off = u.demo === false && isDemo();
-  return { ...status(), ok: !off, ...(off ? { message: 'Demo mode stays on until an address and a token are saved.' } : {}) };
+  console.log(`home-assistant: settings saved (address ${cfg.address ? 'set' : 'empty'}, token ${cfg.token ? 'set' : 'empty'})`);
+  return { ...status(), ok: true };
 }
 
 // ---------- talking to Home Assistant ----------
@@ -261,6 +262,7 @@ export function setAllowed(entityId: string, on: boolean): { ok: boolean; error?
 export async function entities(): Promise<HaEntities> {
   const mine = (e: HaEntity) => isControlDomain(e.domain) && allowed(e.entity_id);
   if (isDemo()) return { status: 'ok', demo: true, entities: DEMO.filter(mine).map(e => ({ ...e })) };
+  if (notSetUp()) return { status: 'not_set_up', demo: false, entities: [], error: NOT_SET_UP };
   const r = await attempt(realStates);
   if (!r.ok) return { status: 'error', demo: false, entities: [], error: r.error };
   return { status: 'ok', demo: false, entities: r.value.filter(mine) };
@@ -276,6 +278,7 @@ export async function devices(): Promise<HaDevices> {
     dashboard: onDashboard(demo, e.entity_id),
   }));
   if (demo) return { status: 'ok', demo: true, devices: pick(DEMO) };
+  if (notSetUp()) return { status: 'not_set_up', demo: false, devices: [], error: NOT_SET_UP };
   const r = await attempt(realStates);
   if (!r.ok) return { status: 'error', demo: false, devices: [], error: r.error };
   return { status: 'ok', demo: false, devices: pick(r.value) };
@@ -286,6 +289,7 @@ export async function devices(): Promise<HaDevices> {
 export async function dashboard(): Promise<HaDashboard> {
   const demo = isDemo();
   const layout = getLayout(demo);
+  if (notSetUp()) return { status: 'not_set_up', demo, layout, entities: [], error: NOT_SET_UP };
   const ids = [...layout.rooms.flatMap(r => r.devices), ...layout.other];
   let states: HaEntity[] = [], error: string | undefined;
   if (demo) states = DEMO.map(e => ({ ...e }));
@@ -375,6 +379,7 @@ const sceneKey = (s: string): string =>
 
 async function sceneRows(): Promise<{ ok: true; demo: boolean; rows: SceneRow[]; home: string[] } | { ok: false; demo: boolean; error: string }> {
   const demo = isDemo();
+  if (notSetUp()) return { ok: false, demo, error: NOT_SET_UP };
   let list: HaEntity[];
   if (demo) list = DEMO.filter(e => isSceneDomain(e.domain)).map(e => ({ ...e }));
   else {
@@ -394,7 +399,7 @@ async function sceneRows(): Promise<{ ok: true; demo: boolean; rows: SceneRow[];
 /** Every scene Home Assistant reports (the demo scenes in demo mode), and the Home screen's picks in order. */
 export async function scenes(): Promise<HaScenes> {
   const r = await sceneRows();
-  if (!r.ok) return { status: 'error', demo: r.demo, scenes: [], home: [], error: r.error };
+  if (!r.ok) return { status: r.error === NOT_SET_UP ? 'not_set_up' : 'error', demo: r.demo, scenes: [], home: [], error: r.error };
   return { status: 'ok', demo: r.demo, home: r.home, scenes: r.rows.map(({ entity_id, name, dashboard, home }) => ({ entity_id, name, dashboard, home })) };
 }
 
