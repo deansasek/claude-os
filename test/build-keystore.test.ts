@@ -6,23 +6,36 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { keystoreProblem } from '../android/toolchain.ts';
 
-test('a missing keystore stops the build with a clear message', () => {
+function withDir(files: string[], body: (dir: string) => void): void {
   const dir = mkdtempSync(join(tmpdir(), 'keystore-'));
   try {
-    const msg = keystoreProblem(join(dir, 'hub.keystore'));
-    assert.equal(msg, 'android/hub.keystore is missing. Restore the backup copy. A new key would make Android refuse every update.');
+    for (const f of files) writeFileSync(join(dir, f), 'key');
+    body(dir);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+test('a missing original keystore stops the build with a clear message', () => {
+  withDir(['hub-new.keystore', 'hub.lineage'], (dir) => {
+    assert.match(keystoreProblem(dir) ?? '', /^android\/hub\.keystore is missing\./);
+  });
 });
 
-test('an existing keystore lets the build go on', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'keystore-'));
-  try {
-    const ks = join(dir, 'hub.keystore');
-    writeFileSync(ks, 'key');
-    assert.equal(keystoreProblem(ks), null);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+test('a missing new keystore stops the build with a clear message', () => {
+  withDir(['hub.keystore', 'hub.lineage'], (dir) => {
+    assert.match(keystoreProblem(dir) ?? '', /^android\/hub-new\.keystore is missing\./);
+  });
+});
+
+test('a missing lineage stops the build with a clear message', () => {
+  withDir(['hub.keystore', 'hub-new.keystore'], (dir) => {
+    assert.match(keystoreProblem(dir) ?? '', /^android\/hub\.lineage is missing\./);
+  });
+});
+
+test('both keystores and the lineage let the build go on', () => {
+  withDir(['hub.keystore', 'hub-new.keystore', 'hub.lineage'], (dir) => {
+    assert.equal(keystoreProblem(dir), null);
+  });
 });

@@ -3,7 +3,7 @@
      It is the tablet's home screen, and once made device owner it locks the tablet to itself (kiosk). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="hub.kiosk"
-    android:versionCode="8"
+    android:versionCode="9"
     android:versionName="1.7">
 
   <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="34" />

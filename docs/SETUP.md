@@ -85,6 +85,27 @@ tools/jdk/bin/keytool -genkeypair -keystore android/hub.keystore -alias hub -sto
 
 The build reads the password from the `CLAUDEOS_KEYSTORE_PASS` environment variable. Set it on the PC before you run the build. Do not write the password in any file.
 
+### Signing key rotation
+
+The app's signing key was rotated with an APK Signature Scheme v3 lineage. The build signs with three files in `android/`:
+
+- `android/hub.keystore`: the original key. The installed app was first signed with this key.
+- `android/hub-new.keystore`: the new key. The build signs with this key as the current signer.
+- `android/hub.lineage`: the lineage. It proves that the original key hands over to the new key, so Android 13 and later accept the update without a factory reset. The lineage holds public certificates only and is in git.
+
+The build reads two passwords from the environment:
+
+- `CLAUDEOS_KEYSTORE_PASS`: the password of `android/hub.keystore`.
+- `CLAUDEOS_KEYSTORE_PASS_NEW`: the password of `android/hub-new.keystore`.
+
+The build stops with a message if a file or a variable is missing. Keep `android/hub-new.keystore` and `android/hub.lineage`, and keep a backup copy of both keystores outside the repository. The keystores are not in git. If you lose `android/hub-new.keystore`, Android refuses every later update.
+
+The lineage was made once with `apksigner rotate`:
+
+```
+apksigner rotate --out android/hub.lineage --old-signer --ks android/hub.keystore --ks-key-alias hub --ks-pass env:CLAUDEOS_KEYSTORE_PASS --new-signer --ks android/hub-new.keystore --ks-key-alias hub --ks-pass env:CLAUDEOS_KEYSTORE_PASS_NEW
+```
+
 ## The tablet
 
 The full-screen Android tablet is optional and comes in a later release. Until then, open the page in the tablet's browser.
