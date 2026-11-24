@@ -27,7 +27,7 @@ export const PHOTO_MAX = 512 * 1024;
 export const INSTRUCTIONS_MAX = 4000;
 
 // The ClaudeOS PIN lock (server/pin.ts). 4 to 6 digits; 5 wrong tries give a 30-second cooldown.
-export interface PinStatus { set: boolean; lockedFor: number }   // lockedFor: seconds of cooldown left
+export interface PinStatus { set: boolean; lockedFor: number; fingerprint?: string | null }   // lockedFor: seconds of cooldown left; fingerprint changes with the PIN
 export type PinError = 'bad_pin' | 'wrong' | 'locked' | 'no_pin' | 'save_failed';
 export interface PinResult {
   ok: boolean;

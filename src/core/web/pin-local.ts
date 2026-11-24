@@ -11,7 +11,7 @@ export interface LocalResult { ok: boolean; error?: 'locked' | 'wrong'; left?: n
 
 const MAX_TRIES = 5, COOLDOWN_MS = 30 * 1000;
 const ITERATIONS = 200000;                  // the same count as the PC (settings/server/pin.ts)
-const RECORD_KEY = 'os.pinRecord', STATE_KEY = 'os.pinTries';
+const RECORD_KEY = 'os.pinRecord', STATE_KEY = 'os.pinTries', FP_KEY = 'os.pinFp';
 const FRESH: LocalState = { fails: 0, lockedUntil: 0 };
 
 /** Does `pin` match the stored hash. Slow on purpose (200 000 rounds): run it after a paint. */
@@ -69,12 +69,25 @@ export function saveLocalRecord(rec: PinRecord): void {
   if (old && old.salt === rec.salt && old.hash === rec.hash && old.iterations === rec.iterations) return;
   writeJson(RECORD_KEY, rec);
   removeKey(STATE_KEY);
+  removeKey(FP_KEY);   // the PC's fingerprint is learned again from the next status
 }
 
 /** Forget the copy (the PIN was removed on the PC). */
 export function clearLocalRecord(): void {
   removeKey(RECORD_KEY);
   removeKey(STATE_KEY);
+  removeKey(FP_KEY);
+}
+
+/**
+ * The PC's PIN fingerprint, from a status. A copy with no fingerprint takes this one. A copy whose fingerprint differs
+ * was made for another PIN (changed or removed from another browser), so it is dropped.
+ */
+export function checkCopyFingerprint(fp: string | null | undefined): void {
+  if (!fp || !localRecord()) return;
+  const stored = readJson(FP_KEY);
+  if (typeof stored !== 'string') writeJson(FP_KEY, fp);
+  else if (stored !== fp) clearLocalRecord();
 }
 
 export const hasLocalPin = (): boolean => localRecord() !== null;
