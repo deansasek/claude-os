@@ -247,7 +247,6 @@ function draftHtml(d: Draft): string {
     return `<section class="rc-card"><span class="rc-kicker">Claude’s recipe</span><h2 class="rc-title">${esc(r.name)}</h2>`
       + `<p class="rc-sub">${esc(meta(r)) || 'No serves or time given'} · ${r.ingredients.length} ingredients · ${r.steps.length} steps</p>`
       + `<div class="rc-actions"><button class="rc-btn pri" data-act="open-draft">Open recipe</button>`
-      + `<button class="rc-btn" data-act="save-draft">Save recipe</button>`
       + `<button class="rc-btn quiet" data-act="discard-draft">Not this one</button></div></section>`;
   }
   return `<section class="rc-card"><span class="rc-kicker">Claude’s reply</span>`
