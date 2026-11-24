@@ -31,5 +31,8 @@ export function playMedia(): void { session.play(); }
 /** Pause the app's playback. Does nothing unless the app is playing or buffering. */
 export function pauseMedia(): void { session.pause(); }
 
+/** Skip to the app's next item. Does nothing unless the app offers a next button. */
+export function skipMedia(): void { session.next(); }
+
 /** Stop the app. Does nothing unless the app offers a stop button. */
 export function stopMedia(): void { session.stop(); }
