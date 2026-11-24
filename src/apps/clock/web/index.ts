@@ -345,6 +345,10 @@ const timerLeft = (): number => (timer.end ? timer.end - Date.now() : timer.left
 const anyRunning = (): boolean => timers.some(t => t.end);
 /** The soonest running timer's time left, or null when none runs. */
 const soonestLeft = (): number | null => runningLeftMs(timers, Date.now());
+/** The timer a voice or drawer action acts on when none is named: the soonest running listed timer, else a paused one, else the focused timer. */
+const actionTimer = (): ClockTimer => timers.filter(t => t.end).reduce<ClockTimer | null>((best, t) => (!best || t.end! < best.end!) ? t : best, null) ?? timers.find(t => t.left != null) ?? timer;
+/** Focus the timer that actionTimer picks, so the timer controls and the dial show it. */
+const focusAction = (): void => { timer = actionTimer(); };
 
 function timerStart(ms?: number, name?: string): void {
   unlockAudio();
@@ -1098,18 +1102,19 @@ const clockApi: ClockApi = {
     return at == null ? null : { when: whenWord(at), at: at - offset };
   },
   active(): number { return timers.length + alarms.filter(a => a.on || a.snooze).length; },
-  /** True if there was a timer to cancel: the focused one (the timer in front). */
-  cancelTimer(): boolean { const had = isListed(timer); timerReset(); return had; },
-  pauseTimer(): boolean { if (!timer.end) return false; timerPause(); return true; },
+  /** True if there was a timer to cancel: the timer a voice or drawer action picks (see actionTimer). */
+  cancelTimer(): boolean { focusAction(); const had = isListed(timer); timerReset(); return had; },
+  pauseTimer(): boolean { focusAction(); if (!timer.end) return false; timerPause(); return true; },
   resumeTimer(): boolean { if (timer.end || timer.left == null) return false; timerStart(); return true; },
   nudgeTimer(minutes: number): boolean {
+    focusAction();
     if (!timer.end && timer.left == null) return false;
     const steps = Math.min(60, Math.abs(Math.round(minutes)));
     for (let i = 0; i < steps; i++) timerNudge(minutes > 0 ? 1 : -1);
     return true;
   },
   /** ms left on a running (or paused) timer, null when none is set. */
-  timerLeft(): number | null { return timer.end ? Math.max(0, timer.end - Date.now()) : timer.left; },
+  timerLeft(): number | null { const t = actionTimer(); return t.end ? Math.max(0, t.end - Date.now()) : t.left; },
   /** Add (or switch on) an alarm; days as Date.getDay() values, [] = once. Returns when it next rings. */
   addAlarm(h: number, m: number, days: number[]): { when: string; at: number } | null {
     unlockAudio();
