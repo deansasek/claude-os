@@ -187,6 +187,7 @@ public class MainActivity extends Activity {
     lockdown();
     AdbWifi.reapply(this);   // wireless debugging the user keeps on comes back after a restart (AdbWifi.java)
     AdbWifi.watch(this);     // and after Wi-Fi changes networks
+    AdbWifi.retryAtStart(this);   // and again a few times in the first 90 s, when Android switches it off early
     hub.kiosk.ime.ImeSettings.ensureDefault(this);   // Claude Keyboard is the tablet's keyboard (when it may set that)
 
     // lets the PC inspect the page over adb (chrome://inspect); nothing else can reach it
