@@ -229,7 +229,7 @@ function tabletLimits(): { s: number | null; w: number | null; resetMs: number |
 function nativeLine(): string | null {
   const g = nativeGlance();
   if (g.running) return 'Claude is working on this tablet';
-  return g.at && g.ago != null ? `Claude replied on this tablet · ${shortAge(g.ago)}` : null;
+  return g.at && g.ago != null ? `Replied here · ${shortAge(g.ago)}` : null;
 }
 
 function paintClaude(): void {

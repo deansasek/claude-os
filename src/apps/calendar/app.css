@@ -2,7 +2,7 @@
 #app-calendar [hidden] { display: none !important; }
 
 #app-calendar .cal-hbtn, #app-calendar .cal-btn { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-flex; align-items: center;
-  min-height: 44px; padding: 7px 18px; border-radius: 99px; font: 500 14px var(--sans); white-space: nowrap;
+  min-height: 44px; padding: 7px 18px; border-radius: 14px; font: 500 14px var(--sans); white-space: nowrap;
   background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
 #app-calendar .cal-hbtn:active, #app-calendar .cal-btn:active { background: var(--card-2); }
 #app-calendar .cal-hbtn:focus-visible, #app-calendar .cal-btn:focus-visible, #app-calendar .cal-seg:focus-visible,
@@ -18,8 +18,8 @@
 #app-calendar .cal-ic:active { background: var(--card-2); }
 #app-calendar .cal-title { margin: 0; flex: 1; min-width: 0; font: 400 26px/1.2 var(--serif); letter-spacing: -.015em; color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#app-calendar .cal-views { display: flex; flex: none; padding: 3px; border-radius: 99px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
-#app-calendar .cal-seg { all: unset; box-sizing: border-box; cursor: pointer; min-height: 38px; padding: 6px 16px; border-radius: 99px;
+#app-calendar .cal-views { display: flex; flex: none; padding: 3px; border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+#app-calendar .cal-seg { all: unset; box-sizing: border-box; cursor: pointer; min-height: 38px; padding: 6px 16px; border-radius: 14px;
   font: 500 14px var(--sans); color: var(--t3); }
 #app-calendar .cal-seg[aria-selected="true"], #app-calendar .cal-seg.on { background: var(--text); color: var(--bg); }
 
