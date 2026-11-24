@@ -34,7 +34,27 @@ export function pruneNotified(told: Notified, now: number): Notified {
   return out;
 }
 
-/** The text of a notice: the title and the start, with the place when there is one. */
-export function noticeText(e: CalEvent, startTime: string): { title: string; body: string } {
-  return { title: `Coming up: ${e.title}`, body: `Starts at ${startTime}${e.location ? ` · ${e.location}` : ''}` };
+/** The text of a notice: the title and the start, with the place when there is one. From a copy, it says when the PC read the calendar. */
+export function noticeText(e: CalEvent, startTime: string, copyTime?: string): { title: string; body: string } {
+  const where = e.location ? ` · ${e.location}` : '';
+  const from = copyTime ? ` · from a copy read at ${copyTime}` : '';
+  return { title: `Coming up: ${e.title}`, body: `Starts at ${startTime}${where}${from}` };
 }
+
+// ---------- the tablet's copy of the events, for notices while the PC is off (index.ts keeps it) ----------
+export const COPY_MAX_MS = 6 * 3600e3;   // an older copy is not used for notices: its events may have moved or gone
+
+/** The events the PC last sent, and when the PC read the calendar (ms). */
+export interface EventCopy { readAt: number; events: CalEvent[] }
+
+/** The saved copy, or null when the text is missing or not a copy. */
+export function parseCopy(raw: string | null): EventCopy | null {
+  try {
+    const v = JSON.parse(raw || 'null') as Partial<EventCopy> | null;
+    if (!v || !Number.isFinite(v.readAt) || !Array.isArray(v.events)) return null;
+    return { readAt: v.readAt as number, events: v.events };
+  } catch { return null; }
+}
+
+/** Whether a copy read at `readAt` may give notices at `now`. */
+export const copyUsable = (readAt: number, now: number): boolean => now - readAt <= COPY_MAX_MS;

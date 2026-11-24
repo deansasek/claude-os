@@ -6,13 +6,14 @@
 // Claude turn, so it happens only when the app opens, when Refresh is tapped, or when the view moves to another day.
 // The 5-minute timer never makes a connector read.
 import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
+import { onTablet } from '../../../core/web/device.ts';
 import { alertFor, onBack } from '../../../core/web/system.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
-import type { CalConfigResult, CalEvents, CalStatus } from '../api.ts';
-import { dueNotices, eventKey, noticeText, pruneNotified, type Notified } from './event-notice.ts';
+import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts';
+import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, pruneNotified, type EventCopy, type Notified } from './event-notice.ts';
 import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 
@@ -461,21 +462,42 @@ function armRemove(): void {
 // The events come from the PC's ICS read, so the check runs while the calendar app is closed. A notice goes through
 // alertFor (system.ts), which keeps Do Not Disturb, focus modes, quiet hours and muted apps. The told events are kept
 // in local storage, so a reload does not tell them again (event-notice.ts).
+// With the PC off, the tablet checks its copy of the events (cal.events, kept each time the PC answers, with the time
+// the PC read the calendar). The copy is used only while it is at most COPY_MAX_MS old. The told set is never reset.
 const NOTICED_KEY = 'cal.noticed';
+const EVENTS_KEY = 'cal.events';
 const NOTICE_CHECK_MS = 60e3;
 const readNotified = (): Notified => { try { return JSON.parse(store.get(NOTICED_KEY) || '{}') as Notified; } catch { return {}; } };
 
-async function checkSoon(): Promise<void> {
+/** The events to check: the PC's now (kept as the tablet copy), else the copy when it is recent enough, else none. */
+async function soonEvents(now: number): Promise<{ events: CalEvent[]; copyTime?: string } | null> {
   let r: CalEvents | null = null;
-  try { r = await getJson<CalEvents>(`${API}/events`); } catch { return; }
-  if (r?.status !== 'ok') return;   // not set up, or the read failed: nothing to tell
+  try { r = await getJson<CalEvents>(`${API}/events`); } catch { r = null; }   // the PC cannot be reached
+  if (r) {
+    if (r.status === 'not_set' && onTablet) store.set(EVENTS_KEY, null);   // the address was removed: forget the copy
+    if (r.status !== 'ok') return null;                                     // not set up, or the read failed
+    if (onTablet) {
+      const next: EventCopy = { readAt: Date.parse(r.fetchedAt ?? '') || now, events: r.events };
+      const json = JSON.stringify(next);
+      if (json !== store.get(EVENTS_KEY)) store.set(EVENTS_KEY, json);
+    }
+    return { events: r.events };
+  }
+  const copy = onTablet ? parseCopy(store.get(EVENTS_KEY)) : null;
+  if (!copy || !copyUsable(copy.readAt, now)) return null;
+  return { events: copy.events, copyTime: timeFmt.format(new Date(copy.readAt)) };
+}
+
+async function checkSoon(): Promise<void> {
   const now = Date.now();
+  const got = await soonEvents(now);
+  if (!got) return;   // nothing to tell; the told set in local storage is left as it is
   const told = pruneNotified(readNotified(), now);
-  for (const e of dueNotices(r.events, now, told)) {
+  for (const e of dueNotices(got.events, now, told)) {
     const start = Date.parse(e.start);
     told[eventKey(e)] = start;
     store.set(NOTICED_KEY, JSON.stringify(told));   // saved before the notice, so a reload never repeats it
-    const { title, body } = noticeText(e, timeFmt.format(new Date(start)));
+    const { title, body } = noticeText(e, timeFmt.format(new Date(start)), got.copyTime);
     alertFor('event', { title, body, app: manifest.id }, undefined, ctx ? ctx.isVisible() : false);
   }
   store.set(NOTICED_KEY, JSON.stringify(told));
