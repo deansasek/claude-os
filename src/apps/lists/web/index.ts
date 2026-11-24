@@ -47,7 +47,8 @@ let timer: number | undefined;
 let sheetOpen = false;
 const busy = new Set<string>();
 
-let undo: { list: string; items: { text: string; done: boolean }[]; label: string } | null = null;
+/** What Undo puts back: the items of a clear (added again), or one removed item at its old place (restore). */
+let undo: { list: string; items: { text: string; done: boolean }[]; label: string; restore?: { item: ListItem; index: number } } | null = null;
 let undoT: number | undefined;
 
 const listNow = (): FamilyList | undefined => lists.find(l => l.id === current) ?? lists[0];
@@ -233,6 +234,7 @@ async function runUndo(): Promise<void> {
   const u = undo;
   hideUndo();
   if (!u) return;
+  if (u.restore) { await send('restore-item', { list: u.list, item: u.restore.item, index: u.restore.index }); return; }
   for (const it of u.items) {
     const r = await send('add', { list: u.list, text: it.text });
     if (!r?.ok) break;
@@ -244,9 +246,13 @@ function remove(id: string): void {
   const l = listNow();
   const it = l?.items.find(i => i.id === id);
   if (!l || !it) return;
+  const index = l.items.indexOf(it);
   l.items = l.items.filter(i => i.id !== id);
   render();
-  showUndo({ list: l.id, items: [{ text: it.text, done: it.done }], label: `Removed ${it.text}` });
+  showUndo({
+    list: l.id, items: [{ text: it.text, done: it.done }], label: `Removed ${it.text}`,
+    restore: { item: { ...it }, index },
+  });
   void send('remove', { list: l.id, id });
 }
 

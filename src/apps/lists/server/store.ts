@@ -12,6 +12,7 @@ import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
 import { recordBought } from './history.ts';
 import {
   BUILT_IN, ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, idFor, isBuiltIn, renameItem,
+  restoreItemAt,
   type FamilyList, type ListItem, type ListKind, type ListsResult,
 } from '../api.ts';
 
@@ -171,6 +172,16 @@ export function tickItem(listRef: unknown, ref: { id?: unknown; text?: unknown }
     if (!it) return `That isn’t on ${l.name}.`;
     it.done = done;
     return { item: clone(it) };
+  });
+}
+
+/** Put back an item that Undo restores: its id, tick and place. */
+export function restoreItem(listRef: unknown, raw: unknown, index: unknown): ListsResult {
+  return change(lists => {
+    const l = findList(lists, listRef);
+    if (!l) return NO_LIST;
+    const r = restoreItemAt(l, raw, index);
+    return typeof r === 'string' ? r : { item: clone(r) };
   });
 }
 

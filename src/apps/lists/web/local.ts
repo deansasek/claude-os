@@ -4,7 +4,7 @@
 // The rules match the PC's (server/store.ts), which checks every change again.
 import {
   ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, idFor, isBuiltIn, renameItem,
-  type FamilyList, type ListItem, type ListsResult,
+  restoreItemAt, type FamilyList, type ListItem, type ListsResult,
 } from '../api.ts';
 
 /** The localStorage key of the tablet's copy of the lists. Read by the Lists page and by readers.ts. */
@@ -12,7 +12,7 @@ export const COPY_KEY = 'lists.copy';
 /** The changes the PC does not have yet, oldest first. Sent by the Lists page (index.ts flush). */
 export const QUEUE_KEY = 'lists.queue';
 
-export type OpPath = 'add' | 'tick' | 'remove' | 'edit' | 'clear-done' | 'new-list' | 'delete-list';
+export type OpPath = 'add' | 'tick' | 'remove' | 'restore-item' | 'edit' | 'clear-done' | 'new-list' | 'delete-list';
 /** One change, as the route and body the PC takes (server/index.ts). */
 export interface Op { path: OpPath; body: Record<string, unknown>; key?: string }   // key: this entry in lists.queue (queue.ts)
 
@@ -63,6 +63,10 @@ export function applyOp(lists: FamilyList[], op: Op): ListsResult {
       const n = l.items.length;
       l.items = l.items.filter(i => i.id !== b.id);
       return { ok: true, lists: next, removed: n - l.items.length };
+    }
+    case 'restore-item': {
+      const r = restoreItemAt(l, b.item, b.index);
+      return typeof r === 'string' ? fail(r) : { ok: true, lists: next, item: r };
     }
     case 'edit': {
       const r = renameItem(l, b.id, b.text);
