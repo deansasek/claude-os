@@ -22,7 +22,7 @@
 #app-weather .wnow { display: flex; flex-direction: column; min-width: 0; padding-top: calc(var(--app-label-y) - var(--app-body) - 2px); }
 #app-weather .wnow .lhead { justify-content: flex-start; }
 #app-weather .wtemp { all: unset; cursor: pointer; align-self: flex-start; font: 500 92px var(--serif); letter-spacing: -.035em; line-height: 1;
-  margin: 12px 0 10px; white-space: nowrap; border-radius: 14px; transition: background-color .2s; }
+  margin: 12px 0 10px; white-space: nowrap; border-radius: 14px; transition: background-color var(--dur-base); }
 #app-weather .wtemp small { font-size: 34px; letter-spacing: -.01em; color: var(--t3); margin-left: -2px; }   /* units in --t3, like "% left" and "PM" */
 #app-weather .wtemp small.lo { margin-left: 10px; }
 #app-weather .wtemp:active { background: var(--card); }
@@ -50,7 +50,7 @@
 #app-weather .drows { flex: 1; display: flex; flex-direction: column; margin-top: 6px; min-height: 0; }
 #app-weather .drow { all: unset; box-sizing: border-box; position: relative; flex: 1 1 0; min-height: 0; cursor: pointer;
   display: grid; grid-template-columns: 50px 24px 34px 30px 1fr 30px; align-items: center; gap: 8px;
-  margin: 0 -10px; padding: 0 10px; border-radius: 10px; font-size: 15px; color: var(--text); transition: background-color .2s; }
+  margin: 0 -10px; padding: 0 10px; border-radius: 10px; font-size: 15px; color: var(--text); transition: background-color var(--dur-base); }
 #app-weather .drow::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 1px; background: var(--line); }
 #app-weather .drow:last-child::after, #app-weather .drow.sel::after, #app-weather .drow:has(+ .sel)::after { display: none; }
 #app-weather .drow .dn { font-weight: 500; white-space: nowrap; }
@@ -59,7 +59,7 @@
 #app-weather .drow .lo { color: var(--t4); text-align: right; }
 #app-weather .drow .hi { text-align: right; font-weight: 500; }
 #app-weather .tbar { position: relative; height: 6px; border-radius: 99px; background: var(--track); box-shadow: inset 0 0 0 1px var(--track-edge); }
-#app-weather .tbar i { position: absolute; top: 0; bottom: 0; min-width: 6px; border-radius: 99px; transition: left .6s, width .6s; }
+#app-weather .tbar i { position: absolute; top: 0; bottom: 0; min-width: 6px; border-radius: 99px; transition: left var(--dur-slower), width var(--dur-slower); }
 #app-weather .tbar b { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
   background: var(--bg); box-shadow: 0 0 0 2px var(--text); }
 #app-weather .drow.sel { background: var(--card); --ic-bg: var(--card); }
@@ -73,7 +73,7 @@
 #app-weather .wsrc { margin-left: auto; }
 #app-weather .hstrip { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); margin: 0 -4px; }
 #app-weather .hcol { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; min-width: 0;
-  margin: 0 2px; padding-bottom: 3px; border-radius: 12px; cursor: pointer; transition: background-color .2s; }
+  margin: 0 2px; padding-bottom: 3px; border-radius: 12px; cursor: pointer; transition: background-color var(--dur-base); }
 #app-weather .hcol .hsp { flex: 1; align-self: stretch; }
 #app-weather .hcol svg { width: 24px; height: 24px; display: block; margin-bottom: 4px; }
 #app-weather .hcol .ht { font-size: 13px; color: var(--t3); white-space: nowrap; line-height: 16px; }
@@ -104,7 +104,7 @@
 #app-weather .wsc .w-bod { animation: wbob 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 100%; }
 #app-weather .wsc .w-bod.w-sleep { animation-duration: 4.2s; }
 #app-weather .wsc .w-eyes { animation: blink 3.8s infinite; transform-box: fill-box; transform-origin: 50% 50%; }
-#app-weather .wsc.hop .w-crit { animation: hop .75s ease-out; transform-box: fill-box; transform-origin: 50% 100%; }
+#app-weather .wsc.hop .w-crit { animation: hop var(--dur-slower) var(--ease-out); transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes wbob { 50% { transform: translateY(-.2px); } }
 #app-weather .w-drop { animation: fall .85s linear infinite; }
 @keyframes fall { from { transform: translate(0, -2px); } to { transform: translate(-1.2px, 21px); } }
@@ -117,7 +117,7 @@
 #app-weather .w-flash { animation: flash 5s steps(1) infinite; }
 @keyframes flash { 0%, 88%, 94%, 100% { opacity: 0; } 90%, 96% { opacity: 1; } }
 #app-weather .w-star { animation: twinkle 3s steps(2) infinite; }
-#app-weather .w-sweat { animation: sweat 2.4s ease-in infinite; }
+#app-weather .w-sweat { animation: sweat 2.4s var(--ease-in) infinite; }
 @keyframes sweat { 0%, 40% { opacity: 0; transform: none; } 50% { opacity: 1; } 90% { opacity: 1; transform: translateY(2.4px); } 100% { opacity: 0; transform: translateY(2.8px); } }
 #app-weather .w-gust { animation: gust 3.3s ease-in-out infinite; }
 @keyframes gust { 0% { opacity: 0; transform: translateX(-2px); } 30%, 60% { opacity: .9; } 100% { opacity: 0; transform: translateX(5px); } }
@@ -138,3 +138,20 @@
 #app-weather .wres button span { font-weight: 400; color: var(--t4); font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
 #app-weather .wres .hint { grid-column: 1 / -1; padding: 14px 0; color: var(--t3); font-size: 16px; }
 #app-weather .wres .hint em { font: italic 400 18px var(--serif); color: var(--text); }
+
+/* Reduced motion: stop the looping animations. Idle figures stay still. */
+@media (prefers-reduced-motion: reduce) {
+  #app-weather .wempty.loading .w-mark { animation: none; }
+  #app-weather .wsc .w-bod { animation: none; }
+  #app-weather .wsc .w-eyes { animation: none; }
+  #app-weather .w-drop { animation: none; }
+  #app-weather .w-flake { animation: none; }
+  #app-weather .w-spin { animation: none; }
+  #app-weather .w-drift { animation: none; }
+  #app-weather .w-fog { animation: none; }
+  #app-weather .w-flash { animation: none; }
+  #app-weather .w-star { animation: none; }
+  #app-weather .w-sweat { animation: none; }
+  #app-weather .w-gust { animation: none; }
+  #app-weather .w-z { animation: none; }
+}

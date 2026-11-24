@@ -73,13 +73,13 @@
 #app-home .hm-eyes { animation: hm-blink 3.6s infinite; }
 #app-home .hm-crit { animation: hm-bob 2.8s ease-in-out infinite; }
 #app-home .hm-shut, #app-home .hm-cheeks, #app-home .hm-zzz, #app-home .hm-mug, #app-home .hm-night, #app-home .hm-sun, #app-home .hm-cloud,
-#app-home .hm-rain, #app-home .hm-bang, #app-home .hm-think { opacity: 0; transition: opacity 1s, transform 1.5s ease-in-out; }
+#app-home .hm-rain, #app-home .hm-bang, #app-home .hm-think { opacity: 0; transition: opacity var(--dur-calm), transform var(--dur-calm) ease-in-out; }
 #app-home .hm-zzz text { font: italic 400 1.8px var(--serif); fill: var(--t3); opacity: 0; }
-#app-home .hm-steam rect { animation: hm-steam 2.4s ease-out infinite; opacity: 0; }
+#app-home .hm-steam rect { animation: hm-steam 2.4s var(--ease-out) infinite; opacity: 0; }
 #app-home .hm-steam rect:nth-child(2) { animation-delay: .8s; }
 #app-home .hm-steam rect:nth-child(3) { animation-delay: 1.6s; }
 #app-home .hm-stars path { animation: hm-twinkle 3s steps(2) infinite; }
-#app-home .hm-stars path:nth-child(2n) { animation-delay: 1.1s; }
+#app-home .hm-stars path:nth-child(2n) { animation-delay: var(--dur-calm); }
 #app-home .hm-sun .hm-rays { animation: hm-spin 30s linear infinite; transform-box: fill-box; transform-origin: 50% 50%; }
 #app-home .hm-cloud path { animation: hm-drift 26s ease-in-out infinite alternate; }
 :root[data-theme="dark"] #app-home .hm-rays, :root[data-theme="dark"] #app-home .hm-sun .hm-ink { stroke: var(--t3); }
@@ -92,8 +92,8 @@
 #app-home.hm-night:not(.hm-woke) .hm-crit { animation: none; }
 #app-home.hm-night:not(.hm-woke) .hm-eyes { opacity: 0; }
 #app-home.hm-night:not(.hm-woke) .hm-shut, #app-home.hm-night:not(.hm-woke) .hm-zzz { opacity: 1; }
-#app-home.hm-night:not(.hm-woke) .hm-zzz text { animation: hm-z 3.6s ease-out infinite; }
-#app-home.hm-night:not(.hm-woke) .hm-zzz text:nth-child(2) { animation-delay: 1.2s; }
+#app-home.hm-night:not(.hm-woke) .hm-zzz text { animation: hm-z 3.6s var(--ease-out) infinite; }
+#app-home.hm-night:not(.hm-woke) .hm-zzz text:nth-child(2) { animation-delay: var(--dur-calm); }
 #app-home.hm-night:not(.hm-woke) .hm-zzz text:nth-child(3) { animation-delay: 2.4s; }
 /* morning: the sun just up; day: high in the sky with a cloud; evening: a warm mug, the moon coming up */
 #app-home.hm-morning .hm-sun, #app-home.hm-day .hm-sun { opacity: 1; }
@@ -108,10 +108,10 @@
 #app-home:is(.hm-sky-cloudy, .hm-sky-rain, .hm-sky-storm, .hm-sky-snow):not(.hm-night) .hm-cloud { opacity: 1; }
 #app-home.hm-sky-fog:not(.hm-night) .hm-cloud { opacity: .45; }
 #app-home:is(.hm-sky-rain, .hm-sky-storm):not(.hm-night) .hm-rain { opacity: 1; }
-#app-home .hm-rain path { animation: hm-drop 1.1s linear infinite; }
-#app-home .hm-rain path:nth-child(2) { animation-delay: .35s; }
-#app-home .hm-rain path:nth-child(3) { animation-delay: .7s; }
-#app-home .hm-rain path:nth-child(4) { animation-delay: .2s; }
+#app-home .hm-rain path { animation: hm-drop var(--dur-calm) linear infinite; }
+#app-home .hm-rain path:nth-child(2) { animation-delay: var(--dur-slow); }
+#app-home .hm-rain path:nth-child(3) { animation-delay: var(--dur-slower); }
+#app-home .hm-rain path:nth-child(4) { animation-delay: var(--dur-base); }
 
 /* Claude: the spark turns while it works; a "!" when a session waits for you (it wakes the critter, too) */
 #app-home.hm-working:not(.hm-waiting) .hm-think { opacity: 1; }
@@ -120,8 +120,8 @@
 #app-home.hm-waiting.hm-night .hm-bang { opacity: 0; }
 
 /* one-shot acts */
-#app-home.hm-act-hop .hm-crit { animation: hm-hop .75s ease-out; }
-#app-home.hm-act-hop .hm-shadow { animation: hm-shadowhop .75s ease-out; }
+#app-home.hm-act-hop .hm-crit { animation: hm-hop var(--dur-slower) var(--ease-out); }
+#app-home.hm-act-hop .hm-shadow { animation: hm-shadowhop var(--dur-slower) var(--ease-out); }
 #app-home.hm-act-stretch .hm-upper { animation: hm-stretch 2.2s ease-in-out; }
 #app-home.hm-act-wave .hm-armR { animation: hm-wave 2.4s ease-in-out; }
 #app-home.hm-act-wave .hm-cheeks, #app-home.hm-act-hop .hm-cheeks { opacity: 1; }
@@ -188,3 +188,18 @@
 #app-home .hm-act.hm-scene.fail { color: var(--danger); }
 :root[data-theme="dark"] #app-home .hm-act.hm-scene:active, :root[data-theme="dark"] #app-home .hm-act.hm-scene.busy { background: rgba(217, 119, 87, .16); }
 :root[data-theme="dark"] #app-home .hm-act.hm-scene.done { color: var(--clay); }
+
+/* Reduced motion: stop the looping animations. Idle figures stay still. */
+@media (prefers-reduced-motion: reduce) {
+  #app-home .hm-eyes { animation: none; }
+  #app-home .hm-crit { animation: none; }
+  #app-home .hm-steam rect { animation: none; }
+  #app-home .hm-stars path { animation: none; }
+  #app-home .hm-sun .hm-rays { animation: none; }
+  #app-home .hm-cloud path { animation: none; }
+  #app-home.hm-night:not(.hm-woke) .hm-upper { animation: none; }
+  #app-home.hm-night:not(.hm-woke) .hm-zzz text { animation: none; }
+  #app-home .hm-rain path { animation: none; }
+  #app-home .hm-spark { animation: none; }
+  #app-home.hm-waiting .hm-bang { animation: none; }
+}
