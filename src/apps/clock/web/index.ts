@@ -18,6 +18,7 @@ import { manifest } from '../manifest.ts';
 import { registerAppSettings } from '../../../core/web/app-settings.ts';
 import { alertFor, critterSpeak, onBack, openApp } from '../../../core/web/system.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
+import { dur, lengthWords, words } from './timer-text.ts';
 
 type Mode = 'clock' | 'timer' | 'stopwatch' | 'alarm';
 type View = Mode | 'edit' | 'ring';
@@ -77,24 +78,6 @@ const alarmText = (h: number, m: number) => { const p = alarmParts(h, m); return
 const dayName = (day: number, style: 'short' | 'long' = 'short') =>
   new Date(2000, 0, 2 + day).toLocaleDateString([], { weekday: style });   // 2 Jan 2000 was a Sunday
 
-/** 65000 → "1:05", 3723000 → "1:02:03" */
-function dur(ms: number, ceil = true): string {
-  const s = Math.max(0, ceil ? Math.ceil(ms / 1e3) : Math.floor(ms / 1e3));
-  const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
-  return h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
-}
-/** "8h 12m", "12m", "40s" */
-function words(ms: number): string {
-  const m = Math.round(ms / 60e3);
-  if (ms < 60e3) return `${Math.max(1, Math.round(ms / 1e3))}s`;
-  return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60 ? `${m % 60}m` : ''}`.trim() : `${m}m`;
-}
-/** "5 min", "1 hr 30 min", "45 sec" — for describing a timer's length */
-function lengthWords(ms: number): string {
-  const s = Math.round(ms / 1e3), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
-  const out = [h && `${h} hr`, m && `${m} min`, sec && `${sec} sec`].filter(Boolean);
-  return out.join(' ') || '0 sec';
-}
 
 // ---------- icons ----------
 const rad = (deg: number) => (deg - 90) * Math.PI / 180;
