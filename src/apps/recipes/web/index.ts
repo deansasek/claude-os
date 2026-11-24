@@ -12,8 +12,9 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { alertFor, openApp } from '../../../core/web/system.ts';
 import { dur, lengthWords } from '../../clock/web/timer-text.ts';
 import { nativeBusy, nativeOn, nativeSend, nativeView } from '../../claude/web/native.ts';
-import type { MealsResult } from '../api.ts';
+import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
+import { PANTRY_MAX } from './pantry.ts';
 import {
   RECIPE_PROMPT, adaptPrompt, cookStep, fromStored, parseRecipe, recipeOfDay, textRecipe, tonightPrompt, type Recipe,
 } from './recipe.ts';
@@ -23,6 +24,7 @@ const LIST_KEY = 'recipes.list';
 const PENDING_KEY = 'recipes.pending';         // when the last Claude request was sent (ISO time)
 const PENDING_KIND_KEY = 'recipes.pendingKind'; // which request: create, adapt or tonight
 const TIMERS_KEY = 'recipes.timers';
+const PANTRY_KEY = 'recipes.pantry';         // the “What do you have” chips: { name, kind }
 const TIMER_MINUTES = [5, 10, 15, 30];
 const TONIGHT_TIMES = ['20 minutes', '40 minutes', '1 hour', ''];   // '' is no limit
 const ICON = appIcon('recipes');
@@ -35,7 +37,8 @@ type PendingKind = 'create' | 'adapt' | 'tonight';
 interface CookTimer { id: string; name: string; end: number }
 type Draft = { kind: 'recipe'; recipe: Recipe } | { kind: 'text'; text: string };
 type Screen = { t: 'discover' } | { t: 'detail'; r: Recipe } | { t: 'cook'; r: Recipe; step: number };
-type Src = 'saved' | 'res';
+type Src = 'saved' | 'res' | 'pan';
+interface Chip { name: string; kind: 'have' | 'want' }
 
 let ctx: AppContext | undefined;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx!.$<T>(id);
@@ -61,13 +64,28 @@ let resultsState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
 let resultsError = '';
 let seq = 0;                             // the latest search wins
 
+// What do you have: the chips (kept), the Want to buy switch, the field's text, the ingredient names from the hub, and the results
+let pantry: Chip[] = readJson<Chip[]>(PANTRY_KEY, [])
+  .filter(c => !!c && typeof c.name === 'string' && (c.kind === 'have' || c.kind === 'want')).slice(0, PANTRY_MAX);
+let wantMode = false;                   // on: a new chip is “want” (outlined); off: “have” (filled)
+let pantryText = '';
+let names: string[] = [];
+let namesState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
+let found: Recipe[] = [];               // the ranked recipes, and the names each one lacks (foundMissing, in step)
+let foundMissing: string[][] = [];
+let foundState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
+let foundError = '';
+let foundSeq = 0;                       // the latest find wins
+
 const saveRecipes = (): void => store.set(LIST_KEY, JSON.stringify(recipes));
 const saveTimers = (): void => store.set(TIMERS_KEY, JSON.stringify(timers));
+const savePantry = (): void => store.set(PANTRY_KEY, JSON.stringify(pantry));
 const meta = (r: Recipe): string => [r.serves && `Serves ${r.serves}`, r.time].filter(Boolean).join(' · ');
 
 /** The saved copy of a recipe: the same object, or the saved recipe with the same TheMealDB id. */
 const savedIndex = (r: Recipe): number => recipes.findIndex(x => x === r || (!!r.mealId && x.mealId === r.mealId));
-const pick = (src: Src | undefined, i: number): Recipe | undefined => (src === 'saved' ? recipes[i] : results[i]);
+const pick = (src: Src | undefined, i: number): Recipe | undefined =>
+  (src === 'saved' ? recipes[i] : src === 'pan' ? found[i] : results[i]);
 
 function setPending(at: string | null, kind: PendingKind = pendingKind): void {
   pending = at;
@@ -254,15 +272,140 @@ function noticesHtml(): string {
   return out;
 }
 
+// ---------- What do you have ----------
+const nameKey = (s: string): string => s.trim().replace(/\s+/g, ' ').toLowerCase();
+
+/** Adds a chip unless the name is empty, already there, or the picker is full. The kind follows the Want to buy switch. */
+function addChip(text: string): void {
+  const name = text.trim().replace(/\s+/g, ' ').slice(0, 40);
+  if (!name || pantry.length >= PANTRY_MAX || pantry.some(c => nameKey(c.name) === nameKey(name))) return;
+  pantry = [...pantry, { name, kind: wantMode ? 'want' : 'have' }];
+  savePantry();
+  resetFound();
+}
+
+/** The chips changed, so the last results no longer match them. A find still running is ignored. */
+function resetFound(): void {
+  foundSeq++;
+  foundState = 'idle';
+  found = [];
+  foundMissing = [];
+}
+
+async function loadNames(): Promise<void> {
+  if (namesState === 'loading' || namesState === 'ok') return;
+  namesState = 'loading';
+  try {
+    const r = await getJson<IngredientsResult>(`${API}/ingredients`);
+    names = r.status === 'ok' ? r.names : [];
+    namesState = r.status === 'ok' ? 'ok' : 'error';
+  } catch {
+    names = [];
+    namesState = 'error';
+  }
+  paintPicker();
+}
+
+/** Up to six ingredient names that start with the typed text, then the ones that contain it. Chips already added are left out. */
+function suggestions(): string[] {
+  const t = nameKey(pantryText);
+  if (!t) return [];
+  const taken = new Set(pantry.map(c => nameKey(c.name)));
+  const starts: string[] = [], inside: string[] = [];
+  for (const n of names) {
+    const k = nameKey(n);
+    if (taken.has(k)) continue;
+    if (k.startsWith(t)) starts.push(n);
+    else if (k.includes(t)) inside.push(n);
+  }
+  return [...starts, ...inside].slice(0, 6);
+}
+
+function openPantryKeyboard(): void {
+  Keyboard.open({
+    value: pantryText, placeholder: 'An ingredient, like “eggs”', done: 'Add', max: 40,
+    onChange: t => { pantryText = t; paintPicker(); },
+    onDone: t => { pantryText = ''; addChip(t); paintPicker(); },
+    onClose: () => { pantryText = ''; paintPicker(); },
+  });
+}
+
+/** Asks the hub for the recipes that use the "have" names. Nothing to ask with: nothing runs. */
+async function findPantry(): Promise<void> {
+  const have = pantry.filter(c => c.kind === 'have').map(c => c.name);
+  if (!have.length) { resetFound(); paintPicker(); return; }
+  const want = pantry.filter(c => c.kind === 'want').map(c => c.name);
+  const mine = ++foundSeq;
+  foundState = 'loading';
+  paintPicker();
+  const fail = (): void => { found = []; foundMissing = []; foundState = 'error'; foundError = 'Recipes are not available. Try again.'; };
+  try {
+    const r = await getJson<PantryResult>(`${API}/pantry?have=${encodeURIComponent(have.join(','))}&want=${encodeURIComponent(want.join(','))}`);
+    if (mine !== foundSeq) return;
+    if (r.status !== 'ok') { fail(); }
+    else {
+      const rows = (Array.isArray(r.recipes) ? r.recipes : [])
+        .map(x => ({ recipe: fromStored(x), missing: Array.isArray(x.missing) ? x.missing : [] }))
+        .filter((p): p is { recipe: Recipe; missing: string[] } => p.recipe !== null);
+      found = rows.map(p => p.recipe);
+      foundMissing = rows.map(p => p.missing);
+      foundState = 'ok';
+    }
+  } catch {
+    if (mine !== foundSeq) return;
+    fail();
+  }
+  paintPicker();
+}
+
+const missingNote = (list: string[]): string => {
+  if (!list.length) return 'Nothing missing';
+  const shown = list.slice(0, 3).join(', ');
+  return `Missing: ${shown}${list.length > 3 ? ` +${list.length - 3}` : ''}`;
+};
+
+function pantryHtml(): string {
+  const full = pantry.length >= PANTRY_MAX;
+  const field = `<button class="rc-pfield" data-act="pantry-type"${full ? ' disabled' : ''}>`
+    + `<span class="rc-pfield-text${pantryText && !full ? ' on' : ''}">${esc(full ? `${PANTRY_MAX} at most` : pantryText || 'Add an ingredient')}</span></button>`;
+  const want = `<button class="rc-want${wantMode ? ' on' : ''}" data-act="want-toggle" aria-pressed="${wantMode}">Want to buy</button>`;
+  const chips = pantry.length
+    ? `<div class="rc-chips">${pantry.map((c, i) => `<span class="rc-chip ${c.kind}">${esc(c.name)}`
+      + `<button class="rc-chip-x" data-act="chip-x" data-i="${i}" aria-label="Remove ${esc(c.name)}">×</button></span>`).join('')}</div>`
+    : '';
+  const sug = suggestions();
+  const sugHtml = sug.length
+    ? `<div class="rc-sugs">${sug.map(n => `<button class="rc-sug" data-act="pantry-add" data-name="${esc(n)}">${esc(n)}</button>`).join('')}</div>`
+    : '';
+  let body = '';
+  if (!pantry.some(c => c.kind === 'have')) body = '<p class="rc-empty">Add what you have.</p>';
+  else if (foundState === 'loading') {
+    body = `<ul class="rc-grid">${Array.from({ length: 3 }, () => '<li class="rc-c rc-skel" aria-hidden="true"><span class="rc-ph"></span>'
+      + '<span class="rc-cname">&nbsp;</span><span class="rc-ctag">&nbsp;</span></li>').join('')}</ul>`;
+  } else if (foundState === 'error') body = `<p class="rc-empty">${esc(foundError)}</p>`;
+  else if (foundState === 'ok' && !found.length) body = '<p class="rc-empty">No recipes use all of these. Ask Claude.</p>';
+  else if (foundState === 'ok') body = `<ul class="rc-grid">${found.map((r, i) => cardHtml(r, 'pan', i, missingNote(foundMissing[i] ?? []))).join('')}</ul>`;
+  return `<div class="rc-pantry">`
+    + `<div class="rc-pantry-row">${field}${want}</div>${chips}${sugHtml}`
+    + `<div class="rc-actions"><button class="rc-btn pri" data-act="pantry-find"${pantry.length ? '' : ' disabled'}>Find recipes</button></div>`
+    + body + `</div>`;
+}
+
+/** Repaints only the picker, so the keyboard and the scroll position stay. */
+function paintPicker(): void {
+  const el = ctx?.root.querySelector('[data-pantry]');
+  if (el) el.innerHTML = pantryHtml();
+}
+
 // ---------- Discover ----------
 function photoHtml(r: Recipe, cls: string): string {
   const img = r.image ? `<img src="${esc(r.image)}" alt="" loading="lazy" decoding="async">` : '';
   return `<span class="${cls}"><span class="rc-initial" aria-hidden="true">${esc(r.name.charAt(0).toUpperCase())}</span>${img}</span>`;
 }
 
-function cardHtml(r: Recipe, src: Src, i: number): string {
+function cardHtml(r: Recipe, src: Src, i: number, note?: string): string {
   const on = savedIndex(r) >= 0;
-  const sub = r.tag || meta(r) || (r.mealId ? 'TheMealDB' : 'Your recipe');
+  const sub = note || r.tag || meta(r) || (r.mealId ? 'TheMealDB' : 'Your recipe');
   // the heart only on TheMealDB recipes: Claude's recipes are deleted on their recipe page, with a second tap to confirm
   const heart = r.mealId
     ? `<button class="rc-heart${on ? ' on' : ''}" data-act="heart" data-src="${src}" data-i="${i}" aria-pressed="${on}" `
@@ -299,6 +442,7 @@ function discoverHtml(): string {
     ? `<ul class="rc-grid">${results.map((r, i) => cardHtml(r, 'res', i)).join('')}</ul>` : '';
   return search + noticesHtml() + todayHtml()
     + `<h3 class="rc-h">Saved</h3>${saved}`
+    + `<h3 class="rc-h">What do you have</h3><div data-pantry>${pantryHtml()}</div>`
     + `<h3 class="rc-h">${query ? `Results for “${esc(query)}”` : 'Ideas for today'}</h3>${grid}`
     + (empty ? `<p class="rc-empty">${esc(empty)}</p>` : '')
     + `<p class="rc-source">Recipes from TheMealDB</p>`;
@@ -376,6 +520,19 @@ function onClick(ev: Event): void {
       if (draft) { keep(draft.kind === 'recipe' ? draft.recipe : textRecipe(draft.text)); toTop(); }
       break;
     case 'discard-draft': draft = null; break;
+    case 'pantry-type': openPantryKeyboard(); return;
+    case 'pantry-add':
+      addChip(b.dataset.name ?? '');
+      pantryText = '';
+      if (Keyboard.isOpen) Keyboard.close('chosen');
+      break;
+    case 'chip-x':
+      pantry = pantry.filter((_, k) => k !== i);
+      savePantry();
+      resetFound();
+      break;
+    case 'want-toggle': wantMode = !wantMode; break;
+    case 'pantry-find': void findPantry(); return;
     case 'cancel-wait': setPending(null); break;
     case 'discover': go({ t: 'discover' }); break;
     case 'open': { const r = pick(src, i); if (r) go({ t: 'detail', r }); break; }
@@ -413,9 +570,11 @@ const app: HubApp = {
     $('rcBody').addEventListener('click', onClick);
     ensureTick();
     render();
+    void loadNames();
   },
   onShow() {
     checkReply();
+    if (namesState === 'error') void loadNames();
     // the first visit, or a search that failed, asks TheMealDB again
     if (resultsState === 'idle' || resultsState === 'error') void search(query);
     else render();
