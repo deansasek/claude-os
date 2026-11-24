@@ -19,15 +19,22 @@ import { cachedConnectorEvents, connectorEvents } from './connector.ts';
 import { addLocalEvent, deleteLocalEvent, localEventsBetween, updateLocalEvent } from './local.ts';
 import { loadFlags, setShown } from './calendar-shown.ts';
 import { calendarsFor } from '../web/calendars.ts';
+import { mergeRange, type ConnectorRead, type RangeAnswer } from './range-merge.ts';
 
-/** The range from both calendars: the local events always, the external ones when there is an address.
- *  With no address and no local events the answer is the external one unchanged ('not_set'), so the connector still answers. */
-async function rangeWithLocal(b: { from: number; to: number }, refresh: boolean): Promise<Awaited<ReturnType<typeof eventsBetween>>> {
+/** The connector's read for a range that is exactly today or tomorrow, the only days it reads. null for any other range. */
+async function connectorFor(b: { from: number; to: number }): Promise<ConnectorRead | null> {
+  const n = new Date();
+  const at = (add: number): number => new Date(n.getFullYear(), n.getMonth(), n.getDate() + add).getTime();
+  if (b.from === at(0) && b.to === at(1)) return connectorEvents('today');
+  if (b.from === at(1) && b.to === at(2)) return connectorEvents('tomorrow');
+  return null;
+}
+
+/** The range from every calendar: the local events, the ICS events when there is an address, and with no address the connector's (mergeRange). */
+async function rangeWithLocal(b: { from: number; to: number }, refresh: boolean): Promise<RangeAnswer> {
   const local = localEventsBetween(b.from, b.to);
   const ext = await eventsBetween(b.from, b.to, 3000, refresh);
-  if (ext.status === 'ok') return { ...ext, events: [...ext.events, ...local].sort((x, y) => x.start - y.start || x.title.localeCompare(y.title)) };
-  if (!local.length) return ext;
-  return { status: 'ok', events: local, ...(ext.status === 'error' ? { error: ext.error, stale: true } : {}) };
+  return mergeRange(ext, local, ext.status === 'not_set' ? await connectorFor(b) : null);
 }
 
 const app: ServerApp = {
