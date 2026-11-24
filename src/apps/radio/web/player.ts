@@ -42,11 +42,6 @@ export function barModel(current: Station | null, state: PlayState, streamTitle:
   };
 }
 
-/** The rail's glance: the station on the air, or the app's own name when the radio is off. */
-export function railLabel(station: Station | null, state: PlayState, appName: string): string {
-  return station && state !== 'off' ? station.name : appName;
-}
-
 const HUES = [18, 32, 48, 96, 150, 190, 215, 330];
 
 /** A steady, muted hue for a station's colour block (the directory sends no logo we keep). */

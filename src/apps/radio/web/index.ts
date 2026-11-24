@@ -16,7 +16,7 @@ import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '
 import { manifest } from '../manifest.ts';
 import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, addSearch, browsePick, nextChoice } from './catalogue.ts';
 import {
-  type PlayState, SLEEP_CHOICES, barModel, failMessage, initial, railLabel, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
+  type PlayState, SLEEP_CHOICES, barModel, failMessage, initial, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
   volumeFromDevice,
 } from './player.ts';
 import { httpsUrl, playable, playableStations } from './stations.ts';
@@ -172,7 +172,6 @@ function find(id: string): Station | undefined {
 
 function setState(next: PlayState): void {
   state = next;
-  ctx.setRail({ label: railLabel(current, state, manifest.name) });   // the glance: the station on the air
   syncMedia();
   if (state === 'off') { streamTitle = ''; clearSleep(); }
   syncTitlePoll();

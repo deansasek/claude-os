@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Station } from '../src/apps/radio/api.ts';
 import { readFileSync } from 'node:fs';
-import { initial, railLabel, stationHue, stepFavourite, titleLine, volumeFrom, volumeFromDevice, canStepFavourites, barModel } from '../src/apps/radio/web/player.ts';
+import { initial, stationHue, stepFavourite, titleLine, volumeFrom, volumeFromDevice, canStepFavourites, barModel } from '../src/apps/radio/web/player.ts';
 
 const st = (id: string): Station => ({ id, name: `Station ${id}`, url: `https://${id}.example/s`, country: '', codec: '', bitrate: 0 });
 const favs = [st('a'), st('b'), st('c')];
@@ -33,10 +33,11 @@ test('the title line shows the stream title, or the state', () => {
   assert.equal(titleLine(true, 'playing', ' Miles Davis – So What '), 'Miles Davis – So What');
 });
 
-test('the rail shows the station on the air, else the app name', () => {
-  assert.equal(railLabel(st('a'), 'playing', 'Radio'), 'Station a');
-  assert.equal(railLabel(st('a'), 'off', 'Radio'), 'Radio');
-  assert.equal(railLabel(null, 'off', 'Radio'), 'Radio');
+// Source-text check (the Radio web code runs in the browser): a rail item always shows its app name, so Radio never
+// sets a rail label from the station on the air.
+test('the rail keeps the app name: Radio sets no rail label', () => {
+  const src = readFileSync(new URL('../src/apps/radio/web/index.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /setRail\(\{\s*label/);
 });
 
 test('the colour block is steady and the volume is 0 to 100', () => {
