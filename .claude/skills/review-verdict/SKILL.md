@@ -26,16 +26,29 @@ The final message is the verdict. The action posts it as the progress comment. W
 - No filler, no praise, no speculation.
 
 ```
-Verdict: ✅ Approved
+### Code review of PR #<number>
 
-## Why
-One to three short sentences. State what the pull request changes and whether the change works.
+- [x] Check eligibility (open, not draft, no earlier Claude review)
+- [x] Gather CLAUDE.md paths (root `CLAUDE.md` only)
+- [x] Summarize the diff
+- [x] Run four review passes (two CLAUDE.md, two bug)
+- [x] Validate findings
+- [x] Post summary and verdict
 
-## Findings
-- `path/to/file:line` - the problem, in one sentence. Mark it **important** or **nit**.
+**Result:** no issues found, or the number of findings. Checked for bugs and CLAUDE.md compliance.
+
+One or two short sentences: what the pull request changes and whether the change works.
+
+**Verdict:** ✅ Approved, or ❌ Denied. One sentence on the next step.
+
+**Findings:**
+- `path/to/file:line` - the problem, in one sentence. Mark it **important** or **nit**. Write `None.` when there are no findings.
+
+**Notes:**
+- One short bullet for each point the reviewer must know, such as a review that was not posted or a check that was skipped. Omit this section when there is nothing to add.
 ```
 
-The first line of the final message is the verdict line: `Verdict: ✅ Approved` or `Verdict: ❌ Denied`. Write `None.` under `## Findings` when there are no findings. For an approval of an `ai-generated` PR, add one line after `## Why`: "A person approves and merges this pull request."
+For an approval of an `ai-generated` PR, the verdict line says: "A person approves and merges this pull request."
 
 ## Post the verdict
 
