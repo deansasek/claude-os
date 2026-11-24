@@ -173,4 +173,10 @@ async function follow(id: string, turnId: string | null): Promise<void> {
     }
     return;   // stopped: say nothing
   }
+  // The three minutes ran out with no answer: say so, and say where the answer will be.
+  if (!on) return;
+  const line = 'Claude is still working on it. Open ClaudeOS to see the answer.';
+  parts.answer.textContent = line;
+  parts.answer.hidden = false;
+  say(line);
 }
