@@ -7,6 +7,8 @@
 //   POST local-add         {title, start, end, allDay, location?} adds one event to the ClaudeOS calendar
 //   POST local-update      {id, ...fields sent} changes one; the fields not sent keep their values
 //   POST local-delete      {id} removes one
+//   GET  calendars         the calendars (ClaudeOS, the ICS address or the connector) with their shown flags
+//   POST calendar-shown    {id, shown} stores one calendar's shown flag on the PC (calendar-shown.json)
 // The local routes write only calendar-local.json on the PC. The external routes never write to the calendar.
 import type { ServerApp } from '../../../core/server/app.ts';
 import { manifest } from '../manifest.ts';
@@ -15,6 +17,8 @@ import { rangeBounds } from './range.ts';
 import { addConnectorEvent } from './connector-write.ts';
 import { cachedConnectorEvents, connectorEvents } from './connector.ts';
 import { addLocalEvent, deleteLocalEvent, localEventsBetween, updateLocalEvent } from './local.ts';
+import { loadFlags, setShown } from './calendar-shown.ts';
+import { calendarsFor } from '../web/calendars.ts';
 
 /** The range from both calendars: the local events always, the external ones when there is an address.
  *  With no address and no local events the answer is the external one unchanged ('not_set'), so the connector still answers. */
@@ -48,6 +52,12 @@ const app: ServerApp = {
     { method: 'POST', path: 'local-add', handle: ({ body }) => addLocalEvent(body) },
     { method: 'POST', path: 'local-update', handle: ({ body }) => updateLocalEvent(body) },
     { method: 'POST', path: 'local-delete', handle: ({ body }) => deleteLocalEvent((body as Record<string, unknown> | null)?.id) },
+    // the calendar selector: which calendars are drawn. The page hides the events of a calendar stored as hidden.
+    { method: 'GET', path: 'calendars', handle: () => ({ status: 'ok', calendars: calendarsFor(status().configured, loadFlags()) }) },
+    { method: 'POST', path: 'calendar-shown', handle: ({ body }) => {
+      const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+      return setShown(b.id, b.shown, status().configured);
+    } },
     // the claude.ai Google Calendar connector (connector.ts): one read per day, cached 15 minutes on the PC
     // cached=1: only what is already read (no Claude turn); a miss says so. Timed routines use this.
     { method: 'GET', path: 'connector', handle: ({ query }) => {

@@ -3,6 +3,7 @@
 .ha-config.json
 .calendar-config.json
 calendar-local.json
+calendar-shown.json
 .hub-pin
 .hub-pin.*
 .pc-bridge.json

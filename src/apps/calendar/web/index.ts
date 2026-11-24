@@ -16,6 +16,7 @@ import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts'
 import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, pruneNotified, type EventCopy, type Notified } from './event-notice.ts';
 import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
+import { flagsOf, tagCalendar, visibleEvents, type CalendarInfo } from './calendars.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 5 * 60e3;
@@ -24,7 +25,7 @@ export const CALENDAR_ICON = appIcon('calendar');
 
 type View = 'day' | 'week' | 'month' | 'year';
 /** One event in ms, as the PC sends it. */
-interface Ev { title: string; start: number; end: number; allDay: boolean; location?: string }
+interface Ev { title: string; start: number; end: number; allDay: boolean; location?: string; calendar?: string }
 interface RangeAnswer { status: 'ok' | 'not_set' | 'error'; events?: Ev[]; error?: string; stale?: boolean }
 interface ConnAnswer { status?: string; events?: Ev[]; error?: string }
 
@@ -35,6 +36,7 @@ let status: CalStatus | null = null;
 let view: View = 'day';
 let anchor = startOfDay(new Date());
 let events: Ev[] = [];
+let calendars: CalendarInfo[] = [];   // the calendars and their shown flags, from the PC (the chips)
 let viaConnector = false;   // the events are the connector's (today and tomorrow only)
 let loading = false;
 let failed = false;
@@ -76,10 +78,13 @@ function rangeFor(): { from: Date; to: Date } {
   return { from: f, to: new Date(anchor.getFullYear() + 1, 0, 1) };
 }
 
+/** The events of the calendars that are shown. A hidden calendar's events are not drawn. */
+function drawn(): Ev[] { return visibleEvents(events, flagsOf(calendars)); }
+
 /** Events that fall on a day, all-day first, then by start time. */
 function eventsOn(day: Date): Ev[] {
   const a = startOfDay(day).getTime(), b = addDays(day, 1).getTime();
-  return events
+  return drawn()
     .filter(e => e.start < b && (e.end > a || (e.end === e.start && e.start >= a)))
     .sort((x, y) => (x.allDay === y.allDay ? 0 : x.allDay ? -1 : 1) || x.start - y.start);
 }
@@ -87,7 +92,7 @@ function eventsOn(day: Date): Ev[] {
 /** The days (YYYY-MM-DD) that have at least one event, for the Year view's dots. */
 function daysWithEvents(): Set<string> {
   const out = new Set<string>();
-  for (const e of events) {
+  for (const e of drawn()) {
     let d = startOfDay(new Date(e.start));
     for (let i = 0; i < 400 && d.getTime() < Math.max(e.end, e.start + 1); i++) { out.add(keyOf(d)); d = addDays(d, 1); }
   }
@@ -97,6 +102,7 @@ function daysWithEvents(): Set<string> {
 // ---------- talking to the PC ----------
 async function loadStatus(): Promise<void> {
   try { status = await getJson<CalStatus>(`${API}/status`); } catch { /* keep what we had */ }
+  await loadCalendars();
   appSettingsChanged();
 }
 
@@ -132,6 +138,28 @@ async function load(force = false, auto = false): Promise<void> {
   appSettingsChanged();
 }
 
+/** The calendars and their shown flags from the PC. A failed read keeps the chips as they were. */
+async function loadCalendars(): Promise<void> {
+  try {
+    const r = await getJson<{ status?: string; calendars?: CalendarInfo[] }>(`${API}/calendars`);
+    if (r.status === 'ok' && r.calendars) { calendars = r.calendars; render(); }
+  } catch { /* keep what we had */ }
+}
+
+/** Shows or hides one calendar. The chip changes at once; the PC stores the flag, and a failed save puts it back. */
+async function toggleCal(id: string): Promise<void> {
+  const c = calendars.find(x => x.id === id);
+  if (!c) return;
+  const next = !c.shown;
+  c.shown = next;
+  render();
+  let r: { status?: string; error?: string; calendars?: CalendarInfo[] } | null = null;
+  try { r = await postJson<{ status?: string; error?: string; calendars?: CalendarInfo[] }>(`${API}/calendar-shown`, { id, shown: next }); } catch { r = null; }
+  if (r?.status === 'ok' && r.calendars) calendars = r.calendars;
+  else { c.shown = !next; msg = r?.error ?? 'Couldn’t reach the PC. Try again in a moment.'; }
+  render();
+}
+
 /** No address: the connector answers for today and tomorrow only. */
 async function loadConnector(): Promise<void> {
   const today = startOfDay(new Date()), tomorrow = addDays(today, 1);
@@ -151,7 +179,7 @@ async function loadConnector(): Promise<void> {
     msg = r.error ?? 'Couldn’t read the claude.ai calendar connector.';
     return;
   }
-  events = r.events;
+  events = tagCalendar(r.events, 'connector');
   viaConnector = true;
   msg = '';
 }
@@ -162,6 +190,7 @@ async function saveAddress(address: string): Promise<void> {
   if (r) { status = { configured: r.configured, address: r.address }; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
   else msg = 'Couldn’t reach the PC. Try again in a moment.';
   appSettingsChanged();
+  await loadCalendars();
   await load(true);
   // tell the Home screen's Today tile
   dispatchEvent(new CustomEvent('hub:calendar'));
@@ -274,6 +303,8 @@ function render(): void {
     b.setAttribute('aria-selected', String(view === v));
   }
   $('calTitle').textContent = titleText();
+  $('calCals').hidden = !calendars.length;
+  $('calCals').innerHTML = calendars.map(c => `<button class="cal-cal hit${c.shown ? ' on' : ''}" data-cal="${c.id}" aria-pressed="${c.shown}" style="--c:${c.colour}"><i></i>${esc(c.name)}</button>`).join('');
   ($('calRefresh') as HTMLButtonElement).disabled = loading;
   $('calRefresh').textContent = loading ? 'Reading…' : 'Refresh';
   const note = msg || (failed ? 'Couldn’t reach the PC. Trying again…' : viaConnector ? 'From your claude.ai calendar connector.' : '');
@@ -518,6 +549,10 @@ const app: HubApp = {
     $('calPrev').addEventListener('click', () => step(-1));
     $('calNext').addEventListener('click', () => step(1));
     $('calToday').addEventListener('click', goToday);
+    $('calCals').addEventListener('click', e => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-cal]');
+      if (b?.dataset.cal) void toggleCal(b.dataset.cal);
+    });
     $('calAddBtn').addEventListener('click', openAdd);
     $('calAddCancel').addEventListener('click', closeAdd);
     $('calAddTitle').addEventListener('click', () => editDraft('title'));
