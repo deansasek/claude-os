@@ -26,7 +26,8 @@ function load(): Profile {
   };
 }
 
-const save = (): void => writeJsonFile(FILE, { ...state, welcomed }, { indent: 2 });
+// Write the file first. Callers change the in-memory state only after this returns, so a failed write leaves both unchanged.
+const save = (s: Profile = state, w: boolean = welcomed): void => writeJsonFile(FILE, { ...s, welcomed: w }, { indent: 2 });
 
 export const getProfile = (): Profile => ({ ...state });
 
@@ -34,17 +35,19 @@ export const welcomeDone = (): boolean => welcomed;
 
 /** Mark the first-run welcome finished or skipped (true), or bring it back (false). Returns the flag now. */
 export function setWelcomeDone(done: boolean): boolean {
+  save(state, done);
   welcomed = done;
-  save();
   return welcomed;
 }
 
 /** Save the fields sent (a field left out stays as it was). Returns the profile now. */
 export function setProfile(body: Record<string, unknown>): Profile {
-  if (typeof body.name === 'string') state.name = clean(body.name, NAME_MAX);
-  if (typeof body.nickname === 'string') state.nickname = clean(body.nickname, NICK_MAX);
-  if (typeof body.role === 'string') state.role = (ROLES as readonly string[]).includes(body.role) ? body.role : '';
-  save();
+  const next: Profile = { ...state };
+  if (typeof body.name === 'string') next.name = clean(body.name, NAME_MAX);
+  if (typeof body.nickname === 'string') next.nickname = clean(body.nickname, NICK_MAX);
+  if (typeof body.role === 'string') next.role = (ROLES as readonly string[]).includes(body.role) ? body.role : '';
+  save(next);
+  state = next;
   return getProfile();
 }
 
@@ -54,15 +57,17 @@ export function savePhoto(raw: Buffer | null): { ok: true; profile: Profile } | 
   if (raw.length > PHOTO_MAX) return { ok: false, error: 'too_big' };
   if (!isJpeg(raw)) return { ok: false, error: 'not_jpeg' };
   fs.writeFileSync(PHOTO, raw);
-  state.photoAt = Date.now();
-  save();
+  const next: Profile = { ...state, photoAt: Date.now() };
+  save(next);
+  state = next;
   return { ok: true, profile: getProfile() };
 }
 
 export function removePhoto(): Profile {
   try { fs.rmSync(PHOTO, { force: true }); } catch { /* already gone */ }
-  state.photoAt = 0;
-  save();
+  const next: Profile = { ...state, photoAt: 0 };
+  save(next);
+  state = next;
   return getProfile();
 }
 
