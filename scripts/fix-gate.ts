@@ -1,6 +1,7 @@
 // Gate rules for the AI issue-fix flow. Each patch must pass these checks before a PR opens.
 // Pure functions only: no network, no git calls, no file writes. Callers pass plain data.
 // gate() runs the rules in order and reports the first rule that fails.
+// Size limits: at most MAX_FILES (10) files and MAX_LINES (300) changed lines (added plus deleted).
 
 export interface FileChange {
   path: string;
