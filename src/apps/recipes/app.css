@@ -101,6 +101,14 @@
 #app-recipes .rc-card b { font: 600 17px var(--sans); color: var(--text); }
 #app-recipes .rc-text { margin-top: 8px; max-height: 260px; overflow-y: auto; white-space: pre-wrap; font: 400 15px/1.45 var(--sans); color: var(--text); }
 
+/* cook mode, book view: one step on a page. It turns in on each step (transform and opacity only). */
+#app-recipes .rc-book { display: flex; flex-direction: column; gap: 16px; min-height: 360px; margin: 8px 0 6px; padding: 32px 36px 22px;
+  border-radius: 20px; background: var(--card); box-shadow: 0 0 0 1px var(--line); animation: rc-turn var(--dur-slow) var(--ease-out); }
+#app-recipes .rc-book-text { margin: 0; flex: 1; font: 400 36px/1.4 var(--serif); letter-spacing: -.01em; color: var(--text); }
+#app-recipes .rc-book-pg { margin: 0; text-align: center; font: 400 14px var(--sans); color: var(--t3); }
+@keyframes rc-turn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #app-recipes .rc-book { animation: none; } }
+
 /* cook mode: large text */
 #app-recipes .rc-cook { margin: 8px 0 6px; font: 500 40px/1.3 var(--sans); color: var(--text); }
 #app-recipes .rc-timers-add { margin-top: 18px; }
