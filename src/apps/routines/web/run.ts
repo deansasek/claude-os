@@ -13,7 +13,7 @@
 // The routines are read from the PC (GET /api/routines/list) and kept for a minute, for voice matching; a change in
 // the Routines app sends hub:routines, which drops the copy. This module provides itself to voice-commands.ts
 // (provideRoutines) as soon as it loads, so voice, the Home screen and Claude's run_routine all start routines here.
-import { getJson, postJson } from '../../../core/web/dom.ts';
+import { getJson, postJson, store } from '../../../core/web/dom.ts';
 import { voice } from '../../../core/web/device.ts';
 import { calendarCommand, getClock, provideRoutines, weatherToday } from '../../../core/web/voice-commands.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
@@ -96,6 +96,14 @@ async function doStep(s: Step, deadline: number): Promise<string> {
     case 'quiet': prefs.dnd = s.on; return '';   // the same switch as the Control Center tile
     case 'ambient': showScreenSaver(); return '';
     case 'focus': setFocus(s.mode); return '';   // the same switch as the Control Center focus tiles
+    case 'radio': {
+      // the Radio app keeps its recent stations on this tablet and plays the first one when it hears the event
+      let last: unknown[] = [];
+      try { last = JSON.parse(store.get('radio.recent') || '[]') as unknown[]; } catch { /* none kept */ }
+      if (!last.length) return 'No radio station has played yet.';
+      window.dispatchEvent(new CustomEvent('hub:radio-last'));
+      return '';
+    }
     case 'lists': {
       // the open items of one list, read aloud (the same lists the Lists app and voice use)
       type Lists = { lists: { id: string; name: string; items: { text: string; done: boolean }[] }[] };

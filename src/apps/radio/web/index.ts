@@ -748,6 +748,8 @@ const app: HubApp = {
   icon: ICON,
   mount(c) {
     ctx = c;
+    // a routine's "play the last station" step: the most recent station plays (routines/web/run.ts)
+    addEventListener('hub:radio-last', () => { if (recent[0]) play(recent[0]); });
     $('rdPrev').innerHTML = I.prev;
     $('rdNext').innerHTML = I.next;
     $('rdSearchIc').innerHTML = I.search;
