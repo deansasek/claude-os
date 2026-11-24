@@ -574,6 +574,16 @@
   /* not there on this tablet (Hey Claude without the voice app): shown, not tappable */
   .cc-tile:disabled { color: var(--t4); cursor: default; }
   .cc-tile:disabled .cc-ic, .cc-tile:disabled span { color: var(--t4); }
+  /* the now-playing card (core/web/media.ts): above the sliders while an app plays */
+  .cc-media:not([hidden]) { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding: 10px 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
+  .cc-media-art { width: 44px; height: 44px; flex: none; border-radius: 10px; object-fit: cover; background: var(--card-2); }
+  .cc-media-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .cc-media-text b { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-media-text span { font-size: 13px; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-media-btns { display: flex; gap: 4px; flex: none; }
+  .cc-media-btn { all: unset; box-sizing: border-box; width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; cursor: pointer; color: var(--text); }
+  .cc-media-btn svg { width: 22px; height: 22px; }
+  .cc-media-btn:active { background: var(--card-2); }
   .cc-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
   .cc-slide { display: flex; align-items: center; gap: 14px; padding: 6px 16px 6px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
   .cc-slide .cc-ic, .cc-slide .cc-ic svg { width: 22px; height: 22px; color: var(--t2); }
