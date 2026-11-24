@@ -153,6 +153,12 @@ public class VoiceService extends Service {
   // ---------- state ----------
   enum Mode { LOADING, WAKE, LISTEN, SPEAKING, OFF }
   private static volatile VoiceService self;
+  // The model and the warmed recognisers outlive one run while the wake word is off, so a tap does not reload them.
+  // A run takes them back at its start and puts them here when it ends idle. forgetModel() (voice switched off in
+  // Settings) or a failed run frees them; the app process ending frees them too.
+  private static Model keptModel;
+  private static Recognizer keptListen, keptSpeak;
+  private static boolean dropKept = false;
   private static volatile Mode mode = Mode.OFF;
   private static volatile String lastError = null;   // the message, for the log
   // why voice failed, as a short code the page turns into a plain line (device.ts VoiceReason); null = no failure now
@@ -180,6 +186,16 @@ public class VoiceService extends Service {
     catch (Exception e) { setError("unknown", "start: " + e); return false; }
   }
   static void stop(Context c) { c.stopService(new Intent(c, VoiceService.class)); }
+
+  /** Voice is switched off in Settings: free the kept model now, or when the audio thread next ends. */
+  static void forgetModel() {
+    synchronized (VoiceService.class) {
+      dropKept = true;
+      if (keptListen != null) { keptListen.close(); keptListen = null; }
+      if (keptSpeak != null) { keptSpeak.close(); keptSpeak = null; }
+      if (keptModel != null) { keptModel.close(); keptModel = null; }
+    }
+  }
 
   /** Called on any thread; the audio thread runs it between buffers. */
   static void post(java.util.function.Consumer<VoiceService> job) {
@@ -309,13 +325,21 @@ public class VoiceService extends Service {
   // ---------- the loop ----------
   private void run(int listenFirst) {
     AudioRecord rec = null;
+    boolean failed = false;    // set when the run ends with an error: then nothing is kept for the next one
     String code = "unknown";   // the code for whatever stops this loop (VoiceService.emitError); set as each stage starts
     try {
       emit("state", "mode", "loading");
       LibVosk.setLogLevel(LogLevel.WARNINGS);
       code = "no_pack";
-      String path = StorageService.sync(this, "model-en-us", "model");   // unpacks from the APK once
-      model = new Model(path);
+      synchronized (VoiceService.class) {   // take back what the last run kept, if anything
+        model = keptModel; listenRec = keptListen; speakRec = keptSpeak;
+        keptModel = null; keptListen = null; keptSpeak = null;
+        dropKept = false;
+      }
+      if (model == null) {
+        String path = StorageService.sync(this, "model-en-us", "model");   // unpacks from the APK once
+        model = new Model(path);
+      }
       code = micAllowed(this) ? "mic_busy" : "no_mic";
       int min = AudioRecord.getMinBufferSize(RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
       rec = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, RATE, AudioFormat.CHANNEL_IN_MONO,
@@ -339,11 +363,11 @@ public class VoiceService extends Service {
         }
       } catch (Exception e) { Log.w(TAG, "audio effects", e); }
       effects = fx.toString();
-      // warm the two long-lived recognisers before listening (a few seconds, once)
+      // warm the two long-lived recognisers before listening (a few seconds, once; a kept pair is already warm)
       long tw = System.currentTimeMillis();
-      listenRec = new Recognizer(model, RATE); warm(listenRec);
-      speakRec = new Recognizer(model, RATE); warm(speakRec);
-      Log.i(TAG, "recognisers warmed in " + (System.currentTimeMillis() - tw) + " ms");
+      if (listenRec == null) { listenRec = new Recognizer(model, RATE); warm(listenRec); }
+      if (speakRec == null) { speakRec = new Recognizer(model, RATE); warm(speakRec); }
+      Log.i(TAG, "recognisers ready in " + (System.currentTimeMillis() - tw) + " ms");
       rec.startRecording();
       lastError = null; lastCode = null;
       if (listenFirst > 0) startListen(listenFirst, false); else idle();
@@ -371,14 +395,22 @@ public class VoiceService extends Service {
       }
     } catch (Throwable e) {
       Log.e(TAG, "voice loop", e);
+      failed = true;
       emitError(code, String.valueOf(e.getMessage() != null ? e.getMessage() : e));
     } finally {
       if (rec != null) { try { rec.stop(); } catch (Exception ignored) { } rec.release(); }
       closeAll();
       running = false;
-      if (listenRec != null) { listenRec.close(); listenRec = null; }
-      if (speakRec != null) { speakRec.close(); speakRec = null; }
-      if (model != null) { model.close(); model = null; }
+      synchronized (VoiceService.class) {
+        if (model != null && !failed && !dropKept && !wakeOn(this)) {   // wake word off: keep the model for the next tap
+          keptModel = model; keptListen = listenRec; keptSpeak = speakRec;
+        } else {
+          if (listenRec != null) listenRec.close();
+          if (speakRec != null) speakRec.close();
+          if (model != null) model.close();
+        }
+      }
+      listenRec = null; speakRec = null; model = null;
       running = false;
       mode = Mode.OFF;
       main.post(this::stopSelf);
