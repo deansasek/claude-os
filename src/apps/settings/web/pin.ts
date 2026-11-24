@@ -120,6 +120,7 @@ async function finish(call: () => Promise<PinResult>, tag: string, pin?: string)
   report(tag);
   closeSheet();
   if (pin) void saveLocalPin(pin);
+  if (mode === 'remove') clearLocalRecord();   // the tablet's copy of the PIN goes with the PIN
   void paintPinRow();
 }
 
