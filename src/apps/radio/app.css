@@ -307,3 +307,54 @@
 
 /* ---- More like this, at the foot of a station's page: the same station cards in their own row ---- */
 #app-radio .rd-station .rd-more { margin-top: 6px; }
+
+/* ---- Home, the landing: the greeting (serif), the filter chips, then the shelves (Recently played covers, Made for
+   you tiles in two rows of four, Your top stations as rows in two columns, Genres, Countries). The column scrolls. ---- */
+#app-radio .rd-shelves { gap: 24px; }
+#app-radio .rd-greet { flex: none; margin: 0; font: 500 32px/40px var(--serif); letter-spacing: -.02em; color: var(--text); }
+#app-radio .rd-chips { flex: none; display: flex; gap: 8px; margin-top: -12px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+#app-radio .rd-chips::-webkit-scrollbar { display: none; }
+#app-radio .rd-fchip { all: unset; box-sizing: border-box; cursor: pointer; flex: none; height: 44px; padding: 0 16px; border-radius: 12px;
+  display: inline-flex; align-items: center; background: var(--card); border: 1px solid var(--line); font: 500 15px var(--sans); color: var(--t2); }
+#app-radio .rd-fchip:active { background: var(--card-2); }
+#app-radio .rd-fchip.on { background: var(--text); border-color: var(--text); color: var(--bg); }
+
+/* a cover with no logo: the first letter in the serif over --card-2 (the logo sits over it when there is one) */
+#app-radio .rd-logo.rd-cover, :root[data-theme="dark"] #app-radio .rd-logo.rd-cover { background: var(--card-2); color: var(--t2); }
+
+/* Recently played: 144 square covers, the name below in the sans; a tap plays */
+#app-radio .rd-cv { all: unset; box-sizing: border-box; cursor: pointer; width: 144px; display: flex; flex-direction: column; gap: 8px; }
+#app-radio .rd-cv-art { width: 144px; height: 144px; border-radius: 16px; border: 1px solid var(--line); font-size: 56px; }
+#app-radio .rd-cv.on .rd-cv-art { border-color: var(--clay); }
+#app-radio .rd-cv:active .rd-cv-art { opacity: .85; }
+#app-radio .rd-cv-name { font: 500 14px/20px var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* a station row (Made for you tiles and Your top stations): the cover, the name in the serif, one line in the sans, and
+   the ink play button */
+#app-radio .rd-made { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 16px; }
+#app-radio .rd-tops { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+#app-radio .rd-rc { min-width: 0; display: flex; align-items: center; gap: 8px; padding-right: 12px; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+#app-radio .rd-rc.on { border-color: var(--clay); }
+#app-radio .rd-rc-open { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px; }
+#app-radio .rd-rc-open:active { background: var(--card-2); }
+#app-radio .rd-rc-text { min-width: 0; display: flex; flex-direction: column; }
+#app-radio .rd-rc-text b { font: 500 17px/22px var(--serif); letter-spacing: -.005em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-rc-text span { font: 400 13px/18px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-rc-play { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 44px; height: 44px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; background: var(--text); color: var(--bg); }
+#app-radio .rd-rc-play svg { width: 18px; height: 18px; }
+#app-radio .rd-rc-play:active { opacity: .85; }
+#app-radio .rd-mf .rd-rc-art { width: 64px; height: 64px; border-radius: 12px; font-size: 28px; }
+#app-radio .rd-tr .rd-rc-art { width: 48px; height: 48px; border-radius: 10px; font-size: 22px; }
+#app-radio .rd-made .rd-sk-row { height: 82px; border-radius: 16px; }
+
+/* ---- the now-playing bar: flat, the cover over --card-2, and a Live tag while a station plays ---- */
+#app-radio .rd-player .rd-art, :root[data-theme="dark"] #app-radio .rd-player .rd-art { background: var(--card-2); color: var(--t2); }
+#app-radio .rd-live { flex: none; height: 24px; padding: 0 8px; border-radius: 8px; display: inline-flex; align-items: center;
+  border: 1px solid var(--line); font: 500 12px var(--sans); color: var(--t2); }
+
+/* reduced motion: no looping pulse on the buffering dot */
+@media (prefers-reduced-motion: reduce) {
+  #app-radio .rd-player.buffering .rd-title::before, #app-radio .rd-np-kick.buffering::before { animation: none; }
+}

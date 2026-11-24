@@ -19,7 +19,8 @@ import {
   volumeFromDevice,
 } from './player.ts';
 import { httpsUrl, playable, playableStations } from './stations.ts';
-import { FAV_EMPTY, TOP_COUNT, homeShelves, moreLikeThis, tileHue, topFacets, type Load, type ShelfPlan } from './shelves.ts';
+import { FAV_EMPTY, TOP_COUNT, homeShelves, moreLikeThis, tileHue, topFacets, type Load, type ShelfId, type ShelfPlan } from './shelves.ts';
+import { CHIPS, LANDING_ORDER, MADE_COUNT, chipShows, describe, greeting, madeForYou, type Chip } from './landing.ts';
 
 const API = `/api/${manifest.id}`;
 const FAVS_KEY = 'radio.favs';
@@ -62,7 +63,8 @@ let recent: Station[] = loadList(RECENT_KEY);
 let view: View = { kind: 'home' };
 interface Home { top: Station[]; topState: Load; genres: Facet[]; genresState: Load; countries: Facet[]; countriesState: Load }
 let home: Home = { top: [], topState: 'loading', genres: [], genresState: 'loading', countries: [], countriesState: 'loading' };
-let homeDone = false;                    // the shelves were asked for; a failed shelf is asked again on the next show
+let chip: Chip = 'all';                  // the landing's filter chip
+let homeDone = false;                   // the shelves were asked for; a failed shelf is asked again on the next show
 let list: Station[] = [];                // the stations the catalogue shows now
 let facets: Facet[] = [];                // the genres, countries or languages it shows now
 let listState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
@@ -430,6 +432,8 @@ function onPageClick(ev: Event): void {
   const t = ev.target as Element;
   closeNow();   // a tap on the header tabs or a list leaves Now playing
   const d = (attr: string) => t.closest<HTMLElement>(`[data-${attr}]`)?.dataset[attr];
+  const chipId = d('chip');
+  if (chipId) { chip = chipId as Chip; render(); return; }
   const heart = d('heart');
   if (heart) { toggleFav(heart); return; }
   const playId = d('play');
@@ -519,9 +523,48 @@ function shelfHtml(p: ShelfPlan): string {
   return `<section class="rd-shelf">${head}<div class="rd-row${p.id === 'genres' || p.id === 'countries' ? ' rd-facets' : ''}">${cards}</div></section>`;
 }
 
+/** A square cover on Recently played: the cover, the name below. A tap plays the station (or pauses it on air). */
+function coverCard(s: Station): string {
+  const playing = onAir(s) && (state === 'playing' || state === 'buffering');
+  return `<button class="rd-cv${onAir(s) ? ' on' : ''}" data-play="${esc(s.id)}" aria-label="${playing ? 'Pause' : 'Play'} ${esc(s.name)}">${logo(s, 'rd-logo rd-cover rd-cv-art')}<span class="rd-cv-name">${esc(s.name)}</span></button>`;
+}
+
+/** A station row: the cover, the name and one line open the station page; the ink button plays or pauses. */
+function rowCard(s: Station, cls: string, sub: string): string {
+  const playing = onAir(s) && (state === 'playing' || state === 'buffering');
+  return `<div class="rd-rc ${cls}${onAir(s) ? ' on' : ''}">
+    <button class="rd-rc-open" data-open="${esc(s.id)}">${logo(s, 'rd-logo rd-cover rd-rc-art')}<span class="rd-rc-text"><b>${esc(s.name)}</b><span>${esc(sub) || '&nbsp;'}</span></span></button>
+    <button class="rd-rc-play" data-play="${esc(s.id)}" aria-label="${playing ? 'Pause' : 'Play'} ${esc(s.name)}">${playing ? I.pause : I.play}</button>
+  </div>`;
+}
+
+const landingHead = (title: string, all = ''): string =>
+  `<div class="rd-shelf-head"><h3>${esc(title)}</h3>${all ? `<button class="rd-showall" data-showall="${all}">Show all</button>` : ''}</div>`;
+
+/** One landing shelf. Recently played: square covers in a row. Made for you: two rows of tiles. Your top stations:
+ *  compact rows. Genres and Countries keep their tiles. */
+function landingShelf(p: ShelfPlan): string {
+  if (p.hidden) return '';
+  if (p.id === 'recent') return `<section class="rd-shelf">${landingHead('Recently played')}<div class="rd-row rd-cv-row">${recent.map(coverCard).join('')}</div></section>`;
+  if (p.id === 'top') {
+    const head = landingHead('Made for you', 'top');
+    if (p.error) return `<section class="rd-shelf">${head}<p class="rd-empty">${esc(p.error)}</p></section>`;
+    if (p.loading) return `<section class="rd-shelf">${head}<div class="rd-made">${'<div class="rd-sk-row"></div>'.repeat(MADE_COUNT)}</div></section>`;
+    const picks = madeForYou(home.top, [...recent, ...favs]);
+    if (!picks.length) return '';
+    return `<section class="rd-shelf">${head}<div class="rd-made">${picks.map(s => rowCard(s, 'rd-mf', describe(s))).join('')}</div></section>`;
+  }
+  if (p.id === 'favs') {
+    const body = favs.length ? `<div class="rd-tops">${favs.map(s => rowCard(s, 'rd-tr', s.country || describe(s))).join('')}</div>` : `<p class="rd-empty">${esc(FAV_EMPTY)}</p>`;
+    return `<section class="rd-shelf">${landingHead('Your top stations')}${body}</section>`;
+  }
+  return shelfHtml(p);
+}
+
 function renderShelves(): void {
   const on = view.kind === 'home';
   $('rdShelves').hidden = !on;
+  $('rdSearch').hidden = on;   // Home opens on the greeting; the Search tab has the field
   if (!on) return;
   const plan = homeShelves({
     favs: favs.length, recent: recent.length,
@@ -529,7 +572,12 @@ function renderShelves(): void {
     genres: home.genresState, genreCount: home.genres.length,
     countries: home.countriesState, countryCount: home.countries.length,
   });
-  setHtml($('rdShelves'), plan.filter(p => !p.hidden).map(shelfHtml).join(''));
+  const byId = new Map<ShelfId, ShelfPlan>(plan.map(p => [p.id, p]));
+  const chips = CHIPS.map(([id, label]) => `<button class="rd-fchip${chip === id ? ' on' : ''}" data-chip="${id}" aria-pressed="${chip === id}">${label}</button>`).join('');
+  const shelves = LANDING_ORDER.filter(id => chipShows(chip, id)).map(id => landingShelf(byId.get(id)!)).join('');
+  const empty = chip === 'recent' ? 'Stations you play show here.' : 'Nothing here yet.';
+  setHtml($('rdShelves'), `<h2 class="rd-greet">${greeting(new Date().getHours())}</h2><div class="rd-chips">${chips}</div>`
+    + (shelves || `<p class="rd-empty">${empty}</p>`));
 }
 
 function tile(s: Station): string {
@@ -728,6 +776,7 @@ function render(): void {
     heart.setAttribute('aria-label', fav ? 'Remove from Favourites' : 'Add to Favourites');
   }
   const playingNow = state === 'playing' || state === 'buffering';
+  $('rdLive').hidden = !playingNow;
   $('rdToggle').innerHTML = playingNow ? I.pause : I.play;
   $('rdToggle').setAttribute('aria-label', playingNow ? 'Pause' : 'Play');
   $<HTMLButtonElement>('rdToggle').disabled = !s && !favs.length && !list.length;
