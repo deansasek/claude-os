@@ -115,6 +115,24 @@ The only allowed exception is the deliberate recovery path to Android Settings (
 - After web edits, run `npm run check` (it includes `check:web`, which catches imports the hub won't serve). Don't use the built-in browser pane to verify: every action there prompts the user. Check routes with `Invoke-WebRequest`, and the tablet with read-only adb (screencap, dumpsys).
 - Check hit areas: `.hit` controls get their tap area from a `::before` that needs `position: relative`; in mock mode `__dev.hitAreas()` (core/web/hit-guard.ts) warns about any that are wrong. An absolutely positioned control takes class `hit-abs`.
 
+## Visual style
+
+ClaudeOS follows the Anthropic style (warm, quiet, editorial, flat). Use the tokens in `public/core.css`; never write a raw hex in an app's CSS. The anthropic-style skill audits a change against these rules.
+
+- **Colour:** warm earth tones only. Surfaces step by tone: `--bg` (ivory), `--card`, `--card-2`, with `--line` hairlines. Text is `--text`, then `--t2` to `--t5` for quieter text.
+- **One accent:** `--clay` (`--clay-deep` when pressed) marks the one thing that needs attention, the spark and the critter. Primary buttons are ink (`--text` fill, `--bg` text), not clay.
+- **State colours:** `--olive` (good), `--hot` and `--danger` (warning, destructive) only for state. Do not add blues or cool greys; `--blue`, `--sky` and `--track-edge` are known exceptions, not a model.
+- **No pure white:** no `#fff` surfaces or text; use `--paper` or `--bg`. No gradients, glows or washes (masks that fade a scroll edge are fine).
+- **Type:** `--serif` (Source Serif 4) for titles, big numbers and reading text; `--sans` (Inter) for UI chrome, buttons and labels. Weights 400 to 600. Headings get slight negative letter-spacing. There is no mono token yet: code uses the system mono stack.
+- **Case:** sentence case for titles, buttons and labels. All caps only for the small `.label` heading.
+- **Spacing:** a 4px grid (4, 8, 12, 16, 24, 32). Keep the page grid in `.app` (`--app-l`, `--app-body`, `--app-label-y`).
+- **Shape:** 8 to 14px radius on controls, 16 to 24px on cards and sheets. Circles (50%) for dots and knobs. No new pill (99px) shapes.
+- **Elevation:** flat. Show depth with a tone step and a 1px `--line` border, not a shadow. Only surfaces that float over the page (sheets, banners, the switcher, the HUD) keep a soft shadow.
+- **Icons:** the hand-drawn ink pen in `src/core/web/app-icons.ts` (`ICON_RULES`); `currentColor`, one accent at most. No raster, emoji or Android icons.
+- **Illustration:** the critter and the clay spark are the only illustrations. No photos or gradients as decoration (the Photos app and the photo frame show the user's own photos).
+- **Motion:** calm. Use the `--dur-*` and `--ease-*` tokens, animate transform and opacity only, and honour reduced motion.
+- **Tone:** the guide sets no copy rules. Write UI copy as the PR bodies: plain, short sentences.
+
 ## Facts to keep
 
 - ClaudeOS is the tablet's **device owner** (`hub.kiosk/.AdminReceiver`) and runs in lock task mode. Don't change the Android package id `hub.kiosk`: device owner is tied to it.
