@@ -74,7 +74,7 @@
   min-height: 44px; padding: 7px 16px; border-radius: 99px; font: 500 14px var(--sans);
   background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
 #app-photos .ph-selbar .ph-selask { background: var(--text); color: var(--bg); box-shadow: none; }   /* the primary action: ink */
-#app-photos .ph-selbar .ph-selgo { background: var(--hot); color: #fff; box-shadow: none; }   /* delete: clay, as the warning */
+#app-photos .ph-selbar .ph-selgo { background: var(--hot); color: var(--bg); box-shadow: none; }   /* delete: clay, as the warning */
 #app-photos .ph-selbar button:disabled { opacity: .45; cursor: default; }
 
 /* the ClaudeOS sheet: asks before a delete (the same look as Settings' sheets) */
@@ -95,5 +95,5 @@
 #app-photos .ph-keep, #app-photos .ph-gone { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: inline-flex; align-items: center;
   min-height: 44px; padding: 10px 20px; border-radius: 10px; font: 500 15px var(--sans); }
 #app-photos .ph-keep { background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
-#app-photos .ph-gone { background: var(--hot); color: #fff; }
+#app-photos .ph-gone { background: var(--hot); color: var(--bg); }
 #app-photos .ph-gone:disabled, #app-photos .ph-keep:disabled { opacity: .5; cursor: default; }

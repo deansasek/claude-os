@@ -411,7 +411,7 @@
   font: 400 14.5px var(--sans); color: var(--text); animation: cm-in var(--dur-fast) var(--ease-out); }
 .cm[hidden] { display: none; }
 @keyframes cm-in { from { opacity: 0; transform: translateY(4px); } }
-:root[data-theme="dark"] .cm { background: var(--card-2); border-color: color-mix(in srgb, var(--line) 60%, #fff 8%); box-shadow: 0 14px 40px rgba(0, 0, 0, .5); }
+:root[data-theme="dark"] .cm { background: var(--card-2); border-color: var(--line); box-shadow: 0 14px 40px rgba(0, 0, 0, .5); }
 .cm-row, .cm-head { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 6px 10px; border-radius: 9px; }
 .cm-row:active, .cm-head:active { background: color-mix(in srgb, var(--text) 7%, transparent); }
 .cm-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -484,7 +484,7 @@
 /* .pin-card, .pin-dots, .pin-msg and .pin-keys (the pad itself) are in core.css, shared with the lock screen */
 
 /* the composer's mic while Claude Home is listening (voice-ui adds .voice-live) */
-#app-claude #svMic.voice-live { color: #fff; background: var(--clay); box-shadow: 0 0 0 4px color-mix(in srgb, var(--clay) 28%, transparent); animation: mic-live var(--dur-calm) ease-in-out infinite; }
+#app-claude #svMic.voice-live { color: var(--bg); background: var(--clay); box-shadow: 0 0 0 4px color-mix(in srgb, var(--clay) 28%, transparent); animation: mic-live var(--dur-calm) ease-in-out infinite; }
 @keyframes mic-live { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--clay) 12%, transparent); } }
 
 /* the thinking indicator, like Claude desktop's: a small cluster of clay dots that twinkle in turn
@@ -517,4 +517,4 @@
 .sm-btns { display: flex; gap: 10px; margin-top: 12px; }
 .sm-btn { all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-height: 48px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--line); background: var(--bg); font: 500 15px var(--sans); color: var(--text); }
 .sm-btn:active { background: var(--card-2); }
-.sm-btn.danger { background: var(--hot); border-color: var(--hot); color: #fff; }
+.sm-btn.danger { background: var(--hot); border-color: var(--hot); color: var(--bg); }
