@@ -5,7 +5,7 @@ import type { LiveSession, NextStep, SessionState, TranscriptEntry } from '../ap
 import { describeTool } from './describe.ts';
 import { mayTrackSubagent, runningSubagents } from './subagents.ts';
 import { type ChoiceEvent, currentChoices, WRAP_UP_TOOL } from '../web/sessions/next-step.ts';
-import { tabletReplyIn } from './pclink.ts';
+import { relayedTabletReply, tabletReplyIn } from './pclink.ts';
 import { PROJECTS } from '../../../core/server/paths.ts';
 import { openSessions } from './registry.ts';
 import { folderOf, hubSession, hubSessionIds } from './hubsessions.ts';
@@ -81,7 +81,7 @@ function readSession(file: string): Info {
       if (tool) { info.state = 'tool'; info.tool = tool; }
       else if (stop === 'end_turn' || (kinds.includes('text') && stop !== 'tool_use')) { info.state = 'waiting'; info.tool = null; }
       else { info.state = 'thinking'; info.tool = null; }
-    } else if (t === 'user' && !o.isMeta) {
+    } else if (t === 'user' && (!o.isMeta || relayedTabletReply(o) !== null)) {
       // an interrupted turn ends with a "[Request interrupted by user…]" note: that's the user's move again
       const c = o.message?.content;
       const said = typeof c === 'string' ? c : Array.isArray(c) ? c.map((x: any) => x?.text || '').join(' ') : '';
@@ -278,13 +278,15 @@ function parseTranscript(sessionId: string, file: string, start: number, size: n
     if (raw.startsWith('{"type":"') && !raw.startsWith('{"type":"user"') && !raw.startsWith('{"type":"assistant"')) continue;
     let o: any;
     try { o = JSON.parse(raw); } catch { continue; }
-    if (o.isSidechain || o.isMeta) continue;
+    // a tablet reply the session relay delivered is stored as a meta peer message: show it as the user's message
+    const relayed = relayedTabletReply(o);
+    if (o.isSidechain || (o.isMeta && relayed === null)) continue;
     if (o.uuid) { if (seen.has(o.uuid)) continue; seen.add(o.uuid); }
     const at = o.timestamp || null;
     if (o.type === 'user') {
       const c = o.message?.content;
       if (Array.isArray(c) && c.some((x: any) => x?.type === 'tool_result') && !c.some((x: any) => x?.type === 'text')) continue;   // tool output
-      const text = userText(c);
+      const text = relayed ?? userText(c);
       const photos: any[] = Array.isArray(c) ? c.filter((x: any) => x?.type === 'image') : [];
       if (!text && !photos.length) continue;
       const reply = tabletReplyIn(text);   // a reply from the tablet, stored as a hook note: show only the reply
