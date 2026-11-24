@@ -9,6 +9,7 @@
 //   thinking    the spark turns while Claude works, with its latest step (set by the app)
 //   speaking    a soft ink waveform and the words being said. Tap to stop, or just start talking.
 //   ask         a question with buttons (e.g. an approval: Allow / Deny), also answerable by voice
+//   starting    a listen is queued and the tablet is still loading its speech model: "Starting voice…"
 //   notice      "Didn't catch that", "Stopped"… for a couple of seconds
 //
 // The tablet's events (core/web/device.ts `voice.on`) drive the live states on their own; an app
@@ -31,6 +32,7 @@ type Live =
   | { kind: 'listening'; text: string; followUp: number }   // followUp: ms window, 0 = none
   | { kind: 'heard'; text: string }
   | { kind: 'speaking'; text: string }
+  | { kind: 'starting' }                                   // a listen is queued; the tablet is loading its speech model
   | { kind: 'notice'; title: string; sub: string };
 
 let root: HTMLElement | null = null;
@@ -40,6 +42,9 @@ let live: Live | null = null;
 let liveTimer: number | undefined;
 let pendingFollowUp = 0;                    // set just before asking the tablet to listen for a follow-up
 let wakeOn = false;
+let queued = false;                         // a listen was asked for and the tablet has not started it yet
+let queueWatch: number | undefined;
+const START_LIMIT_MS = 30000;               // a queued listen that has not started by then has failed
 let talkHandler: () => void = () => { try { voice.listen(6000); } catch { /* no mic */ } };
 const spoken = new Map<string, string>();   // speech id → the words, to show while it's said
 let level = 0, shown = 0;                    // mic level (target, smoothed)
@@ -89,7 +94,7 @@ const CSS = `
 .vx[data-s="listening"] .vx-spark, .vx[data-s="speaking"] .vx-spark { opacity: 0; transform: scale(.5); }
 .vx[data-s="speaking"] .vx-wave i { background: var(--t2); }
 .vx[data-s="attentive"] .vx-spark { animation: vx-pop .6s cubic-bezier(.2,.8,.2,1); }
-.vx[data-s="thinking"] .vx-spark { animation: vx-think 2.4s cubic-bezier(.6,0,.3,1) infinite; }
+.vx[data-s="thinking"] .vx-spark, .vx[data-s="starting"] .vx-spark { animation: vx-think 2.4s cubic-bezier(.6,0,.3,1) infinite; }
 .vx[data-s="notice"] .vx-spark { opacity: .45; }
 .vx[data-s="notice"] .vx-spark g { fill: var(--t3); }
 .vx-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
@@ -164,6 +169,7 @@ function view(): { s: string; title: string; sub: string; actions: VoiceAction[]
       case 'attentive': return { s: 'attentive', title: 'Listening…', sub: HINT, actions: [] };
       case 'listening': return { s: 'listening', title: live.text || (live.followUp ? 'Anything else?' : 'Listening…'),
         sub: live.text ? 'Pause when you’re done' : live.followUp ? 'Just answer, or stay quiet to finish' : HINT, actions: [] };
+      case 'starting': return { s: 'starting', title: 'Starting voice…', sub: 'Listening begins when the speech model is ready', actions: [] };
       case 'heard': return { s: 'heard', title: live.text, sub: '', actions: [] };
       case 'speaking': return { s: 'speaking', title: live.text, sub: 'Tap to stop · or just start talking', actions: [] };
       case 'notice': return { s: 'notice', title: live.title, sub: live.sub, actions: [] };
@@ -215,10 +221,21 @@ function markMics(on: boolean): void {
 
 function setLive(l: Live | null, ms = 0): void {
   live = l;
+  if (l?.kind !== 'starting') queued = false;   // only the starting state keeps a queued listen
   clearTimeout(liveTimer);
   if (l && ms) liveTimer = window.setTimeout(() => { if (live === l) { live = null; paint(); } }, ms);
   if (!l || l.kind !== 'listening' || !l.followUp || l.text) root?.classList.remove('timing');
   paint();
+}
+
+/** A queued listen is waiting on the tablet: a queued listen that has not started after START_LIMIT_MS has failed. */
+function armQueueWatch(): void {
+  clearTimeout(queueWatch);
+  queueWatch = window.setTimeout(() => {
+    if (!queued) return;
+    queued = false;
+    if (live?.kind === 'starting') setLive({ kind: 'notice', title: 'Voice isn’t working right now', sub: 'Try again in a moment' }, 4000);
+  }, START_LIMIT_MS);
 }
 
 /** The follow-up line: runs down over the listening window, and goes once you start talking. */
@@ -271,6 +288,9 @@ function onEvent(e: VoiceEvent): void {
       setLive({ kind: 'listening', text: '', followUp: 0 });
       break;
     case 'state':
+      // the tablet is still loading its speech model: a queued listen waits for it, and the pill says so
+      if (e.mode === 'loading') { if (queued && live?.kind !== 'listening' && live?.kind !== 'attentive') setLive({ kind: 'starting' }); break; }
+      queued = false;
       if (e.mode === 'listening') {
         const fu = pendingFollowUp; pendingFollowUp = 0;
         if (live?.kind !== 'attentive' && live?.kind !== 'listening') { setLive({ kind: 'listening', text: '', followUp: fu }); if (fu) runTimer(fu); }
@@ -278,7 +298,7 @@ function onEvent(e: VoiceEvent): void {
       } else if (e.mode === 'wake' || e.mode === 'off') {
         if (e.mode === 'wake') wakeOn = true;
         else { try { wakeOn = !!voice.state()?.wake; } catch { wakeOn = false; } }
-        if (live?.kind === 'attentive' || live?.kind === 'listening') setLive(null);
+        if (live?.kind === 'attentive' || live?.kind === 'listening' || live?.kind === 'starting') setLive(null);
         else paint();
       }
       break;
@@ -318,6 +338,7 @@ function onEvent(e: VoiceEvent): void {
       setLive({ kind: 'notice', title: 'Stopped', sub: '' }, 1400);
       break;
     case 'error':
+      queued = false;
       console.warn('voice:', e.code, e.message);   // the tablet's own words are for the log; the screen gets a plain line
       setLive({ kind: 'notice', title: 'Voice isn’t working right now', sub: plainError(e.code, e.message) }, 4000);
       break;
@@ -356,6 +377,7 @@ function tapTalk(): void {
   const s = root?.dataset.s;
   if (s === 'listening' || s === 'attentive') { try { voice.cancel(); } catch { /* ignore */ } setLive(null); return; }
   if (s === 'speaking') { try { voice.stopSpeaking(); } catch { /* ignore */ } }
+  if (voiceUi.isStarting()) return;   // a listen is already queued: a second tap does not queue another
   talkHandler();
 }
 
@@ -363,6 +385,7 @@ function onTap(): void {
   const s = root?.dataset.s;
   if (s === 'speaking') { try { voice.stopSpeaking(); } catch { /* ignore */ } return; }
   if (s === 'listening' || s === 'attentive') { try { voice.cancel(); } catch { /* ignore */ } setLive(null); return; }
+  if (s === 'starting') return;
   if (s === 'notice' || s === 'heard') { setLive(null); return; }
   if (base.kind === 'thinking') base.onTap?.();
 }
@@ -420,6 +443,17 @@ export const voiceUi = {
   onTalk(fn: () => void): void { talkHandler = fn; },
   /** Is it listening to you right now (so a mic button can act as a toggle)? */
   isListening(): boolean { const s = root?.dataset.s; return s === 'listening' || s === 'attentive'; },
+  /** A listen was just queued with the tablet (ok: true). While its speech model loads, show "Starting voice…". */
+  queueListen(): void {
+    let m: string | undefined;
+    try { m = voice.state()?.mode; } catch { /* ignore */ }
+    if (m === 'listening') return;   // already listening: the tablet's own event shows it
+    queued = true;
+    armQueueWatch();
+    if (m === 'loading') setLive({ kind: 'starting' });
+  },
+  /** A listen is queued or starting: a second tap must not queue another. */
+  isStarting(): boolean { return queued || live?.kind === 'starting'; },
   /** Is Claude speaking aloud right now (the status cluster's speaker)? The critter's own line doesn't count. */
   isSpeaking(): boolean { return root?.dataset.s === 'speaking'; },
   /** Stop listening (a mic button tapped again). */
