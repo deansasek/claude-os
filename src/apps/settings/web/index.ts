@@ -14,7 +14,8 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import { applyProfile, initials, onProfile, profile, refreshProfile } from '../../../core/web/profile.ts';
 import type { Profile } from '../../../core/web/profile.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
-import { autoBrightness, batteryGlyph, chime, clearNotifications, noteRow, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, sleep } from '../../../core/web/system.ts';
+import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, sleep, swipeNotices, toggleMuteApp } from '../../../core/web/system.ts';
+import { appLabel } from '../../../core/web/notes-group.ts';
 import type { QuietHours } from '../../../core/web/system.ts';
 import { clock, untilText, whenText } from '../../../core/web/format.ts';
 import { setThemeMode, themeMode } from '../../../core/web/theme.ts';
@@ -758,8 +759,16 @@ function mediaVolume(): number { try { return device.volume().media; } catch { r
 function paintNotes(): void {
   const list = notifications();
   $('stNotesClear').hidden = !list.length;
-  $('stNotes').innerHTML = list.length ? list.map(n => noteRow(n, 'st-nrow')).join('')
+  $('stNotes').innerHTML = list.length ? groupedNotesHtml(list, 'st-nrow')
     : '<div class="st-empty">Nothing here. When Claude needs you, or a timer or alarm goes off, it shows up here.</div>';
+  // one switch per app that has sent a notice (or is muted): on means its chimes, speech and banners are off
+  const muted = mutedApps();
+  const apps = [...new Set([...list.map(n => n.app || '').filter(Boolean), ...muted])];
+  $('stMuted').innerHTML = apps.length ? apps.map(a => {
+    const off = muted.includes(a);
+    return `<div class="st-row"><div class="st-txt"><b>${esc(appLabel(a))}</b><span>${off ? 'Muted: notices go to Recent only' : 'Chimes, speech and banners on'}</span></div>`
+      + `<button class="st-switch hit" role="switch" aria-checked="${off ? 'false' : 'true'}" data-mute="${esc(a)}" aria-label="Show alerts from ${esc(appLabel(a))}"><i></i></button></div>`;
+  }).join('') : '<div class="st-empty">Apps that send notices show here, so you can mute one.</div>';
 }
 
 // ---------- Network (Wi-Fi) ----------
@@ -1321,9 +1330,16 @@ function mount(context: AppContext): void {
   // Notifications
   $('stBanners').addEventListener('click', () => { prefs.banners = !prefs.banners; paintAlerts(); });
   $('stNotesClear').addEventListener('click', clearNotifications);
+  swipeNotices($('stNotes'));
   $('stNotes').addEventListener('click', e => {
+    const mute = (e.target as HTMLElement).closest<HTMLElement>('[data-mute]')?.dataset.mute;
+    if (mute !== undefined) { toggleMuteApp(mute); return; }
     const app = (e.target as HTMLElement).closest<HTMLElement>('[data-app]')?.dataset.app;
     if (app && app !== 'settings') openApp(app);
+  });
+  $('stMuted').addEventListener('click', e => {
+    const mute = (e.target as HTMLElement).closest<HTMLElement>('[data-mute]')?.dataset.mute;
+    if (mute !== undefined) toggleMuteApp(mute);
   });
   onNotificationsChange(() => { if (section === 'notifications') paintNotes(); });
   // a toggle made on the drawer (Do Not Disturb, low power, Wi-Fi, "Hey Claude", Desk mode) repaints the open section
