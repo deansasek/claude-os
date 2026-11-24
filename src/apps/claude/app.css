@@ -310,6 +310,9 @@
 .sv-pins[hidden] { display: none; }
 .sv-pins svg { width: 14px; height: 14px; fill: currentColor; stroke: none; color: var(--t3); }
 .sv-pins:active { background: var(--card-2); }
+/* "N subagents working" beside the state: a flat chip, like the desktop app's bar */
+.sv-subs { flex: none; display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 14px; background: var(--card); color: var(--t2); font: 500 13px var(--sans); white-space: nowrap; }
+.sv-subs[hidden] { display: none; }
 .jump { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 99px;
   background: var(--text); color: var(--bg); font: 500 13px var(--sans); box-shadow: 0 4px 14px rgba(20,20,19,.18); }
 .jump[hidden] { display: none; }
