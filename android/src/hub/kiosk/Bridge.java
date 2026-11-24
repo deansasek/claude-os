@@ -624,6 +624,12 @@ public class Bridge {
     return Updater.check(act, act.serverOrigin());
   }
 
+  /** The update check only (Updater.available): the installed build and the newest one, and nothing is installed. */
+  @JavascriptInterface public String updateAvailable() {
+    if (!allowed) return DENIED;
+    return Updater.available(act, act.serverOrigin());
+  }
+
   // ---------- voice (see VoiceService, VoiceSpeaker, android/VOICE.md) ----------
   boolean isAllowed() { return allowed; }
 

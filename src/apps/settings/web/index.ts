@@ -20,6 +20,7 @@ import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHt
 import { appLabel } from '../../../core/web/notes-group.ts';
 import { moveTile, TILE_NAMES } from '../../../core/web/quick-order.ts';
 import { loadSettings, restoreSettings, saveSettings } from './backup.ts';
+import { resultText, updateStatus, type UpdateAvailable, type UpdateStart } from './update.ts';
 import type { QuietHours } from '../../../core/web/system.ts';
 import { clock, untilText, whenText } from '../../../core/web/format.ts';
 import { setThemeMode, themeMode } from '../../../core/web/theme.ts';
@@ -176,7 +177,7 @@ function paint(): void {
     case 'datetime': paintDateTime(); break;
     case 'privacy': paintPrivacy(); void paintWeatherPlace(); break;
     case 'wellbeing': paintWellbeing(); break;
-    case 'about': paintAbout(); break;
+    case 'about': paintAbout(); void paintUpdate(); break;
     case 'monitor': void paintMonitor(); break;
     case 'developer': paintDeveloper(); break;
     default: break;
@@ -1259,6 +1260,39 @@ async function paintMonitor(): Promise<void> {
     + `<button class="st-btn hit ghost small" data-restart="${esc(a.id)}">Restart</button></div>`).join('');
 }
 
+// ---------- Software update (About): this build, the PC's build, and Update now after a confirm (update.ts) ----------
+let pcBuild: number | null = null;   // the PC's build as last read (the confirm names it)
+
+function lastUpdateText(): string | null {
+  try {
+    const l = JSON.parse(store.get('os.lastUpdate') || 'null') as { at?: number; text?: string } | null;
+    return l?.text ? `${l.text} · ${new Date(l.at ?? 0).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : null;
+  } catch { return null; }
+}
+
+async function paintUpdate(): Promise<void> {
+  let avail: UpdateAvailable | null = null;
+  if (onTablet) { try { avail = device.updateAvailable() as UpdateAvailable; } catch { avail = null; } }
+  try { pcBuild = (await getJson<{ versionCode: number }>('/apk/version')).versionCode; } catch { pcBuild = null; }
+  const s = updateStatus(avail, pcBuild);
+  $('stUpdInstalled').textContent = avail?.installed != null ? `Build ${avail.installed}` : '–';
+  $('stUpdPc').textContent = pcBuild != null ? `Build ${pcBuild}` : '–';
+  $('stUpdStatus').textContent = onTablet ? s.text : 'Updates are for the tablet app.';
+  $('stUpdNow').hidden = !s.canUpdate;
+  $('stUpdLast').textContent = lastUpdateText() ?? 'Nothing yet';
+}
+
+function initUpdate(): void {
+  $('stUpdNow').addEventListener('click', () => {
+    confirmSheet('Update ClaudeOS?', `This tablet installs build ${pcBuild ?? 'from your PC'}. ClaudeOS restarts when the update is done.`, 'Update', () => {
+      let r: UpdateStart;
+      try { r = device.updateCheck() as UpdateStart; } catch (e) { r = { status: 'error', error: (e as Error).message }; }
+      store.set('os.lastUpdate', JSON.stringify({ at: Date.now(), text: resultText(r) }));
+      void paintUpdate();
+    });
+  });
+}
+
 // ---------- About ----------
 function paintAbout(): void {
   try {
@@ -1397,6 +1431,7 @@ function mount(context: AppContext): void {
     if (app && app !== 'settings') openApp(app);
   });
   initBackup();
+  initUpdate();
   $('stTiles').addEventListener('click', e => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-move]');
     if (!b?.dataset.move) return;

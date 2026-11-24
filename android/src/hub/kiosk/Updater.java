@@ -50,6 +50,24 @@ final class Updater {
     }
   }
 
+  /**
+   * Check only: the installed build and the newest one the Hub offers. Installs nothing, so Settings can show
+   * the state before the person confirms an update. {"status": "ok", "installed": N, "latest": M} or an error.
+   */
+  static String available(MainActivity act, String server) {
+    if (!act.isOwner()) return "{\"status\":\"not owner\"}";
+    try {
+      int installed = (int) installedVersion(act);
+      HttpURLConnection c = open(server + "/apk/version", 5000);
+      int latest = new JSONObject(read(c, 1024)).getInt("versionCode");
+      c.disconnect();
+      return "{\"status\":\"ok\",\"installed\":" + installed + ",\"latest\":" + latest + "}";
+    } catch (Exception e) {
+      Log.w(MainActivity.TAG, "update available", e);
+      return "{\"status\":\"error\",\"error\":" + JSONObject.quote(String.valueOf(e.getMessage())) + "}";
+    }
+  }
+
   private static long installedVersion(Context c) throws Exception {
     PackageInfo pi = c.getPackageManager().getPackageInfo(c.getPackageName(), 0);
     return pi.getLongVersionCode();
