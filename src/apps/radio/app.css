@@ -9,7 +9,7 @@
 #app-radio [hidden] { display: none !important; }
 
 #app-radio .rd-page { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: 96px;
-  display: grid; grid-template-columns: minmax(0, 1fr) 288px; grid-template-rows: minmax(0, 1fr); column-gap: 32px; min-height: 0;
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); column-gap: 32px; min-height: 0;
   overflow: hidden; padding-top: calc(var(--app-label-y) - var(--app-body)); }
 /* the left column: the strip; the browse column (.rd-find) is the right column, full height */
 #app-radio .rd-left { display: flex; flex-direction: column; gap: calc(14px + 4px * var(--tall)); min-width: 0; min-height: 0; overflow: hidden; }
@@ -192,3 +192,38 @@
 #app-radio .rd-cta:active { opacity: .85; }
 
 @keyframes rd-pulse { 50% { opacity: .25; } }
+
+/* ---- Home: shelves of cards. Each shelf is a heading (title left, Show all right) and one row that scrolls sideways ---- */
+#app-radio .rd-shelves { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: none; display: flex; flex-direction: column; gap: 28px; padding-bottom: 16px; }
+#app-radio .rd-shelves::-webkit-scrollbar { display: none; }
+#app-radio .rd-shelf-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; min-width: 0; }
+#app-radio .rd-shelf-head h3 { margin: 0; min-width: 0; font: 500 20px/28px var(--serif); letter-spacing: -.01em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-showall { all: unset; box-sizing: border-box; cursor: pointer; flex: none; height: 44px; padding: 0 4px 0 12px; display: inline-flex; align-items: center; font: 500 14px var(--sans); color: var(--t2); }
+#app-radio .rd-showall:active { color: var(--text); }
+#app-radio .rd-row { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; min-width: 0; }
+#app-radio .rd-row::-webkit-scrollbar { display: none; }
+#app-radio .rd-row > * { flex: none; scroll-snap-align: start; }
+/* a station card: 124 square art, then a name and a sub line; the play button sits on the art's bottom-right corner */
+#app-radio .rd-sc { position: relative; width: 124px; height: 174px; }
+#app-radio .rd-sc-open { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; width: 124px; height: 174px; }
+#app-radio .rd-sc-open:active .rd-sc-art { opacity: .85; }
+#app-radio .rd-sc-art { width: 124px; height: 124px; border-radius: 14px; border: 1px solid var(--line); font: 500 48px var(--serif); }
+#app-radio .rd-sc.on .rd-sc-art { border-color: var(--clay); }
+#app-radio .rd-sc-name { display: block; margin-top: 8px; font: 500 15px/20px var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-sc-sub { display: block; font: 400 13px/18px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-sc-play { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 76px; top: 76px; width: 40px; height: 40px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--text); color: var(--bg); }
+#app-radio .rd-sc-play svg { width: 18px; height: 18px; }
+#app-radio .rd-sc-play:active { opacity: .85; }
+#app-radio .rd-sk { width: 124px; height: 124px; border-radius: 14px; background: var(--card-2); flex: none; }
+#app-radio .rd-dashed { margin: 0; box-sizing: border-box; width: 124px; height: 174px; padding: 12px; border: 1px dashed var(--t4); border-radius: 14px;
+  font: italic 400 14px/1.3 var(--serif); color: var(--t3); overflow: hidden; }
+#app-radio .rd-row.rd-facets { gap: 16px; }
+/* a category tile: 200 by 112, a warm tone, the name top-left and the station count bottom-left */
+#app-radio .rd-tile2 { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 200px; height: 112px; padding: 14px; border-radius: 14px;
+  border: 1px solid var(--line); background: hsl(var(--hue, 30) 28% 90%); display: flex; flex-direction: column; overflow: hidden; }
+:root[data-theme="dark"] #app-radio .rd-tile2 { background: hsl(var(--hue, 30) 16% 24%); }
+#app-radio .rd-tile2:active { opacity: .85; }
+#app-radio .rd-tile2 b { font: 500 20px/24px var(--serif); color: var(--text); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+#app-radio .rd-tile2 b::first-letter { text-transform: uppercase; }
+#app-radio .rd-tile2 span { margin-top: auto; font: 400 13px/18px var(--sans); color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
