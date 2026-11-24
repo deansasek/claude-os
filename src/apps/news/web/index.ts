@@ -1,13 +1,16 @@
 // The News app: a top story, one shelf per feed, and a reader sheet for one story. Stories come from /api/news/feed.
 // Text is set with textContent, never innerHTML, so a feed's words cannot inject markup.
-import { getJson, report } from '../../../core/web/dom.ts';
+import { getJson, postJson, report } from '../../../core/web/dom.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { critterSvg } from '../../../core/web/critter-svg.ts';
 import { browser, nativeHas, newsFetch } from '../../../core/web/device.ts';
 import { openApp } from '../../../core/web/system.ts';
-import type { NewsFeedResponse, NewsItem } from '../api.ts';
+import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
+import type { NewsFeedResponse, NewsItem, NewsTopicsResponse } from '../api.ts';
 import { manifest } from '../manifest.ts';
+import { FEEDS } from './feeds.ts';
+import { activeFeeds, isOn, type TopicChoices } from './topics.ts';
 import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, storiesById, type NewsScreen, type Shelf } from './screen.ts';
 import { feedSource, tabletFeed, type KeyValue } from './tablet.ts';
 
@@ -16,6 +19,8 @@ const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let loadedAt = 0;
 let hasStories = false;                        // the screen currently shows stories
 let stories = new Map<string, NewsItem>();     // the stories on the screen, by id, for the reader sheet
+let choices: TopicChoices = {};                // the topics the owner has switched off (web/topics.ts); all on until the PC says otherwise
+let topicsDirty = false;                       // a topic changed in Settings: the next time News shows, it reads the feeds again
 
 const clockTime = (iso: string | null): string =>
   iso && !Number.isNaN(Date.parse(iso)) ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
@@ -116,12 +121,17 @@ const savedStore: KeyValue = {
 };
 
 async function load(): Promise<void> {
+  topicsDirty = false;
   let res: NewsFeedResponse | null = null;
   try {
-    // on the tablet the feeds are read natively (no CORS header on the feeds); otherwise the PC route answers
-    res = feedSource(nativeHas('newsFetch')) === 'tablet'
-      ? tabletFeed(newsFetch, savedStore, Date.now())
-      : await getJson<NewsFeedResponse>('/api/news/feed');
+    // on the tablet the feeds are read natively (no CORS header on the feeds), for the topics that are on;
+    // otherwise the PC route answers with the topics that are on
+    if (feedSource(nativeHas('newsFetch')) === 'tablet') {
+      await loadTopics();
+      res = tabletFeed(newsFetch, savedStore, Date.now(), activeFeeds(FEEDS, choices));
+    } else {
+      res = await getJson<NewsFeedResponse>('/api/news/feed');
+    }
   } catch { res = null; }
   loadedAt = Date.now();
   // a failed request keeps the stories already on screen; only an empty screen shows the error
@@ -180,9 +190,42 @@ function openStory(id: string): void {
   report('news-story');
 }
 
+// ---------- topics: Settings > Apps > News ----------
+/** Reads which topics are on from the PC. A failed read keeps the choices already known. */
+async function loadTopics(): Promise<void> {
+  try {
+    const r = await getJson<NewsTopicsResponse>('/api/news/topics');
+    choices = Object.fromEntries(r.topics.map(t => [t.id, t.on]));
+    appSettingsChanged();
+  } catch { /* keep the choices already known */ }
+}
+
+/** Saves one topic on or off on the PC. Throws when the PC does not save it, so Settings shows the error. */
+async function saveTopic(id: string, on: boolean): Promise<void> {
+  const r = await postJson<{ ok: boolean }>('/api/news/topics', { id, on });
+  if (!r.ok) throw new Error('ClaudeOS could not save that topic. Check the computer is connected, then try again.');
+  choices[id] = on;
+  topicsDirty = true;
+  appSettingsChanged();
+}
+
+/** Settings → Apps → News: one switch per topic. Every topic starts on. */
+function registerSettings(): void {
+  registerAppSettings({
+    app: manifest.id, name: manifest.name, icon: appIcon('news'), blurb: 'Which news topics the screen shows',
+    rows: (): SettingRow[] => FEEDS.map((f): SettingRow => ({
+      kind: 'switch', id: `topic-${f.id}`, title: f.name, detail: 'Shows its shelf on News.',
+      get: () => isOn(choices, f.id),
+      set: v => saveTopic(f.id, v),
+    })),
+  });
+}
+
 // ---------- wiring ----------
 function mount(context: AppContext): void {
   ctx = context;
+  registerSettings();
+  void loadTopics();
   const pick = (e: Event) => {
     const t = e.target as Element;
     const id = t.closest<HTMLElement>('[data-id]')?.dataset.id;
@@ -215,7 +258,7 @@ const app: HubApp = {
   mount,
   onShow() {
     startPolling();
-    if (Date.now() - loadedAt >= POLL_MS) void load();
+    if (topicsDirty || Date.now() - loadedAt >= POLL_MS) void load();
   },
   onHide() { stopPolling(); closeSheet(); },
   onClose() { stopPolling(); closeSheet(); },

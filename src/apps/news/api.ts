@@ -28,3 +28,12 @@ export interface NewsFeedResponse {
   sources: NewsSourceStatus[];
   updated: string | null; // when the newest feed data was fetched
 }
+
+// One News topic (a feed) and whether the owner has it on. Settings > Apps > News lists them.
+export interface NewsTopic {
+  id: string;            // the feed's id, e.g. "bbc-technology"
+  name: string;          // the feed's name, e.g. "BBC Technology"
+  on: boolean;
+}
+
+export interface NewsTopicsResponse { topics: NewsTopic[] }

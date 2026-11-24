@@ -59,9 +59,9 @@ function readFeed(feed: Feed, fetchNative: NativeFetch, saved: Saved, now: numbe
 }
 
 /** The News answer from the tablet: every feed read natively, the good reads saved, the rest from the saved copies. Never throws. */
-export function tabletFeed(fetchNative: NativeFetch, store: KeyValue, now: number): NewsFeedResponse {
+export function tabletFeed(fetchNative: NativeFetch, store: KeyValue, now: number, feeds: Feed[] = FEEDS): NewsFeedResponse {
   const saved = readSaved(store);
-  const results = FEEDS.map(feed => readFeed(feed, fetchNative, saved, now));
+  const results = feeds.map(feed => readFeed(feed, fetchNative, saved, now));
   try { store.setItem(SAVED_KEY, JSON.stringify(saved)); } catch { /* storage full or blocked: the stories still show */ }
   return combineFeeds(results);
 }
