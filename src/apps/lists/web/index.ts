@@ -154,6 +154,7 @@ function choose(id: string): void {
   note = '';
   render();
   $('lsScroll').scrollTop = 0;
+  void loadSuggest();   // suggestions are for Shopping only: the list just changed
 }
 
 function tick(id: string): void {
@@ -236,7 +237,7 @@ function openAdd(): void {
     onDone: text => {
       const t = cleanText(text);
       if (!t) return;             // nothing typed: Add just closes
-      void send('add', { list: l.id, text: t });
+      void send('add', { list: l.id, text: t }).then(() => loadSuggest());   // an added item leaves the suggestions
       if (notes) return;          // a note is one entry: done
       openAdd();                  // a fresh, empty keyboard for the next item
       return false;
