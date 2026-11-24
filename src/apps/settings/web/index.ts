@@ -16,8 +16,9 @@ import type { Profile } from '../../../core/web/profile.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { closeApp, failedApps, openedApps, restartApp } from '../../../core/web/shell.ts';
 import { monitorLines } from './monitor.ts';
-import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, sleep, swipeNotices, toggleMuteApp } from '../../../core/web/system.ts';
+import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, setTileOrder, sleep, swipeNotices, tileOrder, toggleMuteApp } from '../../../core/web/system.ts';
 import { appLabel } from '../../../core/web/notes-group.ts';
+import { moveTile, TILE_NAMES } from '../../../core/web/quick-order.ts';
 import type { QuietHours } from '../../../core/web/system.ts';
 import { clock, untilText, whenText } from '../../../core/web/format.ts';
 import { setThemeMode, themeMode } from '../../../core/web/theme.ts';
@@ -946,7 +947,19 @@ function paintDisplay(): void {
 }
 
 // ---------- Appearance ----------
+/** The drawer's tiles in their order, each with Up and Down (quick-order.ts; the drawer reads the saved order). */
+function paintTileOrder(): void {
+  const order = tileOrder();
+  $('stTiles').innerHTML = order.map((id, i) => {
+    const name = esc(TILE_NAMES[id] ?? id);
+    return `<div class="st-row"><div class="st-txt"><b>${name}</b></div>`
+      + `<button class="st-btn hit ghost small" data-move="${esc(id)}" data-step="-1" aria-label="Move ${name} up"${i === 0 ? ' disabled' : ''}>Up</button>`
+      + `<button class="st-btn hit ghost small" data-move="${esc(id)}" data-step="1" aria-label="Move ${name} down"${i === order.length - 1 ? ' disabled' : ''}>Down</button></div>`;
+  }).join('');
+}
+
 function paintAppearance(): void {
+  paintTileOrder();
   setSeg('theme', themeMode());
   setSeg('textsize', prefs.textLarge ? 'large' : 'normal');
   setSeg('replywidth', prefs.replyWide ? 'wide' : 'normal');
@@ -1358,6 +1371,12 @@ function mount(context: AppContext): void {
     if (mute !== undefined) { toggleMuteApp(mute); return; }
     const app = (e.target as HTMLElement).closest<HTMLElement>('[data-app]')?.dataset.app;
     if (app && app !== 'settings') openApp(app);
+  });
+  $('stTiles').addEventListener('click', e => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-move]');
+    if (!b?.dataset.move) return;
+    setTileOrder(moveTile(tileOrder(), b.dataset.move, +(b.dataset.step ?? 1) === -1 ? -1 : 1));
+    paintTileOrder();
   });
   $('stMuted').addEventListener('click', e => {
     const mute = (e.target as HTMLElement).closest<HTMLElement>('[data-mute]')?.dataset.mute;
