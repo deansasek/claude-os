@@ -1,4 +1,4 @@
-name: Claude Issue Fix
+﻿name: Claude Issue Fix
 
 # Triage an issue. If the issue is complete, the AI agent writes a fix in the
 # working tree. A gate checks the patch. A dry-run step reports the result.
@@ -104,6 +104,7 @@ jobs:
 
             Write in short sentences. Active voice. No filler.
           claude_args: '--model claude-haiku-5-5 --max-turns 40 --allowedTools "Read Glob Grep Edit Write Bash(gh issue view:*) Bash(gh issue comment:*) Bash(gh issue edit:*)"'
+          label_trigger: ai-fix
           track_progress: true
           use_sticky_comment: true
           show_full_output: true
@@ -174,7 +175,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue view "$ISSUE" --json title --jq .title > "$RUNNER_TEMP/issue-title.txt"
+          gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" --json title --jq .title > "$RUNNER_TEMP/issue-title.txt"
 
       # Save the base package.json, then apply the patch to the index and the
       # working tree. The raw diff gives file modes for the symlink rule.
@@ -311,9 +312,9 @@ jobs:
         run: |
           set -u
           [ -s "$RUNNER_TEMP/gate-report.md" ] || echo "The gate did not finish." > "$RUNNER_TEMP/gate-report.md"
-          gh issue comment "$ISSUE" --body-file "$RUNNER_TEMP/gate-report.md"
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/gate-report.md"
           if [ "$RESULT" != pass ]; then
-            gh issue edit "$ISSUE" --add-label ai-blocked
+            gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label ai-blocked
           fi
 
   # Dry run. A later change opens the pull request here.
@@ -332,7 +333,7 @@ jobs:
     steps:
       - name: Post the dry-run comment
         run: |
-          gh issue comment "$ISSUE" --body "Dry run. The fix passes the gate. No pull request opened yet."
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Dry run. The fix passes the gate. No pull request opened yet."
 
   # Remove ai-fix so the label can be added again. The sticky comment shows progress.
   report:
@@ -350,4 +351,4 @@ jobs:
     steps:
       - name: Remove the ai-fix label
         run: |
-          gh issue edit "$ISSUE" --remove-label ai-fix
+          gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --remove-label ai-fix
