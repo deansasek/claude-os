@@ -319,8 +319,9 @@ jobs:
           add "npm test" "$TEST"
           echo "result=$result" >> "$GITHUB_OUTPUT"
 
-      # Post the result. Add ai-blocked when the gate fails.
-      - name: Post the gate result
+      # Keep the report as a file. The report job posts it as the Claude App.
+      # Add ai-blocked when the gate fails. A label does not post a comment.
+      - name: Write the gate report and add ai-blocked
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
@@ -328,10 +329,17 @@ jobs:
         run: |
           set -u
           [ -s "$RUNNER_TEMP/gate-report.md" ] || echo "The gate did not finish." > "$RUNNER_TEMP/gate-report.md"
-          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/gate-report.md"
           if [ "$RESULT" != pass ]; then
             gh issue edit "$ISSUE" --repo "$GITHUB_REPOSITORY" --add-label ai-blocked
           fi
+
+      - name: Upload the gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-report
+          path: ${{ runner.temp }}/gate-report.md
+          if-no-files-found: ignore
 
   # Open the pull request. Runs only when the gate passes. The App token is
   # minted in this job and used only in the push and pull request steps.
@@ -352,8 +360,18 @@ jobs:
       pr_url: ${{ steps.pr.outputs.pr_url }}
 
     steps:
+      # Mint the App token first. Comments in this job use it. Checkout does not.
+      - name: Create the App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FIX_APP_ID }}
+          private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
+
       - name: Post the dry-run comment
         if: vars.AI_FIX_DRY_RUN == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Dry run. The fix passes the gate. No pull request opened yet."
 
@@ -417,6 +435,8 @@ jobs:
 
       - name: Stop when the branch or pull request exists
         if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Fix not pushed. Branch ${BRANCH} exists or a pull request for it is open. Check it before you add the ai-fix label again."
 
@@ -433,14 +453,6 @@ jobs:
           git config user.name "claudeos-bot[bot]"
           git config user.email "${APP_ID}+claudeos-bot[bot]@users.noreply.github.com"
           git commit --quiet -F "$RUNNER_TEMP/pr-draft/title.txt"
-
-      - name: Create the App token
-        id: app-token
-        if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.FIX_APP_ID }}
-          private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
 
       - name: Push the branch
         if: vars.AI_FIX_DRY_RUN != 'true' && env.SKIP != 'true'
@@ -466,7 +478,9 @@ jobs:
           url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" --title "$title" --body-file "$body" --label ai-generated --label ai-review | tail -n 1)
           echo "pr_url=$url" >> "$GITHUB_OUTPUT"
 
-  # Remove ai-fix so the label can be added again. The sticky comment shows progress.
+  # Post one result comment as the Claude App, then remove ai-fix so the label
+  # can be added again. The comment is the PR link or the gate report. A run
+  # with no pull request and a passing gate posts no comment from this job.
   report:
     needs: [agent, gate, publish]
     if: always() && vars.AI_ENABLED == 'true'
@@ -480,12 +494,57 @@ jobs:
       ISSUE: ${{ github.event.issue.number || inputs.issue }}
 
     steps:
-      - name: Post the pull request link
-        if: needs.publish.outputs.pr_url != ''
+      # Download the gate report only when the gate ran and did not pass.
+      - name: Download the gate report
+        if: needs.gate.result != 'skipped' && needs.gate.outputs.result != 'pass'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: gate-report
+          path: ${{ runner.temp }}/gate-report-dl
+
+      # Choose the comment and write its body. No token is used here.
+      - name: Write the result comment
+        id: decide
+        if: always()
         env:
+          GATE_RESULT: ${{ needs.gate.result }}
+          GATE_OUT: ${{ needs.gate.outputs.result }}
           PR_URL: ${{ needs.publish.outputs.pr_url }}
         run: |
-          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body "Fix ready for review: ${PR_URL}. The pull request does not merge by itself. A person reviews and merges it."
+          set -u
+          kind=none
+          if [ -n "$PR_URL" ]; then
+            kind=pr
+          elif [ "$GATE_RESULT" != skipped ] && [ "$GATE_OUT" != pass ]; then
+            kind=gate-failed
+          fi
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
+          body="$RUNNER_TEMP/report.md"
+          case "$kind" in
+            pr)
+              echo "Fix ready for review: ${PR_URL}. The pull request does not merge by itself. A person reviews and merges it." > "$body" ;;
+            gate-failed)
+              f="$RUNNER_TEMP/gate-report-dl/gate-report.md"
+              if [ -s "$f" ]; then cp "$f" "$body"; else echo "The gate did not finish." > "$body"; fi
+              printf '\nStop reason: the gate did not pass. No pull request opened.\n' >> "$body" ;;
+          esac
+
+      - name: Create the App token
+        id: app-token
+        if: steps.decide.outputs.kind != 'none'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FIX_APP_ID }}
+          private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
+
+      - name: Post the result comment as the Claude App
+        if: steps.decide.outputs.kind != 'none'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -u
+          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/report.md"
 
       - name: Remove the ai-fix label
         if: always()
