@@ -1,5 +1,5 @@
 // Shapes of what the Lists app's server routes send to its page, and the limits both sides use.
-// Served to the browser: nothing secret lives here (the lists themselves stay in .lists.json on the PC).
+// Served to the browser: nothing secret lives here (the lists live on the tablet, web/local.ts, and in .lists.json on the PC).
 // The page checks these limits only to give quick feedback; the server checks everything again (server/store.ts).
 
 export const MAX_LISTS = 12;
@@ -41,6 +41,8 @@ export interface ListsResult {
   item?: ListItem;                     // add / tick / edit: the item it touched
   list?: string;                       // new-list: the new list's id
   removed?: number;                    // clear-done: how many went
+  stored?: boolean;                    // GET lists: the PC has a lists file (false: the tablet may restore its copy)
+  retry?: boolean;                     // the PC couldn't read or save its file: send the change again later
 }
 
 /** Change one item's text on a list (in place; pure, no file): the changed item, or why not.

@@ -92,17 +92,29 @@ const UNREADABLE = 'The lists file on the PC couldn’t be read, so nothing was 
 /** All the lists. */
 export function readLists(): ListsResult {
   const lists = load();
-  return lists ? { ok: true, lists } : { ok: false, lists: clone(DEFAULTS), error: UNREADABLE };
+  return lists ? { ok: true, lists, stored: fs.existsSync(FILE) } : { ok: false, lists: clone(DEFAULTS), error: UNREADABLE, retry: true };
+}
+
+/** The tablet's copy, when the PC has no lists file (a new PC, or the file was lost). An existing file is never replaced. */
+export function restoreLists(raw: unknown): ListsResult {
+  if (fs.existsSync(FILE)) return { ok: false, lists: load() ?? clone(DEFAULTS), error: 'The PC already has lists.' };
+  const lists: FamilyList[] = [];
+  for (const l of Array.isArray(raw) ? raw : []) {
+    const c = cleanList(l);
+    if (c && lists.length < MAX_LISTS && !lists.some(o => o.id === c.id)) lists.push(c);
+  }
+  if (!lists.length) return { ok: false, lists: clone(DEFAULTS), error: 'That isn’t a set of lists.' };
+  return persist(lists) ? { ok: true, lists: load() ?? lists, stored: true } : { ok: false, lists, error: 'The PC couldn’t save the lists.', retry: true };
 }
 
 /** Load, change, save: `fn` returns an error (nothing is saved) or the extra fields of a good answer. */
 function change(fn: (lists: FamilyList[]) => string | Partial<ListsResult>): ListsResult {
   const lists = load();
-  if (!lists) return { ok: false, lists: clone(DEFAULTS), error: UNREADABLE };
+  if (!lists) return { ok: false, lists: clone(DEFAULTS), error: UNREADABLE, retry: true };
   const before = JSON.stringify(lists);
   const r = fn(lists);
   if (typeof r === 'string') return { ok: false, lists: load() ?? lists, error: r };
-  if (JSON.stringify(lists) !== before && !persist(lists)) return { ok: false, lists: load() ?? lists, error: 'The PC couldn’t save the lists.' };
+  if (JSON.stringify(lists) !== before && !persist(lists)) return { ok: false, lists: load() ?? lists, error: 'The PC couldn’t save the lists.', retry: true };
   return { ok: true, lists, ...r };
 }
 
@@ -116,8 +128,9 @@ export function itemText(v: unknown): { text: string } | { error: string } {
   return { text };
 }
 
-/** Add an item. The same text already on the list isn't added twice (a ticked one is unticked instead). */
-export function addItem(listRef: unknown, rawText: unknown): ListsResult {
+/** Add an item. The same text already on the list isn't added twice (a ticked one is unticked instead).
+ *  wantId: the id the tablet gave it (web/local.ts), kept when it is free, so later changes to it find it. */
+export function addItem(listRef: unknown, rawText: unknown, wantId?: unknown): ListsResult {
   return change(lists => {
     const l = findList(lists, listRef);
     if (!l) return NO_LIST;
@@ -126,7 +139,7 @@ export function addItem(listRef: unknown, rawText: unknown): ListsResult {
     const same = l.items.find(i => i.text.toLowerCase() === t.text.toLowerCase());
     if (same) { same.done = false; return { item: clone(same) }; }
     if (l.items.length >= MAX_ITEMS) return `${l.name} is full (${MAX_ITEMS} items). Clear the ticked ones or remove some first.`;
-    const item: ListItem = { id: newItemId(), text: t.text, done: false, at: new Date().toISOString() };
+    const item: ListItem = { id: typeof wantId === 'string' && ITEM_ID.test(wantId) ? wantId : newItemId(), text: t.text, done: false, at: new Date().toISOString() };
     while (l.items.some(i => i.id === item.id)) item.id = newItemId();
     l.items.push(item);
     return { item: clone(item) };
@@ -197,15 +210,15 @@ export function clearDone(listRef: unknown): ListsResult {
   });
 }
 
-/** Make a new (tick-off) list. */
-export function newList(rawName: unknown): ListsResult {
+/** Make a new (tick-off) list. wantId: the id the tablet gave it, kept when it is free. */
+export function newList(rawName: unknown, wantId?: unknown): ListsResult {
   return change(lists => {
     const name = cleanText(rawName);
     if (!name) return 'Give the list a name.';
     if (name.length > MAX_LIST_NAME) return `That name is too long: ${MAX_LIST_NAME} characters at most.`;
     if (findList(lists, name)) return `There’s already a list called ${name}.`;
     if (lists.length >= MAX_LISTS) return `There are already ${MAX_LISTS} lists. Delete one first.`;
-    const id = idFor(name, lists);
+    const id = typeof wantId === 'string' && LIST_ID.test(wantId) && !lists.some(l => l.id === wantId) ? wantId : idFor(name, lists);
     if (!LIST_ID.test(id)) return 'That name can’t be used.';
     lists.push({ id, name, kind: 'check', items: [] });
     return { list: id };
