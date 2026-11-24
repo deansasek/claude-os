@@ -1,19 +1,17 @@
 <header class="app-hd">   <!-- the shell draws the icon and "Radio" (core/web/app-header.ts) -->
+  <div class="app-hd-after"><div class="rd-htabs" id="rdTabs" role="tablist">
+    <button class="rd-htab" data-tab="home">Home</button>
+    <button class="rd-htab" data-tab="search">Search</button>
+  </div></div>
 </header>
 
-<!-- the main view: Home is a stack of shelves (Favourites, Recently played, Top stations, Genres, Countries). The list
-     views (Top, Genres, Countries, Languages, a facet, a search, a station's own page) take the same space under the
-     search field. Back in a list returns one level. The player bar sits along the bottom of the page. -->
+<!-- the main view: Home is a stack of shelves (Favourites, Recently played, Top stations, Genres, Countries). Search
+     is its own view: the field, recent searches and Browse all when empty, or the results. The list views (Top, a
+     genre, a country, a station's own page) take the same space. Back in a list returns one level. The player bar sits
+     along the bottom of the page. -->
 <div class="rd-page">
   <aside class="rd-find" id="rdFind">
       <button class="rd-search" id="rdSearch"><span class="rd-search-ic" id="rdSearchIc" aria-hidden="true"></span><span class="rd-search-text" id="rdQuery">Search stations</span></button>
-      <div class="rd-tabs" id="rdTabs">
-        <button class="rd-tab" data-tab="home">Home</button>
-        <button class="rd-tab" data-tab="top">Top stations</button>
-        <button class="rd-tab" data-tab="tags">Genres</button>
-        <button class="rd-tab" data-tab="countries">Countries</button>
-        <button class="rd-tab" data-tab="languages">Languages</button>
-      </div>
       <div class="rd-shelves" id="rdShelves"></div>
       <div class="rd-bar" id="rdBarRow">
         <button class="rd-back" id="rdBack" hidden>Back</button>

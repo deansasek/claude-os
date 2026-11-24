@@ -231,3 +231,29 @@
 /* ---- Show all lists: station rows in two columns (428 each), facet rows in four (about 200 each) ---- */
 #app-radio .rd-station-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
 #app-radio .rd-facet-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 16px; }
+
+/* ---- header tabs: Home and Search, in .app-hd-after; the chosen one is ink ---- */
+#app-radio .rd-htabs { display: flex; gap: 8px; }
+#app-radio .rd-htab { all: unset; box-sizing: border-box; cursor: pointer; height: 44px; padding: 0 16px; border-radius: 12px; display: inline-flex;
+  align-items: center; font: 500 16px var(--sans); color: var(--t2); }
+#app-radio .rd-htab:active { background: var(--card-2); }
+#app-radio .rd-htab.on { background: var(--text); color: var(--bg); }
+
+/* ---- Search: filter chips at 40 tall; recent searches; Browse all; the top result; loading rows ---- */
+#app-radio .rd-filters .rd-pill, #app-radio .rd-recent .rd-pill { height: 40px; border-radius: 12px; font-size: 14px; }
+#app-radio .rd-recent { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 4px; }
+#app-radio .rd-recent .rd-clear { color: var(--t3); }
+#app-radio .rd-browse-head { margin: 18px 0 10px; font: 500 20px/28px var(--serif); color: var(--text); }
+#app-radio .rd-browse-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+#app-radio .rd-browse-grid .rd-tile2 { width: auto; min-width: 0; }
+#app-radio .rd-browse-grid .rd-tile2.rd-all { justify-content: flex-end; background: var(--card); }
+#app-radio .rd-browse-grid .rd-tile2.rd-all b { font-size: 17px; }
+#app-radio .rd-sk-row { height: 64px; border-radius: 14px; background: var(--card-2); }
+#app-radio .rd-top { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; align-items: center; gap: 20px; box-sizing: border-box;
+  min-height: 136px; padding: 16px; margin-bottom: 12px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); min-width: 0; }
+#app-radio .rd-top .rd-top-art { width: 104px; height: 104px; border-radius: 14px; font-size: 40px; }
+#app-radio .rd-top-text { min-width: 0; display: flex; flex-direction: column; }
+#app-radio .rd-top-text b { font: 500 28px/1.15 var(--serif); color: var(--text); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+#app-radio .rd-top-text span { font: 400 14px/1.4 var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-top-act { display: flex; gap: 10px; }
+#app-radio .rd-top-act .rd-cta { width: 120px; }
