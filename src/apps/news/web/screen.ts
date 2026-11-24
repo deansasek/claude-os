@@ -13,6 +13,7 @@ export type NewsScreen =
 export const ERROR_TEXT = 'The news feeds did not answer. Check that the computer running ClaudeOS is connected to the internet. Tap Try again.';
 export const NO_FEED_TEXT = 'ClaudeOS could not read the news from the computer. Tap Try again.';
 export const NO_SUMMARY_TEXT = 'The feed gave no summary for this story.';
+export const NO_TOPIC_TEXT = 'Every News topic is off. Turn one on in Settings, then tap Try again.';
 
 // Feed terms (#357): no feed picture is shown until the owner confirms the BBC image licence. The code path stays.
 export const SHOW_IMAGES = false;
@@ -21,6 +22,7 @@ export const POLL_MS = 15 * 60e3;
 
 /** The screen for one answer from /api/news/feed (null when the request itself failed). */
 export function screenFor(res: NewsFeedResponse | null): NewsScreen {
+  if (res && !res.sources.length) return { state: 'error', text: NO_TOPIC_TEXT };   // every topic is off
   if (!res || res.status === 'error' || !res.items.length) return { state: 'error', text: res ? ERROR_TEXT : NO_FEED_TEXT };
   const headline = res.items[0];
   const shelves: Shelf[] = [];
