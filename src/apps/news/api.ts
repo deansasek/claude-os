@@ -18,6 +18,7 @@ export interface NewsSourceStatus {
   status: 'ok' | 'error';
   stale: boolean;        // true when the stories come from an earlier good fetch
   error?: string;        // a short reason, e.g. "timed out" or "HTTP 503"
+  fetched?: string;      // stale only: when the saved stories were read (ISO, UTC)
 }
 
 export interface NewsFeedResponse {

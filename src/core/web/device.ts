@@ -27,6 +27,7 @@ interface HubDeviceApi {
   keyboardStatus?(): string; keyboardSetDefault?(): string; keyboardClearLearned?(): string;   // newer app builds
   keyboardPrefs?(): string; keyboardSetPref?(name: string, on: boolean): string;   // newer app builds: suggestions, key sounds
   browserDownloadsSize?(): string;   // newer app builds: what the Browser saved (Storage)
+  newsFetch?(url: string): string;   // newer app builds: one News feed, read natively (NewsFetch.java; the hosts are fixed there)
   // newer app builds (the Settings device rows below are disabled with "Needs the latest ClaudeOS app" without them; see nativeHas)
   screen?(): string; setAutoBrightness?(on: boolean): string; setScreenOff?(sec: number): string;
   storage?(): string; timeZone?(): string; setTimeZone?(id: string): string; bluetooth?(): string;
@@ -73,6 +74,11 @@ function call<T>(fn: (a: HubDeviceApi) => string): T {
  *  is shown disabled ("Needs the latest ClaudeOS app") rather than as a control that does nothing. The mock has them all. */
 export function nativeHas(...methods: (keyof HubDeviceApi)[]): boolean {
   return !!api && methods.every(m => typeof api[m] === 'function');
+}
+
+/** One News feed read by the tablet (NewsFetch.java): the HTTP status and body. Throws when the native side refuses or fails. */
+export function newsFetch(url: string): { status: number; body: string } {
+  return call(a => a.newsFetch!(url));
 }
 
 /** Media volume changes (0..1): the tablet's volume keys (window.onHubVolume, from MainActivity) and this page's own setVolume. */
