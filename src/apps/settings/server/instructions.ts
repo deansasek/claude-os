@@ -5,7 +5,7 @@ import path from 'node:path';
 import { HUB } from '../../../core/server/paths.ts';
 import { INSTRUCTIONS_MAX } from '../api.ts';
 
-const FILE = path.join(HUB, 'instructions.txt');
+const FILE = process.env.CLAUDEOS_INSTRUCTIONS_FILE || path.join(HUB, 'instructions.txt');   // a test sets CLAUDEOS_INSTRUCTIONS_FILE
 
 const clean = (v: unknown): string => (typeof v === 'string' ? v.replace(/\r\n/g, '\n').trim().slice(0, INSTRUCTIONS_MAX) : '');
 

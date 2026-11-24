@@ -7,8 +7,8 @@ import { HUB, readJson, readJsonOrSetAside, writeJsonFile } from '../../../core/
 import { isJpeg } from '../../photos/server/store.ts';
 import { NAME_MAX, NICK_MAX, PHOTO_MAX, ROLES, type Profile } from '../api.ts';
 
-const FILE = path.join(HUB, 'profile.json');
-const PHOTO = path.join(HUB, 'profile-photo.jpg');
+const FILE = process.env.CLAUDEOS_PROFILE_FILE || path.join(HUB, 'profile.json');   // a test sets CLAUDEOS_PROFILE_FILE (never the real file)
+const PHOTO = process.env.CLAUDEOS_PROFILE_PHOTO || path.join(HUB, 'profile-photo.jpg');
 
 const clean = (v: unknown, max: number): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 
