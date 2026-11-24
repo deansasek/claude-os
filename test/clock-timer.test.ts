@@ -9,9 +9,9 @@ const t = (id: string, end: number | null, left: number | null = null, dur = 300
 
 test('a list is read as it is stored, and nothing is migrated', () => {
   const list = JSON.stringify([t('a', NOW + 1000)]);
-  assert.deepEqual(parseClockTimers(list, null), { timers: [t('a', NOW + 1000)], migrate: false });
-  assert.deepEqual(parseClockTimers(null, null), { timers: [], migrate: false });
-  assert.deepEqual(parseClockTimers('not json', 'not json'), { timers: [], migrate: false });
+  assert.deepEqual(parseClockTimers(list, null), { timers: [t('a', NOW + 1000)], migrate: false, draft: null });
+  assert.deepEqual(parseClockTimers(null, null), { timers: [], migrate: false, draft: null });
+  assert.deepEqual(parseClockTimers('not json', 'not json'), { timers: [], migrate: false, draft: null });
 });
 
 test('a single timer from the earlier build becomes the first in the list (migrate: true)', () => {
@@ -28,6 +28,13 @@ test('a legacy timer without a label gets the default name; a list wins over an 
   const both = parseClockTimers(JSON.stringify([t('x', null)]), JSON.stringify({ dur: 60_000, end: null, left: null }));
   assert.equal(both.migrate, false);
   assert.deepEqual(both.timers.map(x => x.id), ['x']);
+});
+
+test('an idle earlier timer is not listed: its length comes back as the draft, and the old key goes', () => {
+  const idle = parseClockTimers(null, JSON.stringify({ dur: 240_000, end: null, left: null, label: 'pasta' }));
+  assert.deepEqual(idle, { timers: [], migrate: true, draft: 240_000 });
+  const unusable = parseClockTimers(null, JSON.stringify({ dur: 500, end: null, left: null }));
+  assert.deepEqual(unusable, { timers: [], migrate: false, draft: null });
 });
 
 test('readClockTimers falls back to the old key when the list is not saved yet', () => {

@@ -337,6 +337,7 @@ const savedDraft = (): number => { const n = Number(store.get(K.draft)); return 
 const loaded = parseClockTimers(store.get(K.timers), store.get(K.timer));
 let timers: ClockTimer[] = loaded.timers;
 if (loaded.migrate) { store.set(K.timers, JSON.stringify(timers)); store.set(K.timer, null); }   // the first read saves the list
+if (loaded.draft != null) store.set(K.draft, String(loaded.draft));   // an idle earlier timer keeps its length on the dial
 let timer: ClockTimer = timers.find(t => t.end) ?? timers[0] ?? draftOf(savedDraft());
 const saveTimers = () => store.set(K.timers, JSON.stringify(timers));
 const saveDraft = () => store.set(K.draft, String(timer.dur));
