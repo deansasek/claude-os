@@ -39,9 +39,9 @@ export async function connectorEvents(day: 'today' | 'tomorrow'): Promise<Connec
   const q = query({
     prompt,
     options: {
-      cwd: os.tmpdir(), permissionMode: 'default', maxTurns: 6,
-      canUseTool: async (name: string) => (READ.test(name) && SCOPE.test(name)
-        ? { behavior: 'allow' as const, updatedInput: {} }
+      cwd: os.tmpdir(), permissionMode: 'default', maxTurns: 6, persistSession: false,
+      canUseTool: async (name: string, input: Record<string, unknown>) => (READ.test(name) && SCOPE.test(name)
+        ? { behavior: 'allow' as const, updatedInput: input }
         : { behavior: 'deny' as const, message: 'read-only' }),
     },
   });

@@ -24,9 +24,9 @@ export async function addConnectorEvent(input: unknown): Promise<AddAnswer> {
   const q = query({
     prompt,
     options: {
-      cwd: os.tmpdir(), permissionMode: 'default', maxTurns: 6,
-      canUseTool: async (name: string) => (CREATE.test(name) && SCOPE.test(name)
-        ? { behavior: 'allow' as const, updatedInput: {} }
+      cwd: os.tmpdir(), permissionMode: 'default', maxTurns: 6, persistSession: false,
+      canUseTool: async (name: string, input: Record<string, unknown>) => (CREATE.test(name) && SCOPE.test(name)
+        ? { behavior: 'allow' as const, updatedInput: input }
         : { behavior: 'deny' as const, message: 'only creating an event is allowed' }),
     },
   });
