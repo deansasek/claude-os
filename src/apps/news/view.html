@@ -1,0 +1,20 @@
+<header class="app-hd">   <!-- the shell draws the icon and "News" (core/web/app-header.ts) -->
+    <div class="app-hd-right"><span class="nw-time" id="nwTime"></span></div>
+</header>
+
+<!-- the stories: the top story as a card, a note for a feed that failed, then one shelf per feed -->
+<div class="nw-body" id="nwBody" hidden>
+  <div class="nw-notes" id="nwNotes" hidden></div>
+  <div class="nw-head" id="nwHead"></div>
+  <div class="nw-shelves" id="nwShelves"></div>
+</div>
+
+<!-- no stories: a plain message and the critter -->
+<div class="nw-empty" id="nwEmpty" hidden>
+  <div class="nw-empty-text">
+    <h2>News is not available</h2>
+    <p id="nwEmptyText"></p>
+    <button class="gbtn nw-retry" id="nwRetry" type="button">Try again</button>
+  </div>
+  <div class="nw-crit" id="nwCrit" aria-hidden="true"></div>
+</div>
