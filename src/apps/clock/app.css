@@ -113,6 +113,10 @@
 /* the list of timers under the dial: one row each, the focused row in ink; the new row is dashed */
 #app-clock .ck-tlist { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; max-height: 40vh; overflow-y: auto; }
 #app-clock .ck-tlist:empty { display: none; }
+/* running and paused timers sit in the bottom strip, above Quick timers, in one row that scrolls sideways */
+#app-clock .ck-wide .ck-tlist { flex-direction: row; overflow-x: auto; overflow-y: hidden; max-height: none; margin: 0 0 12px; gap: 10px; }
+#app-clock .ck-wide .ck-tlist::-webkit-scrollbar { display: none; }
+#app-clock .ck-wide .ck-trow { flex: none; min-width: 220px; }
 #app-clock .ck-trow { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 12px;
   min-height: 48px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card);
   color: var(--text); font: 500 16px/20px var(--sans); transition: border-color var(--dur-base) var(--ease-out); }
