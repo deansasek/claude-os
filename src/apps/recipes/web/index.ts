@@ -1,7 +1,8 @@
 // The Recipes app: one themed page. Discover has a large search over TheMealDB (through the hub, /api/recipes/), today's
 // pick from the saved recipes, the saved recipes, and recipe cards with photos and a heart to save. A recipe page has
-// the photo, the ingredients, numbered steps, Start cooking, and Claude on top. Cook mode has large text and named
-// timers (the Clock app's timer text, clock/web/timer-text.ts). Saved recipes stay on this tablet (the store helper).
+// the photo, the ingredients, numbered steps, Start cooking, and Claude on top. Cook mode is one page (a header, a progress
+// line, the step as plain text or a cookbook page, Previous and Next, and named timers in the Clock app's timer text,
+// clock/web/timer-text.ts). Saved recipes stay on this tablet (the store helper).
 // Adapt with Claude, Suggest for tonight and Create with Claude send a prompt (recipe.ts) into the tablet's Claude chat
 // (claude/web/native.ts). The reply is read when it arrives. A recipe is saved only after the user taps Save; a reply
 // that is not JSON can be saved as text.
@@ -195,11 +196,13 @@ function timerLeft(t: CookTimer): string {
   return left > 0 ? `${dur(left)} left` : 'Done';
 }
 
+/** The running timers in cook mode: one tile each, the name, the time left in large numbers, and Stop. */
 function timersHtml(): string {
-  if (!timers.length) return '';
-  const rows = timers.map(t => `<li class="rc-row rc-timer"><span class="rc-name">${esc(t.name)}</span><span class="rc-sub">${esc(timerLeft(t))}</span>`
-    + `<button class="rc-btn" data-act="stop-timer" data-id="${esc(t.id)}">Stop</button></li>`).join('');
-  return `<h3 class="rc-h">Timers</h3><ul class="rc-list">${rows}</ul>`;
+  if (!timers.length) return '<p class="rc-ck-none">No timers running.</p>';
+  const rows = timers.map(t => `<li class="rc-ck-tm"><span class="rc-ck-tm-name">${esc(t.name)}</span>`
+    + `<span class="rc-ck-tm-left">${esc(timerLeft(t))}</span>`
+    + `<button class="rc-ck-ctl" data-act="stop-timer" data-id="${esc(t.id)}">Stop</button></li>`).join('');
+  return `<ul class="rc-ck-tms">${rows}</ul>`;
 }
 
 function paintTimers(): void {
@@ -528,23 +531,35 @@ function detailHtml(r: Recipe): string {
 }
 
 // ---------- cook mode ----------
+// One page for both views: the header (Exit, the recipe name, the Plain/Book switch), the progress line, the step page,
+// the control bar (Previous, Next), and the timers. The book view sets the step in the serif on a card with a page
+// number; the plain view is the same step as clean text on the page. A step change turns the page in from its side.
+let turn = 0;                             // the last step move: -1 back, 1 forward, 0 none (no page turn)
+
 function cookHtml(r: Recipe, step: number): string {
   const s = cookStep(r, step);
+  const total = r.steps.length;
   const book = store.get(COOK_VIEW_KEY) === 'book';
-  const presets = TIMER_MINUTES.map(m => `<button class="rc-btn" data-act="timer" data-min="${m}">${lengthWords(m * 60e3)}</button>`).join('');
-  // the book view: one step on a page, turned with Previous and Next; the plain view is the same step in large text
-  const view = `<button class="rc-btn quiet" data-act="cook-view" aria-pressed="${book}">${book ? 'Plain view' : 'Book view'}</button>`;
-  const page = book
-    ? `<section class="rc-book"><p class="rc-kicker">${esc(s.heading)}</p><p class="rc-book-text">${esc(s.text)}</p>`
-      + `<p class="rc-book-pg">${s.index + 1} of ${r.steps.length}</p></section>`
-    : `<p class="rc-kicker">${esc(s.heading)}</p><p class="rc-cook">${esc(s.text)}</p>`;
-  return `<div class="rc-top"><button class="rc-btn" data-act="detail">Exit cook mode</button>${view}`
-    + `<span class="rc-sub">${esc(r.name)}</span></div>`
-    + page
-    + `<div class="rc-actions"><button class="rc-btn big" data-act="step" data-d="-1" ${s.first ? 'disabled' : ''}>Previous</button>`
-    + `<button class="rc-btn big pri" data-act="step" data-d="1" ${s.last ? 'disabled' : ''}>Next</button></div>`
-    + `<div class="rc-timers-add"><span class="rc-sub">Timer for this step</span><div class="rc-actions">${presets}</div></div>`
-    + `<div data-timers>${timersHtml()}</div>`;
+  const dir = turn < 0 ? ' back' : turn > 0 ? ' fwd' : '';
+  turn = 0;
+  const seg = (v: 'plain' | 'book', label: string) => {
+    const on = (v === 'book') === book;
+    return `<button class="rc-ck-seg-b${on ? ' on' : ''}" data-act="cook-view" data-view="${v}" aria-pressed="${on}">${label}</button>`;
+  };
+  const ticks = r.steps.map((_, k) => `<i class="${k < s.index ? 'done' : k === s.index ? 'now' : ''}"></i>`).join('');
+  const presets = TIMER_MINUTES.map(m => `<button class="rc-ck-ctl" data-act="timer" data-min="${m}">${lengthWords(m * 60e3)}</button>`).join('');
+  return `<div class="rc-ck${book ? ' book' : ''}">`
+    + `<header class="rc-ck-hd"><button class="rc-ck-ctl" data-act="detail">Exit cook mode</button>`
+    + `<h2 class="rc-ck-name">${esc(r.name)}</h2>`
+    + `<div class="rc-ck-seg" role="group" aria-label="View">${seg('plain', 'Plain')}${seg('book', 'Book')}</div></header>`
+    + `<div class="rc-ck-prog" role="progressbar" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${s.index + 1}" aria-label="${esc(s.heading)}">${ticks}</div>`
+    + `<article class="rc-ck-page${dir}"><p class="label">${esc(s.heading)}</p><p class="rc-ck-text">${esc(s.text)}</p>`
+    + (book ? `<p class="rc-ck-folio">${s.index + 1}</p>` : '') + `</article>`
+    + `<nav class="rc-ck-bar"><button class="rc-ck-ctl big" data-act="step" data-d="-1"${s.first ? ' disabled' : ''}>Previous</button>`
+    + `<span class="rc-ck-count">${s.index + 1} of ${total}</span>`
+    + `<button class="rc-ck-ctl big pri" data-act="step" data-d="1"${s.last ? ' disabled' : ''}>Next</button></nav>`
+    + `<section class="rc-ck-timers"><div class="rc-ck-timers-hd"><p class="label">Timers</p><div class="rc-ck-presets">${presets}</div></div>`
+    + `<div data-timers>${timersHtml()}</div></section></div>`;
 }
 
 function render(): void {
@@ -581,7 +596,7 @@ function onClick(ev: Event): void {
       if (draft) { keep(draft.kind === 'recipe' ? draft.recipe : textRecipe(draft.text)); toTop(); }
       break;
     case 'discard-draft': draft = null; break;
-    case 'cook-view': store.set(COOK_VIEW_KEY, store.get(COOK_VIEW_KEY) === 'book' ? null : 'book'); break;
+    case 'cook-view': store.set(COOK_VIEW_KEY, b.dataset.view === 'book' ? 'book' : null); break;
     case 'open-draft':
       // the recipe page has its own Save (save-this); the draft goes once it is open
       if (draft?.kind === 'recipe') { go({ t: 'detail', r: draft.recipe }); draft = null; }
@@ -602,7 +617,11 @@ function onClick(ev: Event): void {
     case 'detail': if (screen.t === 'cook') go({ t: 'detail', r: screen.r }); break;
     case 'cook': if (screen.t === 'detail') go({ t: 'cook', r: screen.r, step: 0 }); break;
     case 'step':
-      if (screen.t === 'cook') screen = { ...screen, step: cookStep(screen.r, screen.step + Number(b.dataset.d)).index };
+      if (screen.t === 'cook') {
+        const next = cookStep(screen.r, screen.step + Number(b.dataset.d)).index;
+        turn = Math.sign(next - screen.step);
+        screen = { ...screen, step: next };
+      }
       break;
     case 'timer':
       if (screen.t === 'cook') addTimer(`Step ${screen.step + 1}`, Number(b.dataset.min) * 60e3);
