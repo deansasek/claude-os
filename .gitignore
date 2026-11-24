@@ -64,3 +64,6 @@ android/assets/model-en-us/
 
 # Recorded voice warm-up audio (may be a personal recording). Decide before publishing.
 android/assets/voice-warmup.raw
+
+# Generated page bundle (npm run build:page).
+/dist/

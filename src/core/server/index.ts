@@ -5,11 +5,13 @@ import http from 'node:http';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { stripTypeScriptTypes } from 'node:module';
 import { gzipSync } from 'node:zlib';
 import type { Binary, Route, ServerApp } from './app.ts';
 import { config } from './config.ts';
 import { HUB, PUBLIC, SRC } from './paths.ts';
+import { servedBytes, WEB_FILE } from './served.ts';
+
+export { WEB_FILE };
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -57,9 +59,7 @@ export function serveStatic(req: http.IncomingMessage, res: http.ServerResponse,
   let entry = staticCache.get(file);
   if (!entry || entry.key !== key) {
     const ext = path.extname(file);
-    const body: Buffer | string = ext === '.ts'
-      ? stripTypeScriptTypes(fs.readFileSync(file, 'utf8'))   // browser gets plain JS
-      : fs.readFileSync(file);
+    const body: Buffer | string = servedBytes(file);
     const etag = `"${createHash('sha1').update(body).digest('base64url')}"`;
     entry = { key, body, etag };
     staticCache.set(file, entry);
@@ -125,9 +125,6 @@ function readRaw(req: http.IncomingMessage, max: number): Promise<Buffer | null>
 
 // A Host header that names this PC by address, not by a domain name: IPv4, [IPv6] or localhost, with an optional port.
 const LITERAL_HOST = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-fA-F:.]+\]|localhost)(:\d{1,5})?$/;
-
-// Only browser-side code is served from src/: never anything in a server/ folder.
-export const WEB_FILE = /^\/src\/(main\.web\.ts|core\/web\/[\w./-]+\.(ts|html)|apps\/[\w-]+\/(web\/[\w./-]+\.ts|view\.html|app\.css|manifest\.ts|api\.ts))$/;
 
 /** The file a URL path serves, or null when the path may not be served (server code, traversal, anything outside the web set). */
 export function resolveStatic(urlPath: string): string | null {
