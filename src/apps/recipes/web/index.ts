@@ -429,9 +429,8 @@ function discoverHtml(): string {
   const search = `<div class="rc-disc">`
     + `<button class="rc-search" data-act="search">${LENS}<span class="rc-search-text${query ? ' on' : ''}">${esc(query || 'What are we cooking?')}</span></button>`
     + (query ? `<button class="rc-btn quiet" data-act="clear">Clear</button>` : '')
-    + `</div>`
-    + `<div class="rc-claude"><span class="rc-kicker">With Claude</span>`
-    + `<button class="rc-btn" data-act="ask-time">Suggest for tonight</button><button class="rc-btn" data-act="create">Create with Claude</button></div>`;
+    + `<button class="rc-btn" data-act="ask-time">Suggest for tonight</button><button class="rc-btn" data-act="create">Create with Claude</button>`
+    + `</div>`;
   const saved = recipes.length
     ? `<ul class="rc-row-cards">${recipes.map((r, i) => cardHtml(r, 'saved', i)).join('')}</ul>`
     : '<p class="rc-empty">Tap the heart on a recipe to keep it here.</p>';
