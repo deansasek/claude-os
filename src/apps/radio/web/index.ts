@@ -151,16 +151,17 @@ function loadList(key: string): Station[] {
 
 function saveFavs(): void { store.set(FAVS_KEY, JSON.stringify(favs)); syncMedia(); }
 
-// The drawer's media card: the station on the air, its state line, and the buttons. Next and previous need two favourites.
+// The drawer's media card: the station on the air, its state line, and the buttons. Stop is always offered while a station plays.
+// Next and previous need two favourites (one would replay the same station), so the card offers skip only then.
 let mediaKey = '';   // the last card sent, so the drawer repaints only when it changes
 function syncMedia(): void {
   const m = barModel(current, state, streamTitle, favs);
-  const info = m.live ? { title: m.title, subtitle: m.subtitle, art: m.art, playing: m.playing } : null;
+  const info = m.live ? { title: m.title, subtitle: m.subtitle, art: m.art, playing: m.playing, buffering: m.buffering } : null;
   const key = JSON.stringify([info, m.canStep]);
   if (key === mediaKey) return;
   mediaKey = key;
   setNowPlaying(info);
-  setMediaActions(info ? { toggle, ...(m.canStep ? { next: () => step(1), prev: () => step(-1) } : {}) } : null);
+  setMediaActions(info ? { toggle, stop, ...(m.canStep ? { next: () => step(1), prev: () => step(-1) } : {}) } : null);
 }
 const isFav = (id: string): boolean => favs.some(f => f.id === id);
 

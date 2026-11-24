@@ -73,7 +73,7 @@ test('next and previous need two or more favourites', () => {
 
 test('the bar model: idle shows the blank line; buffering and playing carry the title line', () => {
   const idle = barModel(null, 'off', '', []);
-  assert.deepEqual(idle, { title: 'Nothing playing', subtitle: 'Pick a station to listen', art: '', playing: false, canStep: false, live: false });
+  assert.deepEqual(idle, { title: 'Nothing playing', subtitle: 'Pick a station to listen', art: '', playing: false, buffering: false, canStep: false, live: false });
   const buffering = barModel(st('a'), 'buffering', '', favs);
   assert.equal(buffering.subtitle, 'Tuning in…');
   assert.equal(buffering.playing, true);
