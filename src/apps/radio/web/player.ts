@@ -48,3 +48,31 @@ export function volumeFrom(value: unknown): number {
   const n = Math.round(Number(value));
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 80;
 }
+
+/** The sleep timer's choices in minutes; 0 is off. */
+export const SLEEP_CHOICES = [0, 15, 30, 60] as const;
+
+/** When the sleep timer stops the radio (ms since 1970), or null for off or a length that is not a choice. */
+export function sleepEnd(now: number, minutes: number): number | null {
+  if (!minutes || !(SLEEP_CHOICES as readonly number[]).includes(minutes)) return null;
+  return now + minutes * 60_000;
+}
+
+/** Whole minutes left on the sleep timer, rounded up (0 once it is due). */
+export function sleepLeft(end: number, now: number): number {
+  return Math.max(0, Math.ceil((end - now) / 60_000));
+}
+
+/** The stream title from an ICY metadata block ("StreamTitle='Artist - Song';"), or '' when there is none. */
+export function icyTitle(meta: string): string {
+  const m = meta.match(/StreamTitle='([\s\S]*?)';/);
+  return m ? m[1].replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 120) : '';
+}
+
+/** A clear line for why a station did not play, from the audio element's error code (MediaError). */
+export function failMessage(code: number | undefined): string {
+  if (code === 4) return 'This station\'s stream format doesn\'t play here. Try another.';
+  if (code === 2) return 'This station is not reachable right now. Try another.';
+  if (code === 3) return 'This station\'s stream broke off. Try again or pick another.';
+  return 'This station didn\'t play. Try another.';
+}
