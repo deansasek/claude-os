@@ -25,6 +25,7 @@ const PENDING_KEY = 'recipes.pending';         // when the last Claude request w
 const PENDING_KIND_KEY = 'recipes.pendingKind'; // which request: create, adapt or tonight
 const TIMERS_KEY = 'recipes.timers';
 const PANTRY_KEY = 'recipes.pantry';         // the “What do you have” chips: { name, kind }
+const COOK_VIEW_KEY = 'recipes.cookView';    // 'book' for the cookbook page in cook mode; unset for the plain view
 const TIMER_MINUTES = [5, 10, 15, 30];
 const TONIGHT_TIMES = ['20 minutes', '40 minutes', '1 hour', ''];   // '' is no limit
 const ICON = appIcon('recipes');
@@ -529,10 +530,17 @@ function detailHtml(r: Recipe): string {
 // ---------- cook mode ----------
 function cookHtml(r: Recipe, step: number): string {
   const s = cookStep(r, step);
+  const book = store.get(COOK_VIEW_KEY) === 'book';
   const presets = TIMER_MINUTES.map(m => `<button class="rc-btn" data-act="timer" data-min="${m}">${lengthWords(m * 60e3)}</button>`).join('');
-  return `<div class="rc-top"><button class="rc-btn" data-act="detail">Exit cook mode</button>`
+  // the book view: one step on a page, turned with Previous and Next; the plain view is the same step in large text
+  const view = `<button class="rc-btn quiet" data-act="cook-view" aria-pressed="${book}">${book ? 'Plain view' : 'Book view'}</button>`;
+  const page = book
+    ? `<section class="rc-book"><p class="rc-kicker">${esc(s.heading)}</p><p class="rc-book-text">${esc(s.text)}</p>`
+      + `<p class="rc-book-pg">${s.index + 1} of ${r.steps.length}</p></section>`
+    : `<p class="rc-kicker">${esc(s.heading)}</p><p class="rc-cook">${esc(s.text)}</p>`;
+  return `<div class="rc-top"><button class="rc-btn" data-act="detail">Exit cook mode</button>${view}`
     + `<span class="rc-sub">${esc(r.name)}</span></div>`
-    + `<p class="rc-kicker">${esc(s.heading)}</p><p class="rc-cook">${esc(s.text)}</p>`
+    + page
     + `<div class="rc-actions"><button class="rc-btn big" data-act="step" data-d="-1" ${s.first ? 'disabled' : ''}>Previous</button>`
     + `<button class="rc-btn big pri" data-act="step" data-d="1" ${s.last ? 'disabled' : ''}>Next</button></div>`
     + `<div class="rc-timers-add"><span class="rc-sub">Timer for this step</span><div class="rc-actions">${presets}</div></div>`
@@ -573,6 +581,7 @@ function onClick(ev: Event): void {
       if (draft) { keep(draft.kind === 'recipe' ? draft.recipe : textRecipe(draft.text)); toTop(); }
       break;
     case 'discard-draft': draft = null; break;
+    case 'cook-view': store.set(COOK_VIEW_KEY, store.get(COOK_VIEW_KEY) === 'book' ? null : 'book'); break;
     case 'open-draft':
       // the recipe page has its own Save (save-this); the draft goes once it is open
       if (draft?.kind === 'recipe') { go({ t: 'detail', r: draft.recipe }); draft = null; }
