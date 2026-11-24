@@ -9,7 +9,8 @@ import {
 } from 'node:fs';
 import { delimiter, dirname, join, relative, sep } from 'node:path';
 import {
-  androidJar, binPath, buildTools, fail, here, jdkTool, keystorePath, keystoreProblem, lineagePath, newKeystorePath, platformTools, run, tools,
+  androidJar, binPath, buildTools, fail, here, jdkTool, keystorePath, keystoreProblem, lineagePath, newKeystorePath, pageAssetEntries,
+  pageBundleProblem, platformTools, run, tools,
 } from './toolchain.ts';
 
 function args(argv: string[]): { install: boolean; device: string } {
@@ -54,6 +55,10 @@ function main(): void {
   // the signing key must already exist (stop before any work; never make a new one)
   const keyProblem = keystoreProblem();
   if (keyProblem) fail(keyProblem);
+  // the web page bundle (scripts/build-page.ts) goes into the APK as assets/page/; stop if it is not whole
+  run(process.execPath, ['--disable-warning=ExperimentalWarning', join(here, '..', 'scripts', 'build-page.ts')], 'npm run build:page');
+  const pageProblem = pageBundleProblem();
+  if (pageProblem) fail(pageProblem);
   const out = join(here, 'build');
   rmSync(out, { recursive: true, force: true });
   const gen = join(out, 'gen');
@@ -136,6 +141,14 @@ function main(): void {
       cpSync(file, target);
     }
   }
+  // the web page bundle: every file under dist/page goes to assets/page/ (the manifest is page/manifest.json)
+  const pageFiles = pageAssetEntries();
+  for (const entry of pageFiles) {
+    const target = join(stageRest, 'assets', ...entry.to.split('/'));
+    mkdirSync(dirname(target), { recursive: true });
+    cpSync(entry.from, target);
+  }
+  console.log(`page bundle in the APK: ${pageFiles.length} files under assets/page/`);
   run(jarTool, ['-u', '-f', unsigned, '-C', stageRest, '.'], 'jar (libs and assets)');
 
   run(zipalign, ['-p', '-f', '4', unsigned, join(out, 'aligned.apk')], 'zipalign');

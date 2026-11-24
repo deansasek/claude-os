@@ -2,7 +2,9 @@
 // The tools go into tools/ (see setup-tools.ts). Nothing is installed system-wide.
 
 import { spawnSync } from 'node:child_process';
-import { chmodSync, createWriteStream, existsSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
+import {
+  chmodSync, createWriteStream, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync,
+} from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yauzl from 'yauzl';
@@ -26,6 +28,42 @@ export const keystorePath = join(here, 'hub.keystore');
 export const newKeystorePath = join(here, 'hub-new.keystore');
 /** The signing-certificate lineage: proof that the original key hands over to the new key. Public certificates only. */
 export const lineagePath = join(here, 'hub.lineage');
+
+/** The web page bundle that scripts/build-page.ts writes (npm run build:page). The APK holds it under assets/page/. */
+export const pageBundleDir = join(here, '..', 'dist', 'page');
+
+/**
+ * Returns the message to stop the build with when the page bundle is incomplete, or null when it is whole.
+ * The bundle needs index.html, manifest.json, and every file that manifest.json lists.
+ */
+export function pageBundleProblem(dir: string = pageBundleDir): string | null {
+  for (const name of ['index.html', 'manifest.json']) {
+    if (!existsSync(join(dir, name))) {
+      return `dist/page/${name} is missing. Run npm run build:page, then build the APK again.`;
+    }
+  }
+  let files: { path: string }[];
+  try {
+    files = (JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')) as { files?: { path: string }[] }).files ?? [];
+  } catch {
+    return 'dist/page/manifest.json is not valid JSON. Run npm run build:page again.';
+  }
+  for (const f of files) {
+    if (!existsSync(join(dir, f.path))) {
+      return `dist/page${f.path} is listed in manifest.json but missing. Run npm run build:page again.`;
+    }
+  }
+  return null;
+}
+
+/** Every file of the page bundle as an APK asset: `from` is the file on disk, `to` its path in the APK (page/...). */
+export function pageAssetEntries(dir: string = pageBundleDir): { from: string; to: string }[] {
+  return (readdirSync(dir, { recursive: true }) as string[])
+    .map((p) => p.split(sep).join('/'))
+    .filter((p) => statSync(join(dir, p)).isFile())
+    .sort()
+    .map((p) => ({ from: join(dir, p), to: `page/${p}` }));
+}
 
 /**
  * Returns the message to stop the build with when a signing file is missing, or null when all exist.
