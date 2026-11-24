@@ -25,7 +25,9 @@ export function stepClock(hhmm: string, minutes: number): string {
 export function shiftEnd(oldStart: string, newStart: string, end: string): string {
   const s = minutesOf(oldStart), e = minutesOf(end);
   const length = s != null && e != null && e > s ? e - s : 30;
-  return stepClock(newStart, length);
+  // the end stops at 23:59 rather than wrapping past midnight (a 23:45 start with a 30-minute length is 23:59, not 00:15)
+  const total = Math.min((minutesOf(newStart) ?? 0) + length, MINUTES_IN_DAY - 1);
+  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
 }
 
 /**
