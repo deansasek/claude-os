@@ -471,9 +471,9 @@
 
 /* ---- another session is waiting: a chip in the header ---- */
 .nudge { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 14px; border-radius: 99px; min-width: 0;
-  background: var(--blue); color: #fff; font: 500 13px var(--sans); white-space: nowrap; animation: nudge 2.4s ease-in-out infinite; }
+  background: var(--clay); color: var(--bg); font: 500 13px var(--sans); white-space: nowrap; animation: nudge calc(var(--dur-calm) * 2) var(--ease-std) infinite; }
 .nudge[hidden] { display: none; }
-.nudge i { width: 7px; height: 7px; border-radius: 50%; background: #fff; }
+.nudge i { width: 7px; height: 7px; border-radius: 50%; background: var(--bg); }
 .nudge span { opacity: .8; }
 @keyframes nudge { 0%, 70%, 100% { transform: none; } 78% { transform: translateY(-3px); } 86% { transform: none; } 92% { transform: translateY(-1.5px); } }
 
