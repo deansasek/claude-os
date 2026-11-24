@@ -906,7 +906,7 @@ function tick(): void {
   $('ckDayNow').style.left = `${pct}%`;
 
   // the timer
-  // the timers: one that has ended leaves the list. The first rings; the others get a notice.
+  // the timers: one that has ended leaves the list. The first rings unless an alarm or timer already rings; the others get a notice.
   const nowMs = Date.now();
   const ended = timers.filter(x => x.end && x.end <= nowMs);
   if (ended.length) {
@@ -915,7 +915,7 @@ function tick(): void {
     saveTimers();
     ended.forEach((x, i) => {
       const total = x.dur, late = nowMs - x.end!, lbl = `${x.name} · `;
-      if (i === 0 && late < 5 * 60e3) ring({ kind: 'timer', id: null, started: Date.now(), title: 'Time’s up', big: dur(0), sub: `${lbl}Your ${lengthWords(total)} timer is done.` });
+      if (i === 0 && late < 5 * 60e3 && !ringing) ring({ kind: 'timer', id: null, started: Date.now(), title: 'Time’s up', big: dur(0), sub: `${lbl}Your ${lengthWords(total)} timer is done.` });
       else alertFor('timer', { title: 'Timer finished', body: `${lbl}Your ${lengthWords(total)} timer finished at ${hm(new Date(x.end! + offset))}.`, app: 'clock' }, undefined, ctx.isVisible());
     });
     renderTimer();
