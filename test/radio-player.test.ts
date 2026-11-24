@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Station } from '../src/apps/radio/api.ts';
 import { readFileSync } from 'node:fs';
-import { initial, railLabel, stationHue, stepFavourite, titleLine, volumeFrom, volumeFromDevice, canStepFavourites } from '../src/apps/radio/web/player.ts';
+import { initial, railLabel, stationHue, stepFavourite, titleLine, volumeFrom, volumeFromDevice, canStepFavourites, barModel } from '../src/apps/radio/web/player.ts';
 
 const st = (id: string): Station => ({ id, name: `Station ${id}`, url: `https://${id}.example/s`, country: '', codec: '', bitrate: 0 });
 const favs = [st('a'), st('b'), st('c')];
@@ -68,4 +68,25 @@ test('next and previous need two or more favourites', () => {
   assert.equal(canStepFavourites([]), false);
   assert.equal(canStepFavourites([st('a')]), false);
   assert.equal(canStepFavourites(favs), true);
+});
+
+test('the bar model: idle shows the blank line; buffering and playing carry the title line', () => {
+  const idle = barModel(null, 'off', '', []);
+  assert.deepEqual(idle, { title: 'Nothing playing', subtitle: 'Pick a station to listen', art: '', playing: false, canStep: false, live: false });
+  const buffering = barModel(st('a'), 'buffering', '', favs);
+  assert.equal(buffering.subtitle, 'Tuning in…');
+  assert.equal(buffering.playing, true);
+  assert.equal(buffering.live, true);
+  const playing = barModel(st('a'), 'playing', ' Miles Davis – So What ', favs);
+  assert.equal(playing.title, 'Station a');
+  assert.equal(playing.subtitle, 'Miles Davis – So What');
+  assert.equal(playing.playing, true);
+});
+
+test('the bar model is not live after Stop, and steps only with two favourites', () => {
+  const stopped = barModel(st('a'), 'off', '', favs);
+  assert.equal(stopped.live, false);
+  assert.equal(stopped.subtitle, 'Stopped');
+  assert.equal(barModel(st('a'), 'paused', '', [st('a')]).canStep, false);
+  assert.equal(barModel(st('a'), 'paused', '', [st('a'), st('b')]).canStep, true);
 });

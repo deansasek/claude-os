@@ -15,7 +15,7 @@ import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '
 import { manifest } from '../manifest.ts';
 import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, nextChoice } from './catalogue.ts';
 import {
-  type PlayState, SLEEP_CHOICES, canStepFavourites, failMessage, initial, railLabel, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
+  type PlayState, SLEEP_CHOICES, barModel, failMessage, initial, railLabel, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
   volumeFromDevice,
 } from './player.ts';
 import { httpsUrl, playable, playableStations } from './stations.ts';
@@ -89,16 +89,13 @@ function saveFavs(): void { store.set(FAVS_KEY, JSON.stringify(favs)); syncMedia
 // The drawer's media card: the station on the air, its state line, and the buttons. Next and previous need two favourites.
 let mediaKey = '';   // the last card sent, so the drawer repaints only when it changes
 function syncMedia(): void {
-  const s = current;
-  const info = s && state !== 'off'
-    ? { title: s.name, subtitle: titleLine(true, state, streamTitle), art: s.favicon ?? '', playing: state === 'playing' || state === 'buffering' }
-    : null;
-  const steps = canStepFavourites(favs);
-  const key = JSON.stringify([info, steps]);
+  const m = barModel(current, state, streamTitle, favs);
+  const info = m.live ? { title: m.title, subtitle: m.subtitle, art: m.art, playing: m.playing } : null;
+  const key = JSON.stringify([info, m.canStep]);
   if (key === mediaKey) return;
   mediaKey = key;
   setNowPlaying(info);
-  setMediaActions(info ? { toggle, ...(steps ? { next: () => step(1), prev: () => step(-1) } : {}) } : null);
+  setMediaActions(info ? { toggle, ...(m.canStep ? { next: () => step(1), prev: () => step(-1) } : {}) } : null);
 }
 const isFav = (id: string): boolean => favs.some(f => f.id === id);
 
