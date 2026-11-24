@@ -12,6 +12,10 @@ test('Turn off screen turns the screen off at once and closes the menu', () => {
   assert.deepEqual(powerStep('menu', 'screen-off'), { next: null, call: 'screenOff' });
 });
 
+test('Screenshot closes the menu and asks the tablet for a screenshot', () => {
+  assert.deepEqual(powerStep('menu', 'screenshot'), { next: null, call: 'screenshot' });
+});
+
 test('Cancel closes the menu and calls nothing', () => {
   assert.deepEqual(powerStep('menu', 'cancel'), { next: null, call: null });
   assert.deepEqual(powerStep('confirm', 'cancel'), { next: null, call: null });

@@ -1019,6 +1019,12 @@ public class Bridge {
     return CameraView.of(act, web, this).capture(id, sound);
   }
 
+  /** The power menu's Screenshot: ClaudeOS's own window, uploaded to the PC's Photos library (Screenshot.java). */
+  @JavascriptInterface public String screenshot(String id) {
+    if (!allowed) return DENIED;
+    return Screenshot.take(act, act.serverOrigin(), id);
+  }
+
   // ---------- Claude Keyboard (ime/ClaudeKeyboard.java): the tablet's keyboard in every app ----------
   /** {enabled, isDefault, canSet}: whether Claude Keyboard is switched on, is the default, and this app may change that. */
   @JavascriptInterface public String keyboardStatus() {
