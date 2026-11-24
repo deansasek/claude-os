@@ -16,6 +16,7 @@
 //
 // Preferences are per screen (localStorage), so the Nest Hub and the tablet can differ.
 import { esc, getJson, report, store } from './dom.ts';
+import { appLabel, groupNotices, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { device, onTablet, onVolume, voice } from './device.ts';
 import type { Battery } from './device.ts';
 import { clock, untilText } from './format.ts';
@@ -197,7 +198,7 @@ export function chime(level = 0): void {
  */
 export function alertFor(kind: AlertKind | 'break', n: Notice, way?: AlertWay, appVisible = false): void {
   const w: AlertWay = way ?? (kind === 'break' ? prefs.breakWay : prefs.alerts[kind]);
-  if (w === 'off' || prefs.dnd) { notify(n, true); return; }
+  if (w === 'off' || prefs.dnd || (n.app && mutedApps().includes(n.app))) { notify(n, true); return; }
   if (w === 'banner') { notify(n, appVisible); return; }   // the app that sent it is on screen: no banner over it
   const quiet = quietNow();
   if (!quiet && w === 'chime' && prefs.chimes) chime(kind === 'approval' ? 1 : 0);
@@ -730,7 +731,11 @@ function bindCC(stage: HTMLElement): void {
   }
   $s('ccClear').addEventListener('click', clearNotifications);
   $s('ccAll').addEventListener('click', () => openSettings('notifications'));
+  swipeNotices($s('ccList'));
   $s('ccList').addEventListener('click', e => {
+    const mute = (e.target as HTMLElement).closest<HTMLElement>('[data-mute]')?.dataset.mute;
+    if (mute !== undefined) { toggleMuteApp(mute); return; }
+    if (swipeMoved) return;
     const app = (e.target as HTMLElement).closest<HTMLElement>('[data-app]')?.dataset.app;
     if (app) { closeControlCenter(); hooks.openApp(app); }
   });
@@ -751,6 +756,15 @@ function saveNotes(): void {
 export const notifications = (): readonly StoredNotice[] => notes;
 export function clearNotifications(): void { notes = []; saveNotes(); report('notes:clear'); }
 export function onNotificationsChange(fn: () => void): void { noteListeners.push(fn); }
+/** Apps muted in the shade (Settings → Notifications, or the mute button on a group): their notices land in the list only. */
+export const mutedApps = (): string[] => parseMutedApps(store.get('os.mutedApps'));
+export function toggleMuteApp(app: string): void {
+  store.set('os.mutedApps', JSON.stringify(toggleMutedApp(mutedApps(), app)));
+  saveNotes();   // repaints the shade and Settings
+  sysChanged();
+}
+/** Remove one notice from the list (a swipe). Its time is its key. */
+export function dismissNotice(at: number): void { notes = withoutNotice(notes, at); saveNotes(); }
 /** The icon an app shows in the rail (for notification rows elsewhere). */
 export const appIcon = (id: string): string => hooks?.appIcon(id) || '';
 export const openApp = (id: string): void => hooks?.openApp(id);
@@ -770,15 +784,55 @@ export function ago(at: number): string {
 const GO = '<i class="cc-go" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></i>';
 
 export function noteRow(n: StoredNotice, cls = 'cc-note'): string {
-  return `<button class="${cls}" data-app="${esc(n.app || '')}">
+  return `<button class="${cls}" data-at="${n.at}" data-app="${esc(n.app || '')}">
       <span class="cc-note-ic">${n.icon || (n.app ? appIcon(n.app) : '')}</span>
       <span class="cc-note-txt"><b>${esc(n.title)}</b>${n.body ? `<span>${esc(n.body)}</span>` : ''}</span>
       <em>${ago(n.at)}</em>${n.app ? GO : ''}
     </button>`;
 }
 
+/** The rows grouped by app, each group headed by its app and a Mute (or Unmute) button. Notices with no app have no button. */
+export function groupedNotesHtml(list: readonly StoredNotice[], cls = 'cc-note'): string {
+  const muted = mutedApps();
+  return groupNotices(list).map(g => {
+    const head = g.app
+      ? `<div class="nt-group"><span>${esc(appLabel(g.app))}</span><button class="nt-mute hit" data-mute="${esc(g.app)}">${muted.includes(g.app) ? 'Unmute' : 'Mute'}</button></div>`
+      : '';
+    return head + g.items.map(n => noteRow(n, cls)).join('');
+  }).join('');
+}
+
+/** Swipe a notice sideways to remove it from the list. A tap still opens its app. */
+let swipeMoved = false;
+export function swipeNotices(root: HTMLElement): void {
+  let id = -1, x0 = 0, dx = 0, row: HTMLElement | null = null;
+  root.addEventListener('pointerdown', e => {
+    row = (e.target as HTMLElement).closest<HTMLElement>('[data-at]');
+    if (!row) return;
+    id = e.pointerId; x0 = e.clientX; dx = 0; swipeMoved = false;
+  });
+  root.addEventListener('pointermove', e => {
+    if (!row || e.pointerId !== id) return;
+    dx = e.clientX - x0;
+    if (Math.abs(dx) > 8) swipeMoved = true;
+    if (swipeMoved) { row.style.transform = `translateX(${dx}px)`; row.style.opacity = String(1 - Math.min(.6, Math.abs(dx) / 300)); }
+  });
+  const end = (e: PointerEvent): void => {
+    if (!row || e.pointerId !== id) return;
+    const r = row, at = +(r.dataset.at || 0);
+    row = null; id = -1;
+    if (swipeMoved && Math.abs(dx) > 90) {
+      r.style.transform = `translateX(${dx < 0 ? -420 : 420}px)`; r.style.opacity = '0';
+      setTimeout(() => dismissNotice(at), 160);
+    } else { r.style.transform = ''; r.style.opacity = ''; }
+    setTimeout(() => { swipeMoved = false; }, 0);   // the click that follows a swipe does nothing
+  };
+  root.addEventListener('pointerup', end);
+  root.addEventListener('pointercancel', end);
+}
+
 function paintNotes(): void {
-  $s('ccList').innerHTML = notes.length ? notes.slice(0, 3).map(n => noteRow(n)).join('') : '<div class="cc-none">You’re all caught up.</div>';
+  $s('ccList').innerHTML = notes.length ? groupedNotesHtml(notes.slice(0, 3)) : '<div class="cc-none">You’re all caught up.</div>';
   $s('ccClear').hidden = !notes.length;
   $s('ccAll').hidden = !onTablet || notes.length <= 3;
 }
@@ -790,7 +844,7 @@ function hideBanner(): void { clearTimeout(bannerTimer); $s('banner').classList.
 export function notify(n: Notice, appVisible = false): void {
   notes = [{ ...n, at: Date.now() }, ...notes.filter(x => x.title !== n.title || x.app !== n.app)];
   saveNotes();
-  if (appVisible || !prefs.banners) return;
+  if (appVisible || !prefs.banners || (n.app && mutedApps().includes(n.app))) return;
   wake();
   if (ccOpen) return;   // it's already in the open list
   const b = $s('banner');

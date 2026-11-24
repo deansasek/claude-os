@@ -582,6 +582,10 @@
   .cc-note, .banner { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 4px; cursor: pointer; }
   .cc-note + .cc-note { border-top: 1px solid var(--line); }
   .cc-note:active { background: var(--card); border-radius: 10px; }
+  .cc-note, .st-nrow { touch-action: pan-y; transition: transform .16s, opacity .16s; }   /* a sideways swipe removes it (system.ts swipeNotices) */
+  .nt-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 4px 2px; font: 600 12px/16px var(--sans); color: var(--t4); letter-spacing: .04em; text-transform: uppercase; }
+  .nt-mute { all: unset; box-sizing: border-box; position: relative; padding: 4px 12px; border-radius: 99px; font: 500 13px/18px var(--sans); letter-spacing: 0; text-transform: none; color: var(--t3); cursor: pointer; }
+  .nt-mute:active { background: var(--card); }
   .cc-note-ic { display: inline-flex; width: 36px; height: 36px; flex: none; align-items: center; justify-content: center; border-radius: 10px;
     background: var(--card); border: 1px solid var(--line); color: var(--t2); }
   .cc-note-ic svg { width: 20px; height: 20px; }
