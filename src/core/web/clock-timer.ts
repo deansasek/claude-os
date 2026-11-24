@@ -29,19 +29,22 @@ function checked(v: unknown, i: number): ClockTimer | null {
 const parseJson = (raw: string | null): unknown => { try { return JSON.parse(raw || 'null'); } catch { return null; } };
 
 /**
- * The list from the stored text. When there is no list but an earlier single timer is stored, that timer becomes the
- * first entry and `migrate` is true, so the caller saves the list and removes the old key.
+ * The list from the stored text. When there is no list but an earlier single timer is stored, the caller saves the
+ * list and removes the old key (`migrate`). A running or paused earlier timer becomes the first entry. An idle one has
+ * no entry: its length comes back as `draft` for the Clock's dial, and the old key is still removed.
  */
-export function parseClockTimers(list: string | null, legacy: string | null): { timers: ClockTimer[]; migrate: boolean } {
+export function parseClockTimers(list: string | null, legacy: string | null): { timers: ClockTimer[]; migrate: boolean; draft: number | null } {
   const arr = parseJson(list);
   if (Array.isArray(arr)) {
-    return { timers: arr.map((v, i) => checked(v, i)).filter((t): t is ClockTimer => t !== null), migrate: false };
+    return { timers: arr.map((v, i) => checked(v, i)).filter((t): t is ClockTimer => t !== null), migrate: false, draft: null };
   }
   const old = parseJson(legacy);
-  if (!old || typeof old !== 'object') return { timers: [], migrate: false };
+  if (!old || typeof old !== 'object') return { timers: [], migrate: false, draft: null };
   const o = old as Record<string, unknown>;
   const t = checked({ ...o, id: 'timer', name: typeof o.label === 'string' && o.label ? o.label : undefined }, 0);
-  return { timers: t ? [t] : [], migrate: t !== null };
+  if (t && (t.end != null || t.left != null)) return { timers: [t], migrate: true, draft: null };
+  const draft = isNum(o.dur) && o.dur >= 1e3 ? o.dur : null;
+  return { timers: [], migrate: draft != null, draft };
 }
 
 /** The timers as stored now, read only (nothing is saved). */

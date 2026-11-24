@@ -92,11 +92,6 @@ function runTablet(op: 'timer' | 'alarm' | 'reminder' | 'notify', a: Record<stri
   if (op === 'timer') {
     const ms = num(a.ms);
     if (!(ms >= 60e3 && ms <= 720 * 60e3)) return { ok: false, data: 'A timer can be from 1 to 720 minutes.' };
-    const left = clock.timerLeft();
-    if (left != null) {
-      const mins = Math.ceil(left / 60e3);
-      return { ok: false, data: `The tablet’s Clock already has a timer set (${mins} minute${mins === 1 ? '' : 's'} left) and it holds one timer at a time. Set an alarm or a reminder for the time instead, or ask the user to stop that timer.` };
-    }
     clock.startTimer(ms, label);
     const ends = new Date(Date.now() + ms);
     return { ok: true, data: `Timer set for ${str(a.words) || `${Math.round(ms / 60e3)} minutes`}${label ? ` (${label})` : ''}. It rings at ${hhmm(ends.getHours(), ends.getMinutes())}.` };
