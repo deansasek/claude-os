@@ -515,7 +515,7 @@ function renderCatalogue(): void {
   const isHome = view.kind === 'home';
   const tabOf = isHome ? 'home' : view.kind === 'top' ? 'top' : view.kind === 'facets' || view.kind === 'browse' ? view.facet : '';
   for (const b of $('rdTabs').querySelectorAll<HTMLElement>('[data-tab]')) b.classList.toggle('on', b.dataset.tab === tabOf);
-  $('rdBack').hidden = isHome || (view.kind === 'facets' && !view.pick);
+  $('rdBack').hidden = isHome;
   $('rdBarRow').hidden = isHome;
   $('rdRes').hidden = isHome;
 
@@ -543,10 +543,10 @@ function renderCatalogue(): void {
   else if (listState === 'loading' || listState === 'idle') emptyText = 'Looking for stations…';
   else if (listState === 'error') emptyText = listError || 'The radio directory did not answer.';
   else if (view.kind === 'facets') {
-    html = facets.length ? `<div class="rd-grid">${facets.map(facetCard).join('')}</div>` : '';
+    html = facets.length ? `<div class="rd-grid rd-facet-grid">${facets.map(facetCard).join('')}</div>` : '';
     if (!facets.length) emptyText = 'The directory sent no list.';
   } else {
-    html = list.length ? `<div class="rd-grid">${list.map(tile).join('')}</div>` : '';
+    html = list.length ? `<div class="rd-grid rd-station-grid">${list.map(tile).join('')}</div>` : '';
     if (!list.length) emptyText = view.kind === 'search' ? 'No stations match. Try another name or fewer filters.' : 'No stations found.';
   }
   setHtml($('rdRes'), html);
