@@ -9,7 +9,7 @@ import { esc, getJson, onStore, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
-import { alertFor, openApp } from '../../../core/web/system.ts';
+import { alertFor } from '../../../core/web/system.ts';
 import { dur, lengthWords } from '../../clock/web/timer-text.ts';
 import { nativeBusy, nativeOn, nativeSend, nativeView } from '../../claude/web/native.ts';
 import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
@@ -124,8 +124,7 @@ function askClaude(prompt: string, kind: PendingKind): void {
   if (claudeReady()) {
     try {
       nativeSend(prompt);
-      setPending(new Date().toISOString(), kind);
-      openApp('claude');
+      setPending(new Date().toISOString(), kind);   // stay in Recipes: the reply shows on this page (checkReply)
     } catch {
       msg = 'Claude could not start on this tablet.';
     }
