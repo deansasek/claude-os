@@ -17,6 +17,7 @@
 import { getJson, postJson, store } from '../../../core/web/dom.ts';
 import { voice } from '../../../core/web/device.ts';
 import { calendarCommand, getClock, provideRoutines, weatherToday } from '../../../core/web/voice-commands.ts';
+import { readLists } from '../../lists/web/readers.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
 import { prefs, setFocus, sleep as showScreenSaver } from '../../../core/web/system.ts';
 import type { HaResult } from '../../home-assistant/api.ts';
@@ -113,10 +114,9 @@ async function doStep(s: Step, deadline: number): Promise<string> {
     }
     case 'lists': {
       // the open items of one list, read aloud (the same lists the Lists app and voice use)
-      type Lists = { lists: { id: string; name: string; items: { text: string; done: boolean }[] }[] };
-      const r = await until(getJson<Lists>('/api/lists/lists'), deadline, null);
-      if (!r) return 'The lists didn’t answer in time.';
-      const l = r.lists.find(x => x.id === s.list);
+      const all = await until(readLists(), deadline, null);
+      if (!all) return 'The lists didn’t answer in time.';
+      const l = all.find(x => x.id === s.list);
       if (!l) return 'That list isn’t there.';
       const open = l.items.filter(i => !i.done).map(i => i.text);
       if (!open.length) return `Nothing left on ${l.name}.`;

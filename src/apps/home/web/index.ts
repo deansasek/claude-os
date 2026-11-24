@@ -22,6 +22,7 @@ import { notesRow } from './notes-row.ts';
 import { busyOf, needsYou, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
+import { readLists } from '../../lists/web/readers.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, readClockTimers } from '../../../core/web/clock-timer.ts';
 
 let ctx: AppContext;
@@ -362,8 +363,8 @@ async function cachedConnectorCal(): Promise<{ cal: CalEvents | null; miss: bool
 let lists: { items: { done: boolean; text: string }[] } | null = null, listsFailed = false;
 async function loadLists(): Promise<void> {
   try {
-    const r = await getJson<{ lists: { id: string; items: { done: boolean; text: string }[] }[] }>('/api/lists/lists');
-    lists = r.lists.find(l => l.id === 'shopping') ?? null;
+    const all = await readLists();
+    lists = all.find(l => l.id === 'shopping') ?? null;
     listsFailed = false;
   } catch { listsFailed = true; }
   paintLists();

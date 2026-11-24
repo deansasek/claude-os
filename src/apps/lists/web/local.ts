@@ -7,9 +7,14 @@ import {
   type FamilyList, type ListItem, type ListsResult,
 } from '../api.ts';
 
+/** The localStorage key of the tablet's copy of the lists. Read by the Lists page and by readers.ts. */
+export const COPY_KEY = 'lists.copy';
+/** The changes the PC does not have yet, oldest first. Sent by the Lists page (index.ts flush). */
+export const QUEUE_KEY = 'lists.queue';
+
 export type OpPath = 'add' | 'tick' | 'remove' | 'edit' | 'clear-done' | 'new-list' | 'delete-list';
 /** One change, as the route and body the PC takes (server/index.ts). */
-export interface Op { path: OpPath; body: Record<string, unknown> }
+export interface Op { path: OpPath; body: Record<string, unknown>; key?: string }   // key: this entry in lists.queue (queue.ts)
 
 /** A new item id, made on the tablet; the PC keeps it when it is free (server/store.ts addItem). */
 export const newItemId = (): string => `i${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -78,4 +83,25 @@ export function applyOp(lists: FamilyList[], op: Op): ListsResult {
 /** The PC gave an item or list another id than the tablet's (the same text was already there): later changes use the PC's. */
 export function remapIds(queue: Op[], key: 'id' | 'list', from: unknown, to: string): void {
   for (const op of queue) if (op.body[key] === from) op.body[key] = to;
+}
+
+// ---------- the queue (lists.queue): pure rules; the single writer is queue.ts ----------
+/** A key for one queue entry, so a flush removes only the entry it sent. */
+export const newQueueKey = (): string => `q${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+/** The queue with one change added at the end. The entry gets a key when it has none. */
+export function queueAppend(queue: Op[], op: Op): Op[] {
+  return [...queue, { ...op, key: op.key ?? newQueueKey() }];
+}
+
+/** The queue without the entry that has this key. Other entries keep their order. */
+export function queueRemove(queue: Op[], key: string): Op[] {
+  return queue.filter(op => op.key !== key);
+}
+
+/** The queue with the PC's id (or list id) in place of the tablet's, for every entry that has it. */
+export function queueRemap(queue: Op[], key: 'id' | 'list', from: unknown, to: string): Op[] {
+  const next = JSON.parse(JSON.stringify(queue)) as Op[];
+  remapIds(next, key, from, to);
+  return next;
 }

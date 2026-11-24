@@ -37,6 +37,7 @@ import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay } from './voice-weather.ts';
 import { findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
+import { readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 import { matchOpenApp } from './voice-open.ts';
@@ -397,7 +398,7 @@ export async function calendarCommand(day: 'today' | 'tomorrow' = 'today', cache
 }
 
 // ---------- Lists: "add milk to the shopping list", "what's on the to-do list" ----------
-/** The same routes as the Lists app's own taps (POST /api/lists/add, GET /api/lists/lists); the PC checks it all. */
+/** Writes use the same routes as the Lists app's taps (POST /api/lists/add and the rest); the PC checks them. Reads use the tablet's copy (readLists). */
 /** Today's or tomorrow's events from the claude.ai calendar connector (GET /api/calendar/connector), read aloud. */
 async function connectorCommand(day: 'today' | 'tomorrow', cachedOnly = false): Promise<CommandResult> {
   type Ev = { title: string; start: number; end: number; allDay: boolean };
@@ -417,8 +418,8 @@ async function connectorCommand(day: 'today' | 'tomorrow', cachedOnly = false): 
 /** The family's own tick-off lists (id and name), for voice. Shopping, To-do and Notes are not among them. */
 async function voiceCustomLists(): Promise<{ id: string; name: string }[]> {
   try {
-    const r = await getJson<ListsResult>('/api/lists/lists');
-    return (r?.lists ?? []).filter(l => !isBuiltIn(l.id)).map(l => ({ id: l.id, name: l.name }));
+    const lists = await readLists();
+    return lists.filter(l => !isBuiltIn(l.id)).map(l => ({ id: l.id, name: l.name }));
   } catch { return []; }
 }
 
@@ -426,18 +427,18 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
   const name = c.list === 'shopping' ? 'the shopping list' : c.list === 'todo' ? 'the to-do list' : `the ${(customName ?? 'list').toLowerCase()} list`;
   try {
     if (c.op === 'add') {
-      const r = await postJson<ListsResult>('/api/lists/add', { list: c.list, text: c.text });
+      const r = await writeList('add', { list: c.list, text: c.text });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t add that to ${name}.` };
       return { say: `Added ${c.text.replace(/^./, ch => ch.toLowerCase())} to ${name}.`, react: 'hop' };
     }
     if (c.op === 'tick') {
       // find the one unticked item by its words (exact, or the only partial match); never a guess between several
-      const lists = await getJson<ListsResult>('/api/lists/lists');
-      const l = lists?.lists?.find(x => x.id === c.list);
+      const lists = await readLists();
+      const l = lists.find(x => x.id === c.list);
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, true);
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
-      const r = await postJson<ListsResult>('/api/lists/tick', { list: c.list, id: hit.id, done: true });
+      const r = await writeList('tick', { list: c.list, id: hit.id, done: true });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
       return { say: `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`, react: 'hop' };
     }
@@ -445,7 +446,7 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       // one add per item, the same route the Lists app uses; the reply says what went on
       let ok = 0;
       for (const text of c.texts) {
-        const r = await postJson<ListsResult>('/api/lists/add', { list: c.list, text });
+        const r = await writeList('add', { list: c.list, text });
         if (r?.ok) ok++;
       }
       if (!ok) return { say: `I couldn’t add those to ${name}.` };
@@ -454,32 +455,32 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       return { say: ok === words.length ? `Added ${said} to ${name}.` : `Added ${ok} of ${words.length} to ${name}.`, react: 'hop' };
     }
     if (c.op === 'clear') {
-      const r = await postJson<ListsResult>('/api/lists/clear-done', { list: c.list });
+      const r = await writeList('clear-done', { list: c.list });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t clear ${name}.` };
       return { say: `Cleared the ticked items on ${name}.`, react: 'hop' };
     }
     if (c.op === 'remove') {
       // same rule as tick off: one item by its words, never a guess between several (open or ticked)
-      const lists = await getJson<ListsResult>('/api/lists/lists');
-      const l = lists?.lists?.find(x => x.id === c.list);
+      const lists = await readLists();
+      const l = lists.find(x => x.id === c.list);
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, false);
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
-      const r = await postJson<ListsResult>('/api/lists/remove', { list: c.list, id: hit.id });
+      const r = await writeList('remove', { list: c.list, id: hit.id });
       if (!r?.ok) return { say: r?.error ?? `I couldn’t remove that from ${name}.` };
       return { say: `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`, react: 'hop' };
     }
     if (c.op === 'edit') {
       // same rule as remove: one item by its words, never a guess between several; POST /api/lists/edit checks the new text
-      const lists = await getJson<ListsResult>('/api/lists/lists');
-      const l = lists?.lists?.find(x => x.id === c.list);
+      const lists = await readLists();
+      const l = lists.find(x => x.id === c.list);
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, false);
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
       return editSay(l.id, hit.id, hit.text, c.to, name);
     }
-    const r = await getJson<ListsResult>('/api/lists/lists');
-    const l = r?.lists?.find(x => x.id === c.list);
+    const lists = await readLists();
+    const l = lists.find(x => x.id === c.list);
     const open =l ? l.items.filter(i => !i.done).map(i => i.text) : [];
     if (!open.length) return { say: `There’s nothing on ${name}.` };
     const shown = open.slice(0, 8);
@@ -495,7 +496,7 @@ const spokenName = (l: { id: string; name: string }): string =>
 
 /** POST /api/lists/edit and the reply to say. */
 async function editSay(list: string, id: string, was: string, to: string, name: string): Promise<CommandResult> {
-  const r = await postJson<ListsResult>('/api/lists/edit', { list, id, text: to });
+  const r = await writeList('edit', { list, id, text: to });
   if (!r?.ok) return { say: r?.error ?? `I couldn’t change that on ${name}.` };
   return { say: `Changed ${lower(was)} to ${lower(r.item?.text ?? to)} on ${name}.`, react: 'hop' };
 }
@@ -503,9 +504,9 @@ async function editSay(list: string, id: string, was: string, to: string, name: 
 /** "change milk to oat milk" with no list said: the one item with exactly those words on any list.
  *  null when there is none (or the PC can't be reached), so the phrase is left to the other commands and Claude. */
 async function editAnywhere(text: string, to: string): Promise<CommandResult | null> {
-  let r: ListsResult;
-  try { r = await getJson<ListsResult>('/api/lists/lists'); } catch { return null; }
-  const hits = findExact(r?.lists ?? [], text);
+  const lists = await readLists().catch(() => null);
+  if (!lists) return null;
+  const hits = findExact(lists, text);
   if (!hits.length) return null;
   if (hits.length > 1) return { say: `${text} is on more than one list. Say which list.` };
   const { list, item } = hits[0];
