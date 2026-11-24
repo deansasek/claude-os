@@ -24,7 +24,7 @@
    the 26px head centres it 4px lower than its top */
 #app-clock .ck-left { position: relative; padding-top: calc(var(--app-label-y) - var(--app-body) - 4px); min-width: 0; min-height: 0; }
 #app-clock .ck-left .lhead { justify-content: flex-start; gap: 10px; align-items: center; min-height: 26px; }
-#app-clock .ck-pill:not(:empty) { font-size: 12px; color: var(--t2); padding: 3px 10px; border-radius: 99px;
+#app-clock .ck-pill:not(:empty) { font-size: 12px; color: var(--t2); padding: 3px 10px; border-radius: 14px;
   border: 1px solid var(--line); background: var(--pillbg); }
 #app-clock .ck-hint { font: italic 400 15px var(--serif); color: var(--t4); }
 
@@ -34,7 +34,7 @@
 #app-clock[data-view="stopwatch"] [data-pane="stopwatch"],
 #app-clock[data-view="alarm"] [data-pane="alarm"],
 #app-clock[data-view="edit"] [data-pane="edit"],
-#app-clock[data-view="ring"] [data-pane="ring"] { display: block; animation: ck-in .35s ease-out; }
+#app-clock[data-view="ring"] [data-pane="ring"] { display: block; animation: ck-in var(--dur-slow) var(--ease-out); }
 #app-clock[data-view="alarm"] .ck-left [data-pane="alarm"] { display: flex; flex-direction: column; height: 100%; }
 #app-clock .ck-wide { grid-column: 1 / -1; }
 @keyframes ck-in { from { opacity: 0; transform: translateY(4px); } }
@@ -79,7 +79,7 @@
 /* the alarm's label: a quiet row that opens the on-screen keyboard */
 #app-clock .ck-label { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 16px; width: 100%; max-width: 520px;
   min-height: 52px; margin-top: calc(14px + 4px * var(--tall)); padding: 12px 18px; border-radius: 14px; background: var(--pillbg); border: 1px solid var(--line);
-  transition: transform .12s, background-color .2s; }
+  transition: transform var(--dur-fast), background-color var(--dur-base); }
 #app-clock .ck-label:active { transform: scale(.98); background: var(--card); }
 #app-clock .ck-label .ck-unit { margin: 0; flex: none; width: 56px; }
 #app-clock .ck-label b { font: 400 22px/1.2 var(--serif); color: var(--text); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -89,18 +89,18 @@
 #app-clock .ck-set { display: flex; align-items: center; gap: 4px; margin: calc(6px + 4px * var(--tall)) 0 0 -6px; }
 #app-clock .ck-spin { display: flex; flex-direction: column; align-items: center; width: calc(150px + 14px * var(--tall)); }
 #app-clock .ck-chev { all: unset; position: relative;   /* .hit (core): finger-sized */ cursor: pointer; display: flex; align-items: center; justify-content: center; width: 112px; height: 40px;
-  border-radius: 12px; color: var(--t4); transition: background-color .15s, color .15s, transform .1s; }
+  border-radius: 12px; color: var(--t4); transition: background-color var(--dur-fast), color var(--dur-fast), transform var(--dur-fast); }
 #app-clock .ck-chev svg { width: 26px; height: 26px; }
 #app-clock .ck-chev:active, #app-clock .ck-chev.held { background: var(--card); color: var(--clay); transform: scale(.95); }
 #app-clock .ck-digit { font: 500 calc(100px + 16px * var(--tall))/1 var(--serif); letter-spacing: -.04em; color: var(--text); padding: 4px 10px 0; border-radius: 16px;
-  cursor: ns-resize; touch-action: none; transition: background-color .15s, color .2s; }
+  cursor: ns-resize; touch-action: none; transition: background-color var(--dur-fast), color var(--dur-base); }
 #app-clock .ck-digit.scrub { background: var(--card); color: var(--clay); }
 #app-clock .ck-spin.dim .ck-digit { color: var(--t5); }
 #app-clock .ck-unit { font: 500 11px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--t4); margin-top: 2px; }
 #app-clock .ck-colon { font: 400 calc(80px + 12px * var(--tall))/1 var(--serif); color: var(--t5); margin-top: -18px; width: 18px; text-align: center; }
 #app-clock .ck-ampm { display: flex; flex-direction: column; gap: 8px; margin-left: 18px; }
 #app-clock .ck-ampm button { all: unset; cursor: pointer; width: 76px; height: 52px; border-radius: 14px; text-align: center; line-height: 52px;
-  font: 400 22px var(--serif); color: var(--t3); background: var(--pillbg); border: 1px solid var(--line); transition: transform .12s; }
+  font: 400 22px var(--serif); color: var(--t3); background: var(--pillbg); border: 1px solid var(--line); transition: transform var(--dur-fast); }
 #app-clock .ck-ampm button.on { background: var(--text); border-color: var(--text); color: var(--bg); }
 #app-clock .ck-ampm button:active { transform: scale(.95); }
 
@@ -123,9 +123,9 @@
 #app-clock .ck-trow.new { justify-content: center; border-style: dashed; color: var(--t2); }
 #app-clock .ck-trow:active { transform: scale(.98); }
 @media (prefers-reduced-motion: reduce) { #app-clock .ck-trow { transition: none; } }
-#app-clock .ck-prog { position: relative; height: 6px; margin: 2px 0 4px; max-width: 520px; border-radius: 99px; background: var(--track);
+#app-clock .ck-prog { position: relative; height: 6px; margin: 2px 0 4px; max-width: 520px; border-radius: 14px; background: var(--track);
   box-shadow: inset 0 0 0 1px var(--track-edge); overflow: hidden; }
-#app-clock .ck-prog i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--blue); transition: width 1s linear; }   /* bars are blue everywhere */
+#app-clock .ck-prog i { position: absolute; inset: 0 auto 0 0; border-radius: 14px; background: var(--blue); transition: width var(--dur-calm) linear; }   /* bars are blue everywhere */
 
 /* ---- alarm list ---- */
 #app-clock .ck-alist { flex: 1; min-height: 0; overflow-y: auto; margin-top: 10px; padding-right: 4px; overscroll-behavior: contain;
@@ -133,7 +133,7 @@
 #app-clock .ck-alist { scrollbar-width: none; }
 #app-clock .ck-alist::-webkit-scrollbar { display: none; }
 #app-clock .ck-arow { display: flex; align-items: center; gap: 22px; min-height: calc(66px + 6px * var(--tall)); padding: 6px 4px 6px 2px; border-bottom: 1px solid var(--line);
-  cursor: pointer; transition: background-color .15s; }
+  cursor: pointer; transition: background-color var(--dur-fast); }
 #app-clock .ck-arow:last-child { border-bottom: 0; }
 #app-clock .ck-arow:active { background: var(--card); }
 #app-clock .ck-atime { flex: none; width: 196px; font: 500 46px/1 var(--serif); letter-spacing: -.03em; color: var(--t4); white-space: nowrap; }
@@ -150,9 +150,9 @@
 
 /* an iOS-ish switch, blue when on like every switch in Claude Home (Settings, the desktop app) */
 #app-clock .ck-switch { all: unset; cursor: pointer; flex: none; position: relative; width: 60px; height: 34px; border-radius: 99px;
-  background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); transition: background-color .2s; }
+  background: var(--card-2); box-shadow: inset 0 0 0 1px var(--line); transition: background-color var(--dur-base); }
 #app-clock .ck-switch i { position: absolute; top: 3px; left: 3px; width: 28px; height: 28px; border-radius: 50%; background: var(--paper);
-  border: 1px solid var(--line); transition: transform .2s cubic-bezier(.3, .7, .4, 1); }
+  border: 1px solid var(--line); transition: transform var(--dur-base) cubic-bezier(.3, .7, .4, 1); }
 #app-clock .ck-switch.on { background: var(--blue); box-shadow: none; }
 #app-clock .ck-switch.on i { transform: translateX(26px); }
 
@@ -168,13 +168,13 @@
 #app-clock .ck-eyes { animation: ck-blink 3.6s infinite; }
 #app-clock .ck-crit { animation: ck-bob 2.8s ease-in-out infinite; }
 #app-clock .ck-shut, #app-clock .ck-cheeks, #app-clock .ck-zzz, #app-clock .ck-mug, #app-clock .ck-night, #app-clock .ck-sun, #app-clock .ck-cloud,
-#app-clock .ck-notes, #app-clock .ck-speed { opacity: 0; transition: opacity 1s, transform 1.5s ease-in-out; }
+#app-clock .ck-notes, #app-clock .ck-speed { opacity: 0; transition: opacity var(--dur-calm), transform var(--dur-calm) ease-in-out; }
 #app-clock .ck-zzz text { font: italic 400 1.8px var(--serif); fill: var(--t3); opacity: 0; }
-#app-clock .ck-steam rect { animation: ck-steam 2.4s ease-out infinite; opacity: 0; }
+#app-clock .ck-steam rect { animation: ck-steam 2.4s var(--ease-out) infinite; opacity: 0; }
 #app-clock .ck-steam rect:nth-child(2) { animation-delay: .8s; }
 #app-clock .ck-steam rect:nth-child(3) { animation-delay: 1.6s; }
 #app-clock .ck-stars path { animation: ck-twinkle 3s steps(2) infinite; }
-#app-clock .ck-stars path:nth-child(2n) { animation-delay: 1.1s; }
+#app-clock .ck-stars path:nth-child(2n) { animation-delay: var(--dur-calm); }
 #app-clock .ck-sun .ck-rays { animation: ck-spin 30s linear infinite; transform-box: fill-box; transform-origin: 50% 50%; }
 #app-clock .ck-cloud path { animation: ck-drift 26s ease-in-out infinite alternate; }
 /* black ink disappears on the dark theme: draw the sun's rays and outline in light ink there */
@@ -188,8 +188,8 @@
 #app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-crit { animation: none; }
 #app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-eyes { opacity: 0; }
 #app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-shut, #app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-zzz { opacity: 1; }
-#app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-zzz text { animation: ck-z 3.6s ease-out infinite; }
-#app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-zzz text:nth-child(2) { animation-delay: 1.2s; }
+#app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-zzz text { animation: ck-z 3.6s var(--ease-out) infinite; }
+#app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-zzz text:nth-child(2) { animation-delay: var(--dur-calm); }
 #app-clock.ck-night:not(.ck-woke):not(.ck-timing):not(.ck-running) .ck-zzz text:nth-child(3) { animation-delay: 2.4s; }
 /* morning: the sun just up over the ground; day: high in the sky, a cloud drifting by */
 #app-clock.ck-morning .ck-sun, #app-clock.ck-day .ck-sun { opacity: 1; }
@@ -201,8 +201,8 @@
 #app-clock.ck-evening .ck-crit { animation-duration: 4s; }
 
 /* one-shot acts */
-#app-clock.ck-act-hop .ck-crit { animation: ck-hop .75s ease-out; }
-#app-clock.ck-act-hop .ck-shadow { animation: ck-shadowhop .75s ease-out; }
+#app-clock.ck-act-hop .ck-crit { animation: ck-hop var(--dur-slower) var(--ease-out); }
+#app-clock.ck-act-hop .ck-shadow { animation: ck-shadowhop var(--dur-slower) var(--ease-out); }
 #app-clock.ck-act-stretch .ck-upper { animation: ck-stretch 2.2s ease-in-out; }
 #app-clock.ck-act-wave .ck-armR { animation: ck-wave 2.4s ease-in-out; }
 #app-clock.ck-act-wave .ck-cheeks, #app-clock.ck-act-hop .ck-cheeks { opacity: 1; }
@@ -221,40 +221,40 @@
 @keyframes ck-drift { from { transform: translateX(-2.5px); } to { transform: translateX(3.5px); } }
 
 /* hourglass while a timer runs; the sand drains via a CSS variable set from code */
-#app-clock .ck-glass { opacity: 0; transition: opacity .6s; }
+#app-clock .ck-glass { opacity: 0; transition: opacity var(--dur-slower); }
 #app-clock.ck-timing .ck-glass { opacity: 1; }
 #app-clock.ck-timing .ck-mug { opacity: 0; }
-#app-clock .ck-sand-top, #app-clock .ck-sand-bot { transform-box: fill-box; transition: transform 1s linear; }
+#app-clock .ck-sand-top, #app-clock .ck-sand-bot { transform-box: fill-box; transition: transform var(--dur-calm) linear; }
 #app-clock .ck-sand-top { transform-origin: 50% 100%; transform: scaleY(var(--sand, 1)); }
 #app-clock .ck-sand-bot { transform-origin: 50% 100%; transform: scaleY(calc(1 - var(--sand, 1))); }
 #app-clock .ck-trickle { opacity: 0; }
-#app-clock.ck-timing .ck-trickle { animation: ck-trickle .6s steps(2) infinite; }
+#app-clock.ck-timing .ck-trickle { animation: ck-trickle var(--dur-slower) steps(2) infinite; }
 @keyframes ck-trickle { 0% { opacity: .9; } 50% { opacity: .4; } }
 
 /* stopwatch: the critter jogs on the spot, speed lines streaming behind */
 #app-clock .ck-legA, #app-clock .ck-legB { transform-box: fill-box; transform-origin: 50% 0; }
-#app-clock.ck-running .ck-legA { animation: ck-step .5s steps(2) infinite; }
-#app-clock.ck-running .ck-legB { animation: ck-step .5s steps(2) infinite reverse; }
-#app-clock.ck-running .ck-crit { animation: ck-jog .5s ease-in-out infinite; }
+#app-clock.ck-running .ck-legA { animation: ck-step var(--dur-slower) steps(2) infinite; }
+#app-clock.ck-running .ck-legB { animation: ck-step var(--dur-slower) steps(2) infinite reverse; }
+#app-clock.ck-running .ck-crit { animation: ck-jog var(--dur-slower) ease-in-out infinite; }
 #app-clock.ck-running .ck-speed { opacity: 1; }
-#app-clock.ck-running .ck-speed rect { animation: ck-whoosh .7s linear infinite; }
-#app-clock.ck-running .ck-speed rect:nth-child(2) { animation-delay: .23s; }
-#app-clock.ck-running .ck-speed rect:nth-child(3) { animation-delay: .46s; }
+#app-clock.ck-running .ck-speed rect { animation: ck-whoosh var(--dur-slower) linear infinite; }
+#app-clock.ck-running .ck-speed rect:nth-child(2) { animation-delay: var(--dur-base); }
+#app-clock.ck-running .ck-speed rect:nth-child(3) { animation-delay: var(--dur-slow); }
 @keyframes ck-step { 50% { transform: translateY(-.6px); } }
 @keyframes ck-jog { 50% { transform: translateY(-.35px); } }
 @keyframes ck-whoosh { 0% { opacity: 0; transform: translateX(1.2px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateX(-2px); } }
 
 /* ringing: hops and waves on a loop, notes floating up */
-#app-clock.ck-ringing .ck-crit { animation: ck-hop .75s ease-out infinite; }
+#app-clock.ck-ringing .ck-crit { animation: ck-hop var(--dur-slower) var(--ease-out) infinite; }
 #app-clock.ck-ringing .ck-armR { animation: ck-wave 2.4s ease-in-out infinite; }
 #app-clock.ck-ringing .ck-eyes { opacity: 1 !important; }
 #app-clock.ck-ringing .ck-shut, #app-clock.ck-ringing .ck-zzz { opacity: 0 !important; }
 #app-clock.ck-ringing .ck-cheeks { opacity: 1; }
 #app-clock .ck-notes text { font: 400 2.2px var(--serif); fill: var(--clay); }
 #app-clock.ck-ringing .ck-notes { opacity: 1; }
-#app-clock.ck-ringing .ck-notes text { animation: ck-note 1.8s ease-out infinite; opacity: 0; }
-#app-clock.ck-ringing .ck-notes text:nth-child(2) { animation-delay: .6s; }
-#app-clock.ck-ringing .ck-notes text:nth-child(3) { animation-delay: 1.2s; }
+#app-clock.ck-ringing .ck-notes text { animation: ck-note 1.8s var(--ease-out) infinite; opacity: 0; }
+#app-clock.ck-ringing .ck-notes text:nth-child(2) { animation-delay: var(--dur-slower); }
+#app-clock.ck-ringing .ck-notes text:nth-child(3) { animation-delay: var(--dur-calm); }
 @keyframes ck-note { 0% { opacity: 0; transform: translate(0, 1px) rotate(-8deg); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(1px, -3.5px) rotate(10deg); } }
 
 /* ---- ringing: the number glows clay, two big buttons ---- */
@@ -268,8 +268,8 @@
 
 /* ---- bottom: the day and the week ---- */
 #app-clock .ck-bottom { grid-template-columns: 1.5fr 1fr; }
-#app-clock .ck-track { position: relative; height: 8px; margin-top: 16px; border-radius: 99px; background: var(--track); box-shadow: inset 0 0 0 1px var(--track-edge); }
-#app-clock .ck-track i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: var(--blue); transition: width 1s; }   /* bars are blue, as on the Claude page */
+#app-clock .ck-track { position: relative; height: 8px; margin-top: 16px; border-radius: 14px; background: var(--track); box-shadow: inset 0 0 0 1px var(--track-edge); }
+#app-clock .ck-track i { position: absolute; inset: 0 auto 0 0; border-radius: 14px; background: var(--blue); transition: width var(--dur-calm); }   /* bars are blue, as on the Claude page */
 #app-clock .ck-now { position: absolute; top: -6px; bottom: -6px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--text); }
 #app-clock .ck-scale { display: flex; justify-content: space-between; margin-top: 12px; font-size: 12px; color: var(--t4); }
 #app-clock .ck-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
@@ -283,7 +283,7 @@
 /* chips for quick timers, alarm presets and repeat shortcuts */
 #app-clock .ck-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 #app-clock .ck-chip { all: unset; cursor: pointer; min-width: 64px; min-height: 26px; padding: 12px 18px; border-radius: 99px; text-align: center;
-  font: 400 20px/26px var(--serif); color: var(--text); background: var(--pillbg); border: 1px solid var(--line); transition: transform .12s, background-color .2s; }
+  font: 400 20px/26px var(--serif); color: var(--text); background: var(--pillbg); border: 1px solid var(--line); transition: transform var(--dur-fast), background-color var(--dur-base); }
 #app-clock .ck-chip small { font: 500 12px var(--sans); color: var(--t3); margin-left: 4px; }
 #app-clock .ck-chip:active { transform: scale(.95); }
 #app-clock .ck-chip.on { background: var(--text); border-color: var(--text); color: var(--bg); }
@@ -295,7 +295,7 @@
 /* repeat days in the editor */
 #app-clock .ck-days { display: flex; gap: 8px; margin-top: 8px; }
 #app-clock .ck-days button { all: unset; cursor: pointer; width: 66px; height: 46px; border-radius: 14px; text-align: center; line-height: 46px;
-  font: 500 14px var(--sans); color: var(--t3); background: var(--pillbg); border: 1px solid var(--line); transition: transform .12s, background-color .2s; }
+  font: 500 14px var(--sans); color: var(--t3); background: var(--pillbg); border: 1px solid var(--line); transition: transform var(--dur-fast), background-color var(--dur-base); }
 #app-clock .ck-days button.on { background: var(--text); border-color: var(--text); color: var(--bg); }
 #app-clock .ck-days button:active { transform: scale(.95); }
 #app-clock [data-pane="edit"] .ck-chips { margin-top: 10px; }
