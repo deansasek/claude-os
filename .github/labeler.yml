@@ -1,0 +1,28 @@
+# Labels for pull requests, from the files each PR changes (actions/labeler).
+android:
+  - changed-files:
+      - any-glob-to-any-file: ['android/**']
+hub:
+  - changed-files:
+      - any-glob-to-any-file: ['src/core/server/**', 'src/apps/*/server/**', 'host/**']
+tablet:
+  - changed-files:
+      - any-glob-to-any-file: ['src/core/web/**', 'public/**']
+claude-app:
+  - changed-files:
+      - any-glob-to-any-file: ['src/apps/claude/**']
+home:
+  - changed-files:
+      - any-glob-to-any-file: ['src/apps/home/**']
+apps:
+  - changed-files:
+      - any-glob-to-any-file: ['src/apps/**']
+voice:
+  - changed-files:
+      - any-glob-to-any-file: ['src/core/web/voice*.ts', 'android/VOICE.md']
+ci:
+  - changed-files:
+      - any-glob-to-any-file: ['.github/**', 'scripts/**']
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ['docs/**', '**/*.md']
