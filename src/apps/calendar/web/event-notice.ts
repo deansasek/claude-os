@@ -11,12 +11,19 @@ export type Notified = Record<string, number>;
 /** A timed event's key: its start and its title, so a moved event is told again. */
 export const eventKey = (e: CalEvent): string => `${e.start}|${e.title}`;
 
-/** The timed events that start within the lead time, and that were not told yet. All-day events never qualify. */
+/**
+ * The timed events that start within the lead time, and that were not told yet. All-day events never qualify.
+ * An event can appear twice (a timed event past midnight is listed as today and as tomorrow), so each key comes once.
+ */
 export function dueNotices(events: CalEvent[], now: number, told: Notified): CalEvent[] {
+  const seen = new Set<string>();
   return events.filter(e => {
-    if (e.allDay || Object.hasOwn(told, eventKey(e))) return false;
+    const key = eventKey(e);
+    if (e.allDay || seen.has(key) || Object.hasOwn(told, key)) return false;
     const start = Date.parse(e.start);
-    return Number.isFinite(start) && start - NOTICE_LEAD_MS <= now && now < start;
+    if (!(Number.isFinite(start) && start - NOTICE_LEAD_MS <= now && now < start)) return false;
+    seen.add(key);
+    return true;
   });
 }
 

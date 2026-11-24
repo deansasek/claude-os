@@ -24,6 +24,12 @@ test('an event already told is not told again, and all-day events never are', ()
   assert.equal(dueNotices([timed('Holiday', START, { allDay: true })], START - 60e3, {}).length, 0);
 });
 
+test('an event listed twice (today and tomorrow) is due once', () => {
+  const e = timed('Late show');
+  const twice = [e, { ...e, day: 'tomorrow' as const }];
+  assert.equal(dueNotices(twice, START - 60e3, {}).length, 1);
+});
+
 test('a moved event is told again: the key has the start and the title', () => {
   const told = { [eventKey(timed('Dentist'))]: START };
   const moved = timed('Dentist', START + 60 * 60e3);
