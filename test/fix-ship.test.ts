@@ -36,3 +36,10 @@ test('fix-ship refuses an unsafe local git config key', () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /git-config/);
 });
+
+test('fix-ship allows the runner core.fsmonitor setting, because every git call disables it', () => {
+  const { dir, prPath } = scratchRepo();
+  execFileSync('git', ['config', '--local', 'core.fsmonitor', 'true'], { cwd: dir });
+  const result = runShip(dir, prPath);
+  assert.doesNotMatch(result.stderr, /git-config/);
+});
