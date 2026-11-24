@@ -11,6 +11,7 @@ import { getInstructions, setInstructions } from './instructions.ts';
 import { getProfile, readProfilePhoto, removePhoto, savePhoto, setProfile, setWelcomeDone, welcomeDone } from './profile.ts';
 import { addCustomMcp, addFolder, knownServer, pluginsView, probe, removeCustomMcp, removeFolder, setOn } from './plugins.ts';
 import { checkPin, pinStatus, removePin, setPin } from './pin.ts';
+import { readBackup, saveBackup } from './backup.ts';
 import { installPlugin, marketView, refreshMarket, uninstallPlugin } from './market.ts';
 
 /** The folder the Plugins view reads: the one asked for, else the most recent folder, else the home folder. */
@@ -96,6 +97,9 @@ const app: ServerApp = {
     { method: 'POST', path: 'plugins/market/install', handle: ({ body }) => installPlugin(body?.name, body?.marketplace) },
     { method: 'POST', path: 'plugins/market/uninstall', handle: ({ body }) => uninstallPlugin(body?.name, body?.marketplace) },
     { method: 'POST', path: 'plugins/market/refresh', handle: () => refreshMarket() },
+    // the settings backup (Storage): the os.* settings and sidebar pins, kept on this PC (backup.ts)
+    { method: 'GET', path: 'backup', handle: () => readBackup() },
+    { method: 'POST', path: 'backup', handle: ({ body }) => saveBackup(body) },
   ],
 };
 export default app;
