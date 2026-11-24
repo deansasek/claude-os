@@ -14,6 +14,8 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import { applyProfile, initials, onProfile, profile, refreshProfile } from '../../../core/web/profile.ts';
 import type { Profile } from '../../../core/web/profile.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
+import { closeApp, failedApps, openedApps, restartApp } from '../../../core/web/shell.ts';
+import { monitorLines } from './monitor.ts';
 import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, sleep, swipeNotices, toggleMuteApp } from '../../../core/web/system.ts';
 import { appLabel } from '../../../core/web/notes-group.ts';
 import type { QuietHours } from '../../../core/web/system.ts';
@@ -38,9 +40,9 @@ import { initPinSettings, paintPinRow } from './pin.ts';
 
 type Section = 'profile' | 'usage' | 'yourclaude' | 'sessions' | 'plugins' | 'voice' | 'notifications'
   | 'wifi' | 'google' | 'bluetooth' | 'display' | 'appearance' | 'sound' | 'battery' | 'keyboard' | 'apps' | 'storage' | 'datetime'
-  | 'privacy' | 'wellbeing' | 'security' | 'about' | 'developer';
+  | 'privacy' | 'wellbeing' | 'security' | 'about' | 'monitor' | 'developer';
 const SECTIONS: Section[] = ['profile', 'usage', 'yourclaude', 'sessions', 'plugins', 'voice', 'notifications', 'wifi', 'google', 'bluetooth', 'display',
-  'appearance', 'sound', 'battery', 'keyboard', 'apps', 'storage', 'datetime', 'privacy', 'wellbeing', 'security', 'about', 'developer'];
+  'appearance', 'sound', 'battery', 'keyboard', 'apps', 'storage', 'datetime', 'privacy', 'wellbeing', 'security', 'about', 'monitor', 'developer'];
 /** Older names other apps may still use: the Desk mode page is Security now. */
 const ALIAS: Record<string, Section> = { desk: 'security', kiosk: 'security' };
 const SAMPLE = 'Hi, I’m Claude. This is how I sound.';
@@ -70,6 +72,7 @@ const NAV_ICONS: Record<string, string> = {
   security: svg('<rect x="8" y="14" width="16" height="12" rx="2.5"/><path d="M11.5 14v-3.5a4.5 4.5 0 0 1 9 0V14"/>'),
   about: svg('<circle cx="16" cy="16" r="11"/><path d="M16 15v7M16 10.5v.5"/>'),
   developer: svg('<path d="M11 10l-6 6 6 6M21 10l6 6-6 6M18 7l-4 18"/>'),
+  monitor: svg('<rect x="4.5" y="6" width="23" height="15" rx="2.5"/><path d="M9 16l3.5-3.5 3 2.5 4-5 3.5 4M11 26h10M16 21v5"/>'),
 };
 const TICK = svg('<path d="M7 16.5l6 6 12-13"/>');
 const CHEV = svg('<path d="M13 9l7 7-7 7"/>');
@@ -172,6 +175,7 @@ function paint(): void {
     case 'privacy': paintPrivacy(); void paintWeatherPlace(); break;
     case 'wellbeing': paintWellbeing(); break;
     case 'about': paintAbout(); break;
+    case 'monitor': void paintMonitor(); break;
     case 'developer': paintDeveloper(); break;
     default: break;
   }
@@ -1200,6 +1204,24 @@ function paintSetup(): void {
     </div>`).join('');
 }
 
+// ---------- System monitor: the hub's uptime, the PC link, the open apps (Close) and the apps that did not start (Restart) ----------
+async function paintMonitor(): Promise<void> {
+  let uptime: number | null = null;
+  try { uptime = (await getJson<{ uptimeSeconds: number }>('/api/core/status')).uptimeSeconds; } catch { uptime = null; }
+  const open = openedApps();
+  const failed = failedApps();
+  const l = monitorLines({ uptimeSeconds: uptime, pcReachable: hubReachable(), openNames: open.map(a => a.name), failedNames: failed.map(a => a.name) });
+  $('stMonUptime').textContent = l.uptime;
+  $('stMonPc').textContent = l.pc;
+  $('stMonOpen').innerHTML = open.length
+    ? open.map(a => `<div class="st-row"><div class="st-txt"><b>${esc(a.name)}</b></div>${a.closable
+      ? `<button class="st-btn hit ghost small" data-close="${esc(a.key)}">Close</button>` : ''}</div>`).join('')
+    : '<div class="st-empty">No apps are open.</div>';
+  $('stMonFailedText').textContent = l.failed;
+  $('stMonFailed').innerHTML = failed.map(a => `<div class="st-row"><div class="st-txt"><b>${esc(a.name)}</b><span>Couldn’t start</span></div>`
+    + `<button class="st-btn hit ghost small" data-restart="${esc(a.id)}">Restart</button></div>`).join('');
+}
+
 // ---------- About ----------
 function paintAbout(): void {
   try {
@@ -1342,6 +1364,15 @@ function mount(context: AppContext): void {
     if (mute !== undefined) toggleMuteApp(mute);
   });
   onNotificationsChange(() => { if (section === 'notifications') paintNotes(); });
+  // System monitor: Close an open app, or Restart one that did not start
+  $('stMonOpen').addEventListener('click', e => {
+    const key = (e.target as HTMLElement).closest<HTMLElement>('[data-close]')?.dataset.close;
+    if (key) { closeApp(key); void paintMonitor(); }
+  });
+  $('stMonFailed').addEventListener('click', e => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-restart]')?.dataset.restart;
+    if (id) { restartApp(id); void paintMonitor(); }
+  });
   // a toggle made on the drawer (Do Not Disturb, low power, Wi-Fi, "Hey Claude", Desk mode) repaints the open section
   onSystemChange(() => { if (ctx.isVisible()) paint(); });
 

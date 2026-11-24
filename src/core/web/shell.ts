@@ -169,8 +169,8 @@ export function launchAndroid(app: AndroidApp): boolean {
   return true;
 }
 
-/** Close one open app (the switcher): out of the rail, and reset through its onClose. Home and Claude stay. */
-function closeApp(key: string): void {
+/** Close one open app (the switcher, or Settings → System monitor): out of the rail, and reset through its onClose. Home and Claude stay. */
+export function closeApp(key: string): void {
   if (UNCLOSABLE.has(key)) return;
   opened = opened.filter(k => k !== key);
   if (key.startsWith('a:')) androidOpen.delete(key.slice(2));
@@ -198,6 +198,33 @@ function switcherCards(): SwitcherCard[] {
 
 /** Apps that threw while mounting: they keep their rail button, and their section says so. */
 const failed = new Set<string>();
+/** Each app's mount context, kept so that a failed app can be mounted again (restartApp). */
+const mountCtx = new Map<string, AppContext>();
+
+/** The open apps, most recent first: an app id or 'a:<package>' key, its name, and whether it can be closed. */
+export function openedApps(): { key: string; name: string; closable: boolean }[] {
+  return opened.flatMap(k => {
+    if (k.startsWith('a:')) { const a = androidOpen.get(k.slice(2)); return a ? [{ key: k, name: a.name, closable: true }] : []; }
+    const app = apps.find(x => x.id === k);
+    return app ? [{ key: k, name: app.name, closable: !UNCLOSABLE.has(k) }] : [];
+  });
+}
+
+/** The apps that did not start, by id and name. */
+export function failedApps(): { id: string; name: string }[] {
+  return apps.filter(a => failed.has(a.id)).map(a => ({ id: a.id, name: a.name }));
+}
+
+/** Mount a failed app again and drop its note. It shows the note again if it throws once more. */
+export function restartApp(id: string): boolean {
+  const app = apps.find(a => a.id === id), cx = mountCtx.get(id);
+  if (!app || !cx || !failed.has(id)) return false;
+  failed.delete(id);
+  cx.root.querySelector('.app-failed')?.remove();
+  if (guard(app, 'mount', () => app.mount(cx))) return true;
+  showFailed(app, cx.root);
+  return false;
+}
 
 function logError(app: HubApp, where: string, e: unknown): void {
   const err = e as Error;
@@ -312,7 +339,9 @@ export async function startHub(list: HubApp[]): Promise<void> {
   initStatus();
   apps.forEach(app => {
     const root = $(`app-${app.id}`);
-    if (!guard(app, 'mount', () => app.mount(contextFor(app, root, headers.get(app.id)!, nav.querySelector<HTMLElement>(`.ri[data-app="${app.id}"]`)!)))) showFailed(app, root);
+    const cx = contextFor(app, root, headers.get(app.id)!, nav.querySelector<HTMLElement>(`.ri[data-app="${app.id}"]`)!);
+    mountCtx.set(app.id, cx);
+    if (!guard(app, 'mount', () => app.mount(cx))) showFailed(app, root);
   });
 
   initSwitcher(stage, {
