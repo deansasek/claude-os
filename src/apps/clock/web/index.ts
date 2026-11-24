@@ -1108,7 +1108,8 @@ const clockApi: ClockApi = {
   /** True if there was a timer to cancel: the timer a voice or drawer action picks (see actionTimer). */
   cancelTimer(): boolean { focusAction(); const had = isListed(timer); timerReset(); return had; },
   pauseTimer(): boolean { focusAction(); if (!timer.end) return false; timerPause(); return true; },
-  resumeTimer(): boolean { if (timer.end || timer.left == null) return false; timerStart(); return true; },
+  /** Resume the paused timer in the list, even when another timer is running. */
+  resumeTimer(): boolean { const paused = timers.find(t => !t.end && t.left != null); if (!paused) return false; timer = paused; timerStart(); return true; },
   nudgeTimer(minutes: number): boolean {
     focusAction();
     if (!timer.end && timer.left == null) return false;
