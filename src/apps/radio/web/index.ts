@@ -8,13 +8,14 @@
 import { esc, getJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { device, onVolume } from '../../../core/web/device.ts';
+import { setMediaActions, setNowPlaying } from '../../../core/web/media.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, nextChoice } from './catalogue.ts';
 import {
-  type PlayState, SLEEP_CHOICES, failMessage, initial, railLabel, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
+  type PlayState, SLEEP_CHOICES, canStepFavourites, failMessage, initial, railLabel, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
   volumeFromDevice,
 } from './player.ts';
 import { httpsUrl, playable, playableStations } from './stations.ts';
@@ -83,7 +84,22 @@ function loadList(key: string): Station[] {
   }
 }
 
-function saveFavs(): void { store.set(FAVS_KEY, JSON.stringify(favs)); }
+function saveFavs(): void { store.set(FAVS_KEY, JSON.stringify(favs)); syncMedia(); }
+
+// The drawer's media card: the station on the air, its state line, and the buttons. Next and previous need two favourites.
+let mediaKey = '';   // the last card sent, so the drawer repaints only when it changes
+function syncMedia(): void {
+  const s = current;
+  const info = s && state !== 'off'
+    ? { title: s.name, subtitle: titleLine(true, state, streamTitle), art: s.favicon ?? '', playing: state === 'playing' || state === 'buffering' }
+    : null;
+  const steps = canStepFavourites(favs);
+  const key = JSON.stringify([info, steps]);
+  if (key === mediaKey) return;
+  mediaKey = key;
+  setNowPlaying(info);
+  setMediaActions(info ? { toggle, ...(steps ? { next: () => step(1), prev: () => step(-1) } : {}) } : null);
+}
 const isFav = (id: string): boolean => favs.some(f => f.id === id);
 
 function find(id: string): Station | undefined {
@@ -95,6 +111,7 @@ function find(id: string): Station | undefined {
 function setState(next: PlayState): void {
   state = next;
   ctx.setRail({ label: railLabel(current, state, manifest.name) });   // the glance: the station on the air
+  syncMedia();
   if (state === 'off') { streamTitle = ''; clearSleep(); }
   syncTitlePoll();
   render();
@@ -213,7 +230,7 @@ async function fetchTitle(): Promise<void> {
   try {
     const r = await getJson<TitleResult>(`${API}/title?url=${encodeURIComponent(s.url)}`);
     if (current?.id !== s.id || state === 'off') return;
-    if ((r.title || '') !== streamTitle) { streamTitle = r.title || ''; render(); }
+    if ((r.title || '') !== streamTitle) { streamTitle = r.title || ''; syncMedia(); render(); }
   } catch { /* no title; the card says "Live radio" */ }
 }
 

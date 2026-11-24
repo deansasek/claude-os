@@ -13,6 +13,11 @@ export function stepFavourite(favs: Station[], currentId: string | null, dir: 1 
   return favs[(at + dir + favs.length) % favs.length];
 }
 
+/** Next and previous need two or more favourites: with one, stepping would play the same station. */
+export function canStepFavourites(favs: readonly unknown[]): boolean {
+  return favs.length >= 2;
+}
+
 /** The short line under the station name: the stream's title while it plays (if it sends one), else the state. */
 export function titleLine(hasStation: boolean, state: PlayState, streamTitle = ''): string {
   if (!hasStation) return 'Pick a station to listen';

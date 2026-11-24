@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { Station } from '../src/apps/radio/api.ts';
 import { readFileSync } from 'node:fs';
-import { initial, railLabel, stationHue, stepFavourite, titleLine, volumeFrom, volumeFromDevice } from '../src/apps/radio/web/player.ts';
+import { initial, railLabel, stationHue, stepFavourite, titleLine, volumeFrom, volumeFromDevice, canStepFavourites } from '../src/apps/radio/web/player.ts';
 
 const st = (id: string): Station => ({ id, name: `Station ${id}`, url: `https://${id}.example/s`, country: '', codec: '', bitrate: 0 });
 const favs = [st('a'), st('b'), st('c')];
@@ -62,4 +62,10 @@ test('the device media level (0..1) maps to the slider 0..100; a missing level i
 test('the old radio.volume store key is ignored: radio no longer reads it', () => {
   const src = readFileSync(new URL('../src/apps/radio/web/index.ts', import.meta.url), 'utf8');
   assert.equal(src.includes('radio.volume'), false);
+});
+
+test('next and previous need two or more favourites', () => {
+  assert.equal(canStepFavourites([]), false);
+  assert.equal(canStepFavourites([st('a')]), false);
+  assert.equal(canStepFavourites(favs), true);
 });
