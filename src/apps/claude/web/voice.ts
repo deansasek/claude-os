@@ -315,6 +315,7 @@ export function initVoice(context: AppContext): void {
   voiceUi.init();
   // tapping the idle spark or a mic button (#svMic): talk to Claude, about the session on screen if there is one
   const talk = () => {
+    if (voiceUi.isStarting()) return;   // a listen is already queued: do not queue another
     expect = viewNow()?.turn?.status === 'approval' ? 'approval' : 'request';
     retried = false;
     // the tablet says no (no permission, it's busy, no voice…) either by throwing or with ok: false and a reason
@@ -326,16 +327,15 @@ export function initVoice(context: AppContext): void {
       voiceUi.notice(mic ? 'The microphone isn’t available' : 'Voice isn’t working right now', voiceUi.reasonLine(reason), 4000);
       return;
     }
-    // the tablet said ok, but when its speech model is still loading it starts nothing and sends no event:
-    // if listening has not begun a moment later, say so instead of doing nothing
-    setTimeout(() => {
-      if (!voiceUi.isListening() && !voiceUi.isSpeaking()) voiceUi.notice('Voice is still starting', 'Try again in a moment', 4000);
-    }, 2500);
+    // the tablet said ok: the listen is queued. While its speech model loads, the pill shows "Starting voice…"
+    // and a failed start shows its own notice (a tablet error event or the queue time limit), not a guess here
+    voiceUi.queueListen();
   };
   voiceUi.onTalk(() => { micTarget = null; talk(); });
   // the session composer's mic (#svMic): a toggle; the words go where it points
   setMicHandler(target => {
     if (voiceUi.isListening()) { voiceUi.cancelListening(); micTarget = null; return; }
+    if (voiceUi.isStarting()) return;   // a listen is already queued
     try { voice.stopSpeaking(); } catch { /* ignore */ }
     micTarget = { target, at: Date.now() };
     talk();
