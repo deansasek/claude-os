@@ -37,6 +37,12 @@ export interface WxDaily {
   sunset: string[];
 }
 
+// Air quality now (Open-Meteo Air Quality API). aqi is the US scale; pollen lists only the types the API returned a value for.
+export interface WxAir {
+  aqi: number | null;
+  pollen: { name: string; value: number }[];   // grains per m³
+}
+
 export interface WeatherOk {
   status: 'ok';
   place: string | null;
@@ -46,6 +52,7 @@ export interface WeatherOk {
   current: WxCurrent;
   hourly: WxHourly;
   daily: WxDaily;
+  air: WxAir | null;            // null when the air-quality request failed
   updated: string;
 }
 

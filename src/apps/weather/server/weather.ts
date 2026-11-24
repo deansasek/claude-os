@@ -1,7 +1,7 @@
 // Weather from Open-Meteo (free, no account). The location lives in meter-config.json,
 // which the Hub's city picker writes through POST /api/location.
 import fs from 'node:fs';
-import type { LocationUpdate, Place, Units, Weather, WeatherOk } from '../api.ts';
+import type { LocationUpdate, Place, Units, Weather, WeatherOk, WxAir } from '../api.ts';
 import { CONFIG_FILE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 
 interface Config { lat?: number; lon?: number; place?: string; city?: string; units?: Units }
@@ -16,6 +16,21 @@ async function getJson(url: string): Promise<any> {
   const r = await fetch(url, { headers: { 'User-Agent': 'claude-usage-meter', Accept: 'application/json' }, signal: AbortSignal.timeout(20e3) });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
+}
+
+// Pollen types the Air Quality API serves (Europe only; elsewhere the API sends no value and no pollen line shows).
+const POLLEN: [string, string][] = [['grass_pollen', 'grass'], ['birch_pollen', 'birch'], ['alder_pollen', 'alder'],
+  ['mugwort_pollen', 'mugwort'], ['olive_pollen', 'olive'], ['ragweed_pollen', 'ragweed']];
+
+async function airNow(lat: number, lon: number): Promise<WxAir> {
+  const q = new URLSearchParams({
+    latitude: String(lat), longitude: String(lon), timezone: 'auto',
+    current: ['us_aqi', ...POLLEN.map(([key]) => key)].join(','),
+  });
+  const c = (await getJson('https://air-quality-api.open-meteo.com/v1/air-quality?' + q)).current || {};
+  const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  const pollen = POLLEN.flatMap(([key, name]) => { const value = num(c[key]); return value == null ? [] : [{ name, value }]; });
+  return { aqi: num(c.us_aqi), pollen };
 }
 
 async function geocode(name: string, count: number): Promise<any[]> {
@@ -70,10 +85,12 @@ export async function weather(override?: Config): Promise<Weather> {
     if (wxCache && wxCache.key === key && Date.now() - wxCache.at < 6 * 3600e3) return { ...wxCache.data, place: place ?? wxCache.data.place };
     throw e;
   }
+  // air quality is a side request: if it fails, the air line stays out and the forecast still shows
+  const air = await airNow(+lat, +lon).catch(() => null);
   const data: WeatherOk = {
     status: 'ok', place: place ?? null, units,
     wind_unit: imperial ? 'mph' : 'km/h', precip_unit: imperial ? 'in' : 'mm',
-    current: body.current, hourly: body.hourly, daily: body.daily, updated: new Date().toISOString(),
+    current: body.current, hourly: body.hourly, daily: body.daily, air, updated: new Date().toISOString(),
   };
   wxCache = { key, at: Date.now(), data };
   return data;

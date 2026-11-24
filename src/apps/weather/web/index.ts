@@ -11,6 +11,7 @@ import { manifest } from '../manifest.ts';
 import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-settings.ts';
 import { critterSpeak, openApp } from '../../../core/web/system.ts';
 import { WMO, advice, icon, isCold, isWindy, kindOf, weatherScene } from './art.ts';
+import { airLine, pollenLine } from './air.ts';
 
 type Selection = { t: 'now' } | { t: 'hour'; i: number; strip: number | null } | { t: 'day'; d: number };
 
@@ -302,6 +303,12 @@ function renderWx(): void {
   $('wFacts').textContent = v.facts;
   $('wSummary').innerHTML = `${v.alert ? `<span class="alert">${esc(v.alert)}</span> ` : ''}${esc(v.lead)}${v.rest ? ` <em>${esc(v.rest)}</em>` : ''}`;
   $('wNote').textContent = v.note;
+  // air and pollen are current conditions: the lines stay out when the API sent no value
+  const air = airLine(w.air), pollen = pollenLine(w.air);
+  $('wAir').textContent = air;
+  $('wAir').hidden = !air;
+  $('wPollen').textContent = pollen;
+  $('wPollen').hidden = !pollen;
 
   // centre: the condition and the critter
   $('wCondIcon').innerHTML = icon(v.code, v.day, { blob: true });

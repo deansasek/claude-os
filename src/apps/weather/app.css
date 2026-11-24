@@ -29,6 +29,8 @@
 #app-weather .wtap { margin: -4px 0 8px 2px; font-size: 14px; color: var(--t3); white-space: nowrap; }
 #app-weather .wtap[hidden] { display: none; }
 #app-weather .wfacts { font-size: 15px; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-weather .wair { font-size: 14px; color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
+#app-weather .wair[hidden] { display: none; }
 /* three lines of the sentence; a fourth on the taller tablet stage (core's --tall) */
 #app-weather .whead { margin-top: 16px; font-size: 17px; font-weight: 600; line-height: 1.34; letter-spacing: -.01em;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: calc(3 + var(--tall)); line-clamp: calc(3 + var(--tall)); overflow: hidden; }
