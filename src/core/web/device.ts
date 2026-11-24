@@ -15,6 +15,7 @@ interface HubDeviceApi {
   apps(): string; setAppHidden(pkg: string, hidden: boolean): string;
   reboot(): string; maintenance(): string;
   screenOff?(): string;   // newer app builds: the power menu's Turn off screen
+  screenshot?(id: string): string;   // newer app builds: the power menu's Screenshot (uploads to the PC's Photos)
   updateAvailable?(): string; updateCheck?(): string;   // newer app builds: Settings → About → Software
   // newer app builds: chats on the tablet's own Claude CLI (apps/claude/web/native.ts) and its sign-in (cli-signin.ts)
   cliSigninStart?(): string; cliAuthState?(check: boolean): string;
@@ -106,6 +107,8 @@ export const device = {
   reboot: () => call<{ ok: boolean }>(a => a.reboot()),
   /** The screen off now (Android's lock, with no lock screen: the power button wakes it). Throws on older app builds. */
   screenOff: () => call<{ ok: boolean }>(a => a.screenOff!()),
+  /** Screenshot of ClaudeOS's window, uploaded to the PC's Photos as `id`. Throws on older app builds or on failure. */
+  screenshot: (id: string) => call<{ ok: boolean; id?: string }>(a => a.screenshot!(id)),
   /** Check only: this build and the newest one the PC offers (installs nothing). Throws on older app builds. */
   updateAvailable: () => call<{ status: string; installed?: number; latest?: number }>(a => a.updateAvailable!()),
   /** Start the update the PC offers (the person confirms first). Throws on older app builds. */

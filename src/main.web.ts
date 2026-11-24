@@ -32,11 +32,24 @@ import { initPowerSheet } from './core/web/power-sheet.ts';
 // Camera needs the tablet's camera (Photos works anywhere, it only shows what the PC has; Home Assistant too, its
 // devices are switched by the PC). The first-run welcome shows once the app has mounted (startHub resolves after that),
 // if the PC hasn't recorded it.
+/** The power menu's Screenshot: once the sheet has closed, ClaudeOS's screen goes to the PC's Photos and a banner says so. */
+function takeScreenshot(): void {
+  setTimeout(() => {
+    const id = `shot-${Date.now()}`;
+    try {
+      const r = device.screenshot(id);
+      notify(r.ok ? { title: 'Screenshot saved to Photos', app: 'photos' } : { title: 'Couldn’t save the screenshot', app: 'photos' });
+    } catch (e) {
+      notify({ title: 'Couldn’t save the screenshot', body: (e as Error).message, app: 'photos' });
+    }
+  }, 450);
+}
+
 void startHub(onTablet
   ? [home, launcher, claude, weather, clock, browserApp, camera, photos, homeAssistant, lists, radio, recipes, calendar, routines, settings]
   : [home, launcher, claude, weather, clock, photos, homeAssistant, lists, radio, recipes, calendar, routines]).then(() => {
     maybeWelcome();
-    initPowerSheet({ reboot: device.reboot, screenOff: device.screenOff, onBack });   // a long press of the power button
+    initPowerSheet({ reboot: device.reboot, screenOff: device.screenOff, screenshot: takeScreenshot, onBack });   // a long press of the power button
     initCliSignin({   // the tablet's Claude CLI sign-in (Settings → Apps → Claude → Sign in)
       sendCode: device.cliSigninCode, paste: device.cliSigninClipboard, secondsLeft: device.cliSigninState, onBack,
       keyboard: o => Keyboard.open(o), keyboardClose: () => Keyboard.close(),
