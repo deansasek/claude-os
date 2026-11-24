@@ -233,7 +233,7 @@
 #app-radio .rd-facet-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 16px; }
 
 /* ---- header tabs: Home and Search, in .app-hd-after; the chosen one is ink ---- */
-#app-radio .rd-htabs { display: flex; gap: 8px; }
+#app-radio .rd-htabs { position: absolute; right: var(--app-r); top: calc(var(--app-label-y) - 10px); z-index: 2; display: flex; gap: 8px; }
 #app-radio .rd-htab { all: unset; box-sizing: border-box; cursor: pointer; height: 44px; padding: 0 16px; border-radius: 12px; display: inline-flex;
   align-items: center; font: 500 16px var(--sans); color: var(--t2); }
 #app-radio .rd-htab:active { background: var(--card-2); }
@@ -327,7 +327,7 @@
 #app-radio .rd-cv-art { width: 144px; height: 144px; border-radius: 16px; border: 1px solid var(--line); font-size: 56px; }
 #app-radio .rd-cv.on .rd-cv-art { border-color: var(--clay); }
 #app-radio .rd-cv:active .rd-cv-art { opacity: .85; }
-#app-radio .rd-cv-name { font: 500 14px/20px var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-radio .rd-cv-name { font: 500 14px/20px var(--sans); color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 
 /* a station row (Made for you tiles and Your top stations): the cover, the name in the serif, one line in the sans, and
    the ink play button */
