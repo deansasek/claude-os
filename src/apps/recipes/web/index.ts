@@ -441,11 +441,12 @@ function discoverHtml(): string {
   else if (!results.length) empty = query ? `No recipes match “${query}”. Try one word, like “chicken” or “soup”.` : 'No recipes came back.';
   const grid = resultsState === 'ok' && results.length
     ? `<ul class="rc-grid">${results.map((r, i) => cardHtml(r, 'res', i)).join('')}</ul>` : '';
+  // recipes come right under the search and Claude actions; the saved row and the pantry picker follow
   return search + noticesHtml() + todayHtml()
-    + `<h3 class="rc-h">Saved</h3>${saved}`
-    + `<h3 class="rc-h">What do you have</h3><div data-pantry>${pantryHtml()}</div>`
     + `<h3 class="rc-h">${query ? `Results for “${esc(query)}”` : 'Ideas for today'}</h3>${grid}`
     + (empty ? `<p class="rc-empty">${esc(empty)}</p>` : '')
+    + `<h3 class="rc-h">Saved</h3>${saved}`
+    + `<h3 class="rc-h">What do you have</h3><div data-pantry>${pantryHtml()}</div>`
     + `<p class="rc-source">Recipes from TheMealDB</p>`;
 }
 
