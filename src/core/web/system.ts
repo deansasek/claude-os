@@ -433,6 +433,7 @@ function build(stage: HTMLElement): void {
       <div class="amb-date" id="ambDate"></div>
       <div class="amb-chips" id="ambChips"></div>
       <div class="amb-note" id="ambNote"></div>
+      <div class="amb-media" id="ambMedia" hidden></div>
       <div class="amb-critter">
         <i class="amb-z">z</i><i class="amb-z">z</i>
         <svg class="amb-crit" viewBox="0 0 14 9" shape-rendering="crispEdges" aria-hidden="true">
@@ -999,10 +1000,20 @@ function paintAmbient(): void {
     } catch { /* ignore */ }
   }
   $s('ambChips').innerHTML = chips.join('');
+  paintAmbientMedia();
   $s('amb').classList.toggle('night', isNight(now));
   // drift a little each minute so nothing burns in: one full sine cycle per hour, so the sideways drift
   // runs symmetric -12..+12px around centre (0 at minute 0), small enough to still read as centred
   $s('ambIn').style.transform = `translate(${Math.round(Math.sin(now.getMinutes() * Math.PI / 30) * 12)}px, ${Math.round(Math.cos(now.getMinutes() * 1.7) * 22)}px)`;
+}
+
+/** The now-playing line on the ambient screen, with the playing app's pause or play button (media.ts). Hidden when nothing plays. */
+function paintAmbientMedia(): void {
+  const el = $s('ambMedia'), m = nowPlaying(), a = mediaActions();
+  if (!m) { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = `<span class="amb-media-text">${esc(m.title)}${m.subtitle ? `<em>${esc(m.subtitle)}</em>` : ''}</span>`
+    + (a ? `<button class="amb-media-btn" data-amb-media="toggle" aria-label="${m.playing ? 'Pause' : 'Play'}">${m.playing ? I.pause : I.play}</button>` : '');
 }
 
 /** Fade to the ambient screen now (it also happens on its own after the idle time in Settings). */
@@ -1179,13 +1190,20 @@ export function initSystem(stage: HTMLElement, h: SystemHooks): void {
   watchBattery();
   // the control center has its own volume slider, so the HUD stays out of its way while it's open
   onVolume(level => { if (!ccOpen) showVolume(level); });
-  onNowPlaying(() => { if (ccOpen) paintMedia(); });
+  onNowPlaying(() => { if (ccOpen) paintMedia(); if (ambientOn) paintAmbientMedia(); });
   // a toggle made anywhere (a tile, Settings, low power kicking in) repaints the open tiles
   onSystemChange(() => { if (ccOpen) paintCC(); });
   stage.classList.toggle('on-tablet', onTablet);
 
-  // first tap on the ambient screen only wakes it
-  $s('amb').addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); wake(); }, true);
+  // first tap on the ambient screen only wakes it, except the media button: pause works without waking the screen
+  $s('amb').addEventListener('pointerdown', e => {
+    if ((e.target as Element).closest?.('[data-amb-media]')) return;
+    e.stopPropagation(); e.preventDefault(); wake();
+  }, true);
+  $s('ambMedia').addEventListener('click', ev => {
+    if (!(ev.target as Element).closest('[data-amb-media]')) return;
+    try { mediaActions()?.toggle(); } catch { /* the app that plays is busy */ }
+  });
   document.addEventListener('pointerdown', () => { lastTouch = Date.now(); }, true);
   setInterval(() => {
     // low power shortens the wait before the ambient screen (two minutes at most)

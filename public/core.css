@@ -265,6 +265,15 @@
   .lock-caption { margin-top: 12px; font: 400 14px/20px var(--sans); color: var(--t3); }
   .lock-glance { margin-top: 8px; font: 400 16px/22px var(--sans); color: var(--t2); }
   .lock-glance:empty { display: none; }
+  /* now playing on the lock screen: the title and its pause button, under the glance line (lock.ts paintLockMedia) */
+  .lock-media { display: flex; align-items: center; gap: 12px; margin-top: 14px; max-width: 100%; font: 400 16px/22px var(--sans); color: var(--t2); }
+  .lock-media[hidden] { display: none; }
+  .lock-media-text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .lock-media-btn { all: unset; cursor: pointer; box-sizing: border-box; width: 48px; height: 48px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; background: var(--card); border: 1px solid var(--line); color: var(--text);
+    transition: transform var(--dur-fast) var(--ease-out); }
+  .lock-media-btn svg { width: 22px; height: 22px; }
+  .lock-media-btn:active { transform: scale(.95); }
   .lock-pad { text-align: center; }
   .lock-pad .pin-dots { gap: 14px; height: 18px; margin: 0 0 6px; }
   .lock-pad .pin-dots i { width: 16px; height: 16px; box-sizing: border-box; }
@@ -669,6 +678,16 @@
   .amb-note[hidden] { display: none; }
   .amb-note i { width: 8px; height: 8px; border-radius: 50%; background: #d97757; flex: none; }
   .amb-note span { color: #a8a296; }
+  /* now playing on the ambient screen: a quiet line and a pause button (system.ts paintAmbientMedia) */
+  .amb-media { display: inline-flex; align-items: center; gap: 14px; margin-top: 18px; max-width: 620px; font-size: 17px; color: #a8a296; }
+  .amb-media[hidden] { display: none; }
+  .amb-media-text { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .amb-media-text em { font-style: normal; color: #958f85; margin-left: 8px; }
+  .amb-media-btn { all: unset; cursor: pointer; box-sizing: border-box; width: 48px; height: 48px; border-radius: 50%; flex: none;
+    display: grid; place-items: center; background: #1a1918; border: 1px solid #2a2927; color: #d9d3c6;
+    transition: transform var(--dur-fast) var(--ease-out); }
+  .amb-media-btn svg { width: 22px; height: 22px; }
+  .amb-media-btn:active { transform: scale(.95); }
   /* "needs you" is the one clay thing on this screen (text and dot; 6:1 on the background) */
   .amb-need { font-weight: 500; color: #d97757; display: inline-flex; align-items: center; gap: 9px; }
   /* the hint for the first few seconds after the screen dims, then it fades out by itself (no timer in the page) */
