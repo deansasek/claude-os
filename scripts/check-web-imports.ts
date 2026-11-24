@@ -1,13 +1,13 @@
 // Walks the import graph of the browser code (src/main.web.ts, and the mock tablet loaded by index.html) and fails
 // if any module it imports is one the hub will not serve to a browser. The server only serves paths matching
-// WEB_FILE (src/core/server/index.ts); anything else 404s and the whole page fails to boot.
+// WEB_FILE (src/core/server/served.ts); anything else 404s and the whole page fails to boot.
 // This is the same regex as WEB_FILE, and the script fails if the two ever differ, so change both together.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SERVER = path.join(ROOT, 'src', 'core', 'server', 'index.ts');
+const SERVER = path.join(ROOT, 'src', 'core', 'server', 'served.ts');
 const WEB_FILE = /^\/src\/(main\.web\.ts|core\/web\/[\w./-]+\.(ts|html)|apps\/[\w-]+\/(web\/[\w./-]+\.ts|view\.html|app\.css|manifest\.ts|api\.ts))$/;
 const ENTRIES = ['/src/main.web.ts', '/src/core/web/mock-device.ts'];
 
@@ -17,7 +17,7 @@ const errors: string[] = [];
 const serverSource = fs.readFileSync(SERVER, 'utf8');
 const serverLine = /^(?:export )?const WEB_FILE = (\/.*\/);$/m.exec(serverSource)?.[1];
 if (serverLine !== WEB_FILE.toString()) {
-  errors.push(`WEB_FILE in src/core/server/index.ts is not the same as scripts/check-web-imports.ts; keep them in sync:\n  server: ${serverLine}\n  here:   ${WEB_FILE}`);
+  errors.push(`WEB_FILE in src/core/server/served.ts is not the same as scripts/check-web-imports.ts; keep them in sync:\n  server: ${serverLine}\n  here:   ${WEB_FILE}`);
 }
 
 // import x from 'y' / import {a} from 'y' / import 'y' / export {a} from 'y' / import('y')
