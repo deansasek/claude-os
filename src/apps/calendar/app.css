@@ -96,7 +96,7 @@
 /* the day and time pickers over the add form: a sheet of ClaudeOS controls (index.ts) */
 #app-calendar .cal-pick { position: absolute; inset: 0; z-index: 6; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 24px; }
 #app-calendar .cal-pick[hidden] { display: none; }
-#app-calendar .cal-pick-card { width: min(560px, 100%); background: var(--card); border-radius: 18px; box-shadow: 0 0 0 1px var(--line);
+#app-calendar .cal-pick-card { width: min(560px, 100%); background: var(--card); border-radius: 18px; border: 1px solid var(--line);
   padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 #app-calendar .cal-pick-card h2 { margin: 0; font: 400 26px/1.2 var(--serif); color: var(--text); }
 #app-calendar .cal-pick-month { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 500 17px/22px var(--sans); color: var(--text); }
