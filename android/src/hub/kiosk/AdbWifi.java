@@ -82,6 +82,17 @@ final class AdbWifi {
     set(c, true);
   }
 
+  /** Start-up retry delays after the app starts (ms). Android can switch it off after the first attempt, so try again. */
+  static final long[] RETRY_MS = { 10_000, 30_000, 90_000 };
+
+  /** Calls reapply again at each RETRY_MS delay when the user keeps it on. Bounded: nothing repeats after the last delay. */
+  static void retryAtStart(Context c) {
+    if (!keep(c)) return;
+    final Context app = c.getApplicationContext();
+    Handler ui = new Handler(Looper.getMainLooper());
+    for (long ms : RETRY_MS) ui.postDelayed(() -> reapply(app), ms);
+  }
+
   /** Re-applies after Wi-Fi changes networks (Android switches wireless debugging off then). Registered once. */
   static synchronized void watch(Context c) {
     if (watching) return;
