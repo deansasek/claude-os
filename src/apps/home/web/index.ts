@@ -607,7 +607,7 @@ const ACTIONS: QuickAction[] = [
 ];
 
 // ---------- Home Assistant scenes: up to three, chosen in Settings > Apps > Home Assistant ----------
-// GET /api/home-assistant/scenes gives the picks (the demo scenes in demo mode); a tap posts /scene, which the PC
+// GET /api/home-assistant/scenes gives the picks; a tap posts /scene, which the PC
 // checks again (only domain "scene", only a scene on Home). No scenes, or no answer: no scene buttons.
 interface SceneAct { id: string; name: string }
 let sceneActs: SceneAct[] = [];
