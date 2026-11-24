@@ -1,0 +1,58 @@
+/* News app styles. Everything is scoped to #app-news. Colours and motion come from the tokens in public/core.css only. */
+
+/* ---------- header ---------- */
+/* the icon and "News" are the shell's (core/web/app-header.ts); the status time sits in .app-hd-right */
+#app-news .nw-time { font-family: var(--sans); font-size: 14px; color: var(--t3); }
+
+/* ---------- body: the top story, the notes, then one shelf per feed (the page scrolls down) ---------- */
+#app-news .nw-body, #app-news .nw-empty { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: 24px;
+  overflow-y: auto; overscroll-behavior: contain; }
+#app-news [hidden] { display: none !important; }
+#app-news .nw-notes { display: grid; gap: 8px; margin-bottom: 16px; }
+#app-news .nw-note { margin: 0; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card);
+  font: 400 14px/20px var(--sans); color: var(--t2); }
+
+/* the top story: a card with the picture on the left (or a letter block), the serif title beside it */
+#app-news .nw-hero { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 20px; align-items: stretch;
+  width: 100%; padding: 16px; border-radius: 20px; border: 1px solid var(--line); background: var(--card);
+  transition: background-color var(--dur-fast) var(--ease-out); }
+#app-news .nw-hero:active { background: var(--card-2); }
+#app-news .nw-hero-media { flex: none; width: 300px; height: 190px; border-radius: 14px; object-fit: cover; display: block; background: var(--card-2); }
+#app-news .nw-letter { display: grid; place-items: center; font: 600 72px/1 var(--serif); color: var(--t2); }
+#app-news .nw-hero-body { display: flex; flex-direction: column; justify-content: center; gap: 10px; min-width: 0; }
+#app-news .nw-kicker { font: 500 13px/18px var(--sans); color: var(--t4); }
+#app-news .nw-hero-title { font: 500 30px/36px var(--serif); letter-spacing: -.02em; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+#app-news .nw-meta { margin: 0; display: flex; gap: 10px; align-items: baseline; font: 400 14px/20px var(--sans); color: var(--t3); }
+#app-news .nw-src { color: var(--t3); }
+#app-news .nw-when { color: var(--t3); }
+
+/* the shelves: a heading row, then one row of tiles that scrolls sideways */
+#app-news .nw-shelves { display: grid; gap: 24px; margin-top: 24px; }
+#app-news .nw-shelf-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+#app-news .nw-shelf h3 { margin: 0; font: 500 20px/28px var(--serif); letter-spacing: -.01em; color: var(--text); }
+#app-news .nw-saved { font: 400 13px/18px var(--sans); color: var(--t3); white-space: nowrap; }
+#app-news .nw-row { display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; scrollbar-width: none; }
+#app-news .nw-row::-webkit-scrollbar { display: none; }
+#app-news .nw-tile { all: unset; box-sizing: border-box; cursor: pointer; flex: none; width: 240px; min-height: 116px;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 10px; padding: 14px 16px;
+  border-radius: 16px; border: 1px solid var(--line); background: var(--card);
+  transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out); }
+#app-news .nw-tile:active { background: var(--card-2); transform: scale(.98); }
+#app-news .nw-tile-title { font: 500 16px/22px var(--serif); color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+#app-news .nw-tile-when { font: 400 13px/18px var(--sans); color: var(--t3); }
+
+/* ---------- no stories: a plain message and the critter ---------- */
+#app-news .nw-empty { display: flex; align-items: center; gap: 32px; }
+#app-news .nw-empty-text { max-width: 420px; }
+#app-news .nw-empty h2 { margin: 0 0 8px; font: 500 26px/32px var(--serif); letter-spacing: -.02em; color: var(--text); }
+#app-news .nw-empty p { margin: 0 0 16px; font: 400 16px/24px var(--sans); color: var(--t2); }
+#app-news .nw-crit { flex: none; width: 140px; }
+#app-news .nw-crit-svg { width: 100%; height: auto; display: block; }
+#app-news .nw-retry { font: 500 15px/20px var(--sans); }
+
+@media (prefers-reduced-motion: reduce) {
+  #app-news .nw-hero, #app-news .nw-tile { transition: none; }
+  #app-news .nw-tile:active { transform: none; }
+}
