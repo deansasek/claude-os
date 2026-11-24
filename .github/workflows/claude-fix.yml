@@ -76,4 +76,6 @@ jobs:
 
             Write in short sentences. Active voice. No filler.
           claude_args: '--model claude-haiku-5-5 --max-turns 15 --allowedTools "Read Glob Grep Bash(gh issue view:*) Bash(gh issue comment:*) Bash(gh issue edit:*)"'
+          track_progress: true
+          use_sticky_comment: true
           show_full_output: true
