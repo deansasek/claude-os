@@ -1,8 +1,9 @@
 // Home Assistant app routes (all under /api/home-assistant/):
 //   GET  status     configured, demo, connected, the address (the token only masked)
-//   POST config     {address?, token?, demo?}   saved in .ha-config.json on the PC
+//   POST config     {address?, token?}   saved in .ha-config.json on the PC (a demo field is ignored)
 //   POST test       calls Home Assistant's /api/ with the token: ok, or why not
-//   GET  entities   the allowlisted (Claude) devices and their state (the demo house in demo mode)
+//   GET  entities   the allowlisted (Claude) devices and their state. With no address or token: status "not_set_up"
+//                   and no devices. The made-up house appears only under CLAUDEOS_HA_DEMO=1 (tests)
 //   GET  devices    every device that may be shown (lights, switches, fans, media players, thermostats; covers and
 //                   sensors read-only), with its Claude allowlist flag and whether it is on the dashboard
 //   POST allow      {entity_id, allowed}   Claude's allowlist; the only thing that lets Claude control a device
@@ -11,7 +12,7 @@
 //   GET  layout     the dashboard: {layout: {rooms, other, names}, entities: the state of each device on it}
 //   POST layout     {layout} (or the layout itself): replaces it; cleaned and saved in .ha-layout.json
 //   POST dashboard  {entity_id, on, room?}   add one device to the dashboard (into a room, else Other), or take it off
-//   GET  scenes     every scene Home Assistant reports (the demo scenes in demo mode), and the Home screen's picks
+//   GET  scenes     every scene Home Assistant reports, and the Home screen's picks (not_set_up until set up)
 //   POST scene      {entity_id}   activate one scene (scene.turn_on); only domain "scene", only one on the dashboard
 //                   or on the Home screen
 //   POST home-scenes {entity_id, on}   put a scene on the Home screen's quick actions (up to 3), or take it off
@@ -32,7 +33,6 @@ const app: ServerApp = {
         const u: HaConfigUpdate = {};
         if (typeof b.address === 'string') u.address = b.address;
         if (typeof b.token === 'string') u.token = b.token;
-        if (typeof b.demo === 'boolean') u.demo = b.demo;
         return saveConfig(u);
       },
     },
