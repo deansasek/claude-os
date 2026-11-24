@@ -2,6 +2,7 @@
 // Shapes and limits shared by the page and the PC. Served to the browser: nothing secret lives here (the routines
 // themselves stay in .routines.json on the PC). The page checks only to give quick feedback; the server checks
 // everything again (server/store.ts), including that a scene is on the dashboard or the Home screen.
+import type { FocusId } from '../../core/web/focus-modes.ts';
 
 export const MAX_ROUTINES = 12;
 export const MAX_STEPS = 8;            // per routine
@@ -26,9 +27,12 @@ export type Step =
   | { kind: 'pause'; seconds: number }           // wait 1 to 10 seconds
   | { kind: 'lists'; list: string }               // say the open items of a list: Shopping, To-do, or one the family made (its id)
   | { kind: 'quiet'; on: boolean }               // turn Do Not Disturb on or off
+  | { kind: 'focus'; mode: FocusId }           // turn a focus mode on: Work, Family or Sleep (core/web/focus-modes.ts)
   | { kind: 'ambient' };                         // show the screen saver now
 export type StepKind = Step['kind'];
-export const STEP_KINDS: StepKind[] = ['weather', 'calendar', 'say', 'scene', 'timer', 'pause', 'lists', 'quiet', 'ambient'];
+export const STEP_KINDS: StepKind[] = ['weather', 'calendar', 'say', 'scene', 'timer', 'pause', 'lists', 'quiet', 'ambient', 'focus'];
+/** The focus modes a routine can turn on, and their names for the step's label. */
+export const FOCUS_NAMES: Record<FocusId, string> = { work: 'Work', family: 'Family', sleep: 'Sleep' };
 
 export interface Routine {
   id: string;
@@ -94,6 +98,10 @@ export function cleanStep(raw: unknown): Step | { error: string } {
       return { kind: 'quiet', on: r.on };
     }
     case 'ambient': return { kind: 'ambient' };
+    case 'focus': {
+      if (typeof r.mode !== 'string' || !Object.hasOwn(FOCUS_NAMES, r.mode)) return { error: 'A focus step needs Work, Family or Sleep.' };
+      return { kind: 'focus', mode: r.mode as FocusId };
+    }
     case 'lists': {
       const l = r.list;
       // a list id: shopping, todo, or one the family made (its id is lower case, letters, digits and dashes)
@@ -184,5 +192,6 @@ export function stepLabel(s: Step, sceneName?: string): string {
     case 'lists': return `Read the ${s.list === 'todo' ? 'to-do' : s.list === 'shopping' ? 'shopping' : s.list.replace(/-/g, ' ')} list`;
     case 'quiet': return s.on ? 'Turn Do Not Disturb on' : 'Turn Do Not Disturb off';
     case 'ambient': return 'Show the screen saver';
+    case 'focus': return `Turn on ${FOCUS_NAMES[s.mode]} focus`;
   }
 }
