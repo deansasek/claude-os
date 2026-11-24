@@ -453,6 +453,11 @@ function openHit(h: Hit): void {
     if (a) launchAndroid(a);
   } else if (h.kind === 'setting') openSettings(h.ref);
   else if (h.kind === 'list' || h.kind === 'item') openApp('lists');
+  else if (h.kind === 'session') {
+    // The Claude app opens the session named by hub:open-session (the same event Home uses).
+    openApp('claude');
+    dispatchEvent(new CustomEvent('hub:open-session', { detail: h.ref }));
+  }
   else openApp('claude');
 }
 
