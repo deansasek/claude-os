@@ -12,6 +12,7 @@ import { markdown } from '../../../core/web/markdown.ts';
 import { alertFor, notify, onBack, openApp } from '../../../core/web/system.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
 import type { HubPermission, HubTurn, LiveSession, NewSessionResult, Project, ReplyBlock, SessionSettings, SessionView, TranscriptEntry, Usage } from '../api.ts';
+import { subagentsWorking } from './sessions/sidebar-groups.ts';
 import { closeMenu, initControls, loadModels, newDefaults, newFolderPref, paintControls, remember, settingsFor, voiceDefaults, wantFor, type ControlsView } from './sessions/controls.ts';
 import { micAvailable, micTap, onMicChange } from './sessions/mic.ts';
 import { call, hidePin, initPin, withPin } from './sessions/pin.ts';
@@ -282,6 +283,10 @@ function render(): void {
   else if (s?.state === 'waiting') { state.className = 'live wait'; stateText.textContent = 'Your turn'; }
   else { state.className = 'live'; stateText.textContent = !s ? 'Gone' : s.state === 'thinking' || s.state === 'tool' ? 'Working on your PC' : 'Quiet'; }
   if (refreshFails >= 2) stateText.textContent = 'Can’t reach your PC. Trying again.';
+  // "N subagents working" (the sidebar's words), beside the state; hidden when no subagent is running
+  const subs = s ? subagentsWorking(s) : '';
+  $('svSubs').hidden = !subs;
+  $('svSubs').textContent = subs;
 
   paintSidebar();
   paintPins();
@@ -411,6 +416,7 @@ export async function openNew(): Promise<void> {
   $('svTitle').textContent = 'New session';
   $('svSub').textContent = '';
   $('svState').className = 'live'; $('svStateText').textContent = nativeOn() ? 'On this tablet' : 'On this computer';
+  $('svSubs').hidden = true;
   $('svNudge').hidden = true;
   $('svApproval').hidden = true; $('svQuick').hidden = true; $('svBlocked').hidden = true;
   $('nsFolders').hidden = nativeOn();   // a tablet chat needs no folder list
