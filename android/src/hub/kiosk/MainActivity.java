@@ -52,6 +52,8 @@ import java.util.Locale;
  *
  * The server address can be changed from the PC:
  *   adb shell am start -n hub.kiosk/.MainActivity --es url http://<PC address>:8000/?device=tablet
+ * The page source (default pc; bundle serves the page the APK holds, see PageAssets):
+ *   adb shell am start -n hub.kiosk/.MainActivity --es pageSource bundle
  */
 public class MainActivity extends Activity {
   static final String TAG = "HubKiosk";
@@ -155,6 +157,9 @@ public class MainActivity extends Activity {
     });
   }
   private String url;
+  // pageSource: pc (default), auto or bundle. Only bundle serves the page from the APK (PageAssets).
+  private volatile String pageSource = PageAssets.DEFAULT_SOURCE;
+  private PageAssets pageAssets;
   private View cover;                 // the cream cover over the page until it has loaded (see coverView)
   private boolean coverGone = false;
   private boolean showingOffline = false;
@@ -166,6 +171,10 @@ public class MainActivity extends Activity {
     String fromIntent = getIntent() != null ? getIntent().getStringExtra("url") : null;
     if (fromIntent != null && fromIntent.startsWith("http")) prefs.edit().putString("url", fromIntent).apply();
     url = prefs.getString("url", DEFAULT_URL);
+    String srcFromIntent = getIntent() != null ? getIntent().getStringExtra("pageSource") : null;
+    if (srcFromIntent != null) setPageSource(srcFromIntent);
+    else pageSource = PageAssets.sourceOf(prefs.getString("pageSource", null));
+    pageAssets = new PageAssets(getApplicationContext());
 
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     if (Build.VERSION.SDK_INT >= 28) {
@@ -304,6 +313,11 @@ public class MainActivity extends Activity {
     /** Plain http from the Hub's page: only to the Hub or a home-network address (public http is refused). */
     @Override public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
       Uri u = r.getUrl();
+      String method = r.getMethod();
+      if (u != null && PageAssets.SOURCE_BUNDLE.equals(pageSource) && isServer(u.toString())
+          && ("GET".equals(method) || "HEAD".equals(method))) {
+        return pageAssets.serve(u.getPath());   // a page file from the APK; null for /api/ and /apk/ (the PC answers)
+      }
       if (u == null || !"http".equalsIgnoreCase(u.getScheme()) || isServer(u.toString()) || BrowserView.isLocalHost(u.getHost())) return null;
       return new WebResourceResponse("text/plain", "utf-8", 403, "Blocked", java.util.Collections.<String, String>emptyMap(),
           new java.io.ByteArrayInputStream(new byte[0]));
@@ -1104,12 +1118,22 @@ public class MainActivity extends Activity {
     super.onNewIntent(i);
     if (BrowserView.fromIntent(i) && web != null) web.evaluateJavascript("window.hubBrowserIncoming && window.hubBrowserIncoming()", null);
     if (VOICE_ASSIST.equals(i.getAction())) showPowerMenu();
+    String src = i.getStringExtra("pageSource");
+    if (src != null) setPageSource(src);
     String u = i.getStringExtra("url");
     if (u != null && u.startsWith("http")) {
       url = u;
       getSharedPreferences("hub", MODE_PRIVATE).edit().putString("url", u).apply();
       loadHub();
+    } else if (src != null) {
+      loadHub();
     }
+  }
+
+  /** Saves the pageSource setting (pc, auto or bundle; anything else is pc). It applies from the next load. */
+  private void setPageSource(String raw) {
+    pageSource = PageAssets.sourceOf(raw);
+    getSharedPreferences("hub", MODE_PRIVATE).edit().putString("pageSource", pageSource).apply();
   }
 
   /**
