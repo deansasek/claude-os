@@ -12,7 +12,7 @@
    48 px above the band (switcher.ts GRAB), so the last item (Developer) scrolls up past both. */
 #app-settings .st-nav { display: flex; flex-direction: column; gap: 2px; padding: 0 14px calc(60px + var(--grab-bottom, 0px)); border-right: 1px solid var(--line); }
 #app-settings .st-nav button { all: unset; box-sizing: border-box; width: 100%; flex: none; display: flex; align-items: center; gap: 12px; padding: 0 12px; height: 44px; border-radius: 10px; cursor: pointer;
-  font: 500 15px var(--sans); color: var(--t2); transition: background-color .15s; }
+  font: 500 15px var(--sans); color: var(--t2); transition: background-color var(--dur-fast); }
 #app-settings .st-nav button[hidden] { display: none; }
 #app-settings .st-nav button.on { background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
 #app-settings .st-nav button:active { background: var(--card); }
@@ -24,7 +24,7 @@
 /* right: one section at a time */
 #app-settings .st-content { overflow-y: auto; padding: 8px 36px calc(40px + var(--grab-bottom, 0px)) 32px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
 #app-settings .st-sec { display: none; }
-#app-settings .st-sec.on { display: block; animation: st-in .25s ease-out; }
+#app-settings .st-sec.on { display: block; animation: st-in var(--dur-base) var(--ease-out); }
 @keyframes st-in { from { opacity: 0; transform: translateY(3px); } }
 #app-settings h2 { margin: 0 0 6px; font: 500 26px var(--serif); letter-spacing: -.01em; color: var(--text); }
 #app-settings .st-lede { margin: 0 0 6px; font-size: 14px; color: var(--t3); line-height: 1.45; max-width: 560px; }
@@ -48,10 +48,10 @@
 
 /* switches: blue, as in the desktop app */
 #app-settings .st-switch { all: unset; position: relative;   /* .hit (core): finger-sized */ flex: none; width: 48px; height: 28px; border-radius: 99px; background: var(--track);
-  box-shadow: inset 0 0 0 1px var(--track-edge); cursor: pointer; transition: background .2s; }
+  box-shadow: inset 0 0 0 1px var(--track-edge); cursor: pointer; transition: background var(--dur-base); }
 :root[data-theme="light"] #app-settings .st-switch:not([aria-checked="true"]) { background: var(--line); }
 #app-settings .st-switch i { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--paper);
-  border: 1px solid var(--line); transition: transform .2s; }
+  border: 1px solid var(--line); transition: transform var(--dur-base); }
 #app-settings .st-switch[aria-checked="true"] { background: var(--blue); box-shadow: none; }
 #app-settings .st-switch[aria-checked="true"] i { transform: translateX(20px); }
 
@@ -98,7 +98,7 @@
 #app-settings #stSetup[hidden] { display: none; }
 #app-settings .st-progress { height: 4px; border-radius: 99px; background: var(--card-2); margin: 6px 0 4px; overflow: hidden; }
 #app-settings .st-progress[hidden] { display: none; }
-#app-settings .st-progress i { display: block; height: 100%; border-radius: 99px; background: var(--olive); transition: width .6s; }
+#app-settings .st-progress i { display: block; height: 100%; border-radius: 99px; background: var(--olive); transition: width var(--dur-slower); }
 #app-settings .st-step { justify-content: flex-start; gap: 16px; }
 #app-settings .st-check { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;
   border: 1.6px solid var(--t5); box-sizing: border-box; }
@@ -169,12 +169,12 @@
 
 /* sheets: confirm, and the voice picker */
 #app-settings .st-sheet { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
-  background: rgba(20, 20, 19, .22); animation: st-fade .2s ease-out; }
+  background: rgba(20, 20, 19, .22); animation: st-fade var(--dur-base) var(--ease-out); }
 :root[data-theme="dark"] #app-settings .st-sheet { background: rgba(0, 0, 0, .45); }
 @keyframes st-fade { from { opacity: 0; } }
 #app-settings .st-sheet[hidden] { display: none; }
 #app-settings .st-sheet-card { width: 440px; padding: 22px 24px 18px; border-radius: 18px; background: var(--bg); border: 1px solid var(--line);
-  box-shadow: 0 16px 48px rgba(20,20,19,.2); animation: st-pop .25s cubic-bezier(.2, .8, .2, 1); }
+  box-shadow: 0 16px 48px rgba(20,20,19,.2); animation: st-pop var(--dur-base) var(--ease-out); }
 @keyframes st-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
 :root[data-theme="dark"] #app-settings .st-sheet-card { background: var(--card); box-shadow: 0 16px 48px rgba(0,0,0,.5); }
 #app-settings .st-sheet-card h3 { margin: 0 0 8px; font: 600 18px var(--sans); color: var(--text); display: block; min-height: 0; }
@@ -191,7 +191,7 @@
 #app-settings .st-heard-row .st-txt span b { font: inherit; font-style: italic; color: var(--clay-deep); }
 #app-settings .st-heard-row .st-txt em { display: block; margin-top: 2px; font: 400 12px var(--sans); font-style: normal; color: var(--t4); }
 #app-settings .st-meter { flex: none; display: flex; align-items: flex-end; gap: 2px; width: 156px; height: 34px; }
-#app-settings .st-meter i { flex: 1; min-height: 2px; border-radius: 1.5px; background: var(--t5); transition: height .12s; }
+#app-settings .st-meter i { flex: 1; min-height: 2px; border-radius: 1.5px; background: var(--t5); transition: height var(--dur-fast); }
 #app-settings .st-meter i.hot { background: var(--clay); }
 /* the voice picker's groups: natural (Google, online) and on this tablet */
 #app-settings .st-pick-intro { margin: -2px 0 10px !important; font-size: 13px !important; color: var(--t3) !important; }
@@ -313,7 +313,7 @@
 #app-settings .st-nav .st-hit b { font: 500 15px var(--sans); color: var(--text); }
 #app-settings .st-nav .st-hit span { font-size: 12px; color: var(--t4); }
 #app-settings .st-nav .st-hits > .st-empty { padding: 12px; font-size: 16px; }
-#app-settings .st-row.st-flash, #app-settings .st-tabapp.st-flash { animation: st-flash 1.4s ease-out; }
+#app-settings .st-row.st-flash, #app-settings .st-tabapp.st-flash { animation: st-flash var(--dur-calm) var(--ease-out); }
 @keyframes st-flash { 0%, 35% { background: color-mix(in srgb, var(--clay) 16%, transparent); } 100% { background: transparent; } }
 
 /* ---- "Coming soon": a muted tag on a row we can't do yet (the row is dimmed, its control isn't there) ---- */
