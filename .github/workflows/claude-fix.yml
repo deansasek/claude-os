@@ -611,36 +611,32 @@ jobs:
           printf '%s\n' "$id" > "$RUNNER_TEMP/claude-comment-id.txt"
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
-      # Mint the Claude token used by the edit or post step below. The claude action
-      # gives the token as github_token. No other token is used for those steps.
-      - name: Mint the Claude token
-        id: claude-token
-        if: steps.decide.outputs.kind != 'none'
+      # Edit the agent's Claude comment into the final result. The claude action runs
+      # Claude with its own token, so Claude's gh call edits the comment as claude[bot].
+      - name: Edit the Claude comment into the result
+        if: steps.decide.outputs.kind != 'none' && steps.find.outputs.id != ''
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            Reply with OK.
-          claude_args: '--model claude-haiku-5-5 --max-turns 1'
-
-      # Edit the agent's Claude comment into the final result. One comment stays on the issue.
-      - name: Edit the Claude comment into the result
-        if: steps.decide.outputs.kind != 'none' && steps.find.outputs.id != ''
-        env:
-          GH_TOKEN: ${{ steps.claude-token.outputs.github_token }}
-          COMMENT_ID: ${{ steps.find.outputs.id }}
-        run: |
-          set -eu
-          gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${COMMENT_ID}" -F body=@"$RUNNER_TEMP/report.md"
+            Edit issue comment ${{ steps.find.outputs.id }} on ${{ github.repository }} with the contents of ${{ runner.temp }}/report.md.
+            Use gh api -X PATCH repos/${{ github.repository }}/issues/comments/${{ steps.find.outputs.id }} -F body=@${{ runner.temp }}/report.md.
+            Do nothing else.
+          claude_args: '--model claude-haiku-5-5 --max-turns 5 --allowedTools "Read Bash(gh api:*)"'
+          label_trigger: ai-fix
 
       # No agent comment was found. Post the result as a new comment, as Claude.
       - name: Post the result as a new comment
         if: steps.decide.outputs.kind != 'none' && steps.find.outputs.id == ''
-        env:
-          GH_TOKEN: ${{ steps.claude-token.outputs.github_token }}
-        run: |
-          set -eu
-          gh issue comment "$ISSUE" --repo "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/report.md"
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Post one comment on issue ${{ github.event.issue.number || inputs.issue }} in ${{ github.repository }}.
+            Use gh issue comment ${{ github.event.issue.number || inputs.issue }} --repo ${{ github.repository }} --body-file ${{ runner.temp }}/report.md.
+            Post only that. Do not edit or add anything else.
+          claude_args: '--model claude-haiku-5-5 --max-turns 5 --allowedTools "Bash(gh issue comment:*)"'
+          label_trigger: ai-fix
 
       - name: Remove the ai-fix label
         if: always()
