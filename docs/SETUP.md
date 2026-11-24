@@ -80,8 +80,10 @@ node android/build.ts --install --device <serial>
 The APK is written to `android/build/claude-hub.apk`. The build signs the APK with `android/hub.keystore` and stops if that file is missing. It never makes a new key, because Android refuses an update signed with a different key. Keep a backup copy of the keystore. For a first install on a new tablet only, make the key once with the JDK's keytool:
 
 ```
-tools/jdk/bin/keytool -genkeypair -keystore android/hub.keystore -alias hub -storepass hubkiosk -keypass hubkiosk -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Claude Hub"
+tools/jdk/bin/keytool -genkeypair -keystore android/hub.keystore -alias hub -storepass <password> -keypass <password> -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Claude Hub"
 ```
+
+The build reads the password from the `CLAUDEOS_KEYSTORE_PASS` environment variable. Set it on the PC before you run the build. Do not write the password in any file.
 
 ## The tablet
 
