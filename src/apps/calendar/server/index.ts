@@ -19,22 +19,25 @@ import { cachedConnectorEvents, connectorEvents } from './connector.ts';
 import { addLocalEvent, deleteLocalEvent, localEventsBetween, updateLocalEvent } from './local.ts';
 import { loadFlags, setShown } from './calendar-shown.ts';
 import { calendarsFor } from '../web/calendars.ts';
-import { mergeRange, type ConnectorRead, type RangeAnswer } from './range-merge.ts';
+import { connectorForRange, mergeRange, type ConnectorRead, type RangeAnswer } from './range-merge.ts';
 
-/** The connector's read for a range that is exactly today or tomorrow, the only days it reads. null for any other range. */
-async function connectorFor(b: { from: number; to: number }): Promise<ConnectorRead | null> {
+/** The connector's read for a range that is exactly today or tomorrow, the only days it reads. null for any other range.
+ * auto: the page's timer. It takes only a fresh cached read and never a Claude turn (range-merge.ts). */
+async function connectorFor(b: { from: number; to: number }, auto: boolean): Promise<ConnectorRead | null> {
   const n = new Date();
   const at = (add: number): number => new Date(n.getFullYear(), n.getMonth(), n.getDate() + add).getTime();
-  if (b.from === at(0) && b.to === at(1)) return connectorEvents('today');
-  if (b.from === at(1) && b.to === at(2)) return connectorEvents('tomorrow');
-  return null;
+  const day = b.from === at(0) && b.to === at(1) ? 'today' : b.from === at(1) && b.to === at(2) ? 'tomorrow' : null;
+  return connectorForRange(day, auto, {
+    cached: d => { const hit = cachedConnectorEvents(d); return hit.status === 'ok' ? hit : null; },
+    read: connectorEvents,
+  });
 }
 
 /** The range from every calendar: the local events, the ICS events when there is an address, and with no address the connector's (mergeRange). */
-async function rangeWithLocal(b: { from: number; to: number }, refresh: boolean): Promise<RangeAnswer> {
+async function rangeWithLocal(b: { from: number; to: number }, refresh: boolean, auto: boolean): Promise<RangeAnswer> {
   const local = localEventsBetween(b.from, b.to);
   const ext = await eventsBetween(b.from, b.to, 3000, refresh);
-  return mergeRange(ext, local, ext.status === 'not_set' ? await connectorFor(b) : null);
+  return mergeRange(ext, local, ext.status === 'not_set' ? await connectorFor(b, auto) : null);
 }
 
 const app: ServerApp = {
@@ -46,10 +49,11 @@ const app: ServerApp = {
     // adds one event through the connector (no longer called by the add form, which uses local-add; a later PR removes it)
     { method: 'POST', path: 'add', handle: ({ body }) => addConnectorEvent(body) },
     // the events from one day (inclusive) to another (exclusive), for the Day, Week, Month and Year views:
-    // the local calendar's events with the external ones (rangeWithLocal)
+    // the local calendar's events with the external ones (rangeWithLocal).
+    // auto=1: the page's 5-minute timer. It never reads the connector (only a fresh cached read is used).
     { method: 'GET', path: 'range', handle: ({ query }) => {
       const b = rangeBounds(query.get('from') ?? '', query.get('to') ?? '');
-      return b ? rangeWithLocal(b, query.get('refresh') === '1') : { status: 'error', events: [], error: 'That range is not valid.' };
+      return b ? rangeWithLocal(b, query.get('refresh') === '1', query.get('auto') === '1') : { status: 'error', events: [], error: 'That range is not valid.' };
     } },
     // the ClaudeOS calendar on its own: no account, no Claude turn. Each change is checked on the PC (local.ts).
     { method: 'GET', path: 'local', handle: ({ query }) => {

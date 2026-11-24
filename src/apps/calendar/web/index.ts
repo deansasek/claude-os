@@ -106,7 +106,7 @@ async function loadStatus(): Promise<void> {
   appSettingsChanged();
 }
 
-/** The events for the view on screen. auto: the 5-minute timer, which never makes a connector read. */
+/** The events for the view on screen. auto: the 5-minute timer. It sends auto=1, and it never makes a connector read. */
 async function load(force = false, auto = false): Promise<void> {
   if (loading) return;
   if (auto && viaConnector) return;
@@ -115,7 +115,7 @@ async function load(force = false, auto = false): Promise<void> {
   render();
   try {
     const { from, to } = rangeFor();
-    const r = await getJson<RangeAnswer>(`${API}/range?from=${keyOf(from)}&to=${keyOf(to)}${force ? '&refresh=1' : ''}`);
+    const r = await getJson<RangeAnswer>(`${API}/range?from=${keyOf(from)}&to=${keyOf(to)}${force ? '&refresh=1' : ''}${auto ? '&auto=1' : ''}`);
     if (r.status === 'ok') {
       events = r.events ?? [];
       viaConnector = false;
@@ -124,8 +124,8 @@ async function load(force = false, auto = false): Promise<void> {
       events = [];
       viaConnector = false;
       msg = r.error ?? 'Couldn’t read the calendar.';
-    } else {
-      await loadConnector();
+    } else if (!auto) {
+      await loadConnector();   // a user request only; the timer keeps the events it has
     }
   } catch {
     failed = true;

@@ -15,6 +15,23 @@ const byStart = (x: RangeEvent, y: RangeEvent): number => x.start - y.start || x
  * or null when the range is not one the connector reads (only a single today or tomorrow is).
  * With no address, a connector read is merged in, so local events never hide the connector's events.
  */
+/** The connector's read for a range's day (null when the range is not one day the connector reads). */
+export type ConnectorDay = 'today' | 'tomorrow';
+
+/**
+ * The connector source for one range. An automatic request (the page's 5-minute timer, auto=1) never reads the connector:
+ * it gets a fresh cached read or null. Only a user request (open, Refresh, moving the day) may call read.
+ */
+export async function connectorForRange(
+  day: ConnectorDay | null,
+  auto: boolean,
+  src: { cached: (day: ConnectorDay) => ConnectorRead | null; read: (day: ConnectorDay) => Promise<ConnectorRead> },
+): Promise<ConnectorRead | null> {
+  if (!day) return null;
+  if (auto) return src.cached(day);
+  return src.read(day);
+}
+
 export function mergeRange(ext: RangeAnswer, local: RangeEvent[], conn: ConnectorRead | null): RangeAnswer {
   if (ext.status === 'ok') return { ...ext, events: [...ext.events, ...local].sort(byStart) };
   if (conn?.status === 'ok') return { status: 'ok', events: [...local, ...tagCalendar(conn.events, 'connector')].sort(byStart) };
