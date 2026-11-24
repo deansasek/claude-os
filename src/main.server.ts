@@ -8,9 +8,10 @@ import launcher from './apps/launcher/server/index.ts';
 import lists from './apps/lists/server/index.ts';
 import photos from './apps/photos/server/index.ts';
 import radio from './apps/radio/server/index.ts';
+import recipes from './apps/recipes/server/index.ts';
 import routines from './apps/routines/server/index.ts';
 import settings from './apps/settings/server/index.ts';
 import weather from './apps/weather/server/index.ts';
 import { startServer } from './core/server/index.ts';
 
-startServer([claude, weather, photos, homeAssistant, lists, calendar, routines, launcher, settings, radio]);
+startServer([claude, weather, photos, homeAssistant, lists, calendar, routines, launcher, settings, radio, recipes]);

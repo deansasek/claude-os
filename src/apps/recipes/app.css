@@ -2,55 +2,104 @@
 #app-recipes [hidden] { display: none !important; }
 
 #app-recipes .rc { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
-  overflow-y: auto; padding-bottom: 12px; }
+  overflow-y: auto; padding-bottom: 16px; }
 #app-recipes .rc::-webkit-scrollbar { display: none; }
-
-/* header button */
-#app-recipes .rc-hbtn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 44px; padding: 7px 16px; border-radius: 99px;
-  display: inline-flex; align-items: center; font: 500 14px var(--sans); white-space: nowrap; background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); }
-#app-recipes .rc-hbtn:active { background: var(--card-2); }
 
 /* buttons */
 #app-recipes .rc-btn { all: unset; box-sizing: border-box; cursor: pointer; min-height: 48px; padding: 0 18px; border-radius: 99px;
-  display: inline-flex; align-items: center; justify-content: center; font: 500 16px var(--sans); color: var(--t2); background: var(--card-2); white-space: nowrap; }
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 500 16px var(--sans); color: var(--t2); background: var(--card-2); white-space: nowrap; }
 #app-recipes .rc-btn:active { background: var(--line); }
 #app-recipes .rc-btn.pri { background: var(--clay); color: #fff; }
+#app-recipes .rc-btn.quiet { background: none; box-shadow: 0 0 0 1px var(--line); }
 #app-recipes .rc-btn.danger { color: var(--clay-deep); }
 #app-recipes .rc-btn[disabled] { opacity: .4; pointer-events: none; }
 #app-recipes .rc-btn.big { min-height: 64px; padding: 0 28px; font-size: 20px; }
+#app-recipes .rc-btn svg { width: 20px; height: 20px; }
+#app-recipes .rc-save.on { color: var(--clay-deep); }
 #app-recipes .rc-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0; }
-#app-recipes .rc-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+#app-recipes .rc-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 
 /* text */
-#app-recipes .rc-title { margin: 6px 0 2px; font: 600 26px var(--sans); color: var(--t1); }
+#app-recipes .rc-title { margin: 6px 0 2px; font: 600 26px var(--sans); color: var(--text); }
+#app-recipes .rc-display { margin: 4px 0 6px; font: 400 40px/1.15 var(--serif); letter-spacing: -.01em; color: var(--text); }
 #app-recipes .rc-sub { margin: 0; font: 400 14px var(--sans); color: var(--t3); }
-#app-recipes .rc-kicker { margin: 0 0 4px; font: 600 12px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--t3); }
-#app-recipes .rc-h { margin: 18px 0 6px; font: 600 13px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--t3); }
-#app-recipes .rc-msg { margin: 6px 0 10px; font: 400 14px var(--sans); color: var(--clay-deep); }
-#app-recipes .rc-empty { margin: 14px 0; font: 400 15px var(--sans); color: var(--t3); }
+#app-recipes .rc-kicker { display: block; margin: 0 0 4px; font: 600 12px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--t3); }
+#app-recipes .rc-h { margin: 26px 0 10px; font: 600 13px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--t3); }
+#app-recipes .rc-msg { margin: 6px 0 12px; font: 400 14px var(--sans); color: var(--clay-deep); }
+#app-recipes .rc-empty { margin: 8px 0; font: 400 15px var(--sans); color: var(--t3); }
+#app-recipes .rc-source { margin: 28px 0 0; font: 400 13px var(--sans); color: var(--t4); }
+
+/* Discover: the large search field (a button that opens ClaudeOS's keyboard) */
+#app-recipes .rc-disc { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+#app-recipes .rc-search { all: unset; box-sizing: border-box; cursor: text; flex: 1; min-width: 0; min-height: 72px; padding: 0 26px;
+  display: flex; align-items: center; gap: 14px; border-radius: 99px; background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t3); }
+#app-recipes .rc-search svg { width: 26px; height: 26px; flex: none; }
+#app-recipes .rc-search-text { font: 400 28px var(--serif); color: var(--t4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-recipes .rc-search-text.on { color: var(--text); }
+
+/* Claude on top: a quiet row of actions */
+#app-recipes .rc-claude { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
+#app-recipes .rc-claude .rc-kicker { margin: 0 6px 0 0; }
+
+/* today's pick from the saved recipes */
+#app-recipes .rc-today { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: flex; align-items: center; gap: 22px;
+  padding: 12px; border-radius: 20px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+#app-recipes .rc-today:active { background: var(--card-2); }
+#app-recipes .rc-today-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+#app-recipes .rc-today-name { font: 400 30px/1.2 var(--serif); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* photos: the API's image over the first letter of the name (shown when there is no photo) */
+#app-recipes .rc-ph, #app-recipes .rc-today-ph, #app-recipes .rc-hero-ph { position: relative; display: block; overflow: hidden; flex: none;
+  background: var(--card-2); }
+#app-recipes .rc-ph img, #app-recipes .rc-today-ph img, #app-recipes .rc-hero-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#app-recipes .rc-initial { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 400 44px var(--serif); color: var(--t4); }
+#app-recipes .rc-ph { width: 100%; aspect-ratio: 4 / 3; border-radius: 16px; }
+#app-recipes .rc-today-ph { width: 180px; height: 120px; border-radius: 14px; }
+#app-recipes .rc-hero-ph { width: 420px; aspect-ratio: 4 / 3; border-radius: 22px; }
+#app-recipes .rc-hero-ph .rc-initial { font-size: 96px; }
+
+/* recipe cards: the saved row scrolls sideways, the results wrap in a grid */
+#app-recipes .rc-row-cards, #app-recipes .rc-grid { list-style: none; margin: 0; padding: 0; }
+#app-recipes .rc-row-cards { display: grid; grid-auto-flow: column; grid-auto-columns: 210px; gap: 16px; overflow-x: auto; padding-bottom: 4px; }
+#app-recipes .rc-row-cards::-webkit-scrollbar { display: none; }
+#app-recipes .rc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 20px 16px; }
+#app-recipes .rc-c { position: relative; min-width: 0; }
+#app-recipes .rc-cbtn { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: flex; flex-direction: column; gap: 4px; }
+#app-recipes .rc-cbtn:active .rc-ph { opacity: .85; }
+#app-recipes .rc-cname { margin-top: 6px; font: 400 19px/1.25 var(--serif); color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#app-recipes .rc-ctag { font: 500 13px var(--sans); color: var(--t3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-recipes .rc-heart { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; top: 6px; right: 6px; width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center; border-radius: 50%; color: var(--t2); background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+#app-recipes .rc-heart svg { width: 24px; height: 24px; }
+#app-recipes .rc-heart.on { color: var(--clay); }
+
+/* the recipe page: photo beside the title, then ingredients beside the numbered steps */
+#app-recipes .rc-hero { display: flex; align-items: flex-end; gap: 32px; margin-bottom: 18px; }
+#app-recipes .rc-hero-text { flex: 1; min-width: 0; }
+#app-recipes .rc-cols { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 40px; border-top: 1px solid var(--line); }
+
 #app-recipes .rc-ings, #app-recipes .rc-steps { margin: 0; padding-left: 4px; list-style: none; }
-#app-recipes .rc-ings li { padding: 8px 0; border-bottom: 1px solid var(--line); font: 400 17px var(--sans); color: var(--t1); }
+#app-recipes .rc-ings li { padding: 8px 0; border-bottom: 1px solid var(--line); font: 400 17px var(--sans); color: var(--text); }
 #app-recipes .rc-amt { display: inline-block; min-width: 110px; color: var(--t2); font-weight: 500; }
 #app-recipes .rc-steps { counter-reset: step; }
-#app-recipes .rc-steps li { counter-increment: step; position: relative; padding: 8px 0 8px 36px; font: 400 17px/1.4 var(--sans); color: var(--t1); }
-#app-recipes .rc-steps li::before { content: counter(step); position: absolute; left: 0; top: 9px; width: 26px; height: 26px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; font: 600 13px var(--sans); color: var(--t2); background: var(--card-2); }
+#app-recipes .rc-steps li { counter-increment: step; position: relative; padding: 8px 0 8px 40px; font: 400 17px/1.5 var(--sans); color: var(--text); }
+#app-recipes .rc-steps li::before { content: counter(step); position: absolute; left: 0; top: 9px; width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font: 400 15px var(--serif); color: var(--t2); box-shadow: 0 0 0 1px var(--line); }
 
-/* list and rows */
+/* list rows (cook-mode timers) */
 #app-recipes .rc-list { list-style: none; margin: 0; padding: 0; }
-#app-recipes .rc-row { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; min-height: 60px; padding: 8px 4px;
-  display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid var(--line); }
-#app-recipes .rc-row:active { background: var(--card-2); }
-#app-recipes .rc-name { font: 500 18px var(--sans); color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#app-recipes .rc-name { font: 500 18px var(--sans); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #app-recipes li.rc-timer { display: flex; align-items: center; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--line); }
 #app-recipes li.rc-timer .rc-name { flex: 1; min-width: 0; }
 #app-recipes li.rc-timer .rc-sub { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-/* cards */
+/* cards: notices and Claude's draft */
 #app-recipes .rc-card { margin: 0 0 14px; padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
-#app-recipes .rc-card b { font: 600 17px var(--sans); color: var(--t1); }
-#app-recipes .rc-text { margin-top: 8px; max-height: 260px; overflow-y: auto; white-space: pre-wrap; font: 400 15px/1.45 var(--sans); color: var(--t1); }
+#app-recipes .rc-card b { font: 600 17px var(--sans); color: var(--text); }
+#app-recipes .rc-text { margin-top: 8px; max-height: 260px; overflow-y: auto; white-space: pre-wrap; font: 400 15px/1.45 var(--sans); color: var(--text); }
 
 /* cook mode: large text */
-#app-recipes .rc-cook { margin: 8px 0 6px; font: 500 40px/1.3 var(--sans); color: var(--t1); }
+#app-recipes .rc-cook { margin: 8px 0 6px; font: 500 40px/1.3 var(--sans); color: var(--text); }
 #app-recipes .rc-timers-add { margin-top: 18px; }
