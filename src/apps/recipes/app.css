@@ -131,12 +131,22 @@
 #app-recipes .rc-ck-folio { margin: 0; padding-top: 16px; border-top: 1px solid var(--line); text-align: center;
   font: 400 16px var(--serif); color: var(--t4); font-variant-numeric: tabular-nums; }
 
-/* the page turn: the new step comes in from the side it was turned from (transform and opacity only) */
-#app-recipes .rc-ck-page.fwd { animation: rc-turn-fwd var(--dur-slow) var(--ease-out); }
-#app-recipes .rc-ck-page.back { animation: rc-turn-back var(--dur-slow) var(--ease-out); }
-@keyframes rc-turn-fwd { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
-@keyframes rc-turn-back { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { #app-recipes .rc-ck-page.fwd, #app-recipes .rc-ck-page.back { animation: none; } }
+/* the page turn: the old page turns away from the spine while the new page turns in to it (transform and opacity only).
+   Forward hinges on the left edge (the spine); back hinges on the right. */
+#app-recipes .rc-ck-turnbox { position: relative; }
+#app-recipes .rc-ck-page.fwd { transform-origin: left center; animation: rc-in-fwd var(--dur-slower) var(--ease-emph) both; }
+#app-recipes .rc-ck-page.back { transform-origin: right center; animation: rc-in-back var(--dur-slower) var(--ease-emph) both; }
+#app-recipes .rc-ck-page.ghost { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; }
+#app-recipes .rc-ck-page.out-fwd { transform-origin: left center; animation: rc-out-fwd var(--dur-slower) var(--ease-in) both; }
+#app-recipes .rc-ck-page.out-back { transform-origin: right center; animation: rc-out-back var(--dur-slower) var(--ease-in) both; }
+@keyframes rc-in-fwd { from { opacity: 0; transform: perspective(1400px) rotateY(90deg); } to { opacity: 1; transform: perspective(1400px) rotateY(0); } }
+@keyframes rc-in-back { from { opacity: 0; transform: perspective(1400px) rotateY(-90deg); } to { opacity: 1; transform: perspective(1400px) rotateY(0); } }
+@keyframes rc-out-fwd { from { opacity: 1; transform: perspective(1400px) rotateY(0); } to { opacity: 0; transform: perspective(1400px) rotateY(-90deg); } }
+@keyframes rc-out-back { from { opacity: 1; transform: perspective(1400px) rotateY(0); } to { opacity: 0; transform: perspective(1400px) rotateY(90deg); } }
+@media (prefers-reduced-motion: reduce) {
+  #app-recipes .rc-ck-page.fwd, #app-recipes .rc-ck-page.back { animation: none; }
+  #app-recipes .rc-ck-page.ghost { display: none; }
+}
 
 /* the control bar: Previous, the step count, Next */
 #app-recipes .rc-ck-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; }

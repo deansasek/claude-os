@@ -535,13 +535,17 @@ function detailHtml(r: Recipe): string {
 // the control bar (Previous, Next), and the timers. The book view sets the step in the serif on a card with a page
 // number; the plain view is the same step as clean text on the page. A step change turns the page in from its side.
 let turn = 0;                             // the last step move: -1 back, 1 forward, 0 none (no page turn)
+let turnFrom = -1;                        // the step the page turned away from (the page that leaves)
 
 function cookHtml(r: Recipe, step: number): string {
   const s = cookStep(r, step);
   const total = r.steps.length;
   const book = store.get(COOK_VIEW_KEY) === 'book';
   const dir = turn < 0 ? ' back' : turn > 0 ? ' fwd' : '';
+  // the page that leaves: the step it turned from, drawn over the new page and turned away from the spine
+  const leaving = turn !== 0 && turnFrom >= 0 && turnFrom !== s.index ? cookStep(r, turnFrom) : null;
   turn = 0;
+  turnFrom = -1;
   const seg = (v: 'plain' | 'book', label: string) => {
     const on = (v === 'book') === book;
     return `<button class="rc-ck-seg-b${on ? ' on' : ''}" data-act="cook-view" data-view="${v}" aria-pressed="${on}">${label}</button>`;
@@ -553,8 +557,12 @@ function cookHtml(r: Recipe, step: number): string {
     + `<h2 class="rc-ck-name">${esc(r.name)}</h2>`
     + `<div class="rc-ck-seg" role="group" aria-label="View">${seg('plain', 'Plain')}${seg('book', 'Book')}</div></header>`
     + `<div class="rc-ck-prog" role="progressbar" aria-valuemin="1" aria-valuemax="${total}" aria-valuenow="${s.index + 1}" aria-label="${esc(s.heading)}">${ticks}</div>`
+    + `<div class="rc-ck-turnbox">`
+    + (leaving ? `<article class="rc-ck-page ghost ${dir === ' back' ? 'out-back' : 'out-fwd'}" aria-hidden="true">`
+      + `<p class="label">${esc(leaving.heading)}</p><p class="rc-ck-text">${esc(leaving.text)}</p>`
+      + (book ? `<p class="rc-ck-folio">${leaving.index + 1}</p>` : '') + `</article>` : '')
     + `<article class="rc-ck-page${dir}"><p class="label">${esc(s.heading)}</p><p class="rc-ck-text">${esc(s.text)}</p>`
-    + (book ? `<p class="rc-ck-folio">${s.index + 1}</p>` : '') + `</article>`
+    + (book ? `<p class="rc-ck-folio">${s.index + 1}</p>` : '') + `</article></div>`
     + `<nav class="rc-ck-bar"><button class="rc-ck-ctl big" data-act="step" data-d="-1"${s.first ? ' disabled' : ''}>Previous</button>`
     + `<span class="rc-ck-count">${s.index + 1} of ${total}</span>`
     + `<button class="rc-ck-ctl big pri" data-act="step" data-d="1"${s.last ? ' disabled' : ''}>Next</button></nav>`
@@ -620,6 +628,7 @@ function onClick(ev: Event): void {
       if (screen.t === 'cook') {
         const next = cookStep(screen.r, screen.step + Number(b.dataset.d)).index;
         turn = Math.sign(next - screen.step);
+        turnFrom = screen.step;
         screen = { ...screen, step: next };
       }
       break;
