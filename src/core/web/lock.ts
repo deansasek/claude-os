@@ -6,7 +6,8 @@ import { critterSvg } from './critter-svg.ts';
 import { esc, stageHeight, store } from './dom.ts';
 import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from './pin-pad.ts';
 import { glanceLine } from './lock-glance.ts';
-import { nextAlarm, notifications, timerLeftText } from './system.ts';
+import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
+import { I, nextAlarm, notifications, timerLeftText } from './system.ts';
 
 interface Status { set: boolean; lockedFor: number }
 interface Result { ok: boolean; lockedFor?: number; left?: number; error?: string }
@@ -27,6 +28,9 @@ let typed = '';
 let msg = '';
 let until = 0;                       // when the cooldown ends (ms)
 let tickTimer: number | undefined;
+
+// the now-playing line follows the playing app while the lock is up (media.ts)
+onNowPlaying(() => { if (el && !el.hidden) paintLockMedia(); });
 
 /** The lock is up on screen: nothing else may open, and Back does not close it. */
 export const lockShowing = (): boolean => shown && !!el && !el.hidden;
@@ -53,6 +57,7 @@ function build(): void {
       ${critterSvg('lock-crit')}
       <div class="lock-caption">ClaudeOS is locked</div>
       <div class="lock-glance"></div>
+      <div class="lock-media" hidden></div>
     </div>
     <div class="lock-pad">
       <div class="pin-dots"></div>
@@ -62,6 +67,11 @@ function build(): void {
     </div>
   </div>`;
   $('.pin-keys').addEventListener('click', e => press(padKey(e)));
+  // the pause control of what plays (media.ts): it never unlocks
+  $('.lock-media').addEventListener('click', ev => {
+    if (!(ev.target as Element).closest('[data-lock-media]')) return;
+    try { mediaActions()?.toggle(); } catch { /* the app that plays is busy */ }
+  });
   $<HTMLButtonElement>('.pin-done').addEventListener('click', () => void done());
   addEventListener('resize', fit);
   window.visualViewport?.addEventListener('resize', fit);
@@ -103,6 +113,17 @@ function paintGlance(): void {
   if (!el) return;
   const alarm = nextAlarm();
   $('.lock-glance').textContent = glanceLine(notifications().length, alarm ? alarm.text : null, timerLeftText());
+  paintLockMedia();
+}
+
+/** What plays, with its pause or play button (media.ts). Hidden when nothing plays. */
+function paintLockMedia(): void {
+  if (!el) return;
+  const box = $('.lock-media'), m = nowPlaying(), a = mediaActions();
+  if (!m) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML = `<span class="lock-media-text">${esc(m.title)}</span>`
+    + (a ? `<button type="button" class="lock-media-btn" data-lock-media="toggle" aria-label="${m.playing ? 'Pause' : 'Play'}">${m.playing ? I.pause : I.play}</button>` : '');
 }
 
 function startClock(): void {
