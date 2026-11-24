@@ -665,6 +665,7 @@ public class Bridge {
     if (!allowed) return DENIED;
     VoiceService.prefs(act).edit().putBoolean("voiceWake", on).apply();
     if (!on) {
+      VoiceService.forgetModel();   // voice off in Settings: the kept speech model goes too
       if (VoiceService.mode() == VoiceService.Mode.WAKE) act.runOnUiThread(() -> VoiceService.stop(act));
       return OK;
     }
