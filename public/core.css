@@ -553,11 +553,15 @@
   :root[data-theme="dark"] .cc-shade { background: rgba(0, 0, 0, .45); }
   .cc.on { pointer-events: auto; }
   .cc.on .cc-shade { opacity: 1; }
+  /* the panel is at most the stage's height; when its tiles and notifications run past that, the panel scrolls (touch
+     pans it, and system.ts bindCC leaves a drag to a scrolled panel to the scroll, see scrolled()) */
   .cc-panel { position: absolute; left: 50%; top: 0; width: 620px; margin-left: -310px; padding: calc(22px + var(--sys-top, 0px)) 24px 24px; box-sizing: border-box;
+    max-height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
     background: var(--bg); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 24px 24px; box-shadow: 0 18px 50px rgba(20,20,19,.18);
     transform: translateY(calc(-100% - 60px)); visibility: hidden;
     transition: transform var(--dur-base) var(--ease-in), visibility 0s var(--dur-base); }
   :root[data-theme="dark"] .cc-panel { box-shadow: 0 18px 50px rgba(0,0,0,.5); }
+  .cc-panel::-webkit-scrollbar { display: none; }
   .cc.on .cc-panel { transform: none; visibility: visible; transition: transform var(--dur-slow) var(--ease-emph); }
   .cc-top { display: flex; align-items: flex-start; justify-content: space-between; padding: 0 2px; }
   .cc-time { font: 500 44px var(--serif); letter-spacing: -.03em; line-height: 1; }
