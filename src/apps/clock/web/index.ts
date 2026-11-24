@@ -37,6 +37,7 @@ const K = {
 const SNOOZE_MS = 9 * 60e3;
 const RING_LIMIT = { timer: 2 * 60e3, alarm: 3 * 60e3 };
 const MAX_ALARMS = 20;   // the list scrolls; Claude's reminders are alarms too
+const MAX_TIMERS = 20;   // the same total as MAX_ACTIVE in claude's browser-relay.ts; the list scrolls
 const WEEK = [1, 2, 3, 4, 5, 6, 0];   // shown Monday first; values are Date.getDay()
 
 let ctx: AppContext;
@@ -364,6 +365,7 @@ function timerStart(ms?: number, name?: string): void {
 }
 /** A new timer in the list, running and in front. It gets the given name, or "Timer" and its number. */
 function addTimer(ms: number, name?: string): void {
+  if (timers.length >= MAX_TIMERS) { say('The list is full. Stop a timer first.'); return; }
   const t: ClockTimer = { id: newId(), name: name || `Timer ${timers.length + 1}`, dur: ms, end: Date.now() + ms, left: null };
   timers.push(t);
   timer = t;
