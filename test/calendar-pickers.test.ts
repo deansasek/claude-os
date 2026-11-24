@@ -25,6 +25,8 @@ test('moving the start keeps the length of the event', () => {
 
 test('a start with no usable length, or an unreadable end, gets 30 minutes', () => {
   assert.equal(shiftEnd('09:00', '09:00', '09:00'), '09:30');
+  assert.equal(shiftEnd('22:00', '23:45', '23:00'), '23:59');   // 60 minutes long: clamps at 23:59, no wrap to 00:45
+  assert.equal(shiftEnd('22:00', '23:30', '23:50'), '23:59');   // 110 minutes long from 23:30 would pass midnight
   assert.equal(shiftEnd('09:00', '11:00', 'bad'), '11:30');
 });
 

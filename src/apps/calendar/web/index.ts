@@ -6,7 +6,7 @@
 // Claude turn, so it happens only when the app opens, when Refresh is tapped, or when the view moves to another day.
 // The 5-minute timer never makes a connector read.
 import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
-import { alertFor } from '../../../core/web/system.ts';
+import { alertFor, onBack } from '../../../core/web/system.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -504,6 +504,12 @@ const app: HubApp = {
     $('calAddStart').addEventListener('click', () => openPicker('start'));
     $('calAddEnd').addEventListener('click', () => openPicker('end'));
     $('calPick').addEventListener('click', e => { if (e.target === $('calPick')) closePicker(); });
+    // Back (system.ts): an open day or time picker closes first; otherwise Back goes on to Home
+    onBack(() => {
+      if ($('calPick').hidden) return false;
+      closePicker();
+      return true;
+    });
     $('calPickCard').addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (!b) return;
