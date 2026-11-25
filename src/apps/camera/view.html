@@ -7,13 +7,7 @@
     <div class="cam-frame" id="caFrame">
       <div class="cam-msg" id="caMsg" hidden><span id="caMsgText"></span></div>
       <div class="cam-flash" id="caFlash"></div>
-    </div>
-    <div class="cam-status"><span class="live" id="caPill"><i></i><span id="caPillText">Off</span></span></div>
-  </div>
-
-  <div class="cam-side">
-    <!-- group 1: the photo just taken, with its actions (a dashed slot holds the space until then) -->
-    <div class="cam-group cam-shot">
+      <!-- the photo just taken: it floats over the bottom-left of the preview, and draws above it. Hidden until a photo is taken. -->
       <div class="cam-after" id="caAfter" hidden>
         <div class="cam-after-row">
           <img id="caShot" alt="The photo just taken">
@@ -26,17 +20,24 @@
         <button class="cam-text" id="caDismiss">Take another</button>
       </div>
     </div>
+    <div class="cam-status"><span class="live" id="caPill"><i></i><span id="caPillText">Off</span></span></div>
+  </div>
 
-    <!-- group 2: Look, with the words that start it -->
+  <div class="cam-side">
+    <!-- the rail, top to bottom: Look with the words that start it -->
     <div class="cam-group cam-look-group">
       <button class="cam-look" id="caLook"><svg class="cam-spark" viewBox="-50 -50 100 100" aria-hidden="true"><g fill="currentColor" class="spark-rays"></g></svg>Look</button>
       <span class="cam-cap">Then say “Hey Claude”</span>
     </div>
 
-    <!-- group 3: the gallery, the shutter and the flip, in one row -->
-    <div class="cam-group cam-shoot">
-      <button class="cam-last empty" id="caLastBtn" aria-label="Open Photos"><img id="caLastImg" alt=""></button>
+    <!-- the shutter, on the frame's centre line -->
+    <div class="cam-group cam-shutter-group">
       <button class="cam-shutter" id="caShutter" aria-label="Take a photo"><span></span></button>
+    </div>
+
+    <!-- the gallery and the flip, in one row -->
+    <div class="cam-group cam-row">
+      <button class="cam-last empty" id="caLastBtn" aria-label="Open Photos"><img id="caLastImg" alt=""></button>
       <div class="cam-flipw">
         <button class="cam-round" id="caFlip" aria-label="Switch to the front camera">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9a8 8 0 0 1 14-2.5L20 9"/><path d="M20 4v5h-5"/><path d="M20 15a8 8 0 0 1-14 2.5L4 15"/><path d="M4 20v-5h5"/></svg>
