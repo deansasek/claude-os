@@ -227,8 +227,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: '--model claude-haiku-5-5 --max-turns 6 --allowedTools "Read Write Bash(gh api:*)"'
-          show_full_output: true
+          claude_args: '--model claude-haiku-5-5 --max-turns 6 --allowedTools "Read Write Bash(gh api --paginate repos/*/issues/*/comments:*) Bash(gh api repos/*/issues/comments/*:*) Bash(gh api -X PATCH repos/*/issues/comments/*:*)"'
           prompt: |
             Read ${{ runner.temp }}/usage-line.txt.
             Find the comment on issue ${{ github.event.issue.number || inputs.issue }} in ${{ github.repository }} whose author is `claude` or `claude[bot]` and whose body has `<!-- claudeos-note -->` on one of its lines. If several match, use the newest. Use `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number || inputs.issue }}/comments`.
