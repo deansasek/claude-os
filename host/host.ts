@@ -5,6 +5,7 @@
 //   npm run host:stop             stop a host that npm run host started
 //   npm run host:status           show whether it runs and answers
 //   npm run host:logs             show the last lines of the log
+//   npm run host -- autostart on|off|status   start the host at logon (Windows; Startup folder)
 // The server reads its address from config.json. Logs go to host/logs/server.log (5 MB cap, one backup).
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -176,6 +177,36 @@ function logs(count: number): void {
   console.log(lines.slice(-count - 1).join('\n'));
 }
 
+/** The script in the Windows Startup folder that starts the host, minimized, at logon. Pure, so a test can check the quoting. */
+export function startupScript(nodePath: string, hostFile: string): string {
+  return ['@echo off', `start "ClaudeOS Host" /min "${nodePath}" "${hostFile}"`, ''].join(String.fromCharCode(13, 10));
+}
+
+/** The Startup folder file for the host. Empty when there is no user profile to find it in. */
+function startupFile(): string {
+  const appData = process.env.APPDATA;
+  return appData ? join(appData, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'ClaudeOS Host.cmd') : '';
+}
+
+/** Turn autostart on, off or status. Windows uses the Startup folder. macOS and Linux print what to do. */
+function autostart(action: 'on' | 'off' | 'status'): void {
+  if (process.platform !== 'win32') {
+    console.log('Autostart is set up for Windows only for now. On macOS or Linux, start npm run host from a login script.');
+    return;
+  }
+  const file = startupFile();
+  if (!file) { console.error('APPDATA is not set, so the Startup folder cannot be found.'); process.exit(1); }
+  if (action === 'on') {
+    writeFileSync(file, startupScript(process.execPath, join(ROOT, 'host', 'host.ts')));
+    console.log('The host starts minimized when you log on.');
+  } else if (action === 'off') {
+    rmSync(file, { force: true });
+    console.log('Autostart is off.');
+  } else {
+    console.log(existsSync(file) ? 'Autostart is on.' : 'Autostart is off.');
+  }
+}
+
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   if (command === undefined || command.startsWith('-')) return run(process.argv.slice(2));
@@ -183,6 +214,7 @@ async function main(): Promise<void> {
   if (command === 'stop') return stop(rest);
   if (command === 'status') return status(rest);
   if (command === 'logs') return logs(Number(rest[0] ?? 100));
+  if (command === 'autostart') return autostart((rest[0] ?? 'on') as 'on' | 'off' | 'status');
   console.error('usage: npm run host [-- extra server args] | host:stop | host:status | host:logs');
   process.exit(1);
 }
