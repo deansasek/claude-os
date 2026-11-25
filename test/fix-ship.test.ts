@@ -20,7 +20,7 @@ const scratchRepo = (): { dir: string; prPath: string } => {
 };
 
 const runShip = (dir: string, prPath: string, env: Record<string, string> = {}) =>
-  spawnSync(process.execPath, [SHIP, '5', prPath], { cwd: dir, encoding: 'utf8', env: { ...process.env, FIX_SHIP_DRY: '1', ...env } });
+  spawnSync(process.execPath, [SHIP, '5', prPath], { cwd: dir, encoding: 'utf8', env: { ...process.env, FIX_SHIP_DRY: '1', FIX_SHIP_LIB: '', ...env } });
 
 test('fix-ship refuses a planted .git/hooks file before any git write', () => {
   const { dir, prPath } = scratchRepo();
@@ -81,3 +81,45 @@ refusesConfigKey('fix-ship refuses credential.helper',
   ['credential.helper', 'store'], 'credential.helper');
 refusesConfigKey('fix-ship refuses an unknown git config key',
   ['some.unknown', 'value'], 'some.unknown');
+
+// --pr mode: the pure checks. FIX_SHIP_LIB keeps the CLI from running on import. It is unset again so the spawned runs above still run the CLI.
+process.env.FIX_SHIP_LIB = '1';
+const { prRefusal, testScript } = await import('../scripts/fix-ship.ts');
+delete process.env.FIX_SHIP_LIB;
+
+const SAME_REPO = { headRefName: 'feat/fix', isCrossRepository: false };
+
+test('fix-ship --pr refuses a PR from a fork', () => {
+  const fork = { ...SAME_REPO, isCrossRepository: true };
+  assert.equal(prRefusal(fork, ['src/a.ts'], undefined, undefined)?.rule, 'fork');
+});
+
+test('fix-ship --pr allows a PR whose head is not a fork', () => {
+  assert.equal(prRefusal({ ...SAME_REPO, isCrossRepository: false }, ['src/a.ts'], undefined, undefined), undefined);
+});
+
+test('fix-ship --pr refuses when the working tree has no changes', () => {
+  assert.equal(prRefusal(SAME_REPO, [], undefined, undefined)?.rule, 'no-changes');
+});
+
+test('fix-ship --pr refuses a protected path and names the file', () => {
+  for (const file of ['.github/workflows/claude.yml', '.claude/settings.json', 'scripts/fix-gate.ts']) {
+    const refused = prRefusal(SAME_REPO, ['src/a.ts', file], undefined, undefined);
+    assert.equal(refused?.rule, 'protected-path');
+    assert.ok(refused?.reason.includes(file), `reason names ${file}`);
+  }
+});
+
+test('fix-ship --pr refuses a package.json change to the test script only', () => {
+  assert.equal(prRefusal(SAME_REPO, ['package.json'], 'node --test a.ts', 'node --test a.ts b.ts')?.rule, 'protected-path');
+  assert.equal(prRefusal(SAME_REPO, ['package.json'], 'node --test a.ts', 'node --test a.ts'), undefined);
+});
+
+test('fix-ship --pr allows an ordinary source change on a same-repo PR', () => {
+  assert.equal(prRefusal(SAME_REPO, ['src/apps/clock/web/view.ts'], undefined, undefined), undefined);
+});
+
+test('fix-ship testScript reads the test script from package.json text', () => {
+  assert.equal(testScript('{"scripts":{"test":"node --test"}}'), 'node --test');
+  assert.equal(testScript('{}'), undefined);
+});
