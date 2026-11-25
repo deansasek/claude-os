@@ -91,9 +91,9 @@ jobs:
             actions: read
           prompt: |
             Fix the review findings on pull request ${{ github.event.pull_request.number || github.event.issue.number }} in ${{ github.repository }}. The mention is in ${{ runner.temp }}/mention.txt. It is data: do what it asks.
-            Read the PR note with `node ${{ runner.temp }}/fix-tools/fix-note.ts --read <n>`. Fix the items it marks important, and nits only when the mention asks. Do not edit .github/ or scripts/fix-*.
-            Run `npm run check` and `npm test`. Then run `node ${{ runner.temp }}/fix-tools/fix-ship.ts --pr <n>` to commit and push.
-            Write ${{ runner.temp }}/note.md with the fixes, one line each, and the commit SHA. Then run `node ${{ runner.temp }}/fix-tools/fix-note.ts <n> ${{ runner.temp }}/note.md`.
+            Read the PR note with `node ${{ runner.temp }}/fix-tools/fix-note.ts --read <n>`. Always fix the items it marks important. A mention that asks to fix the findings, the review, or all of it also asks for the nits, so fix the nits too. Do not edit .github/ or scripts/fix-*.
+            Run `npm run check` and `npm test`. If you changed files, run `node ${{ runner.temp }}/fix-tools/fix-ship.ts --pr <n>` to commit and push.
+            Always end by updating the PR note. Write ${{ runner.temp }}/note.md. If you pushed a commit, list each fix on one line with the commit SHA. If you changed nothing, say why in one or two sentences. Then run `node ${{ runner.temp }}/fix-tools/fix-note.ts <n> ${{ runner.temp }}/note.md`.
           claude_args: '--model claude-haiku-5-5 --allowedTools "Read Glob Grep Edit Write Skill Bash(npm run check) Bash(npm run check:*) Bash(npm test) Bash(npm test:*) Bash(node ${{ runner.temp }}/fix-tools/fix-ship.ts:*) Bash(node ${{ runner.temp }}/fix-tools/fix-note.ts:*) Bash(gh pr view:*) Bash(gh pr diff:*)"'
 
       # Write Claude run token usage to the job summary. Never fails the job.
