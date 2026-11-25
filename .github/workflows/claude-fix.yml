@@ -1,4 +1,4 @@
-name: Claude Issue Fix
+name: Claude Fix
 
 # Triage an issue. If the issue is complete, the AI agent writes a fix, checks it
 # with scripts/fix-ship.ts, pushes a branch, and opens a pull request.
