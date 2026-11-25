@@ -12,13 +12,6 @@
 #app-home [hidden] { display: none !important; }
 #app-home { --hm-b: max(var(--app-strip-b), calc(var(--grab-bottom, 0px) + 28px)); }
 
-/* ---- header: Claude's state (core's .live.wait / .live.work), and on the tablet Wi-Fi and battery ---- */
-#app-home .hm-dev { display: inline-flex; align-items: center; gap: 12px; color: var(--t2); font-size: 14px; }
-#app-home .hm-dev span { display: inline-flex; align-items: center; gap: 3px; }
-#app-home .hm-dev svg { width: 22px; height: 22px; }
-#app-home .hm-dev .hm-batt svg { width: 26px; height: 26px; margin: -2px -1px; --batt-knock: var(--bg); }
-#app-home .hm-dev .low { color: var(--hot); }
-#app-home .hm-dev .off { color: var(--t4); }
 
 /* ---- the page ---- */
 #app-home .hm-page { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--hm-b);

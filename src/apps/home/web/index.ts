@@ -12,11 +12,11 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import type { HaResult, HaScenes } from '../../home-assistant/api.ts';
 import type { CalEvent, CalEvents } from '../../calendar/api.ts';
 import { loadRoutines, onRunState, startRoutine, runState, stopRoutine } from '../../routines/web/run.ts';
-import { device, onResume, onTablet } from '../../../core/web/device.ts';
+import { onResume, onTablet } from '../../../core/web/device.ts';
 import { INK, inkSay, inkedBlob, inkedShape, rng } from '../../../core/web/ink.ts';
 import { nickname } from '../../../core/web/profile.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
-import { ago, batteryGlyph, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
+import { ago, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
 import { weatherAfterRead } from './weather-read.ts';
@@ -83,12 +83,6 @@ const I = {
   plus: svg('<path d="M16 7v18M7 16h18"/>', 2),
   cloud: svg('<path d="M9 24h14a5.5 5.5 0 0 0 .6-11A7.5 7.5 0 0 0 9.2 15.2 4.4 4.4 0 0 0 9 24z"/>', 2),
 };
-function wifiGlyph(bars: number, on: boolean): string {
-  const s = (n: number) => (on && bars >= n ? 'currentColor' : 'var(--t5)');
-  return svg(`<path d="M5 13a16 16 0 0 1 22 0" stroke="${s(4)}"/><path d="M9 17.5a10 10 0 0 1 14 0" stroke="${s(3)}"/>`
-    + `<path d="M13 22a4 4 0 0 1 6 0" stroke="${s(2)}"/><circle cx="16" cy="25.5" r=".8" fill="currentColor"/>`
-    + (on ? '' : '<path d="M6 6l20 20"/>'), 2);
-}
 
 // ---------- weather (the Weather app's server) ----------
 type Sky = 'clear' | 'partly' | 'cloudy' | 'fog' | 'rain' | 'snow' | 'storm';
@@ -418,24 +412,6 @@ function paintNotes(): void {
   $('hmNtSub').textContent = sub;
 }
 
-// ---------- tablet: Wi-Fi and battery ----------
-function paintDevice(): void {
-  if (!onTablet) return;
-  const el = $('hmDev');
-  let html = '';
-  try {
-    const w = device.wifi();
-    const on = w.enabled && !!w.ssid;
-    html += `<span class="${on ? '' : 'off'}" title="${esc(w.ssid || 'Wi-Fi off')}">${wifiGlyph(w.bars ?? 0, on)}</span>`;
-  } catch { /* tablet app too old */ }
-  try {
-    const b = device.battery();
-    html += `<span class="hm-batt num${b.percent <= 20 && !b.charging ? ' low' : ''}">${batteryGlyph(b)}${b.percent}%</span>`;
-  } catch { /* ignore */ }
-  el.innerHTML = html;
-  el.hidden = !html;
-}
-
 // ---------- the sentence: what needs you ----------
 let lineTarget: string | null = null;
 function paintLine(): void {
@@ -748,7 +724,6 @@ function refresh(): void {
   void loadRoutineActs();
   void loadCalendar();
   void loadLists();
-  paintDevice();
   paintNotes();
   paintGreeting(now());
   paintActs();   // fit the row again: fonts and the page's width are settled once Home is on screen
@@ -758,7 +733,7 @@ function refresh(): void {
 // the live parts, every 30 seconds while Home is on screen only
 let pollT: number | undefined;
 function poll(): void {
-  if (ctx.isVisible() && !document.hidden) { void loadUsage(); void loadWeather(); void loadCalendar(); void loadLists(); paintDevice(); }
+  if (ctx.isVisible() && !document.hidden) { void loadUsage(); void loadWeather(); void loadCalendar(); void loadLists(); }
 }
 function onShow(): void {
   refresh();
@@ -815,7 +790,6 @@ function mount(context: AppContext): void {
   onRunState(() => paintActs());
   void loadCalendar(true);
   addEventListener('hub:calendar', () => { void loadCalendar(true); });   // the address changed in the Calendar app or Settings
-  paintDevice();
   paintNotes();
 }
 
