@@ -6,7 +6,7 @@
 // Claude turn, so it happens only when the app opens, when Refresh is tapped, or when the view moves to another day.
 // The 5-minute timer never makes a connector read.
 import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
-import { onTablet } from '../../../core/web/device.ts';
+import { caps } from '../../../core/web/device.ts';
 import { alertFor, onBack } from '../../../core/web/system.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
@@ -607,16 +607,16 @@ async function soonEvents(now: number): Promise<{ events: CalEvent[]; copyTime?:
   let r: CalEvents | null = null;
   try { r = await getJson<CalEvents>(`${API}/events`); } catch { r = null; }   // the PC cannot be reached
   if (r) {
-    if (r.status === 'not_set' && onTablet) store.set(EVENTS_KEY, null);   // the address was removed: forget the copy
+    if (r.status === 'not_set' && caps.localState) store.set(EVENTS_KEY, null);   // the address was removed: forget the copy
     if (r.status !== 'ok') return null;                                     // not set up, or the read failed
-    if (onTablet) {
+    if (caps.localState) {
       const next: EventCopy = { readAt: Date.parse(r.fetchedAt ?? '') || now, events: r.events };
       const json = JSON.stringify(next);
       if (json !== store.get(EVENTS_KEY)) store.set(EVENTS_KEY, json);
     }
     return { events: r.events };
   }
-  const copy = onTablet ? parseCopy(store.get(EVENTS_KEY)) : null;
+  const copy = caps.localState ? parseCopy(store.get(EVENTS_KEY)) : null;
   if (!copy || !copyUsable(copy.readAt, now)) return null;
   return { events: copy.events, copyTime: timeFmt.format(new Date(copy.readAt)) };
 }

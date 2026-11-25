@@ -3,14 +3,14 @@
 // exists (the first run) and on the Nest Hub, which has no copy. A read that cannot reach the PC throws, and the caller
 // says so as before. A write (writeList) goes to the PC first, as before; the copy takes it in at once (read.ts afterWrite).
 import { getJson, postJson, store } from '../../../core/web/dom.ts';
-import { onTablet } from '../../../core/web/device.ts';
+import { caps } from '../../../core/web/device.ts';
 import type { FamilyList, ListsResult } from '../api.ts';
 import { COPY_KEY, type Op, type OpPath } from './local.ts';
 import { appendOp } from './queue.ts';
 import { afterWrite, pickLists } from './read.ts';
 
 function tabletCopy(): FamilyList[] | null {
-  if (!onTablet) return null;
+  if (!caps.localState) return null;
   try {
     const v = JSON.parse(store.get(COPY_KEY) || 'null') as unknown;
     return Array.isArray(v) ? v as FamilyList[] : null;

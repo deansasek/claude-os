@@ -62,10 +62,15 @@ export interface WifiNet { ssid: string; bars: number; secure: boolean; enterpri
 interface AppEntry {id: string; name: string; system: boolean; hidden: boolean; protected: boolean }
 
 const api = (window as unknown as { HubDevice?: HubDeviceApi }).HubDevice;
+/** A web client installed to the Home Screen (standalone). iOS and Android both report it. */
+const installedApp = (): boolean => (typeof navigator !== 'undefined' && (navigator as { standalone?: boolean }).standalone === true)
+  || (typeof matchMedia === 'function' && matchMedia('(display-mode: standalone)').matches);
+/** A client opened with ?client=personal: a browser tab the owner uses for their own data (not a shared screen). */
+const personalClient = (): boolean => typeof location !== 'undefined' && new URLSearchParams(location.search).get('client') === 'personal';
 /** What this client can do. onTablet is the same as caps.bridge; use caps in new code. Each part is set in one place, so a later client can change one without the others. */
 export const caps = {
   bridge: !!api,          // the native bridge (Android app): device controls, the top band, the kiosk
-  localState: !!api,      // keeps its own copies of lists, routines and calendar notices, so it works with the Host off
+  localState: !!api || installedApp() || personalClient(),   // keeps its own copies of lists, routines and calendar notices, so it works with the Host off
   kind: (api ? 'android' : 'web') as 'android' | 'web',
 } as const;
 export const onTablet = caps.bridge;
