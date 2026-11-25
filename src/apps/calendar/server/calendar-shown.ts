@@ -1,11 +1,11 @@
 // The shown or hidden flag of each calendar, kept on the PC in calendar-shown.json (outside src/, git-ignored).
 // Only the known ids are stored, and only as true or false. A missing or unreadable file means every calendar is shown.
 import path from 'node:path';
-import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import { CAL_IDS, calendarsFor, cleanFlags, type CalendarInfo, type ShownFlags } from '../web/calendars.ts';
 
 // CLAUDEOS_CALENDAR_SHOWN_FILE is for the tests only: a scratch file instead of the real one.
-export const FILE = process.env.CLAUDEOS_CALENDAR_SHOWN_FILE || path.join(HUB, 'calendar-shown.json');
+export const FILE = process.env.CLAUDEOS_CALENDAR_SHOWN_FILE || path.join(STATE, 'calendar-shown.json');
 
 export function loadFlags(): ShownFlags {
   return cleanFlags(readJson<unknown>(FILE));

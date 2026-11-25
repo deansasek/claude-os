@@ -8,7 +8,7 @@
 // when something changes. Nothing is made up for the family.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, writeJsonFile } from '../../../core/server/paths.ts';
 import { recordBought } from './history.ts';
 import {
   BUILT_IN, ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, idFor, isBuiltIn, renameItem,
@@ -19,7 +19,7 @@ import {
 export { idFor, renameItem };   // in api.ts, so the page can use the same rules
 
 // CLAUDEOS_LISTS_FILE is for the tests only: a scratch file instead of the family's lists.
-export const FILE = process.env.CLAUDEOS_LISTS_FILE || path.join(HUB, '.lists.json');
+export const FILE = process.env.CLAUDEOS_LISTS_FILE || path.join(STATE, '.lists.json');
 
 const DEFAULTS: FamilyList[] = [
   { id: 'shopping', name: 'Shopping', kind: 'check', items: [] },

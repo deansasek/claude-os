@@ -15,10 +15,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { query, type McpServerStatus, type Options, type Query } from '@anthropic-ai/claude-agent-sdk';
-import { HUB, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import type { McpInput, PluginItem, PluginStatus, PluginsView } from '../api.ts';
 
-const STATE_FILE = process.env.CLAUDEOS_PLUGINS_STATE_FILE || path.join(HUB, 'plugins-state.json');   // a test sets CLAUDEOS_PLUGINS_STATE_FILE
+const STATE_FILE = process.env.CLAUDEOS_PLUGINS_STATE_FILE || path.join(STATE, 'plugins-state.json');   // a test sets CLAUDEOS_PLUGINS_STATE_FILE
 const HOME = os.homedir();
 const CLAUDE_DIR = path.join(HOME, '.claude');
 const CLAUDE_JSON = path.join(HOME, '.claude.json');

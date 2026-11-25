@@ -1,11 +1,11 @@
 // The News topics the owner switched off, kept on this PC in news-topics.json (git-ignored). Only the changed topics are
 // saved; a topic left out is on. A test sets CLAUDEOS_NEWS_TOPICS_FILE so the real file is never touched.
 import path from 'node:path';
-import { HUB, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import { FEEDS, type Feed } from '../web/feeds.ts';
 import { cleanChoices, parseChange, topicsFor, type TopicChoices } from '../web/topics.ts';
 
-const FILE = process.env.CLAUDEOS_NEWS_TOPICS_FILE || path.join(HUB, 'news-topics.json');
+const FILE = process.env.CLAUDEOS_NEWS_TOPICS_FILE || path.join(STATE, 'news-topics.json');
 
 /** The saved choices. A missing or unreadable file means every topic is on. */
 export function topicChoices(feeds: Feed[] = FEEDS, file: string = FILE): TopicChoices {

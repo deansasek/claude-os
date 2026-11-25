@@ -16,7 +16,7 @@
 //     real scene may include locks or covers); Claude's calls also go through the approval card.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import {
   ENTITY_ID, isControlDomain, isDeniedDomain, isOn, isReadOnlyDomain, isSceneDomain, isShownDomain, isVoiceDomain, type ControlDomain, type HaConfigUpdate,
   type HaDashboard, type HaDevice, type HaDevices, type HaEntities, type HaEntity, type HaHomeScenesResult, type HaLayoutResult, type HaResult,
@@ -25,7 +25,7 @@ import {
 import { getLayout, homeScenes, onDashboard, saveLayout as saveLayoutFile, setHomeScene as setHomeSceneFile, setOnDashboard } from './layout.ts';
 
 // CLAUDEOS_HA_CONFIG is for the tests only: a scratch file instead of the house's config (it holds the token).
-const FILE = process.env.CLAUDEOS_HA_CONFIG || path.join(HUB, '.ha-config.json');
+const FILE = process.env.CLAUDEOS_HA_CONFIG || path.join(STATE, '.ha-config.json');
 const TIMEOUT_MS = 5000;
 const MAX_DEVICES = 400;
 

@@ -3,12 +3,12 @@
 // except as part of a Claude session's prompt, sent to Claude the same way the session's own messages are.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, readJson, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJson, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import { isJpeg } from '../../photos/server/store.ts';
 import { NAME_MAX, NICK_MAX, PHOTO_MAX, ROLES, type Profile } from '../api.ts';
 
-const FILE = process.env.CLAUDEOS_PROFILE_FILE || path.join(HUB, 'profile.json');   // a test sets CLAUDEOS_PROFILE_FILE (never the real file)
-const PHOTO = process.env.CLAUDEOS_PROFILE_PHOTO || path.join(HUB, 'profile-photo.jpg');
+const FILE = process.env.CLAUDEOS_PROFILE_FILE || path.join(STATE, 'profile.json');   // a test sets CLAUDEOS_PROFILE_FILE (never the real file)
+const PHOTO = process.env.CLAUDEOS_PROFILE_PHOTO || path.join(STATE, 'profile-photo.jpg');
 
 const clean = (v: unknown, max: number): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 

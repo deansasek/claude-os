@@ -2,9 +2,9 @@
 // Kept in claude-state.json (next to hub-sessions.json) and written whole whenever it changes.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 
-const FILE = path.join(HUB, 'claude-state.json');
+const FILE = path.join(STATE, 'claude-state.json');
 
 interface State {
   archived: string[];                    // session ids hidden from the list (nothing is deleted)

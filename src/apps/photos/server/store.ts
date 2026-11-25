@@ -3,10 +3,10 @@
 // name can never reach outside its day folder.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB } from '../../../core/server/paths.ts';
+import { STATE } from '../../../core/server/paths.ts';
 import { THUMB_MAX_BYTES } from '../api.ts';
 
-export const PHOTOS = path.join(HUB, 'photos');
+export const PHOTOS = path.join(STATE, 'photos');
 export const MAX_BYTES = 8 * 1024 * 1024;
 export const MAX_PER_ASK = 3;          // photos sent with one message to Claude
 export const MAX_PER_DELETE = 200;     // photos removed with one request (the select mode's Delete)
