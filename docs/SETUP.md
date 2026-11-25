@@ -1,13 +1,13 @@
 # Set up ClaudeOS
 
-These steps run the hub on your PC and open ClaudeOS in a browser.
+These steps run the Host on your PC and open ClaudeOS in a browser.
 
 ## 1. Install the tools
 
 1. Install Node.js 22.18 or newer from nodejs.org.
 2. Install the Claude Code CLI and sign in. Run `claude` once and follow the prompts.
 
-## 2. Install the hub
+## 2. Install the Host
 
 Open a terminal in the project folder (the one with `package.json`), then:
 
@@ -32,7 +32,7 @@ It never replaces an existing `config.json` without asking. You can also copy `c
 npm start
 ```
 
-The hub prints the address it serves. Open `http://<your PC's address>:8000` in a browser on your home network.
+The Host prints the address it serves. Open `http://<your PC's address>:8000` in a browser on your home network.
 
 Run the host with `npm run host` on any OS. It restarts the server if it stops. See `host/README.md`.
 
