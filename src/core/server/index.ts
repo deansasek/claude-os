@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import type { Binary, Route, ServerApp } from './app.ts';
 import { config } from './config.ts';
-import { HUB, PUBLIC, SRC } from './paths.ts';
+import { HOST_DIR, PUBLIC, SRC } from './paths.ts';
 import { servedBytes, WEB_FILE } from './served.ts';
 
 export { WEB_FILE };
@@ -220,11 +220,11 @@ export function startServer(apps: ServerApp[]): void {
       if (origin && !ownOrigins.has(origin) && !sameHost) return send(res, 403, 'not from this hub', 'text/plain');
       // the tablet's own app, for its silent self-update: the newest build and its version, read-only, nothing else
       if (req.method === 'GET' && url.pathname === '/apk/version') {
-        const m = /android:versionCode="(\d+)"/.exec(fs.readFileSync(path.join(HUB, 'android', 'AndroidManifest.xml'), 'utf8'));
+        const m = /android:versionCode="(\d+)"/.exec(fs.readFileSync(path.join(HOST_DIR, 'android', 'AndroidManifest.xml'), 'utf8'));
         return json(res, { versionCode: Number(m?.[1] ?? 0) });
       }
       if (req.method === 'GET' && url.pathname === '/apk/claude-hub.apk') {
-        const apk = path.join(HUB, 'android', 'build', 'claude-hub.apk');
+        const apk = path.join(HOST_DIR, 'android', 'build', 'claude-hub.apk');
         if (!fs.existsSync(apk)) return send(res, 404, 'no build yet', 'text/plain');
         res.writeHead(200, { 'Content-Type': 'application/vnd.android.package-archive', 'Content-Length': fs.statSync(apk).size, 'Cache-Control': 'no-store' });
         fs.createReadStream(apk).on('error', () => res.destroy()).pipe(res);

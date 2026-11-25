@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { History, HistoryGroup, HistoryItem } from '../api.ts';
 import { PROJECTS } from '../../../core/server/paths.ts';
-import { cwdOf, folderOf, hubSession, hubSessionIds } from './hubsessions.ts';
+import { cwdOf, folderOf, hostSession, hostSessionIds } from './hostsessions.ts';
 import { openSessions } from './registry.ts';
 import { userText } from './sessions.ts';
 import { archivedIds } from './state.ts';
@@ -157,7 +157,7 @@ export function refreshHistory(): Promise<void> {
   return sweeping;
 }
 
-const titleOf = (e: Entry) => e.custom || e.summary || e.agent || hubSession(e.id)?.title || e.first || 'Untitled session';
+const titleOf = (e: Entry) => e.custom || e.summary || e.agent || hostSession(e.id)?.title || e.first || 'Untitled session';
 
 /** Drop a deleted log from the index at once (the next sweep would too). */
 export function forgetHistory(file: string): void { index.delete(file); }
@@ -175,13 +175,13 @@ export async function history(o: HistoryQuery): Promise<History> {
   const before = o.before ? Date.parse(o.before) : NaN;
   const limit = Math.max(1, Math.min(o.limit || (o.folder ? 25 : 6), 100));
   const now = Date.now();
-  const open = openSessions(), hubIds = hubSessionIds();
+  const open = openSessions(), hostIds = hostSessionIds();
 
   const byFolder = new Map<string, Entry[]>();
   const archived = archivedIds();
   let total = 0, archivedCount = 0;
   for (const e of index.values()) {
-    if (!e.messages && !e.custom && !hubIds.has(e.id)) continue;   // empty logs (opened and closed)
+    if (!e.messages && !e.custom && !hostIds.has(e.id)) continue;   // empty logs (opened and closed)
     const isArchived = archived.has(e.id);
     if (isArchived) archivedCount++;
     if (isArchived !== !!o.archived) continue;   // the main list, or the Archived view
@@ -197,7 +197,7 @@ export async function history(o: HistoryQuery): Promise<History> {
     const page = (Number.isNaN(before) ? list : list.filter(e => e.lastAt < before));
     const items: HistoryItem[] = page.slice(0, limit).map(e => ({
       id: e.id, title: titleOf(e), at: new Date(e.lastAt).toISOString(), messages: e.messages,
-      open: open.has(e.id), live: now - e.mtime < LIVE_WINDOW_MS, hub: hubIds.has(e.id),
+      open: open.has(e.id), live: now - e.mtime < LIVE_WINDOW_MS, hub: hostIds.has(e.id),
     }));
     groups.push({ id, name: list[0].folder, count: list.length, latest: new Date(list[0].lastAt).toISOString(), items, more: page.length > limit });
   }

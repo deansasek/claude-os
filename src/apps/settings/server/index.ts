@@ -6,7 +6,7 @@ import type { Binary, ServerApp } from '../../../core/server/app.ts';
 import { PHOTO_MAX } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { PHOTOS } from '../../photos/server/store.ts';
-import { listProjects, projectFolder } from '../../claude/server/hubsessions.ts';
+import { listProjects, projectFolder } from '../../claude/server/hostsessions.ts';
 import { getInstructions, setInstructions } from './instructions.ts';
 import { getProfile, readProfilePhoto, removePhoto, savePhoto, setProfile, setWelcomeDone, welcomeDone } from './profile.ts';
 import { addCustomMcp, addFolder, knownServer, pluginsView, probe, removeCustomMcp, removeFolder, setOn } from './plugins.ts';

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-export interface HubConfig {
+export interface HostConfig {
   host: string;          // address to listen on
   port: number;          // port to listen on
   cast: string;          // Nest Hub (Chromecast) address to keep the page cast to; empty = none
@@ -17,10 +17,10 @@ export interface HubConfig {
   ownerName: string;     // the owner's name; empty = none
 }
 
-const HUB_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');   // src/core/server → 
-export const CONFIG_JSON = path.join(HUB_DIR, 'config.json');
+const HOST_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');   // src/core/server → 
+export const CONFIG_JSON = path.join(HOST_DIR, 'config.json');
 
-const DEFAULTS: HubConfig = {
+const DEFAULTS: HostConfig = {
   host: '0.0.0.0',
   port: 8000,
   cast: '',
@@ -30,7 +30,7 @@ const DEFAULTS: HubConfig = {
   ownerName: '',
 };
 
-function readFile(): Partial<HubConfig> {
+function readFile(): Partial<HostConfig> {
   try {
     const raw = JSON.parse(fs.readFileSync(CONFIG_JSON, 'utf8').replace(/^﻿/, ''));
     return raw && typeof raw === 'object' ? raw : {};
@@ -40,7 +40,7 @@ function readFile(): Partial<HubConfig> {
   }
 }
 
-function readArgs(): Partial<HubConfig> {
+function readArgs(): Partial<HostConfig> {
   // strict: false so an unknown flag never stops the server; only the flags below are read.
   const { values: a } = parseArgs({
     strict: false,
@@ -50,7 +50,7 @@ function readArgs(): Partial<HubConfig> {
     },
   });
   const s = (v: unknown) => (typeof v === 'string' && v !== '' ? v : undefined);
-  const out: Partial<HubConfig> = {};
+  const out: Partial<HostConfig> = {};
   if (s(a.host)) out.host = s(a.host);
   if (s(a.port)) out.port = Number(a.port);
   if (s(a.cast)) out.cast = s(a.cast);
@@ -61,11 +61,11 @@ function readArgs(): Partial<HubConfig> {
   return out;
 }
 
-function load(): HubConfig {
+function load(): HostConfig {
   const file = readFile(), args = readArgs();
-  const pick = <K extends keyof HubConfig>(k: K): HubConfig[K] => {
+  const pick = <K extends keyof HostConfig>(k: K): HostConfig[K] => {
     const v = args[k] ?? file[k];
-    return (v === undefined || v === null || v === '' ? DEFAULTS[k] : v) as HubConfig[K];
+    return (v === undefined || v === null || v === '' ? DEFAULTS[k] : v) as HostConfig[K];
   };
   const port = Number(pick('port'));
   return {
@@ -74,9 +74,9 @@ function load(): HubConfig {
     cast: String(pick('cast')),
     cattPath: String(pick('cattPath')),
     theme: String(pick('theme')),
-    projectsDir: path.resolve(HUB_DIR, String(pick('projectsDir'))),
+    projectsDir: path.resolve(HOST_DIR, String(pick('projectsDir'))),
     ownerName: String(pick('ownerName')),
   };
 }
 
-export const config: HubConfig = load();
+export const config: HostConfig = load();

@@ -9,10 +9,10 @@ import { HOME, PROJECTS } from '../../../core/server/paths.ts';
 import { forkSession } from '@anthropic-ai/claude-agent-sdk';
 import { forgetHistory } from './history.ts';
 import { logAction } from './guard.ts';
-import { forgetHubSession, rememberHubSession } from './hubsessions.ts';
+import { forgetHubSession, rememberHostSession } from './hostsessions.ts';
 import { forgetState, setArchived, setPinned } from './state.ts';
 import { forgetTranscript, lookupSession } from './sessions.ts';
-import { hubTurnRunning } from './turns.ts';
+import { hostTurnRunning } from './turns.ts';
 
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** A message id from the log, optionally with "#n" for a later block of the same message. */
@@ -42,7 +42,7 @@ export async function forkFrom(sessionId: string, messageId: string, from: strin
   try {
     const title = `${s.live.title} (fork)`.slice(0, 120);
     const r = await forkSession(sessionId, { dir: s.cwd, upToMessageId: messageId.split('#')[0], title });
-    rememberHubSession({ id: r.sessionId, cwd: s.cwd, title, createdAt: new Date().toISOString() });
+    rememberHostSession({ id: r.sessionId, cwd: s.cwd, title, createdAt: new Date().toISOString() });
     logAction(from, 'fork', { session: sessionId, forked: r.sessionId });
     return { ok: true, sessionId: r.sessionId };
   } catch (e) {
@@ -78,7 +78,7 @@ export function deleteSession(id: string, from: string): ManageResult {
   if (!SESSION_ID.test(id)) return { ok: false, error: 'bad_id' };
   const s = lookupSession(id);
   if (!s) return { ok: false, error: 'not_found' };
-  if (hubTurnRunning(id) || s.live.state === 'thinking' || s.live.state === 'tool') return { ok: false, error: 'running' };
+  if (hostTurnRunning(id) || s.live.state === 'thinking' || s.live.state === 'tool') return { ok: false, error: 'running' };
   if (s.live.open) return { ok: false, error: 'open_on_pc' };
 
   // the log must sit directly in a folder directly under the projects folder, and be named for this session

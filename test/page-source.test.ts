@@ -6,8 +6,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 
-const HUB = path.resolve(import.meta.dirname, '..');
-const java = fs.readFileSync(path.join(HUB, 'android', 'src', 'hub', 'kiosk', 'PageAssets.java'), 'utf8');
+const HOST_DIR = path.resolve(import.meta.dirname, '..');
+const java = fs.readFileSync(path.join(HOST_DIR, 'android', 'src', 'hub', 'kiosk', 'PageAssets.java'), 'utf8');
 
 /** The rule PageAssets.sourceOf applies: trimmed, lower case; pc, auto and bundle pass; anything else is bundle. */
 function sourceOf(raw: string | null | undefined): string {
@@ -51,7 +51,7 @@ test('with no bundle in the APK, bundle and auto fall back to pc', () => {
 // The auto fallback lives in MainActivity.java. The APK has no JVM test harness, so these checks read the Java text
 // and confirm the rule is there: auto shows the bundle when the PC page fails, the probe brings the PC back, and
 // the 7-tap escape works on the bundled page too. The Java itself is not compiled or run by this test.
-const activity = fs.readFileSync(path.join(HUB, 'android', 'src', 'hub', 'kiosk', 'MainActivity.java'), 'utf8');
+const activity = fs.readFileSync(path.join(HOST_DIR, 'android', 'src', 'hub', 'kiosk', 'MainActivity.java'), 'utf8');
 
 test('a failed PC page falls back to the bundle only in auto, and otherwise shows the offline screen', () => {
   assert.match(activity, /private void pcPageFailed\(\) \{[\s\S]*?if \(!PageAssets\.SOURCE_AUTO\.equals\(pageSource\) \|\| !pageAssets\.hasBundle\(\)\) \{ showOffline\(\); return; \}/);

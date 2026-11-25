@@ -6,9 +6,9 @@ import path from 'node:path';
 import readline from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 
-const HUB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const EXAMPLE = path.join(HUB, 'config.example.json');
-const TARGET = process.env.CLAUDEOS_CONFIG || path.join(HUB, 'config.json');
+const HOST_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const EXAMPLE = path.join(HOST_DIR, 'config.example.json');
+const TARGET = process.env.CLAUDEOS_CONFIG || path.join(HOST_DIR, 'config.json');
 
 /** This PC's first IPv4 address on the home network, as a suggestion. */
 function lanAddress(): string {

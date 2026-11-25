@@ -24,7 +24,7 @@ import { manifest } from '../manifest.ts';
 import { checkToken, unlock } from './guard.ts';
 import { LIMITS, readPlan, startLimits } from './limits.ts';
 import { imageBytes, liveSessions } from './sessions.ts';
-import { listProjects } from './hubsessions.ts';
+import { listProjects } from './hostsessions.ts';
 import { history, historyStats, refreshHistory } from './history.ts';
 import { archiveSession, deleteSession, forkFrom, pinMessage } from './manage.ts';
 import { finishJob, nextJob } from './browser.ts';
