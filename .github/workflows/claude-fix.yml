@@ -50,6 +50,20 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Only a code owner may trigger Claude. The owners come from CODEOWNERS on main, not from this pull request. Fails closed.
+      - name: Check the sender is a code owner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.event.sender.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          owners=$(gh api "repos/$REPO/contents/CODEOWNERS?ref=main" --jq .content | base64 -d | grep -v "^[[:space:]]*#" | grep -oE "@[A-Za-z0-9_.-]+" | sed "s/^@//" | sort -u || true)
+          if ! grep -qx "$ACTOR" <<< "$owners"; then
+            echo "Not allowed: $ACTOR is not a code owner on main."
+            exit 1
+          fi
+          echo "Allowed: $ACTOR is a code owner."
+
       - name: Check the label or comment was added by a person with write access
         if: github.event_name != 'workflow_dispatch'
         env:
