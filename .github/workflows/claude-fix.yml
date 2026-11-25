@@ -111,17 +111,9 @@ jobs:
               const u = r.usage || {};
               const [i, o, cw, cr] = [u.input_tokens, u.output_tokens, u.cache_creation_input_tokens, u.cache_read_input_tokens].map(num);
               const cost = num(r.total_cost_usd);
-              emit([
-                '## Claude run usage', '', '| | Tokens |', '|---|---:|',
-                `| Input | ${fmt(i)} |`,
-                `| Output | ${fmt(o)} |`,
-                `| Cache written | ${fmt(cw)} |`,
-                `| Cache read | ${fmt(cr)} |`,
-                `| **Total** | **${fmt(i + o + cw + cr)}** |`,
-                `| Turns | ${fmt(r.num_turns)} |`,
-                `| Cost | $${cost.toFixed(2)} |`,
-                '',
-              ].join('\n'));
+              const denom = i + cw + cr;
+              const hit = denom ? Math.round((cr / denom) * 100) : 0;
+              emit(`Usage: ${fmt(i + o + cw + cr)} tokens (input ${fmt(i)}, output ${fmt(o)}, cache written ${fmt(cw)}, cache read ${fmt(cr)}, ${hit}% cache hit) · ${fmt(r.num_turns)} turn(s) · $${cost.toFixed(2)}`);
             }
           } catch {
             emit('Usage summary could not be written.');
