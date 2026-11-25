@@ -35,6 +35,7 @@
 
 /* one plain sentence about what needs you: the lead in ink, the rest in a softer tone; never more than two lines */
 #app-home .hm-line { all: unset; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  height: 54px; /* two lines of 27px: the box never grows into the glance row below */
   margin-top: calc(14px + 4px * var(--tall)); max-width: 500px; font: 400 20px/1.35 var(--serif); letter-spacing: -.005em; color: var(--text);
   transition: transform var(--dur-fast) var(--ease-out); }
 #app-home .hm-line em { font-style: normal; color: var(--t3); }
