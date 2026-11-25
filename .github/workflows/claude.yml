@@ -216,6 +216,7 @@ jobs:
             Read the pull request from `gh pr diff <n>` and `gh pr view <n>` only. Do not run code from the pull request. Run one shell command per Bash call; never chain commands with `;`, `&&`, or `||`.
           claude_args: '--model claude-haiku-5-5 --max-turns 40 --allowedTools "Read Glob Grep Skill Write Bash(gh pr view:*) Bash(gh pr diff:*) Bash(gh pr review:*) Bash(gh api --paginate repos/*/issues/*/comments:*) Bash(gh api repos/*/issues/comments/*:*) Bash(gh api -X PATCH repos/*/issues/comments/*:*) Bash(gh api -X POST repos/*/issues/*/comments:*) Bash(gh api -X POST repos/*/issues/comments/*/reactions:*) Bash(gh api -X POST repos/*/pulls/comments/*/reactions:*) mcp__github_inline_comment__create_inline_comment"'
           allowed_bots: claudeos-bot[bot],claude[bot]
+          show_full_output: true
 
       # Write Claude run token usage to the job summary. Never fails the job.
       - name: Write the usage summary
