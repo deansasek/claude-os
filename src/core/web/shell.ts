@@ -83,11 +83,12 @@ const HOLD_MS = 450;
 const DRAG_PX = 10;   // the pointer must move this far before a held item drags
 let dragBtn: HTMLElement | null = null;   // the item under the finger; renderRail() does not glide it
 
-/** Hold a pinned rail item for a moment, then drag it up or down. The order is saved as it changes.
- *  Leave the rail sideways to put the order back as it was before the drag. */
+/** Hold a pinned rail item for a moment, then drag it along the rail. The order is saved as it changes.
+ *  A column rail drags up or down. A row rail (rail-horizontal) drags left or right.
+ *  Leave the rail across its axis to put the order back as it was before the drag. */
 function initRailReorder(): void {
   const rail = railApps!;
-  let s: { btn: HTMLElement; id: string; x: number; y: number; top: number; before: string[]; held: boolean; dragging: boolean; timer: number } | null = null;
+  let s: { btn: HTMLElement; id: string; x: number; y: number; off: number; before: string[]; held: boolean; dragging: boolean; timer: number } | null = null;
   let justDragged = false;   // swallow the click that follows a drag
 
   const stop = (revert: boolean): void => {
@@ -115,12 +116,15 @@ function initRailReorder(): void {
       if (!cur.held) { stop(false); return; }   // a scroll or a slide before the hold, not a drag
       cur.dragging = true; dragBtn = cur.btn;   // the hold passed and the finger moved: start the drag
     }
+    const h = document.documentElement.classList.contains('rail-horizontal');   // a row rail: the drag runs along x
     const r = rail.getBoundingClientRect();
-    if (e.clientX < r.left || e.clientX > r.right) { stop(true); return; }   // left the rail: put the order back
+    const across = h ? e.clientY : e.clientX, lo = h ? r.top : r.left, hi = h ? r.bottom : r.right;
+    if (across < lo || across > hi) { stop(true); return; }   // left the rail across its axis: put the order back
     // the pinned item under the finger gives its place to the dragged item
+    const along = h ? e.clientX : e.clientY;
     const over = [...rail.querySelectorAll<HTMLElement>('.ri[data-app]')]
       .filter(b => !b.hidden && b !== cur.btn && pins.includes(b.dataset.app!))
-      .find(b => { const br = b.getBoundingClientRect(); return e.clientY >= br.top && e.clientY < br.bottom; });
+      .find(b => { const br = b.getBoundingClientRect(); return along >= (h ? br.left : br.top) && along < (h ? br.right : br.bottom); });
     if (over) {
       const from = pins.indexOf(cur.id), to = pins.indexOf(over.dataset.app!);
       if (from !== to) {
@@ -132,7 +136,9 @@ function initRailReorder(): void {
       }
     }
     // the reorder moves the item's layout; the transform keeps it under the finger
-    cur.btn.style.transform = `translateY(${e.clientY - cur.y - (cur.btn.offsetTop - cur.top)}px)`;
+    cur.btn.style.transform = h
+      ? `translateX(${e.clientX - cur.x - (cur.btn.offsetLeft - cur.off)}px)`
+      : `translateY(${e.clientY - cur.y - (cur.btn.offsetTop - cur.off)}px)`;
   };
 
   rail.addEventListener('pointerdown', e => {
@@ -141,7 +147,8 @@ function initRailReorder(): void {
     if (!btn || !id || e.button !== 0 || !pins.includes(id)) return;
     justDragged = false;
     btn.style.touchAction = 'none';   // the browser must not scroll the rail during the drag
-    const cur = { btn, id, x: e.clientX, y: e.clientY, top: btn.offsetTop, before: [...pins], held: false, dragging: false, timer: 0 };
+    const h = document.documentElement.classList.contains('rail-horizontal');
+    const cur = { btn, id, x: e.clientX, y: e.clientY, off: h ? btn.offsetLeft : btn.offsetTop, before: [...pins], held: false, dragging: false, timer: 0 };
     cur.timer = window.setTimeout(() => { cur.held = true; }, HOLD_MS);   // a hold arms the reorder; a move starts it
     s = cur;
     document.addEventListener('pointermove', onMove);
@@ -182,8 +189,10 @@ function renderRail(): void {
     if (k.startsWith('a:')) { const a = androidOpen.get(k.slice(2)); if (a) want.push(androidBtn(a)); }
     else { const b = ownBtns.get(k); if (b) want.push(b); }
   }
+  const h = document.documentElement.classList.contains('rail-horizontal');   // a row rail glides along x
+  const at = (b: HTMLElement): number => h ? b.offsetLeft : b.offsetTop;
   const before = new Map<HTMLElement, number>();
-  railApps.querySelectorAll<HTMLElement>('.ri').forEach(b => { if (b.isConnected && !b.hidden) before.set(b, b.offsetTop); });
+  railApps.querySelectorAll<HTMLElement>('.ri').forEach(b => { if (b.isConnected && !b.hidden) before.set(b, at(b)); });
   // hide what's left, then append in order (appending moves an element)
   [...ownBtns.values(), ...androidBtns.values()].forEach(b => { if (!want.includes(b)) { b.hidden = true; if (b.parentElement !== railApps) railApps!.appendChild(b); } });
   want.forEach(b => { b.hidden = false; railApps!.appendChild(b); });
@@ -192,9 +201,10 @@ function renderRail(): void {
     want.forEach(b => {
       if (b === dragBtn) return;   // the item in hand follows the finger, not the glide
       const was = before.get(b);
-      if (was == null) { b.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: motionMs('--dur-base'), easing: 'cubic-bezier(.2, .8, .2, 1)' }); return; }
-      const d = was - b.offsetTop;
-      if (d) b.animate([{ transform: `translateY(${d}px)` }, { transform: 'none' }], { duration: motionMs('--dur-slow'), easing: 'cubic-bezier(.16, 1, .3, 1)' });
+      const slide = (n: number): string => h ? `translateX(${n}px)` : `translateY(${n}px)`;
+      if (was == null) { b.animate([{ opacity: 0, transform: slide(6) }, { opacity: 1, transform: 'none' }], { duration: motionMs('--dur-base'), easing: 'cubic-bezier(.2, .8, .2, 1)' }); return; }
+      const d = was - at(b);
+      if (d) b.animate([{ transform: slide(d) }, { transform: 'none' }], { duration: motionMs('--dur-slow'), easing: 'cubic-bezier(.16, 1, .3, 1)' });
     });
   }
   if (current) placePill(current, before.size > 0);
@@ -210,9 +220,15 @@ function placePill(id: string, animate: boolean): void {
   pill.style.transform = `translate(${btn.offsetLeft}px, ${btn.offsetTop}px)`;
   pill.classList.add('on');
   if (!animate) { void pill.offsetWidth; pill.style.transition = ''; }
-  // keep the active item in view when the rail scrolls (lots of open apps on the Nest Hub)
+  // keep the active item in view when the rail scrolls (lots of open apps on the Nest Hub, or a row rail)
   const r = railApps!;
-  if (btn.offsetTop < r.scrollTop || btn.offsetTop + btn.offsetHeight > r.scrollTop + r.clientHeight) r.scrollTo({ top: btn.offsetTop - 8, behavior: animate ? 'smooth' : 'auto' });
+  const h = document.documentElement.classList.contains('rail-horizontal');
+  const along = h ? btn.offsetLeft : btn.offsetTop, size = h ? btn.offsetWidth : btn.offsetHeight;
+  const pos = h ? r.scrollLeft : r.scrollTop, view = h ? r.clientWidth : r.clientHeight;
+  if (along < pos || along + size > pos + view) {
+    const behavior: ScrollBehavior = animate ? 'smooth' : 'auto';
+    r.scrollTo(h ? { left: along - 8, behavior } : { top: along - 8, behavior });
+  }
 }
 
 function markOpen(key: string): void { opened = [key, ...opened.filter(k => k !== key)]; }

@@ -87,6 +87,21 @@
   .ri-letter { width: 26px; height: 26px; border-radius: 7px; background: var(--card-2); color: var(--t2); display: flex;
     align-items: center; justify-content: center; font: 600 13px var(--sans); }
   .rail-foot { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }
+  /* rail on another edge or along the top or bottom. Settings → Appearance sets the classes on <html> (system.ts
+     applyAppearance): rail-right / rail-left / rail-top / rail-bottom, and rail-horizontal for a row. The base rules
+     above are the left column. The rail sits on top of the apps' edge: .app and the switcher start after --rail-w. */
+  :root.rail-right .rail { left: auto; right: 0; border-right: 0; border-left: 1px solid var(--line); }
+  :root.rail-right .app, :root.rail-right .sw-handle, :root.rail-right .sw-acard { left: 0; }
+  :root.rail-horizontal .rail { right: 0; bottom: auto; width: auto; height: var(--rail-w); flex-direction: row;
+    padding: 0 18px 0 22px; border-right: 0; border-bottom: 1px solid var(--line); }
+  :root.rail-horizontal .rail-apps { width: auto; height: 100%; overflow-x: auto; overflow-y: hidden; flex-direction: row; touch-action: pan-x; }
+  :root.rail-horizontal .rail-foot { margin-top: 0; margin-left: auto; flex-direction: row; }
+  :root.rail-horizontal.rail-bottom .rail { top: auto; bottom: 0; border-bottom: 0; border-top: 1px solid var(--line); }
+  :root.rail-horizontal .app { left: 0; width: 100%; top: var(--rail-w); height: calc(100% - var(--rail-w)); }
+  :root.rail-horizontal.rail-bottom .app { top: 0; }
+  :root.rail-horizontal .sw-handle { left: 0; }
+  :root.rail-horizontal .sw-acard { left: 0; top: var(--rail-w); height: calc(100% - var(--rail-w)); }
+  :root.rail-horizontal.rail-bottom .sw-acard { top: 0; }
 
   /* apps */
   /* every app's page grid: the header sits at --app-top, content starts at --app-body, and both

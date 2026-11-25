@@ -484,6 +484,10 @@
 /* ---- PIN pad (only used if a PIN is set on the PC) ---- */
 /* .app starts 84px in (after the rail, core.css), so pull the overlay back to the stage's left edge: the card centres on the stage */
 .pin { position: absolute; top: 0; right: 0; bottom: 0; left: calc(-1 * var(--rail-w)); z-index: 10; display: grid; place-items: center; background: color-mix(in srgb, var(--bg) 85%, transparent); }
+/* the pin covers the rail too: it reaches over the rail on whichever edge the rail is on (core.css .rail) */
+:root.rail-right .pin { left: 0; right: calc(-1 * var(--rail-w)); }
+:root.rail-horizontal .pin { left: 0; top: calc(-1 * var(--rail-w)); }
+:root.rail-horizontal.rail-bottom .pin { top: 0; bottom: calc(-1 * var(--rail-w)); }
 .pin[hidden] { display: none; }
 /* .pin-card, .pin-dots, .pin-msg and .pin-keys (the pad itself) are in core.css, shared with the lock screen */
 
