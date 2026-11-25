@@ -18,7 +18,7 @@ Do not change repository files. Do not merge. Do not post more than one review. 
 
 ## Template
 
-The verdict is the note. Write the note in exactly this form. Follow the ASD-STE100 style used in the repo:
+The verdict is the note. Use this structure: keep the headings and their order, and write the text under each one in your own words. Add as many notes as the review needs, in the **Notes** section. Do not add a checklist of the review steps. Follow the ASD-STE100 style used in the repo:
 
 - Short sentences. One idea per sentence.
 - Active voice and present tense.
@@ -26,18 +26,9 @@ The verdict is the note. Write the note in exactly this form. Follow the ASD-STE
 - No filler, no praise, no speculation.
 
 ```
-### Code review of PR #<number>
-
-- [x] Check eligibility (open, not draft, no earlier Claude review)
-- [x] Gather CLAUDE.md paths (root `CLAUDE.md` only)
-- [x] Summarize the diff
-- [x] Run four review passes (two CLAUDE.md, two bug)
-- [x] Validate findings
-- [x] Post summary and verdict
+### Review of PR #<number>
 
 Two or three short sentences, in plain words, with no label: what the pull request changes and what the review found.
-
-**Result:** no issues found, or the number of findings. Checked for bugs and CLAUDE.md compliance.
 
 **Verdict:** ✅ Approved, or ❌ Denied. One sentence on the next step.
 
@@ -45,7 +36,7 @@ Two or three short sentences, in plain words, with no label: what the pull reque
 - `path/to/file:line` - one sentence on the problem. **Why it matters:** one sentence on the impact for the reader or the code. Mark it **important** or **nit**. Write `None.` when there are no findings.
 
 **Notes:**
-- One full sentence for each point the reviewer must know, such as a review that was not posted or a check that was skipped. Write the sentence in full, not as a fragment. Omit this section when there is nothing to add.
+- Any point the reader should know, in full sentences. Write as many as the review needs: what was checked, what was skipped, a risk, a question for the author, or a follow-up. Omit this section only when there is nothing to add.
 ```
 
 ## Post the verdict
