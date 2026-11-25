@@ -71,9 +71,9 @@ Do not add `ai-fix` to work that a person should do. A PIN change, for example, 
 | `ai-review` | Run the AI code review on this pull request. Only labeled pull requests are reviewed. |
 | `ai-generated` | The AI made this pull request. Its review can approve it. |
 | `ci` | The change touches GitHub Actions or checks. The labeler adds this from the paths. |
-| `github_actions` | The change touches GitHub Actions code. The labeler adds this from the paths. |
-| `dependencies` | The change touches a dependency file. |
-| `documentation` | Docs or README changes. |
+| `github_actions` | The change touches GitHub Actions code. A person adds this. |
+| `dependencies` | The change touches a dependency file. A person adds this. |
+| `documentation` | Docs or README changes. The labeler adds this from the paths. |
 | Area labels (`tablet`, `android`, `hub`, `claude-app`, `home`, `apps`, `voice`) | The area the change touches. |
 
 Pull requests have no status in this repo.
@@ -95,7 +95,7 @@ Set a milestone only when the item belongs to it. Do not create a milestone with
 
 ## How the repo uses these
 
-- **Automatic**: the labeler adds `ci`, `github_actions`, `dependencies` and area labels to pull requests from the paths they touch.
+- **Automatic**: the labeler adds the area labels, `ci` and `documentation` to pull requests, from the paths they touch. A person adds `github_actions` and `dependencies`.
 - **The AI fix flow** (`.github/workflows/claude-fix.yml`): a person adds `ai-fix` to an issue. The AI sets the status to In progress, then In review when it opens the pull request. The pull request gets `ai-generated` and `ai-review`. When the pull request merges, the issue closes as completed and becomes Done. A no-change run adds `dont-do`, sets Not planned and closes it. A gate stop adds `ai-blocked`.
 - **The AI review** (`.github/workflows/claude-code-review.yml`): it runs only on pull requests with `ai-review`. An `ai-generated` pull request can be approved, like any other.
 - **Milestones and types** are set by people. The AI sets only the status and the labels above.
