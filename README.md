@@ -28,13 +28,15 @@
   <img src="docs/media/tablet-clock.png" alt="The ClaudeOS clock screen, with the time, date, weather and battery" width="46%">
   &nbsp;
   <img src="docs/media/tablet-browser.png" alt="The ClaudeOS Browser app with the Claude side panel open" width="46%">
+  &nbsp;
+  <img src="docs/media/tablet-timer.png" alt="The ClaudeOS Clock app on the Timer tab, with quick timers" width="46%">
 </p>
 
 ---
 
 ## About
 
-ClaudeOS shows your day on one shared screen: the time, the weather, your calendar, your photos and your family's lists. A small hub on your PC serves the page and connects it to Claude Code, so you can follow and answer your Claude sessions from anywhere in the room.
+ClaudeOS shows your day on one shared screen: the time, the weather, your calendar, your photos and your family's lists. The Host, a small server on your PC, connects ClaudeOS to Claude Code. A Client shows it: a browser, the Android tablet app, or a cast Nest Hub. Follow and answer your Claude sessions from anywhere in the room.
 
 ## Apps
 
@@ -46,6 +48,9 @@ ClaudeOS shows your day on one shared screen: the time, the weather, your calend
 | Calendar | Day, week, month and year views, from ICS links or the Claude calendar connector. |
 | Photos | A photo frame of the pictures you add. |
 | Lists | Shared family lists that Claude can read and change. |
+| News | Stories from free, keyless public RSS feeds, fetched and cached on the PC. |
+| Radio | Internet radio stations from Radio Browser. Free, no account. |
+| Recipes | Recipes from TheMealDB, saved recipes, and cook mode with named timers. |
 | Routines | Named sequences of steps, started by voice, a Home tile or Claude. |
 | Home Assistant | Lights, scenes and devices, if you run Home Assistant. |
 | Clock | Clock, timer, stopwatch and alarm. |
@@ -54,36 +59,61 @@ ClaudeOS shows your day on one shared screen: the time, the weather, your calend
 | Apps | The app launcher. |
 | Settings | Profile, PINs, plugins and more. |
 
-## Screens
-
-<p align="center">
-  <img src="docs/media/tablet-timer.png" alt="The ClaudeOS Clock app on the Timer tab, with quick timers" width="70%">
-</p>
-
 ## Requirements
 
 - Node.js 22.18 or newer.
 - The Claude Code CLI, signed in to your Claude account.
-- A PC on your home network to run the hub. Keep it on.
+- A PC on your home network to run the Host. Keep it on.
 - Optional: a Nest Hub or Chromecast, with [`catt`](https://github.com/skorokithakis/catt), to cast the page.
-- Optional: an Android tablet. A full-screen tablet app comes in a later release.
+- Optional: an Android tablet, with the ClaudeOS app built from `android/`. See [docs/SETUP.md](docs/SETUP.md#build-the-tablet-app-optional).
 
 ## Get started
 
 ```
 npm install
 npm run setup
-npm start
+npm run host
 ```
 
-1. `npm start` runs the hub. Open `http://<your PC's address>:8000` in a browser on your home network.
+1. `npm run host` starts the Host and restarts it if it stops. Open `http://<your PC's address>:8000` in a browser on your home network. `npm start` runs the server alone, without restarts.
 2. In **Settings**, open **Security** and set a PIN before you put the screen somewhere shared.
 
-The full guide, including the `config.json` options and the tablet build, is in [docs/SETUP.md](docs/SETUP.md). On Windows, the tray app in [`host/`](host/) keeps the hub running.
+The full guide, including the `config.json` options and the tablet build, is in [docs/SETUP.md](docs/SETUP.md). See [Run the Host](#run-the-host).
+
+## Run the Host
+
+```
+npm run host          # start in the foreground
+npm run host:status   # show whether it runs
+npm run host:stop     # stop it
+npm run host:logs     # show the last log lines
+```
+
+Autostart at login on Windows: `npm run host -- autostart on`, and `off` to turn it off. On macOS and Linux, start `npm run host` from a login script.
+
+Logs go to `host/logs/server.log`.
+
+Pass `--no-cast` to turn casting off, for example `npm run host -- --no-cast`. It works even when `config.json` names a device.
+
+Set `CLAUDEOS_STATE_DIR` to keep settings, lists, PIN and sessions in another folder. The default is the repository root.
+
+For the details, see [host/README.md](host/README.md).
 
 ## Security
 
-The hub trusts your home network. It serves plain HTTP with no sign-in. Do not expose it to the internet. See [docs/SECURITY.md](docs/SECURITY.md) for the trust model, PINs and the files to keep private.
+The Host trusts your home network. It serves plain HTTP with no sign-in. Do not expose it to the internet. See [docs/SECURITY.md](docs/SECURITY.md) for the trust model, PINs and the files to keep private.
+
+## Project layout
+
+- `src/apps/<app>/`: one folder per app.
+- `src/core/server/`: the Host server.
+- `src/core/web/`: the Client page.
+- `public/`: the page's static files.
+- `host/`: the Host command.
+- `android/`: the tablet app.
+- `docs/`: setup and security guides.
+- `test/`: tests.
+- `scripts/`: build and setup scripts.
 
 ## Contributing
 
@@ -91,7 +121,7 @@ Every change goes through a branch and a pull request into `main`.
 
 1. Create a branch from `main`.
 2. Write commits in the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format, for example `feat(voice): name a timer`.
-3. Run `npm run check` and `npm test`.
+3. Run `npm run check`, `npm run check:tests` and `npm test`.
 4. Open a pull request with the sections **Why**, **What** and **Tests**.
 
 See [CLAUDE.md](CLAUDE.md) for the code rules, the web import rules and the no-visible-Android rule.
