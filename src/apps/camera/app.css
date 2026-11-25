@@ -4,61 +4,81 @@
    huge box-shadow, clipped to the app. Everything else on the page draws over the picture as usual. */
 html.cam-live, html.cam-live body { background: transparent !important; }
 #app-camera { overflow: hidden; background: transparent; }
-#app-camera .app-hd, #app-camera .cam-side { position: relative; z-index: 2; }
+#app-camera .app-hd, #app-camera .cam-side, #app-camera .cam-status { position: relative; z-index: 2; }
 
-#app-camera .cam { --cam-h: calc(450px + 60px * var(--tall));
-  position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); height: var(--cam-h);
-  display: flex; align-items: center; gap: 32px; }
+/* One layout, on the stage's content box (--app-l to --app-r, --app-body down to the bottom strip).
+   Left: the viewfinder, 4:3, as wide as the column allows; the Ready status sits under it.
+   Right: one column with three groups, spaced evenly: the photo just taken, Look, and the shutter row.
+   The shutter's size lives here, in --cam-shutter; the row's columns are sized from it. */
+#app-camera { --cam-side-w: 256px; --cam-gap: 24px; --cam-shutter: 96px; --cam-round: 56px; }
+#app-camera .cam { position: absolute; left: var(--app-l); right: var(--app-r); top: var(--app-body); bottom: var(--app-strip-b);
+  display: grid; grid-template-columns: minmax(0, 1fr) var(--cam-side-w); column-gap: var(--cam-gap); align-content: start; align-items: stretch; }
+
+/* the left: the preview and its status */
+#app-camera .cam-view { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 
 /* the preview's box: 4:3, a hole in the paper */
-#app-camera .cam-frame { position: relative; z-index: 1; flex: none; height: var(--cam-h); width: calc(var(--cam-h) * 4 / 3);
-  border-radius: 20px; background: transparent;
+#app-camera .cam-frame { position: relative; z-index: 1; width: 100%; aspect-ratio: 4 / 3; border-radius: 20px; background: transparent;
   box-shadow: 0 0 0 1px var(--line), 0 0 0 200vmax var(--bg); }
 #app-camera .cam-msg { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; max-width: 80%;
   padding: 14px 20px; border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--line);
   font-size: 15px; line-height: 1.4; color: var(--t2); text-align: center; }
 #app-camera .cam-msg[hidden] { display: none; }
-#app-camera .cam-flash { position: absolute; inset: 0; border-radius: 20px; background: #fff; opacity: 0; pointer-events: none; z-index: 3; }
+#app-camera .cam-flash { position: absolute; inset: 0; border-radius: 20px; background: var(--paper); opacity: 0; pointer-events: none; z-index: 3; }
 #app-camera .cam-flash.on { animation: cam-flash .32s ease-out; }
 @keyframes cam-flash { 0% { opacity: .85; } 100% { opacity: 0; } }
 
-/* the controls, right of the picture */
-#app-camera .cam-side { flex: 1; min-width: 0; height: var(--cam-h); display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
-#app-camera .cam-top { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
-#app-camera .cam-after { width: 100%; padding: 12px; border-radius: 16px; background: var(--card); box-shadow: 0 0 0 1px var(--line);
-  display: flex; flex-direction: column; align-items: center; gap: 8px; }
-#app-camera .cam-after[hidden] { display: none; }
-#app-camera .cam-after img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; background: var(--card-2); }
-#app-camera .cam-saved { font-size: 13px; color: var(--t3); }
+/* the Ready status: the shared pill, painted in the page under the frame (index.ts sets its text and colour) */
+#app-camera .cam-status { display: flex; align-items: center; min-height: 30px; }
+#app-camera .cam-status .live { font-size: 14px; }
+
+/* the right: one column, three groups. The space-between spreads them evenly over the frame's height. */
+#app-camera .cam-side { min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: space-between; gap: 24px; }
+#app-camera .cam-group { position: relative; width: 100%; }
 #app-camera .cam-cap { font-size: 13px; color: var(--t3); white-space: nowrap; text-align: center; }
-#app-camera .cam-flipw { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 112px; }
-#app-camera .cam-ask { all: unset; cursor: pointer; width: 100%; box-sizing: border-box; text-align: center; min-height: 44px; padding: 10px 12px; border-radius: 12px;
-  display: flex; align-items: center; justify-content: center; background: var(--text); color: var(--bg); font: 500 15px var(--sans); }
-#app-camera .cam-note { font-size: 13px; line-height: 1.35; color: var(--t3); text-align: center; max-width: 240px; }
-#app-camera .cam-text { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; min-height: 44px;
-  font-size: 14px; color: var(--t3); padding: 4px 12px; }
-#app-camera .cam-look { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 18px; border-radius: 14px;
-  background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); font: 500 15px var(--sans);
+
+/* group 1: the photo just taken. A dashed slot of the same size holds the space until a photo is taken. */
+#app-camera .cam-shot { min-height: 188px; }
+#app-camera .cam-shot::before { content: ''; position: absolute; inset: 0; border-radius: 16px; border: 1.6px dashed var(--t5); }
+#app-camera .cam-after { position: absolute; inset: 0; box-sizing: border-box; padding: 12px; border-radius: 16px; background: var(--card);
+  box-shadow: 0 0 0 1px var(--line); display: flex; flex-direction: column; gap: 8px; }
+#app-camera .cam-after[hidden] { display: none; }
+#app-camera .cam-after-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+#app-camera .cam-after img { flex: none; width: 96px; height: 72px; object-fit: cover; border-radius: 10px; background: var(--card-2); }
+#app-camera .cam-after-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+#app-camera .cam-saved { font-size: 13px; color: var(--t3); }
+#app-camera .cam-ask { all: unset; cursor: pointer; box-sizing: border-box; width: 100%; min-height: 40px; padding: 8px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; background: var(--text); color: var(--bg); font: 500 14px var(--sans); }
+#app-camera .cam-note { font-size: 13px; line-height: 1.35; color: var(--t3); }
+#app-camera .cam-text { all: unset; box-sizing: border-box; cursor: pointer; align-self: flex-start; display: inline-flex; align-items: center; min-height: 40px;
+  font-size: 14px; color: var(--t3); padding: 4px 12px 4px 0; }
+
+/* group 2: Look, full width, with its caption under it */
+#app-camera .cam-look-group { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#app-camera .cam-look { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--line); color: var(--t2); font: 500 15px var(--sans);
   transition: background-color var(--dur-base) var(--ease-out); }
 #app-camera .cam-look:active { background: var(--card-2); }
 #app-camera .cam-look .cam-spark { width: 16px; height: 16px; color: var(--t2); }
 
-#app-camera .cam-mid { display: flex; align-items: center; justify-content: center; }
+/* group 3: the gallery, the shutter and the flip, in one row. The shutter ring stays inside this group. */
+#app-camera .cam-shoot { height: var(--cam-shutter); display: grid; grid-template-columns: var(--cam-round) var(--cam-shutter) minmax(0, 88px);
+  justify-content: space-between; align-items: center; }
 /* the shutter is ink, like every primary action; clay stays for the spark */
-#app-camera .cam-shutter { all: unset; cursor: pointer; position: relative; width: 96px; height: 96px; border-radius: 50%;
+#app-camera .cam-shutter { all: unset; cursor: pointer; position: relative; width: var(--cam-shutter); height: var(--cam-shutter); border-radius: 50%;
   display: grid; place-items: center; box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--text); }
-#app-camera .cam-shutter span { width: 78px; height: 78px; border-radius: 50%; background: var(--text);
+#app-camera .cam-shutter span { width: calc(var(--cam-shutter) - 18px); height: calc(var(--cam-shutter) - 18px); border-radius: 50%; background: var(--text);
   transition: transform var(--dur-fast) var(--ease-out), background-color var(--dur-base); }
 #app-camera .cam-shutter:active span { transform: scale(.92); background: var(--t2); }
 #app-camera .cam-shutter:disabled, #app-camera .cam-look:disabled, #app-camera .cam-round:disabled { opacity: .4; pointer-events: none; }
 
-#app-camera .cam-bottom { width: 100%; display: flex; align-items: center; justify-content: space-between; }
-#app-camera .cam-last { all: unset; cursor: pointer; position: relative; width: 64px; height: 64px; border-radius: 14px; overflow: hidden;
+#app-camera .cam-last { all: unset; cursor: pointer; position: relative; width: var(--cam-round); height: var(--cam-round); border-radius: 12px; overflow: hidden;
   background: var(--card); box-shadow: 0 0 0 1px var(--line); }
 #app-camera .cam-last img { width: 100%; height: 100%; object-fit: cover; display: block; }
 #app-camera .cam-last.empty img { display: none; }
-#app-camera .cam-last.empty::after { content: ''; position: absolute; inset: 20px; border-radius: 6px; border: 1.6px dashed var(--t5); }
-#app-camera .cam-round { all: unset; cursor: pointer; width: 56px; height: 56px; border-radius: 50%; background: var(--card);
+#app-camera .cam-last.empty::after { content: ''; position: absolute; inset: 18px; border-radius: 6px; border: 1.6px dashed var(--t5); }
+#app-camera .cam-flipw { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#app-camera .cam-round { all: unset; cursor: pointer; width: var(--cam-round); height: var(--cam-round); border-radius: 50%; background: var(--card);
   box-shadow: 0 0 0 1px var(--line); display: grid; place-items: center; color: var(--t2); }
 #app-camera .cam-round svg { width: 24px; height: 24px; }
 #app-camera .cam-round:active { background: var(--card-2); }

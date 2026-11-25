@@ -18,7 +18,7 @@ let flashTimer: number | undefined;
 
 const ICON = appIcon('camera');
 
-/** The preview's state, shown in the header pill and (when it isn't on) over the frame. */
+/** The preview's state, shown in the status pill under the frame and (when it isn't on) over the frame. */
 function paintState(state: cam.CamState, message?: string): void {
   const pill = $('caPill'), text = $('caPillText'), msg = $('caMsg'), msgText = $('caMsgText');
   const on = state === 'open';
