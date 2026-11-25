@@ -1,5 +1,5 @@
-// HTTPS for the Host, for the iPad's camera (Safari allows getUserMedia only on HTTPS). The Host makes its own local
-// certificate authority and a server certificate with openssl, once, and keeps them in the state folder. The iPad
+// HTTPS for the Host, for the camera and microphone in any browser on another device (browsers allow getUserMedia only on HTTPS). The Host makes its own local
+// certificate authority and a server certificate with openssl, once, and keeps them in the state folder. Each device
 // trusts the authority once: it downloads /claudeos-ca.cer from the plain HTTP port, installs the profile, and turns
 // on full trust. Nothing here reaches the internet.
 import { execFileSync } from 'node:child_process';

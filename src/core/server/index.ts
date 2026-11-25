@@ -211,7 +211,7 @@ export function startServer(apps: ServerApp[]): void {
     const from = (req.socket.remoteAddress || '?').replace(/^::ffff:/, '');
     lastSeen.set(from, Date.now());
     try {
-      // the local certificate authority, for the iPad to trust once (plain HTTP, so it can be fetched before trust)
+      // the local certificate authority, for a device to trust once (plain HTTP, so it can be fetched before trust)
       if (req.method === 'GET' && url.pathname === '/claudeos-ca.cer') {
         const der = certFiles(STATE).caDer;
         if (fs.existsSync(der)) return send(res, 200, fs.readFileSync(der), 'application/x-x509-ca-cert', 'no-store');
@@ -284,7 +284,7 @@ export function startServer(apps: ServerApp[]): void {
   const pageUrl = `http://${args.host}:${args.port}/?theme=${args.theme}`;
   server.listen(args.port, args.host, () => console.log(`serving ${pageUrl} with apps: ${apps.map(a => a.id).join(', ')}`));
 
-  // ---------- HTTPS for the iPad's camera (--https): port + 1, with a certificate this PC makes once ----------
+  // ---------- HTTPS for the camera and microphone on other devices (--https): port + 1, with a certificate this PC makes once ----------
   if (args.https) {
     const httpsPort = args.port + 1;
     const names = certNames(args.host === '0.0.0.0' || args.host === '::' ? [] : [args.host]);
@@ -293,7 +293,7 @@ export function startServer(apps: ServerApp[]): void {
       https.createServer({ key: fs.readFileSync(f.key), cert: fs.readFileSync(f.cert) }, handler)
         .listen(httpsPort, args.host, () => {
           const lan = names.filter(n => n !== '127.0.0.1').map(n => `https://${n}:${httpsPort}`).join(', ');
-          console.log(`serving ${lan} (https). On the iPad, trust the authority once from http://<this PC>:${args.port}/claudeos-ca.cer`);
+          console.log(`serving ${lan} (https). On another device, trust the authority once from http://<this PC>:${args.port}/claudeos-ca.cer`);
         });
     } catch (e) {
       console.log(`https is off: ${(e as Error).message}`);

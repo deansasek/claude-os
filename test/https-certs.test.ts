@@ -32,7 +32,7 @@ test('openssl makes an authority and a server certificate that the authority sig
   const state = fs.mkdtempSync(path.join(os.tmpdir(), 'https-test-'));
   try {
     const f = ensureCertificates(state, ['127.0.0.1', '10.0.0.5']);
-    assert.ok(fs.existsSync(f.caDer), 'the DER copy for the iPad exists');
+    assert.ok(fs.existsSync(f.caDer), 'the DER copy for devices to trust exists');
     assert.equal(execFileSync('openssl', ['verify', '-CAfile', f.caCert, f.cert], { encoding: 'utf8' }).includes(': OK'), true);
     const text = execFileSync('openssl', ['x509', '-in', f.cert, '-noout', '-text'], { encoding: 'utf8' });
     assert.match(text, /IP Address:10\.0\.0\.5/);

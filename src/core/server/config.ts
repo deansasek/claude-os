@@ -15,7 +15,7 @@ export interface HostConfig {
   theme: string;         // ?theme= of the cast page
   projectsDir: string;   // Claude Code's projects folder (session logs)
   ownerName: string;     // the owner's name; empty = none
-  https: boolean;        // also serve HTTPS on port + 1 (the iPad needs it for the camera); the plain port stays
+  https: boolean;        // also serve HTTPS on port + 1 (browsers on other devices need it for the camera); the plain port stays
 }
 
 const HOST_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');   // src/core/server → 
