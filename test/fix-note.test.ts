@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { existsSync, writeFileSync } from 'node:fs';
-import { LEGACY_TITLE, MARKER, findNote, findNoteOrLegacy, noteCall, parseComments, postNote, readNote, setUsageLine, writeUsage, type Comment, type Gh } from '../scripts/fix-note.ts';
+import { LEGACY_TITLE, MARKER, findNote, findNoteOrLegacy, noteCall, parseComments, postNote, readNote, setUsageLine, withOneMarker, writeUsage, type Comment, type Gh } from '../scripts/fix-note.ts';
 
 const note: Comment = { id: 7, login: 'claude[bot]', body: `${MARKER}\nOld note` };
 
@@ -82,6 +82,20 @@ test('postNote updates a legacy review comment and adds the marker on line 1', (
   assert.equal(calls[1][2], 'PATCH');
   assert.equal(calls[1][3], 'repos/deansasek/claude-os/issues/comments/8');
   assert.equal(readFileSync(bodyFile, 'utf8'), `${MARKER}\nNew review.\n`);
+});
+
+test('withOneMarker keeps one marker when the body already starts with it', () => {
+  assert.equal(withOneMarker(`${MARKER}\nReview\n`), `${MARKER}\nReview\n`);
+  assert.equal(withOneMarker(`﻿  ${MARKER}\nReview`), `${MARKER}\nReview\n`);
+});
+
+test('withOneMarker adds the marker to a body without it', () => {
+  assert.equal(withOneMarker('Review\n'), `${MARKER}\nReview\n`);
+});
+
+test('withOneMarker reduces a body with the marker twice to one marker', () => {
+  assert.equal(withOneMarker(`${MARKER}\n${MARKER}\nReview\n`), `${MARKER}\nReview\n`);
+  assert.equal(withOneMarker(`${MARKER}\n${MARKER}\n${MARKER}\nReview\n`), `${MARKER}\nReview\n`);
 });
 
 test('readNote returns the note body, or an empty string when no note exists', () => {

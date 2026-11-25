@@ -63,10 +63,17 @@ export function readNote(opts: { repo: string; issue: string; gh: Gh }): string 
   return findNoteOrLegacy(listComments(opts))?.body ?? '';
 }
 
+/** Return the body with exactly one marker on line 1. Drops a leading BOM and whitespace, then drops marker lines directly at the top. */
+export function withOneMarker(message: string): string {
+  const lines = message.replace(/^﻿/, '').trimStart().split('\n');
+  while (lines.length > 0 && lines[0].trim() === MARKER) lines.shift();
+  return `${[MARKER, ...lines].join('\n').trimEnd()}\n`;
+}
+
 /** Write the marker and the message to bodyFile, then post or update the note. Returns the comment URL. */
 export function postNote(opts: { repo: string; issue: string; message: string; bodyFile: string; gh: Gh }): string {
   const comments = listComments(opts);
-  writeFileSync(opts.bodyFile, `${MARKER}\n${opts.message.trimEnd()}\n`);
+  writeFileSync(opts.bodyFile, withOneMarker(opts.message));
   return opts.gh(noteCall(comments, opts.repo, opts.issue, opts.bodyFile)).trim();
 }
 
