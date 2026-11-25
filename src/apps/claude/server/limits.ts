@@ -7,12 +7,12 @@ import fs from 'node:fs';
 import { execFile } from 'node:child_process';
 import type { LimitEntry, Limits } from '../api.ts';
 import path from 'node:path';
-import { CREDS_FILE, HUB, TOKEN_FILE, readJson, which } from '../../../core/server/paths.ts';
+import { CREDS_FILE, STATE, TOKEN_FILE, readJson, which } from '../../../core/server/paths.ts';
 
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage';
 const EVERY_MS = 120e3;
 const CLAUDE = which('claude');
-const CACHE_FILE = path.join(HUB, '.limits-cache.json');   // last good numbers, so restarts don't show dashes
+const CACHE_FILE = path.join(STATE, '.limits-cache.json');   // last good numbers, so restarts don't show dashes
 let lastRenew = 0;
 let backoffUntil = 0, backoffMs = 0;
 

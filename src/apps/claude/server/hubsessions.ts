@@ -8,10 +8,10 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Project } from '../api.ts';
-import { HOME, HUB, PROJECTS, readJson, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
+import { HOME, STATE, PROJECTS, readJson, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 
-const FILE = path.join(HUB, 'hub-sessions.json');
-export const SCRATCH = path.join(HUB, 'workspace');
+const FILE = path.join(STATE, 'hub-sessions.json');
+export const SCRATCH = path.join(STATE, 'workspace');
 const RECENT_MS = 60 * 864e5;
 /** Hub-started sessions kept in hub-sessions.json. Past this many, the oldest are forgotten and read as too old to continue. */
 const HUB_SESSION_CAP = 500;

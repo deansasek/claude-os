@@ -5,10 +5,10 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB } from '../../../core/server/paths.ts';
+import { STATE } from '../../../core/server/paths.ts';
 import { checkPin, pinFingerprint, pinStatus } from '../../settings/server/pin.ts';
 
-const LOG_FILE = path.join(HUB, 'logs', 'hub-actions.log');
+const LOG_FILE = path.join(STATE, 'logs', 'hub-actions.log');
 const UNLOCK_MS = 10 * 60e3;          // an unlock lasts 10 minutes past the last action
 
 // token -> when it expires, and the PIN it was made with (a token from a PIN that has since changed or been removed is refused)

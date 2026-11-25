@@ -2,10 +2,10 @@
 // claudeos-settings-backup.json. The keys are filtered here too (web/backup-keys.ts), so a backup never keeps a token,
 // a key, the sign-in or the PIN state, whatever the tablet sends.
 import path from 'node:path';
-import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import { backupValues } from '../web/backup-keys.ts';
 
-const FILE = process.env.CLAUDEOS_BACKUP_FILE || path.join(HUB, 'claudeos-settings-backup.json');   // a test sets it
+const FILE = process.env.CLAUDEOS_BACKUP_FILE || path.join(STATE, 'claudeos-settings-backup.json');   // a test sets it
 const MAX_KEYS = 200;
 
 interface Saved { saved: string; values: Record<string, string> }

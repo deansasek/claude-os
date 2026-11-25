@@ -2,9 +2,9 @@
 // bought at least twice is offered as a suggestion when it is not on the list. Kept in its own file (.lists-history.json),
 // so the lists file itself keeps its format. CLAUDEOS_LISTS_HISTORY is for the tests only: a scratch file.
 import path from 'node:path';
-import { HUB, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 
-export const HISTORY_FILE = process.env.CLAUDEOS_LISTS_HISTORY || path.join(HUB, '.lists-history.json');
+export const HISTORY_FILE = process.env.CLAUDEOS_LISTS_HISTORY || path.join(STATE, '.lists-history.json');
 const MAX_KEEP = 200;     // the most-used names kept
 const MIN_COUNT = 2;      // bought this many times before it is suggested
 

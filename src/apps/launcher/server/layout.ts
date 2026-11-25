@@ -7,11 +7,11 @@
 // each save): which Android apps are allowed stays on the tablet (Launcher.java), because lock task depends on it.
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, SRC, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, SRC, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import { cleanLayout, isScreen, type LauncherLayout, type LauncherLayoutResult, type LauncherScreen } from '../api.ts';
 import { manifest } from '../manifest.ts';
 
-const FILE = path.join(HUB, '.launcher-layout.json');
+const FILE = path.join(STATE, '.launcher-layout.json');
 
 /** ClaudeOS's own apps: every src/apps/<id> with a page (web/index.ts), except this one. */
 function ownIds(): Set<string> {

@@ -7,13 +7,13 @@
 // Being on the dashboard is not being allowed for Claude: that is only the allowlist in .ha-config.json (ha.ts).
 import fs from 'node:fs';
 import path from 'node:path';
-import { HUB, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import {
   ENTITY_ID, MAX_DEVICE_NAME, MAX_HOME_SCENES, MAX_ROOM_NAME, MAX_ROOMS, ROOM_ID, isDeniedDomain, isReadOnlyDomain, isSceneDomain, isShownDomain,
   type HaLayout, type HaRoom,
 } from '../api.ts';
 
-const FILE = path.join(HUB, '.ha-layout.json');
+const FILE = path.join(STATE, '.ha-layout.json');
 const MAX_DEVICES = 400;
 
 /** The demo house as it first appears: three rooms, and a few devices left to add. */

@@ -7,11 +7,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { HUB, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, writeJsonFile } from '../../../core/server/paths.ts';
 import { checkNewEvent, type NewEvent } from './new-event.ts';
 
 // CLAUDEOS_CALENDAR_LOCAL_FILE is for the tests only: a scratch file instead of the real one.
-export const FILE = process.env.CLAUDEOS_CALENDAR_LOCAL_FILE || path.join(HUB, 'calendar-local.json');
+export const FILE = process.env.CLAUDEOS_CALENDAR_LOCAL_FILE || path.join(STATE, 'calendar-local.json');
 
 export const DEFAULT_CALENDAR = { id: 'claudeos', name: 'ClaudeOS' } as const;
 const MAX_EVENTS = 5000;

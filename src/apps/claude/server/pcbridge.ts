@@ -3,10 +3,10 @@
 // The file is kept across restarts (the hooks of open sessions keep working) and is never sent to the tablet.
 import crypto from 'node:crypto';
 import path from 'node:path';
-import { HUB, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import { config } from '../../../core/server/config.ts';
 
-export const LINK_FILE = path.join(HUB, '.pc-bridge.json');
+export const LINK_FILE = path.join(STATE, '.pc-bridge.json');
 let key = '';
 
 /** Write .pc-bridge.json (keeping the key it already has). */
