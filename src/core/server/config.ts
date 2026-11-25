@@ -15,6 +15,7 @@ export interface HostConfig {
   theme: string;         // ?theme= of the cast page
   projectsDir: string;   // Claude Code's projects folder (session logs)
   ownerName: string;     // the owner's name; empty = none
+  https: boolean;        // also serve HTTPS on port + 1 (the iPad needs it for the camera); the plain port stays
 }
 
 const HOST_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');   // src/core/server → 
@@ -28,6 +29,7 @@ const DEFAULTS: HostConfig = {
   theme: 'time',
   projectsDir: path.join(os.homedir(), '.claude', 'projects'),
   ownerName: '',
+  https: false,
 };
 
 function readFile(): Partial<HostConfig> {
@@ -47,6 +49,7 @@ function readArgs(): Partial<HostConfig> {
     options: {
       host: { type: 'string' }, port: { type: 'string' }, cast: { type: 'string' },
       catt: { type: 'string' }, theme: { type: 'string' }, projects: { type: 'string' }, 'no-cast': { type: 'boolean' },
+      https: { type: 'boolean' },
     },
   });
   const s = (v: unknown) => (typeof v === 'string' && v !== '' ? v : undefined);
@@ -58,6 +61,7 @@ function readArgs(): Partial<HostConfig> {
   if (s(a.catt)) out.cattPath = s(a.catt);
   if (s(a.theme)) out.theme = s(a.theme);
   if (s(a.projects)) out.projectsDir = s(a.projects);
+  if (a.https) out.https = true;
   return out;
 }
 
@@ -76,6 +80,7 @@ function load(): HostConfig {
     theme: String(pick('theme')),
     projectsDir: path.resolve(HOST_DIR, String(pick('projectsDir'))),
     ownerName: String(pick('ownerName')),
+    https: pick('https') === true,
   };
 }
 

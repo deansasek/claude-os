@@ -4,11 +4,13 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import https from 'node:https';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import type { Binary, Route, ServerApp } from './app.ts';
 import { config } from './config.ts';
-import { HOST_DIR, PUBLIC, SRC } from './paths.ts';
+import { HOST_DIR, PUBLIC, SRC, STATE } from './paths.ts';
+import { certFiles, certNames, ensureCertificates } from './https.ts';
 import { servedBytes, WEB_FILE } from './served.ts';
 
 export { WEB_FILE };
@@ -203,11 +205,18 @@ export function startServer(apps: ServerApp[]): void {
   const lastSeen = new Map<string, number>();   // when each screen last asked us for anything
   // The hub's own origins: the tablet's page, and this PC's loopback. Anything else that sends an Origin is another site.
   const ownOrigins = new Set([`http://${args.host}:${args.port}`, `http://localhost:${args.port}`, `http://127.0.0.1:${args.port}`]);
-  const server = http.createServer(async (req, res) => {
+  // One handler for the plain port and, with --https, the HTTPS port (the same routes on both).
+  const handler = async (req: http.IncomingMessage, res: http.ServerResponse): Promise<void> => {
     const url = new URL(req.url || '/', 'http://hub');
     const from = (req.socket.remoteAddress || '?').replace(/^::ffff:/, '');
     lastSeen.set(from, Date.now());
     try {
+      // the local certificate authority, for the iPad to trust once (plain HTTP, so it can be fetched before trust)
+      if (req.method === 'GET' && url.pathname === '/claudeos-ca.cer') {
+        const der = certFiles(STATE).caDer;
+        if (fs.existsSync(der)) return send(res, 200, fs.readFileSync(der), 'application/x-x509-ca-cert', 'no-store');
+        return send(res, 404, 'not found', 'text/plain');
+      }
       // Cross-site guard. A page from another site (one open in the ClaudeOS Browser, say) must not reach the hub: a
       // browser sends Origin on every cross-site request, so an Origin that is not this hub's is refused. A POST must
       // be JSON (or the raw upload a route asks for), which a plain HTML form cannot send. Tools on the PC send no
@@ -269,10 +278,27 @@ export function startServer(apps: ServerApp[]): void {
       console.log('request error:', e);
       if (!res.headersSent) send(res, 500, 'error', 'text/plain');
     }
-  });
+  };
+  const server = http.createServer(handler);
 
   const pageUrl = `http://${args.host}:${args.port}/?theme=${args.theme}`;
   server.listen(args.port, args.host, () => console.log(`serving ${pageUrl} with apps: ${apps.map(a => a.id).join(', ')}`));
+
+  // ---------- HTTPS for the iPad's camera (--https): port + 1, with a certificate this PC makes once ----------
+  if (args.https) {
+    const httpsPort = args.port + 1;
+    const names = certNames(args.host === '0.0.0.0' || args.host === '::' ? [] : [args.host]);
+    try {
+      const f = ensureCertificates(STATE, names);
+      https.createServer({ key: fs.readFileSync(f.key), cert: fs.readFileSync(f.cert) }, handler)
+        .listen(httpsPort, args.host, () => {
+          const lan = names.filter(n => n !== '127.0.0.1').map(n => `https://${n}:${httpsPort}`).join(', ');
+          console.log(`serving ${lan} (https). On the iPad, trust the authority once from http://<this PC>:${args.port}/claudeos-ca.cer`);
+        });
+    } catch (e) {
+      console.log(`https is off: ${(e as Error).message}`);
+    }
+  }
 
   // ---------- keep the Nest Hub on the page ----------
   // Re-cast when the Hub has left the cast app (back to its photo frame), or when the cast app is
