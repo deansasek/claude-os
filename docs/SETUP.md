@@ -53,8 +53,22 @@ Open Settings → Security and set the ClaudeOS PIN. Anyone on your home network
 | `theme` | `time` | Theme of the cast page. |
 | `projectsDir` | `~/.claude/projects` | Where Claude Code keeps its session logs. |
 | `ownerName` | empty | Your name. Not used yet. |
+| `https` | `false` | Also serve HTTPS on `port` + 1. The iPad needs it for the camera. |
 
-Command-line arguments win over `config.json`: `--host`, `--port`, `--cast`, `--catt`, `--theme`, `--projects`. An empty or missing key takes the default.
+Command-line arguments win over `config.json`: `--host`, `--port`, `--cast`, `--catt`, `--theme`, `--projects`, `--https`. An empty or missing key takes the default.
+
+### HTTPS for the iPad
+
+The iPad's Safari allows the camera only over HTTPS. With `"https": true`, the Host makes a local certificate authority and a server certificate with `openssl`. The keys go in the project's `https/` folder, which git ignores. The plain address keeps working.
+
+Set it up once:
+
+1. Set `"https": true` in `config.json`, then restart the Host.
+2. On the iPad, open `http://<PC address>:8000/claudeos-ca.cer` and allow the profile download. Install it in Settings → Profile Downloaded.
+3. Turn on full trust: Settings → General → About → Certificate Trust Settings, then turn on "ClaudeOS Local CA".
+4. Open `https://<PC address>:8001` in Safari.
+
+If the PC address changes, the Host makes a new server certificate on its next start. The authority stays the same, so the iPad does not need to trust it again. If `openssl` is missing, the Host logs why and keeps running on the plain port. On Windows, Git for Windows includes `openssl`.
 
 ## Build the tablet app (optional)
 
