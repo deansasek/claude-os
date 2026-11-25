@@ -19,7 +19,7 @@ import { esc, getJson, report, store } from './dom.ts';
 import { appLabel, groupNotices, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
-import { device, onTablet, onVolume, voice } from './device.ts';
+import { device, hasTopBand, onTablet, onVolume, setTopBand, topInsets, voice } from './device.ts';
 import { mediaActions, mediaState, nowPlaying, onNowPlaying, pauseMedia, playMedia, skipMedia, stopMedia } from './media.ts';
 import type { Battery } from './device.ts';
 import { clock, untilText } from './format.ts';
@@ -1112,8 +1112,6 @@ function watchBattery(): void {
 // On the tablet, Desk mode keeps a strip over Android's status bar. It can't show the page, so the page tells it
 // what's along the top edge right now (sidebar, page, the pull-down and its dimmed backdrop, the ambient screen),
 // as runs of colour in screen pixels. The drawer and banners also start below it.
-interface TopApi { setTopColor?(hex: string): string; setTopBand?(runs: string): string; topInset?(): string; topGestureInset?(): string; bottomGestureInset?(): string }
-const topApi = (): TopApi | undefined => (window as unknown as { HubDevice?: TopApi }).HubDevice;
 
 function mix(hex: string, over: [number, number, number], a: number): string {
   const n = parseInt(hex.slice(1), 16), c = [n >> 16 & 255, n >> 8 & 255, n & 255];
@@ -1125,8 +1123,7 @@ let swShade = false;
 export function setSwitcherShade(on: boolean): void { swShade = on; sendTop(); }
 
 function sendTop(): void {
-  const api = topApi();
-  if (!api?.setTopBand) return;
+  if (!hasTopBand()) return;
   const css = getComputedStyle(document.documentElement), v = (n: string) => css.getPropertyValue(n).trim();
   const dpr = devicePixelRatio, px = (x: number) => Math.round(x * dpr), W = px(innerWidth);
   const bg = v('--bg'), rail = v('--rail'), line = v('--line');
@@ -1150,17 +1147,12 @@ function sendTop(): void {
     }
   }
   try {
-    api.setTopColor?.(bg);
-    api.setTopBand(runs.filter(r => r[1] > r[0]).map(r => r.join(',')).join(';'));
-    // keep our own overlays clear of the strip: its height in stage pixels
-    const inset = JSON.parse(api.topInset?.() || '{"px":0}').px as number;
+    setTopBand(bg, runs.filter(r => r[1] > r[0]).map(r => r.join(',')).join(';'));
+    // keep our own overlays clear of the strip and the gesture bands: their heights in stage pixels
+    const { top, grabTop, bottom } = topInsets();
     const stage = $s('stage'), scale = stage.getBoundingClientRect().height / stage.offsetHeight;
-    stage.style.setProperty('--sys-top', `${inset / dpr / scale}px`);
-    // and where Android's own top gesture band ends (the pull-down's handle and grab zone, bindCC)
-    const band = JSON.parse(api.topGestureInset?.() || JSON.stringify({ px: inset })).px as number;
-    stage.style.setProperty('--grab-top', `${band / dpr / scale}px`);
-    // and the bottom edge's: Android's own bottom gesture band (the switcher's handle and grab zone, switcher.ts)
-    const bottom = (JSON.parse(api.bottomGestureInset?.() || '{"px":0}').px as number) || 0;
+    stage.style.setProperty('--sys-top', `${top / dpr / scale}px`);
+    stage.style.setProperty('--grab-top', `${grabTop / dpr / scale}px`);
     stage.style.setProperty('--grab-bottom', `${bottom / dpr / scale}px`);
   } catch { /* older app */ }
 }
