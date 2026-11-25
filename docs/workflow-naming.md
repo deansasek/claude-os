@@ -63,9 +63,5 @@ Nothing in the repo depends on a workflow's `name:` value.
 
 These are known differences between the files and the rules above. Fix each one in its own PR.
 
-- `claude-code-review.yml` has the name `Claude Code Review`. Under the sentence-case rule it should be `Claude Code review`.
-- Job `agent` in `claude-fix.yml` names the worker, not the check. It may become `claude-fix`.
-- Steps in `ci.yml` (7 steps) and `labeler.yml` (1 step) have no `name:`.
-- Four step ids are set but never read: `claude-review` in `claude-code-review.yml` (line 46), `agent` in `claude-fix.yml` (line 156), and `claude` (line 90) and `claude-review` (line 178) in `claude.yml`. Check each before removing it.
-- Step `Run Claude Code Review` in `claude-code-review.yml` uses Title Case. It should use sentence case.
+- Four step ids are set but never read: `claude-review` in `claude-code-review.yml` (line 46), `agent` in `claude-fix.yml` (line 147), and `claude` (line 90) and `claude-review` (line 180) in `claude.yml`. Check each before removing it.
 - This guide covers names only. It does not cover workflow structure, such as reusable workflows or concurrency. Add those in another guide.
