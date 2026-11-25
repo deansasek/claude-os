@@ -4,7 +4,8 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { MARKER, findNote, noteCall, parseComments, postNote, type Comment, type Gh } from '../scripts/fix-note.ts';
+import { existsSync, writeFileSync } from 'node:fs';
+import { LEGACY_TITLE, MARKER, findNote, findNoteOrLegacy, noteCall, parseComments, postNote, readNote, setUsageLine, writeUsage, type Comment, type Gh } from '../scripts/fix-note.ts';
 
 const note: Comment = { id: 7, login: 'claude[bot]', body: `${MARKER}\nOld note` };
 
@@ -59,4 +60,64 @@ test('postNote posts a new note when no marker comment exists', () => {
   postNote({ repo: 'deansasek/claude-os', issue: '5', message: 'Blocked.', bodyFile, gh: fakeGh('', calls) });
   assert.equal(calls[1][2], 'POST');
   assert.equal(calls[1][3], 'repos/deansasek/claude-os/issues/5/comments');
+});
+
+test('findNote needs the marker on line 1, not later in the body', () => {
+  assert.equal(findNote([{ id: 4, login: 'claude[bot]', body: `Intro\n${MARKER}\nOld` }]), undefined);
+});
+
+test('findNoteOrLegacy falls back to an old review comment with the legacy title', () => {
+  const legacy: Comment = { id: 8, login: 'claude[bot]', body: `${LEGACY_TITLE}5\n\n- [x] Summarize` };
+  assert.equal(findNoteOrLegacy([{ id: 1, login: 'someone', body: LEGACY_TITLE }, legacy])?.id, 8);
+  assert.equal(findNoteOrLegacy([{ id: 1, login: 'someone', body: `${LEGACY_TITLE}5` }]), undefined);
+  // A marker note wins over an older legacy comment.
+  assert.equal(findNoteOrLegacy([legacy, note])?.id, 7);
+});
+
+test('postNote updates a legacy review comment and adds the marker on line 1', () => {
+  const calls: string[][] = [];
+  const bodyFile = join(mkdtempSync(join(tmpdir(), 'fix-note-test-')), 'body.md');
+  const legacy: Comment = { id: 8, login: 'claude', body: `${LEGACY_TITLE}5\n\nOld review` };
+  postNote({ repo: 'deansasek/claude-os', issue: '5', message: 'New review.', bodyFile, gh: fakeGh(listingOf([legacy]), calls) });
+  assert.equal(calls[1][2], 'PATCH');
+  assert.equal(calls[1][3], 'repos/deansasek/claude-os/issues/comments/8');
+  assert.equal(readFileSync(bodyFile, 'utf8'), `${MARKER}\nNew review.\n`);
+});
+
+test('readNote returns the note body, or an empty string when no note exists', () => {
+  const calls: string[][] = [];
+  const body = readNote({ repo: 'deansasek/claude-os', issue: '5', gh: fakeGh(listingOf([note]), calls) });
+  assert.equal(body, note.body);
+  assert.equal(readNote({ repo: 'deansasek/claude-os', issue: '5', gh: fakeGh('', []) }), '');
+});
+
+test('setUsageLine replaces the last Usage line', () => {
+  const body = `${MARKER}\nReview\n\nUsage: 1 tokens\nUsage: old\n`;
+  assert.equal(setUsageLine(body, 'Usage: new'), `${MARKER}\nReview\n\nUsage: 1 tokens\nUsage: new\n`);
+});
+
+test('setUsageLine appends the Usage line after a blank line when none exists', () => {
+  assert.equal(setUsageLine(`${MARKER}\nReview\n`, 'Usage: new'), `${MARKER}\nReview\n\nUsage: new\n`);
+});
+
+test('writeUsage PATCHes the note with the usage line set', () => {
+  const calls: string[][] = [];
+  const dir = mkdtempSync(join(tmpdir(), 'fix-note-test-'));
+  const usageFile = join(dir, 'usage-line.txt');
+  writeFileSync(usageFile, 'Usage: 42 tokens\n');
+  const bodyFile = join(dir, 'body.md');
+  const url = writeUsage({ repo: 'deansasek/claude-os', issue: '5', usageFile, bodyFile, gh: fakeGh(listingOf([note]), calls) });
+  assert.equal(calls[1][2], 'PATCH');
+  assert.equal(readFileSync(bodyFile, 'utf8'), `${MARKER}\nOld note\n\nUsage: 42 tokens\n`);
+  assert.match(url, /issuecomment-9$/);
+});
+
+test('writeUsage returns a status and makes no gh call when the usage file is missing', () => {
+  const calls: string[][] = [];
+  const dir = mkdtempSync(join(tmpdir(), 'fix-note-test-'));
+  const usageFile = join(dir, 'missing.txt');
+  assert.equal(existsSync(usageFile), false);
+  const status = writeUsage({ repo: 'deansasek/claude-os', issue: '5', usageFile, bodyFile: join(dir, 'body.md'), gh: fakeGh(listingOf([note]), calls) });
+  assert.match(status, /No usage file/);
+  assert.equal(calls.length, 0);
 });
