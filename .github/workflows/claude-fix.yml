@@ -90,6 +90,38 @@ jobs:
           track_progress: true
           use_sticky_comment: true
 
+      # Write Claude run token usage to the job summary. Never fails the job.
+      - name: Write the usage summary
+        if: always()
+        run: |
+          cat > "$RUNNER_TEMP/usage.mjs" <<'EOF'
+          import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const emit = (text) => (process.env.GITHUB_STEP_SUMMARY
+            ? appendFileSync(process.env.GITHUB_STEP_SUMMARY, text + '\n') : console.log(text));
+          const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+          const fmt = (v) => Math.round(num(v)).toLocaleString('en-US');
+          try {
+            const file = join(process.env.RUNNER_TEMP || '', 'claude-execution-output.json');
+            if (!existsSync(file)) {
+              emit('No usage data was recorded for this run.');
+            } else {
+              const list = [JSON.parse(readFileSync(file, 'utf8'))].flat();
+              const r = [...list].reverse().find((x) => x && typeof x === 'object' && ('usage' in x || 'total_cost_usd' in x)) || {};
+              const u = r.usage || {};
+              const [i, o, cw, cr] = [u.input_tokens, u.output_tokens, u.cache_creation_input_tokens, u.cache_read_input_tokens].map(num);
+              const cost = num(r.total_cost_usd);
+              const denom = i + cw + cr;
+              const hit = denom ? Math.round((cr / denom) * 100) : 0;
+              emit(`Usage: ${fmt(i + o + cw + cr)} tokens (input ${fmt(i)}, output ${fmt(o)}, cache written ${fmt(cw)}, cache read ${fmt(cr)}, ${hit}% cache hit) · ${fmt(r.num_turns)} turn(s) · $${cost.toFixed(2)}`);
+            }
+          } catch {
+            emit('Usage summary could not be written.');
+          }
+          process.exit(0);
+          EOF
+          node "$RUNNER_TEMP/usage.mjs"
+
       - name: Remove the ai-fix label
         if: always()
         env:
