@@ -2,7 +2,8 @@
 //   node fix-note.ts <number> <path to note file>   post or update the note
 //   node fix-note.ts --read <number>                print the note body. Prints nothing when no note exists.
 //   node fix-note.ts --usage <number>               set the Usage line from $RUNNER_TEMP/usage-line.txt. Never fails.
-// The note starts with MARKER on line 1. A re-run PATCHes the existing note and does not post a new one.
+// The note has MARKER on one of its lines (the native progress comment adds a header above it). Reads take the newest
+// Claude comment with the marker. A re-run PATCHes the existing note and does not post a new one.
 // A comment from before the marker counts as the note when its body starts with LEGACY_TITLE.
 // Needs GITHUB_REPOSITORY and GH_TOKEN in the environment. Prints the comment URL.
 import { execFileSync } from 'node:child_process';
@@ -25,9 +26,12 @@ export interface Comment {
 
 const isClaude = (c: Comment): boolean => c.login === 'claude' || c.login === 'claude[bot]';
 
-/** Return the Claude note: a bot comment whose first line is the marker. */
+/** True when a line of body is the marker. The native progress comment puts a header above Claude's text, so line 1 is not always the marker. */
+export const hasMarker = (body: string): boolean => body.split('\n').some(line => line.trim() === MARKER);
+
+/** Return the newest Claude note: the latest bot comment with the marker on any line. Comments are listed oldest first. */
 export function findNote(comments: Comment[]): Comment | undefined {
-  return comments.find(c => isClaude(c) && c.body.split('\n')[0].trim() === MARKER);
+  return [...comments].reverse().find(c => isClaude(c) && hasMarker(c.body));
 }
 
 /** Return the note. If none exists, return the newest Claude review comment from before the marker. */
@@ -95,7 +99,7 @@ export function writeUsage(opts: { repo: string; issue: string; usageFile: strin
   const note = findNoteOrLegacy(listComments(opts));
   if (!note) return 'No Claude note on this pull request. Nothing written.';
   const line = readFileSync(opts.usageFile, 'utf8').trim();
-  const withMarker = note.body.split('\n')[0].trim() === MARKER ? note.body : `${MARKER}\n${note.body}`;
+  const withMarker = hasMarker(note.body) ? note.body : `${MARKER}\n${note.body}`;
   writeFileSync(opts.bodyFile, setUsageLine(withMarker, line));
   return opts.gh(['api', '-X', 'PATCH', `repos/${opts.repo}/issues/comments/${note.id}`, '-F', `body=@${opts.bodyFile}`,
     '--jq', '.html_url']).trim();
