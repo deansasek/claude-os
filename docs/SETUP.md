@@ -34,7 +34,7 @@ npm start
 
 The hub prints the address it serves. Open `http://<your PC's address>:8000` in a browser on your home network.
 
-On Windows, `host/ClaudeHubHost.exe` can run the hub from the tray and restart it if it stops. See `host/README.md`. The tray app is Windows only. macOS and Linux run the hub with `npm start`.
+Run the host with `npm run host` on any OS. It restarts the server if it stops. See `host/README.md`.
 
 ## 4. Set a PIN
 
