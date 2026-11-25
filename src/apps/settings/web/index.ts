@@ -16,12 +16,12 @@ import type { Profile } from '../../../core/web/profile.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { closeApp, failedApps, openedApps, restartApp } from '../../../core/web/shell.ts';
 import { monitorLines } from './monitor.ts';
-import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, setTileOrder, sleep, swipeNotices, tileOrder, toggleMuteApp } from '../../../core/web/system.ts';
+import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, railEdgesFor, setTileOrder, sleep, swipeNotices, tileOrder, toggleMuteApp } from '../../../core/web/system.ts';
 import { appLabel } from '../../../core/web/notes-group.ts';
 import { moveTile, TILE_NAMES } from '../../../core/web/quick-order.ts';
 import { loadSettings, restoreSettings, saveSettings } from './backup.ts';
 import { resultText, updateStatus, type UpdateAvailable, type UpdateStart } from './update.ts';
-import type { QuietHours } from '../../../core/web/system.ts';
+import type { QuietHours, RailDir, RailEdge } from '../../../core/web/system.ts';
 import { clock, untilText, whenText } from '../../../core/web/format.ts';
 import { setThemeMode, themeMode } from '../../../core/web/theme.ts';
 import type { ThemeMode } from '../../../core/web/theme.ts';
@@ -970,6 +970,11 @@ function paintAppearance(): void {
   setSwitch('stContrast', prefs.contrast);
   setSwitch('stShowPct', prefs.battPct);
   setSeg('popups', prefs.popupsStay ? 'stay' : 'auto');
+  setSeg('raildir', prefs.railDir);
+  setSeg('railedge', prefs.railEdge);
+  // only the two edges that match the direction show
+  const edges = railEdgesFor(prefs.railDir);
+  ctx.root.querySelectorAll<HTMLElement>('[data-seg="railedge"] button').forEach(b => { b.hidden = !edges.includes(b.dataset.v as RailEdge); });
 }
 
 // ---------- Sound ----------
@@ -1719,6 +1724,8 @@ function handleSeg(id: string, v: string): void {
     case 'textsize': prefs.textLarge = v === 'large'; paintAppearance(); return;
     case 'replywidth': prefs.replyWide = v === 'wide'; paintAppearance(); return;
     case 'popups': prefs.popupsStay = v === 'stay'; paintAppearance(); return;
+    case 'raildir': prefs.railDir = v as RailDir; report(`settings:rail:dir:${v}`); paintAppearance(); return;
+    case 'railedge': prefs.railEdge = v as RailEdge; report(`settings:rail:edge:${v}`); paintAppearance(); return;
     case 'break': prefs.breakMin = +v; report(`settings:wellbeing:break:${v}`); paintWellbeing(); return;
     case 'breakway': prefs.breakWay = v as 'banner' | 'critter'; paintWellbeing(); return;
     case 'lowat': prefs.lowAt = +v; report(`settings:battery:lowat:${v}`); paintBattery(); return;
