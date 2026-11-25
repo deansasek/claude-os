@@ -69,7 +69,7 @@ Do not add `ai-fix` to work that a person should do. A PIN change, for example, 
 | Label | Meaning |
 | --- | --- |
 | `ai-review` | Run the AI code review on this pull request. Only labeled pull requests are reviewed. |
-| `ai-generated` | The AI made this pull request. The AI never approves it. |
+| `ai-generated` | The AI made this pull request. Its review can approve it. |
 | `ci` | The change touches GitHub Actions or checks. The labeler adds this from the paths. |
 | `github_actions` | The change touches GitHub Actions code. The labeler adds this from the paths. |
 | `dependencies` | The change touches a dependency file. |
@@ -97,7 +97,7 @@ Set a milestone only when the item belongs to it. Do not create a milestone with
 
 - **Automatic**: the labeler adds `ci`, `github_actions`, `dependencies` and area labels to pull requests from the paths they touch.
 - **The AI fix flow** (`.github/workflows/claude-fix.yml`): a person adds `ai-fix` to an issue. The AI sets the status to In progress, then In review when it opens the pull request. The pull request gets `ai-generated` and `ai-review`. When the pull request merges, the issue closes as completed and becomes Done. A no-change run adds `dont-do`, sets Not planned and closes it. A gate stop adds `ai-blocked`.
-- **The AI review** (`.github/workflows/claude-code-review.yml`): it runs only on pull requests with `ai-review`. An `ai-generated` pull request is never approved.
+- **The AI review** (`.github/workflows/claude-code-review.yml`): it runs only on pull requests with `ai-review`. An `ai-generated` pull request can be approved, like any other.
 - **Milestones and types** are set by people. The AI sets only the status and the labels above.
 
 ## Choosing
