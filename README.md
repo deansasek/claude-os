@@ -17,6 +17,13 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/deansasek/claude-os/actions/workflows/ci.yml"><img src="https://github.com/deansasek/claude-os/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/Java-ED8B00?logo=openjdk&logoColor=white" alt="Java">
+  <img src="https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white" alt="Android">
+</p>
+
+<p align="center">
   <img src="docs/media/tablet-clock.png" alt="The ClaudeOS clock screen, with the time, date, weather and battery" width="46%">
   &nbsp;
   <img src="docs/media/tablet-browser.png" alt="The ClaudeOS Browser app with the Claude side panel open" width="46%">
