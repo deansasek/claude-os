@@ -4,16 +4,16 @@ ClaudeOS trusts your home network. Read this before you set it up somewhere shar
 
 ## The trust model
 
-- The hub serves plain HTTP, with no sign-in. Anyone on your home network who can reach the PC can open the page.
+- The Host serves plain HTTP, with no sign-in. Anyone on your home network who can reach the PC can open the page.
 - The page can read and answer your Claude Code sessions. Claude Code then acts on your PC with your account.
-- Never expose the hub to the internet. Don't forward its port on your router, and don't put it behind a public tunnel or proxy.
+- Never expose the Host to the internet. Don't forward its port on your router, and don't put it behind a public tunnel or proxy.
 - Run it only on a network you trust. Guest Wi-Fi, a shared house or an office network is not one.
 
 ## Other websites
 
-A web page from another site must not reach the hub, even one open on the tablet. Two rules stop it:
+A web page from another site must not reach the Host, even one open on the tablet. Two rules stop it:
 
-- **Origin guard.** A browser sends an `Origin` header on cross-site requests. The hub refuses (403) any request whose `Origin` is not its own. Its own origins are the configured address, `localhost` and `127.0.0.1` on its port, and the address the request was sent to when that is an IP address. A domain name never counts, so a site that points its name at your PC is still refused. Tools on the PC send no `Origin` and are not affected.
+- **Origin guard.** A browser sends an `Origin` header on cross-site requests. The Host refuses (403) any request whose `Origin` is not its own. Its own origins are the configured address, `localhost` and `127.0.0.1` on its port, and the address the request was sent to when that is an IP address. A domain name never counts, so a site that points its name at your PC is still refused. Tools on the PC send no `Origin` and are not affected.
 - **JSON only.** A POST must be `application/json` (or a raw upload a route asks for). Anything else gets 415. A plain HTML form cannot send JSON.
 
 ## The two PINs
@@ -25,7 +25,7 @@ Every reply and approval from the page goes in `logs/hub-actions.log`.
 
 ## The tablet app
 
-The hub serves the tablet's Android app at `/apk/claude-hub.apk` to anyone on your network, once it has been built. Anyone on the network can download it, so don't build secrets into it.
+The Host serves the tablet's Android app at `/apk/claude-hub.apk` to anyone on your network, once it has been built. Anyone on the network can download it, so don't build secrets into it.
 
 ## Files to keep private
 
@@ -33,4 +33,4 @@ These hold tokens, the PIN hashes or your own data. They are in `.gitignore`; ne
 
 `config.json`, `claudeos-pin.json`, `.hub-pin`, `.ha-config.json`, `.calendar-config.json`, `profile.json`, `profile-photo.jpg`, `instructions.txt`, `hub-sessions.json`, `meter-config.json` (your weather location), `.lists.json`, `.routines.json`, `.ha-layout.json`, `.launcher-layout.json`, `plugins-state.json`, `claude-state.json`, `photos/`, `logs/`, and any keystore.
 
-The hub never serves them: it serves only `public/` and the browser code under `src/`.
+The Host never serves them: it serves only `public/` and the browser code under `src/`.
