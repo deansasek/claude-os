@@ -60,7 +60,7 @@ Run one command per Bash call. Never chain commands with `;`, `&&`, or `||`.
 1. Write the note with the Write tool to the absolute path given in the prompt. That path is `<runner temp>/note.md`. Call it `<note path>` below. Use the template form. The first line is `<!-- claudeos-note -->`.
 2. Find the note id. Replace `<repo>` and `<n>`:
    ```
-   gh api --paginate repos/<repo>/issues/<n>/comments --jq '.[] | select(.user.login == "claude" or .user.login == "claude[bot]") | select(.body | split("\n")[0] | test("^\\s*<!-- claudeos-note -->")) | .id'
+   gh api --paginate repos/<repo>/issues/<n>/comments --jq '.[] | select(.user.login == "claude" or .user.login == "claude[bot]" or .user.login == "claudeos-bot[bot]") | select(.body | split("\n")[0] | test("^\\s*<!-- claudeos-note -->")) | .id'
    ```
    It prints the note id, or nothing.
 3. Run the same find again just before the write. Use the id it prints.
