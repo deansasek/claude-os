@@ -87,12 +87,15 @@ process.env.FIX_SHIP_LIB = '1';
 const { prRefusal, testScript } = await import('../scripts/fix-ship.ts');
 delete process.env.FIX_SHIP_LIB;
 
-const SAME_REPO = { headRefName: 'feat/fix', headRepository: { nameWithOwner: 'deansasek/claude-os' }, baseRepository: { nameWithOwner: 'deansasek/claude-os' } };
+const SAME_REPO = { headRefName: 'feat/fix', isCrossRepository: false };
 
 test('fix-ship --pr refuses a PR from a fork', () => {
-  const fork = { ...SAME_REPO, headRepository: { nameWithOwner: 'someone/claude-os' } };
+  const fork = { ...SAME_REPO, isCrossRepository: true };
   assert.equal(prRefusal(fork, ['src/a.ts'], undefined, undefined)?.rule, 'fork');
-  assert.equal(prRefusal({ ...SAME_REPO, headRepository: null }, ['src/a.ts'], undefined, undefined)?.rule, 'fork');
+});
+
+test('fix-ship --pr allows a PR whose head is not a fork', () => {
+  assert.equal(prRefusal({ ...SAME_REPO, isCrossRepository: false }, ['src/a.ts'], undefined, undefined), undefined);
 });
 
 test('fix-ship --pr refuses when the working tree has no changes', () => {
