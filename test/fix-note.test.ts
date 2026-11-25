@@ -160,3 +160,8 @@ test('writeUsage returns a status and makes no gh call when the usage file is mi
   assert.match(status, /No usage file/);
   assert.equal(calls.length, 0);
 });
+
+test('findNote accepts a note posted by ClaudeOS Bot, so a review note counts as Claude\'s', () => {
+  const bot: Comment = { id: 11, login: 'claudeos-bot[bot]', body: `${MARKER}\nReview` };
+  assert.equal(findNote([bot])?.id, 11);
+});
