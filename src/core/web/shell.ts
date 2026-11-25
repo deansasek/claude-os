@@ -80,13 +80,14 @@ export function setPinned(id: string, on: boolean): void {
 
 // ---------- rail reorder: hold a pinned item, then drag it up or down ----------
 const HOLD_MS = 450;
+const DRAG_PX = 10;   // the pointer must move this far before a held item drags
 let dragBtn: HTMLElement | null = null;   // the item under the finger; renderRail() does not glide it
 
 /** Hold a pinned rail item for a moment, then drag it up or down. The order is saved as it changes.
  *  Leave the rail sideways to put the order back as it was before the drag. */
 function initRailReorder(): void {
   const rail = railApps!;
-  let s: { btn: HTMLElement; id: string; x: number; y: number; top: number; before: string[]; dragging: boolean; timer: number } | null = null;
+  let s: { btn: HTMLElement; id: string; x: number; y: number; top: number; before: string[]; held: boolean; dragging: boolean; timer: number } | null = null;
   let justDragged = false;   // swallow the click that follows a drag
 
   const stop = (revert: boolean): void => {
@@ -110,8 +111,9 @@ function initRailReorder(): void {
     const cur = s;
     if (!cur) return;
     if (!cur.dragging) {
-      if (Math.hypot(e.clientX - cur.x, e.clientY - cur.y) > 10) stop(false);   // a scroll or a slide, not a hold
-      return;
+      if (Math.hypot(e.clientX - cur.x, e.clientY - cur.y) <= DRAG_PX) return;
+      if (!cur.held) { stop(false); return; }   // a scroll or a slide before the hold, not a drag
+      cur.dragging = true; dragBtn = cur.btn;   // the hold passed and the finger moved: start the drag
     }
     const r = rail.getBoundingClientRect();
     if (e.clientX < r.left || e.clientX > r.right) { stop(true); return; }   // left the rail: put the order back
@@ -139,10 +141,8 @@ function initRailReorder(): void {
     if (!btn || !id || e.button !== 0 || !pins.includes(id)) return;
     justDragged = false;
     btn.style.touchAction = 'none';   // the browser must not scroll the rail during the drag
-    const cur = { btn, id, x: e.clientX, y: e.clientY, top: btn.offsetTop, before: [...pins], dragging: false, timer: 0 };
-    cur.timer = window.setTimeout(() => {
-      cur.dragging = true; dragBtn = btn;
-    }, HOLD_MS);
+    const cur = { btn, id, x: e.clientX, y: e.clientY, top: btn.offsetTop, before: [...pins], held: false, dragging: false, timer: 0 };
+    cur.timer = window.setTimeout(() => { cur.held = true; }, HOLD_MS);   // a hold arms the reorder; a move starts it
     s = cur;
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
