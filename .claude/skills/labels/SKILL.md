@@ -98,6 +98,8 @@ Set a milestone only when the item belongs to it. Do not create a milestone with
 - **Automatic**: the labeler adds the area labels, `ci` and `documentation` to pull requests, from the paths they touch. A person adds `github_actions` and `dependencies`.
 - **The AI fix flow** (`.github/workflows/claude-fix.yml`): a person adds `ai-fix` to an issue. The AI sets the status to In progress, then In review when it opens the pull request. The pull request gets `ai-generated` and `ai-review`. When the pull request merges, the issue closes as completed and becomes Done. A no-change run adds `dont-do`, sets Not planned and closes it. A gate stop adds `ai-blocked`.
 - **The AI review** (`.github/workflows/claude-code-review.yml`): it runs only on pull requests with `ai-review`. An `ai-generated` pull request can be approved, like any other.
+- **`@claude` on an issue** (`.github/workflows/claude-fix.yml`): a comment that mentions `@claude` on an issue runs the fix flow. The issue keeps one Claude note, updated in place. A person with write access must write the comment.
+- **`@claude` on a pull request** (`.github/workflows/claude.yml`, job `claude-pr`): a comment or review that mentions `@claude` makes Claude fix the important findings, run the checks, and push to the pull request branch. The review then runs again and updates the same note. Claude does not push to forks, and never changes `.github/`, `.claude/` or the fix scripts.
 - **Milestones and types** are set by people. The AI sets only the status and the labels above.
 
 ## Choosing
