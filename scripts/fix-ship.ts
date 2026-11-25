@@ -111,8 +111,7 @@ function checkRepoState(): void {
 
 export interface PrInfo {
   headRefName: string;
-  headRepository: { nameWithOwner?: string } | null;
-  baseRepository: { nameWithOwner?: string } | null;
+  isCrossRepository: boolean;
 }
 
 // Return the value of the "test" script in a package.json text, or undefined.
@@ -122,13 +121,11 @@ export function testScript(json: string): string | undefined {
 
 // Directories that --pr mode never commits to. The fix tools live in scripts/fix-*.
 const PR_DENIED_DIRS = ['.github/', '.claude/', 'scripts/fix-'];
-const repoName = (repo: { nameWithOwner?: string } | null): string | undefined => repo?.nameWithOwner?.toLowerCase();
 
 // Return the rule and reason that refuse a PR push, or undefined when the push may go ahead.
 // Paths are the staged files. A package.json change refuses only when the test script changes.
 export function prRefusal(pr: PrInfo, paths: string[], testBefore: string | undefined, testAfter: string | undefined): { rule: string; reason: string } | undefined {
-  const head = repoName(pr.headRepository);
-  if (!head || head !== repoName(pr.baseRepository)) return { rule: 'fork', reason: 'the PR head is not in this repository (fork PRs are refused)' };
+  if (pr.isCrossRepository) return { rule: 'fork', reason: 'the PR head is in a fork (fork PRs are refused)' };
   if (!/^[\w./-]+$/.test(pr.headRefName) || pr.headRefName.startsWith('-')) return { rule: 'branch', reason: `unsafe head branch name ${pr.headRefName}` };
   if (paths.length === 0) return { rule: 'no-changes', reason: 'the working tree has no changes to push' };
   const file = paths.find(path => PR_DENIED_DIRS.some(dir => path.startsWith(dir)) || (path === 'package.json' && testBefore !== testAfter));
@@ -141,7 +138,7 @@ function prMain(pr: string): void {
   if (!/^\d+$/.test(pr)) refuse('usage', 'usage: node fix-ship.ts --pr <pr number>');
   checkRepoState();
   const repoArgs = process.env.GITHUB_REPOSITORY ? ['--repo', process.env.GITHUB_REPOSITORY] : [];
-  const info = JSON.parse(execFileSync('gh', ['pr', 'view', pr, ...repoArgs, '--json', 'headRefName,headRepository,baseRepository'], { encoding: 'utf8' })) as PrInfo;
+  const info = JSON.parse(execFileSync('gh', ['pr', 'view', pr, ...repoArgs, '--json', 'headRefName,isCrossRepository'], { encoding: 'utf8' })) as PrInfo;
   git(['add', '-A']);
   const paths = git(['diff', '--cached', '--name-only', '--no-renames', '-z']).split('\0').filter(Boolean);
   const testBefore = testScript(git(['show', 'HEAD:package.json']));
