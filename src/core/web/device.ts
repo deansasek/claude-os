@@ -23,6 +23,8 @@ interface HubDeviceApi {
   claudeSend?(text: string, sessionId: string, model: string): string; claudeStop?(): string;
   claudeUsageCheck?(): string;   // newer app builds: the plan limits from the tablet's CLI (Settings → Usage)
   pageFileWrite?(name: string, text: string): string; pageFileRead?(name: string): string;
+  setTopColor?(hex: string): string; setTopBand?(runs: string): string;   // the strip at the top edge (system.ts sendTop)
+  topInset?(): string; topGestureInset?(): string; bottomGestureInset?(): string;
   setup(): string; fix(id: string): string; setKiosk(on: boolean): string;
   keyboardStatus?(): string; keyboardSetDefault?(): string; keyboardClearLearned?(): string;   // newer app builds
   keyboardPrefs?(): string; keyboardSetPref?(name: string, on: boolean): string;   // newer app builds: suggestions, key sounds
@@ -68,6 +70,22 @@ function call<T>(fn: (a: HubDeviceApi) => string): T {
   const r = JSON.parse(fn(api)) as T & { error?: string };
   if (r && typeof r === 'object' && 'error' in r && r.error) throw new Error(r.error);
   return r;
+}
+
+/** The top edge (system.ts sendTop): the strip Android draws at the top, and the gesture bands at the top and bottom. */
+export const hasTopBand = (): boolean => typeof api?.setTopBand === 'function';
+export function setTopBand(color: string, runs: string): void {
+  api?.setTopColor?.(color);
+  api?.setTopBand?.(runs);
+}
+const pxOf = (json: string | undefined): number | undefined => {
+  if (!json) return undefined;
+  try { const v = (JSON.parse(json) as { px?: unknown }).px; return typeof v === 'number' ? v : undefined; } catch { return undefined; }
+};
+/** The top strip, and the grab zones of Android's top and bottom gesture bands, in device pixels. Zero when the app lacks them. */
+export function topInsets(): { top: number; grabTop: number; bottom: number } {
+  const top = pxOf(api?.topInset?.()) ?? 0;
+  return { top, grabTop: pxOf(api?.topGestureInset?.()) ?? top, bottom: pxOf(api?.bottomGestureInset?.()) ?? 0 };
 }
 
 /** Whether the tablet app has these native methods. Older app builds lack the newer ones, so a feature that needs them
