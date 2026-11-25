@@ -283,8 +283,13 @@ export const voice = {
   listen: (silenceMs = 6000) => vcall(a => a.voiceListen(silenceMs), { ok: false } as { ok: boolean; reason?: VoiceReason }),
   cancel: () => vcall(a => a.voiceCancel(), { ok: false } as { ok: boolean }),
   /** Say something aloud (media volume). A 'spoken' event with the same id follows. */
-  speak: (text: string, id = '') => vcall(a => a.speak(text, id), { ok: false } as { ok: boolean }),
-  stopSpeaking: () => vcall(a => a.stopSpeaking(), { ok: false } as { ok: boolean }),
+  speak: (text: string, id = '') => (vapi ? vcall(a => a.speak(text, id), { ok: false } as { ok: boolean }) : webSay(text, id)),
+  stopSpeaking: () => {
+    if (vapi) return vcall(a => a.stopSpeaking(), { ok: false } as { ok: boolean });
+    if (typeof speechSynthesis === 'undefined') return { ok: false };
+    speechSynthesis.cancel();
+    return { ok: true };
+  },
   /** Every voice the engine has, your language and English first (Settings: voice picker). */
   voices: () => vcall<VoiceList | null>(a => a.voices(), null),
   /** voice: an id from voices(), '' = automatic, null = unchanged; rate 0.5–2 (1 normal), 0 = unchanged. */
@@ -322,10 +327,21 @@ export function voiceOffReason(): VoiceReason | null {
   if (r && r.permission === false) return 'no_mic';
   return null;
 }
-(window as unknown as { hubVoice: (e: VoiceEvent) => void }).hubVoice = e => {
+function dispatchVoice(e: VoiceEvent): void {
   if (e.type === 'final' && finalClaim) { try { finalClaim(e.text); } catch (err) { console.error(err); } return; }
   voiceHandlers.forEach(f => { try { f(e); } catch (err) { console.error(err); } });
-};
+}
+(window as unknown as { hubVoice: (e: VoiceEvent) => void }).hubVoice = dispatchVoice;
+
+/** Speaking without the tablet app: the browser's own voice. It sends the same events as the tablet (speaking, then spoken). */
+function webSay(text: string, id: string): { ok: boolean } {
+  if (typeof speechSynthesis === 'undefined') return { ok: false };
+  dispatchVoice({ type: 'speaking', id, natural: false });
+  const u = new SpeechSynthesisUtterance(text);
+  u.onend = () => dispatchVoice({ type: 'spoken', id, stopped: false });
+  speechSynthesis.speak(u);
+  return { ok: true };
+}
 
 // ---------- Android apps Claude Home may open (the Apps screen; Launcher.java) ----------
 export interface AndroidApp { id: string; name: string; icon: string }   // icon: a small PNG data URL ('' if none)
