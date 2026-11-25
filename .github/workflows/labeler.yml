@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # The labeler reads .github/labeler.yml from the base branch only and never checks out the PR's code.
-      - uses: actions/labeler@v5
+      - name: Label the pull request from the path rules
+        uses: actions/labeler@v5
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           sync-labels: false
