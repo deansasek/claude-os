@@ -68,6 +68,7 @@
 /* segmented control, like "Normal / Thinking / Verbose" */
 #app-settings .st-seg { display: inline-flex; flex: none; padding: 3px; border-radius: 10px; background: var(--bg); border: 1px solid var(--line); }
 #app-settings .st-seg button { all: unset; position: relative; cursor: pointer; padding: 7px 14px; border-radius: 7px; font: 500 14px var(--sans); color: var(--t3); }
+#app-settings .st-seg button[hidden] { display: none; }
 #app-settings .st-seg button.on { background: var(--card-2); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
 
 /* sliders */

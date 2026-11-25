@@ -118,7 +118,23 @@ export const prefs = {
   /** Pop-ups: stay until you tap or swipe them away, rather than going after a few seconds. */
   get popupsStay(): boolean { return flag('os.popupsStay', false); },
   set popupsStay(v: boolean) { setFlag('os.popupsStay', v); },
+  /** The app rail's direction: a column (vertical) or a row (horizontal). Settings → Appearance. */
+  get railDir(): RailDir { return store.get('os.railDir') === 'horizontal' ? 'horizontal' : 'vertical'; },
+  set railDir(v: RailDir) { store.set('os.railDir', v); applyAppearance(); },
+  /** The edge the rail sits on. It must match the direction: left or right for vertical, top or bottom for horizontal. */
+  get railEdge(): RailEdge {
+    const v = store.get('os.railEdge') as RailEdge | null;
+    const edges = railEdgesFor(prefs.railDir);
+    return v && edges.includes(v) ? v : edges[0];
+  },
+  set railEdge(v: RailEdge) { store.set('os.railEdge', v); applyAppearance(); },
 };
+
+/** The rail's direction and edge (Settings → Appearance). */
+export type RailDir = 'vertical' | 'horizontal';
+export type RailEdge = 'left' | 'right' | 'top' | 'bottom';
+/** The edges a rail can sit on for a direction. */
+export const railEdgesFor = (dir: RailDir): RailEdge[] => dir === 'horizontal' ? ['top', 'bottom'] : ['left', 'right'];
 
 const isNight =(d = new Date()): boolean => d.getHours() >= 22 || d.getHours() < 7;
 
@@ -146,6 +162,9 @@ export function applyAppearance(): void {
   c.toggle('contrast', prefs.contrast);
   c.toggle('text-large', prefs.textLarge);
   c.toggle('reply-wide', prefs.replyWide);
+  // the rail's direction and edge (core.css lays the rail out with these)
+  c.toggle('rail-horizontal', prefs.railDir === 'horizontal');
+  for (const edge of ['left', 'right', 'top', 'bottom'] as RailEdge[]) c.toggle(`rail-${edge}`, prefs.railEdge === edge);
 }
 
 // ---------- the critter speaks ----------
