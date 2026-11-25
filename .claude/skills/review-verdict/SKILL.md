@@ -61,15 +61,28 @@ GitHub shows a denial as "Request changes".
 
 ## Write the note
 
-1. Write the note to `$RUNNER_TEMP/note.md` in the template form. The first line is `<!-- claudeos-note -->`.
-2. Run `node scripts/fix-note.ts <number> $RUNNER_TEMP/note.md`. The script updates the existing Claude note on the pull request, or posts a new note when none exists.
-3. Post no other comment.
+Use the Write tool and `gh api` only. Do not run `node`. The action denies commands that run code from the checkout.
+
+Run one command per Bash call. Never chain commands with `;`, `&&`, or `||`.
+
+1. Write the note with the Write tool to the absolute path given in the prompt. That path is `<runner temp>/note.md`. Call it `<note path>` below. Use the template form. The first line is `<!-- claudeos-note -->`.
+2. Find the note id. Replace `<repo>` and `<n>`:
+   ```
+   gh api --paginate repos/<repo>/issues/<n>/comments --jq '.[] | select(.user.login == "claude" or .user.login == "claude[bot]") | select(.body | split("\n")[0] | test("^\\s*<!-- claudeos-note -->")) | .id'
+   ```
+   It prints the note id, or nothing.
+3. Run the same find again just before the write. Use the id it prints.
+4. If the find printed an id, update that note. Use the first id only:
+   `gh api -X PATCH repos/<repo>/issues/comments/<id> -F body=@<note path> --jq .html_url`
+5. If the find printed nothing, post a new note:
+   `gh api -X POST repos/<repo>/issues/<n>/comments -F body=@<note path> --jq .html_url`
+6. Post no other comment.
 
 ## Changed since last review
 
 Use this section on a re-review only. Omit it on a first review.
 
-1. Run `node scripts/fix-note.ts --read <number>` to print the previous note. Print nothing means a first review.
+1. Before step 4 of "Write the note", run the find from step 2. If it printed an id, run `gh api repos/<repo>/issues/comments/<id> --jq .body` to print the previous note. Print nothing means a first review.
 2. For each finding in the previous note, write one line: fixed, or still open. Name the file and line.
 3. Add each new finding. Mark it **important** or **nit**.
 4. Append these lines to the note after the **Notes** section, under the heading **Changed since last review**.
