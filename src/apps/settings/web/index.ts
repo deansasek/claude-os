@@ -48,6 +48,10 @@ const SECTIONS: Section[] = ['profile', 'usage', 'yourclaude', 'sessions', 'plug
   'appearance', 'sound', 'battery', 'keyboard', 'apps', 'storage', 'datetime', 'privacy', 'wellbeing', 'security', 'about', 'monitor', 'developer'];
 /** Older names other apps may still use: the Desk mode page is Security now. */
 const ALIAS: Record<string, Section> = { desk: 'security', kiosk: 'security' };
+/** Sections that need the tablet's own device (Wi-Fi, volume, battery, storage, apps...). On the web (the iPad) they are
+ *  not shown: no nav row, no search hit, and no way to open them. */
+const TABLET_ONLY: Section[] = ['wifi', 'google', 'bluetooth', 'display', 'sound', 'battery', 'keyboard', 'apps', 'storage', 'datetime', 'security', 'developer'];
+const deviceOnlyHidden = (s: Section): boolean => !onTablet && TABLET_ONLY.includes(s);
 const SAMPLE = 'Hi, I’m Claude. This is how I sound.';
 
 const svg = (d: string) => `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
@@ -139,7 +143,7 @@ function syncHeard(): void {
 
 function show(raw: string): void {
   const s = (ALIAS[raw] ?? raw) as Section;
-  if (!SECTIONS.includes(s) || (s === 'voice' && !voice.available)) return;
+  if (!SECTIONS.includes(s) || (s === 'voice' && !voice.available) || deviceOnlyHidden(s)) return;
   section = s;
   syncHeard();
   ctx.root.querySelectorAll<HTMLElement>('#stGroups button[data-sec]').forEach(b => b.classList.toggle('on', b.dataset.sec === s));
@@ -201,6 +205,7 @@ function buildIndex(): void {
   index = [];
   ctx.root.querySelectorAll<HTMLElement>('.st-sec').forEach(sec => {
     const s = sec.dataset.sec as Section, sub = navName(s);
+    if (deviceOnlyHidden(s)) return;
     index.push({ sec: s, label: sub, sub: 'Section', hay: squash(sub), el: null });
     sec.querySelectorAll<HTMLElement>('.st-row > .st-txt > b').forEach(b => {
       const row = b.closest<HTMLElement>('.st-row');
@@ -1355,6 +1360,12 @@ function mount(context: AppContext): void {
   if (!voice.available) {
     $('stNavVoice').hidden = true;
     ctx.root.querySelector<HTMLElement>('.st-sec[data-sec="voice"]')!.remove();
+  }
+  // the iPad (web): the tablet-only sections are hidden. Their code still runs as before, so only the nav and the sections' display change.
+  for (const s of TABLET_ONLY) {
+    if (!deviceOnlyHidden(s)) continue;
+    ctx.root.querySelector<HTMLElement>(`#stGroups button[data-sec="${s}"]`)!.hidden = true;
+    ctx.root.querySelector<HTMLElement>(`.st-sec[data-sec="${s}"]`)!.hidden = true;
   }
   buildIndex();
 
