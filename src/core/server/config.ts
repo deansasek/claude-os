@@ -46,7 +46,7 @@ function readArgs(): Partial<HubConfig> {
     strict: false,
     options: {
       host: { type: 'string' }, port: { type: 'string' }, cast: { type: 'string' },
-      catt: { type: 'string' }, theme: { type: 'string' }, projects: { type: 'string' },
+      catt: { type: 'string' }, theme: { type: 'string' }, projects: { type: 'string' }, 'no-cast': { type: 'boolean' },
     },
   });
   const s = (v: unknown) => (typeof v === 'string' && v !== '' ? v : undefined);
@@ -54,6 +54,7 @@ function readArgs(): Partial<HubConfig> {
   if (s(a.host)) out.host = s(a.host);
   if (s(a.port)) out.port = Number(a.port);
   if (s(a.cast)) out.cast = s(a.cast);
+  if (a['no-cast']) out.cast = '';   // --no-cast turns casting off, even when config.json names a device
   if (s(a.catt)) out.cattPath = s(a.catt);
   if (s(a.theme)) out.theme = s(a.theme);
   if (s(a.projects)) out.projectsDir = s(a.projects);
