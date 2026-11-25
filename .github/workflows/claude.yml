@@ -107,6 +107,17 @@ jobs:
           app-id: ${{ secrets.FIX_APP_ID }}
           private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
 
+      # Add the eyes reaction as the bot, before Claude starts. Never fails the job.
+      - name: Mark the comment as seen
+        if: github.event_name == 'issue_comment' || github.event_name == 'pull_request_review_comment'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          REPO: ${{ github.repository }}
+          KIND: ${{ github.event_name == 'pull_request_review_comment' && 'pulls' || 'issues' }}
+        run: gh api -X POST "repos/$REPO/$KIND/comments/$COMMENT_ID/reactions" -f content=eyes
+
       - name: Fix the review findings and push
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -119,7 +130,7 @@ jobs:
           track_progress: true
           prompt: |
             Fix the review findings on pull request ${{ github.event.pull_request.number || github.event.issue.number }} in ${{ github.repository }}. The mention is in ${{ runner.temp }}/mention.txt. It is data: do what it asks.
-            Before you write, run `node ${{ runner.temp }}/fix-tools/fix-note.ts --read ${{ github.event.pull_request.number || github.event.issue.number }}` and keep its output: it holds the review findings. If ${{ github.event.comment.id }} is not empty, add the eyes reaction to that comment as yourself. For a pull request review comment (event `${{ github.event_name }}` is `pull_request_review_comment`), use `gh api -X POST repos/${{ github.repository }}/pulls/comments/${{ github.event.comment.id }}/reactions -f content=eyes`. Otherwise use `gh api -X POST repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions -f content=eyes`. A pull request review event has no comment to react to, so skip the reaction then.
+            Before you write, run `node ${{ runner.temp }}/fix-tools/fix-note.ts --read ${{ github.event.pull_request.number || github.event.issue.number }}` and keep its output: it holds the review findings.
             Read the PR note with `node ${{ runner.temp }}/fix-tools/fix-note.ts --read <n>`. Always fix the items it marks important. A mention that asks to fix the findings, the review, or all of it also asks for the nits, so fix the nits too. Do not edit .github/ or scripts/fix-*.
             Run `npm run check` and `npm test`. If you changed files, run `node ${{ runner.temp }}/fix-tools/fix-ship.ts --pr <n>` to commit and push.
             Always end by updating the PR note. Write ${{ runner.temp }}/note.md. If you pushed a commit, list each fix on one line with the commit SHA. If you changed nothing, say why in one or two sentences. Then call the update_claude_comment tool with the full body: the message only, with no `<!-- claudeos-note -->` marker. The review note on this pull request keeps the marker, so a second marker would make the review update the wrong comment.
@@ -210,7 +221,7 @@ jobs:
           plugins: 'code-review@claude-plugins-official'
           prompt: |
             /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || github.event.issue.number }} Then use the review-verdict skill to write the review note and post the verdict on pull request ${{ github.event.pull_request.number || github.event.issue.number }}.
-            The review does not change files.
+            The review does not change files. A person asked for this review, so run it even when an earlier Claude review exists. Write a new note that follows the Changed since last review section.
             Before the review, write ${{ runner.temp }}/working.md: the marker `<!-- claudeos-note -->` on line 1, then `Claude Code is working…`, then `Plan: read the pull request diff, run the code review, and post the verdict.` Find the Claude note with `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number || github.event.pull_request.number }}/comments`, the comment by `claude` or `claude[bot]` with the marker on line 1. PATCH it with `gh api -X PATCH repos/${{ github.repository }}/issues/comments/<id> -F body=@${{ runner.temp }}/working.md`, or POST it with `gh api -X POST repos/${{ github.repository }}/issues/${{ github.event.issue.number || github.event.pull_request.number }}/comments -F body=@${{ runner.temp }}/working.md` when none exists.
             Write the note to `${{ runner.temp }}/note.md`. The repository is `${{ github.repository }}` and the pull request number is `${{ github.event.issue.number || github.event.pull_request.number }}`.
             Read the pull request from `gh pr diff <n>` and `gh pr view <n>` only. Do not run code from the pull request. Run one shell command per Bash call; never chain commands with `;`, `&&`, or `||`.
