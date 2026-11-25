@@ -1,31 +1,42 @@
-<header class="app-hd">   <!-- the shell draws the icon and "Camera" (core/web/app-header.ts) -->
-  <div class="app-hd-right"><span class="live" id="caPill"><i></i><span id="caPillText">Off</span></span></div>
+<header class="app-hd">   <!-- the shell draws the icon and "Camera" (core/web/app-header.ts); the Ready status is in the page, under the viewfinder -->
 </header>
 
 <!-- the camera page: the preview is drawn by the tablet under this page; its box is a see-through hole -->
 <div class="cam" id="caMain">
-  <div class="cam-frame" id="caFrame">
-    <div class="cam-msg" id="caMsg" hidden><span id="caMsgText"></span></div>
-    <div class="cam-flash" id="caFlash"></div>
+  <div class="cam-view">
+    <div class="cam-frame" id="caFrame">
+      <div class="cam-msg" id="caMsg" hidden><span id="caMsgText"></span></div>
+      <div class="cam-flash" id="caFlash"></div>
+    </div>
+    <div class="cam-status"><span class="live" id="caPill"><i></i><span id="caPillText">Off</span></span></div>
   </div>
 
   <div class="cam-side">
-    <div class="cam-top">
+    <!-- group 1: the photo just taken, with its actions (a dashed slot holds the space until then) -->
+    <div class="cam-group cam-shot">
       <div class="cam-after" id="caAfter" hidden>
-        <img id="caShot" alt="The photo just taken">
-        <span class="cam-saved">Saved to Photos</span>
-        <button class="cam-ask" id="caAsk">Send to Claude</button>
+        <div class="cam-after-row">
+          <img id="caShot" alt="The photo just taken">
+          <div class="cam-after-col">
+            <span class="cam-saved">Saved to Photos</span>
+            <button class="cam-ask" id="caAsk">Send to Claude</button>
+          </div>
+        </div>
         <span class="cam-note">Goes to the chat you have open, or a new one</span>
         <button class="cam-text" id="caDismiss">Take another</button>
       </div>
+    </div>
+
+    <!-- group 2: Look, with the words that start it -->
+    <div class="cam-group cam-look-group">
       <button class="cam-look" id="caLook"><svg class="cam-spark" viewBox="-50 -50 100 100" aria-hidden="true"><g fill="currentColor" class="spark-rays"></g></svg>Look</button>
       <span class="cam-cap">Then say “Hey Claude”</span>
     </div>
-    <div class="cam-mid">
-      <button class="cam-shutter" id="caShutter" aria-label="Take a photo"><span></span></button>
-    </div>
-    <div class="cam-bottom">
+
+    <!-- group 3: the gallery, the shutter and the flip, in one row -->
+    <div class="cam-group cam-shoot">
       <button class="cam-last empty" id="caLastBtn" aria-label="Open Photos"><img id="caLastImg" alt=""></button>
+      <button class="cam-shutter" id="caShutter" aria-label="Take a photo"><span></span></button>
       <div class="cam-flipw">
         <button class="cam-round" id="caFlip" aria-label="Switch to the front camera">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9a8 8 0 0 1 14-2.5L20 9"/><path d="M20 4v5h-5"/><path d="M20 15a8 8 0 0 1-14 2.5L4 15"/><path d="M4 20v-5h5"/></svg>
