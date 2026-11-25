@@ -5,6 +5,8 @@
 <div class="cam" id="caMain">
   <div class="cam-view">
     <div class="cam-frame" id="caFrame">
+      <!-- the browser's own camera (camera.ts, on HTTPS in Safari): drawn in the frame when the tablet's native preview is not there -->
+      <video class="cam-video" id="caVideo" playsinline muted autoplay hidden></video>
       <div class="cam-msg" id="caMsg" hidden><span id="caMsgText"></span></div>
       <div class="cam-flash" id="caFlash"></div>
       <!-- the photo just taken: it floats over the bottom-left of the preview, and draws above it. Hidden until a photo is taken. -->

@@ -32,7 +32,63 @@ const waiters = new Map<string, (s: Shot) => void>();
 const listeners: ((state: CamState, message?: string) => void)[] = [];
 const emit = (state: CamState, message?: string) => listeners.forEach(f => { try { f(state, message); } catch (e) { console.error(e); } });
 
-export const cameraAvailable = camera.available;
+/** The browser's own camera (Safari on the iPad, over HTTPS): used when the tablet's native camera is not there. */
+const webCamOk = (): boolean => typeof window !== 'undefined' && window.isSecureContext && !!navigator.mediaDevices?.getUserMedia;
+export const cameraAvailable = camera.available || webCamOk();
+/** True when the tablet's own camera draws the picture under the page (the page goes see-through then). */
+export const nativeCamera = camera.available;
+let stream: MediaStream | null = null;   // the browser's camera stream, while it is on
+const videoEl = (): HTMLVideoElement | null => document.getElementById('caVideo') as HTMLVideoElement | null;
+/** Turn the browser's camera off and hide its picture. */
+function stopWeb(): void {
+  stream?.getTracks().forEach(t => t.stop());
+  stream = null;
+  const v = videoEl();
+  if (v) { v.srcObject = null; v.hidden = true; }
+}
+/** The browser's camera failure name, as a short code (busy, denied, no_camera or failed). */
+const webCode = (name: string): CamCode =>
+  name === 'NotAllowedError' || name === 'SecurityError' ? 'denied'
+    : name === 'NotFoundError' || name === 'OverconstrainedError' ? 'no_camera'
+    : name === 'NotReadableError' ? 'busy' : 'failed';
+/** Open the browser's camera in the frame. */
+async function openWeb(): Promise<void> {
+  if (stream) return;
+  const v = videoEl();
+  if (!v) { emit('error', camError('failed')); return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing === 'front' ? 'user' : 'environment' }, audio: false });
+  } catch (e) {
+    emit('error', camError(webCode((e as DOMException).name)));
+    return;
+  }
+  if (!wanted) { stopWeb(); return; }   // the screen left while the browser was asking
+  v.srcObject = stream;
+  v.hidden = false;
+  try { await v.play(); } catch { /* Safari starts the picture once the frame arrives */ }
+  isOn = true;
+  emit('open');
+}
+/** A photo from the browser's camera: a JPEG of the current frame, uploaded to the PC like a native photo. */
+async function captureWeb(id: string): Promise<Shot> {
+  const v = videoEl();
+  if (!stream || !v || !isOn || !v.videoWidth) return { ok: false, code: 'failed' };
+  const c = document.createElement('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  const g = c.getContext('2d');
+  if (!g) return { ok: false, code: 'failed' };
+  if (facing === 'front') { g.translate(c.width, 0); g.scale(-1, 1); }   // the selfie is mirrored, as on the screen
+  g.drawImage(v, 0, 0);
+  const blob = await new Promise<Blob | null>(res => c.toBlob(res, 'image/jpeg', 0.9));
+  if (!blob) return { ok: false, code: 'failed' };
+  try {
+    const r = await fetch('/api/photos/upload', { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-Photo-Id': id }, body: blob });
+    const j = await r.json() as { ok?: boolean; url?: string };
+    return j.ok && j.url ? { ok: true, id, url: j.url } : { ok: false, code: 'failed' };
+  } catch {
+    return { ok: false, code: 'failed' };
+  }
+}
 export const isOpen = (): boolean => isOn;
 export const facingNow = (): Facing => facing;
 export function onState(fn: (state: CamState, message?: string) => void): void { listeners.push(fn); }
@@ -65,6 +121,7 @@ onResume(() => { if (wanted && target && !isOn) show(target); });
 export function show(el: HTMLElement): void {
   target = el; wanted = true;
   if (!cameraAvailable) { emit('error', 'Camera needs the ClaudeOS tablet app.'); return; }
+  if (!camera.available) { void openWeb(); return; }   // the browser's camera, in the frame
   if (isOn) { camera.move(screenRect(el)); return; }
   const r = camera.open(facing, screenRect(el));
   if (r.asking) { emit('asking'); return; }   // only if the grant was not re-applied: Android's prompt is the last resort
@@ -74,13 +131,14 @@ export function show(el: HTMLElement): void {
 /** Follow a screen that moved (the frame, or Look's full-screen view). */
 export function moveTo(el: HTMLElement): void {
   target = el;
-  if (isOn) camera.move(screenRect(el));
+  if (isOn && camera.available) camera.move(screenRect(el));   // the browser's picture stays in its frame
 }
 
 /** Close the preview: a screen has gone away. */
 export function hide(): void {
   wanted = false; target = null;
-  if (cameraAvailable && isOn) camera.close();
+  if (camera.available && isOn) camera.close();
+  stopWeb();
   isOn = false;
 }
 
@@ -89,7 +147,8 @@ export function flip(): void {
   facing = facing === 'back' ? 'front' : 'back';
   if (!isOn) return;
   const el = target;
-  camera.close(); isOn = false;
+  if (camera.available) camera.close(); else stopWeb();
+  isOn = false;
   if (el) setTimeout(() => { if (wanted && target === el) show(el); }, 450);
 }
 
@@ -99,6 +158,7 @@ const newPhotoId = (): string => `p${Date.now().toString(36)}${Math.random().toS
 /** Take a photo and wait for it to reach the PC. The shutter click plays only when chimes are on and it is not Do Not Disturb or quiet hours. */
 export function takePhoto(): Promise<Shot> {
   if (!cameraAvailable) return Promise.resolve({ ok: false, code: 'no_camera' });
+  if (!camera.available) return captureWeb(newPhotoId());
   if (!isOn) return Promise.resolve({ ok: false, code: 'failed' });
   const id = newPhotoId();
   const sound = prefs.chimes && !prefs.dnd && !quietNow();

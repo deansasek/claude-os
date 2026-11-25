@@ -23,7 +23,7 @@ const ICON = appIcon('camera');
 function paintState(state: cam.CamState, message?: string): void {
   const pill = $('caPill'), text = $('caPillText'), msg = $('caMsg'), msgText = $('caMsgText');
   const on = state === 'open';
-  document.documentElement.classList.toggle('cam-live', on);   // the page is see-through where the preview is
+  document.documentElement.classList.toggle('cam-live', on && cam.nativeCamera);   // the page is see-through where the tablet's preview is
   pill.className = 'live';
   if (state === 'open') { pill.classList.add('ok'); text.textContent = 'Ready'; }
   else if (state === 'asking') { pill.classList.add('wait'); text.textContent = 'Starting…'; }
