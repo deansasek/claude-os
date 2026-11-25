@@ -1,6 +1,7 @@
 // Ship an AI issue fix: refuse unsafe repo state, stage the patch, run the gate,
 // then push a branch and open a pull request. Run with Node 22 type stripping:
 //   node fix-ship.ts <issue number> <path to pr.md>
+//   node fix-ship.ts --pr <pr number>   commit the working tree to the PR head branch and push it
 // Set FIX_SHIP_DRY=1 to print the push and pull request commands instead of running them.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -97,11 +98,8 @@ function checkGitConfig(): void {
   }
 }
 
-function main(): void {
-  const [issue, prPath] = process.argv.slice(2);
-  if (!issue || !/^\d+$/.test(issue) || !prPath) refuse('usage', 'usage: node fix-ship.ts <issue number> <pr.md path>');
-
-  // Refuse before any git write: planted hooks or unsafe config keys.
+// Refuse before any git write: planted hooks or unsafe config keys.
+function checkRepoState(): void {
   // Read the common git dir, not --git-path hooks: that flag returns core.hooksPath when it is set.
   const hooks = resolve(git(['rev-parse', '--git-common-dir']).trim(), 'hooks');
   if (existsSync(hooks)) {
@@ -109,6 +107,56 @@ function main(): void {
     if (extra.length) refuse('git-hooks', `.git/hooks has files other than *.sample: ${extra.join(', ')}`);
   }
   checkGitConfig();
+}
+
+export interface PrInfo {
+  headRefName: string;
+  headRepository: { nameWithOwner?: string } | null;
+  baseRepository: { nameWithOwner?: string } | null;
+}
+
+// Return the value of the "test" script in a package.json text, or undefined.
+export function testScript(json: string): string | undefined {
+  return (JSON.parse(json) as { scripts?: Record<string, string> }).scripts?.test;
+}
+
+// Directories that --pr mode never commits to. The fix tools live in scripts/fix-*.
+const PR_DENIED_DIRS = ['.github/', '.claude/', 'scripts/fix-'];
+const repoName = (repo: { nameWithOwner?: string } | null): string | undefined => repo?.nameWithOwner?.toLowerCase();
+
+// Return the rule and reason that refuse a PR push, or undefined when the push may go ahead.
+// Paths are the staged files. A package.json change refuses only when the test script changes.
+export function prRefusal(pr: PrInfo, paths: string[], testBefore: string | undefined, testAfter: string | undefined): { rule: string; reason: string } | undefined {
+  const head = repoName(pr.headRepository);
+  if (!head || head !== repoName(pr.baseRepository)) return { rule: 'fork', reason: 'the PR head is not in this repository (fork PRs are refused)' };
+  if (!/^[\w./-]+$/.test(pr.headRefName) || pr.headRefName.startsWith('-')) return { rule: 'branch', reason: `unsafe head branch name ${pr.headRefName}` };
+  if (paths.length === 0) return { rule: 'no-changes', reason: 'the working tree has no changes to push' };
+  const file = paths.find(path => PR_DENIED_DIRS.some(dir => path.startsWith(dir)) || (path === 'package.json' && testBefore !== testAfter));
+  if (file) return { rule: 'protected-path', reason: `${file} is a protected path` };
+  return undefined;
+}
+
+// --pr mode: commit the working tree to the PR head branch and push it. Never force-pushes.
+function prMain(pr: string): void {
+  if (!/^\d+$/.test(pr)) refuse('usage', 'usage: node fix-ship.ts --pr <pr number>');
+  checkRepoState();
+  const repoArgs = process.env.GITHUB_REPOSITORY ? ['--repo', process.env.GITHUB_REPOSITORY] : [];
+  const info = JSON.parse(execFileSync('gh', ['pr', 'view', pr, ...repoArgs, '--json', 'headRefName,headRepository,baseRepository'], { encoding: 'utf8' })) as PrInfo;
+  git(['add', '-A']);
+  const paths = git(['diff', '--cached', '--name-only', '--no-renames', '-z']).split('\0').filter(Boolean);
+  const testBefore = testScript(git(['show', 'HEAD:package.json']));
+  const testAfter = paths.includes('package.json') ? testScript(readFileSync('package.json', 'utf8')) : testBefore;
+  const refused = prRefusal(info, paths, testBefore, testAfter);
+  if (refused) refuse(refused.rule, refused.reason);
+  step('git', [...SAFE, 'commit', '-m', `fix: address review findings on PR #${pr}`]);
+  step('git', [...SAFE, 'push', 'origin', `HEAD:${info.headRefName}`]);
+  if (!DRY) console.log(`pushed to PR #${pr} (${info.headRefName})`);
+}
+
+function main(): void {
+  const [issue, prPath] = process.argv.slice(2);
+  if (!issue || !/^\d+$/.test(issue) || !prPath) refuse('usage', 'usage: node fix-ship.ts <issue number> <pr.md path>');
+  checkRepoState();
 
   // Stage the patch and read its line counts, modes, and base package.json.
   git(['add', '-A']);
@@ -166,9 +214,13 @@ function main(): void {
   if (!DRY) console.log(url.trim());
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(`fix-ship failed: ${(error as Error).message}`);
-  process.exit(1);
+// The test imports this file with FIX_SHIP_LIB=1 to reach the pure checks. Otherwise the CLI runs.
+if (process.env.FIX_SHIP_LIB !== '1') {
+  try {
+    if (process.argv[2] === '--pr') prMain(process.argv[3] ?? '');
+    else main();
+  } catch (error) {
+    console.error(`fix-ship failed: ${(error as Error).message}`);
+    process.exit(1);
+  }
 }

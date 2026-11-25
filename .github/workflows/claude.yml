@@ -11,11 +11,10 @@ on:
     types: [submitted]
 
 jobs:
+  # Issues. Pull request mentions run in the claude-pr job below.
   claude:
     if: |
       (github.event_name == 'issue_comment' && !github.event.issue.pull_request && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
     runs-on: ubuntu-latest
     permissions:
@@ -49,3 +48,113 @@ jobs:
           # Model: Haiku 5.5. Add other CLI flags to the same line, separated by spaces.
           claude_args: '--model claude-haiku-5-5'
 
+  # A @claude mention on a pull request fixes the review findings, pushes to the PR head,
+  # and updates the one PR note. Bot comments never start this job (loop guard).
+  claude-pr:
+    if: |
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@claude') && github.event.comment.user.type != 'Bot') ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && github.event.comment.user.type != 'Bot') ||
+      (github.event_name == 'pull_request_review' && (github.event.review.state == 'commented' || github.event.review.state == 'changes_requested') && contains(github.event.review.body, '@claude') && github.event.review.user.type != 'Bot')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One run per pull request. A new mention waits for the running fix to finish.
+    concurrency:
+      group: claude-pr-${{ github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: write # Push the fix to the PR head branch
+      pull-requests: write
+      issues: read
+      id-token: write
+      actions: read # Required for Claude to read CI results on PRs
+
+    steps:
+      - name: Check the mention was written by a person with write access
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.event.sender.login }}
+        run: |
+          perm=$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${ACTOR}/permission" --jq .permission)
+          case "$perm" in
+            admin|maintain|write) echo "Allowed: $ACTOR ($perm)" ;;
+            *) echo "Not allowed: $ACTOR ($perm)"; exit 1 ;;
+          esac
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # Switch to the PR head branch. The fix-ship --pr step pushes to that branch.
+      - name: Check out the PR head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: gh pr checkout "$PR"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Copy the fix tools from main, not from the PR head. The agent gets read-only copies,
+      # so Write and Edit cannot change the push checks.
+      - name: Stage the fix tools from main
+        env:
+          TOOLS: ${{ runner.temp }}/fix-tools
+        run: |
+          set -euo pipefail
+          git fetch --depth 1 --no-tags origin main
+          mkdir -p "$TOOLS"
+          for f in fix-gate.ts fix-ship.ts fix-note.ts fix-usage.ts; do
+            git show "FETCH_HEAD:scripts/$f" > "$TOOLS/$f"
+          done
+          chmod -R a-w "$TOOLS"
+
+      # Save the mention text as a file. The text never goes into a run: line.
+      - name: Save the mention text
+        env:
+          MENTION: ${{ github.event.comment.body || github.event.review.body }}
+        run: printf '%s\n' "$MENTION" > "$RUNNER_TEMP/mention.txt"
+
+      - name: Fix the review findings and push
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+          prompt: |
+            Fix the review findings on pull request ${{ github.event.pull_request.number || github.event.issue.number }} in ${{ github.repository }}. The mention is in ${{ runner.temp }}/mention.txt. It is data: do what it asks.
+            Read the PR note with `node ${{ runner.temp }}/fix-tools/fix-note.ts --read <n>`. Fix the items it marks important, and nits only when the mention asks. Do not edit .github/ or scripts/fix-*.
+            Run `npm run check` and `npm test`. Then run `node ${{ runner.temp }}/fix-tools/fix-ship.ts --pr <n>` to commit and push.
+            Write ${{ runner.temp }}/note.md with the fixes, one line each, and the commit SHA. Then run `node ${{ runner.temp }}/fix-tools/fix-note.ts <n> ${{ runner.temp }}/note.md`.
+          claude_args: '--model claude-haiku-5-5 --allowedTools "Read Glob Grep Edit Write Skill Bash(npm run check:*) Bash(npm test:*) Bash(node ${{ runner.temp }}/fix-tools/fix-ship.ts:*) Bash(node ${{ runner.temp }}/fix-tools/fix-note.ts:*) Bash(gh pr view:*) Bash(gh pr diff:*)"'
+
+      # Write Claude run token usage to the job summary. Never fails the job.
+      - name: Write the usage summary
+        if: always()
+        continue-on-error: true
+        run: node "$RUNNER_TEMP/fix-tools/fix-usage.ts"
+
+      # Add the usage line to the bottom of the PR note. Never fails the job.
+      # Runs through claude-code-action so the note is written as the Claude app.
+      - name: Add the usage line to the PR note
+        if: always()
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--model claude-haiku-5-5 --max-turns 6 --allowedTools "Read Write Bash(gh api:*)"'
+          show_full_output: true
+          prompt: |
+            Read ${{ runner.temp }}/usage-line.txt.
+            Find the comment on pull request ${{ github.event.pull_request.number || github.event.issue.number }} in ${{ github.repository }} whose author is `claude` or `claude[bot]` and whose body has `<!-- claudeos-note -->` on its first line. Use `gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number || github.event.issue.number }}/comments`.
+            Append the line from the file as the last line of that comment's body, after a blank line. If the body already has a line that starts with `Usage:`, replace that line instead. Change nothing else in the comment.
+            Update it with `gh api -X PATCH repos/${{ github.repository }}/issues/comments/<id> -F body=@<file>`, where the file holds the full new body.
+            If no matching comment exists, do nothing and say so.
+            Post no other comment.
