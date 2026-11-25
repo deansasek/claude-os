@@ -29,3 +29,11 @@ test('the page links the manifest and the iPad web-app flags', () => {
   assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest">/);
   assert.match(html, /apple-mobile-web-app-capable" content="yes"/);
 });
+
+test('the iPad home screen icon is a 180 px PNG on disk', () => {
+  const file = path.join(HOST_DIR, 'public', 'apple-touch-icon.png');
+  const head = fs.readFileSync(file).subarray(0, 24);
+  assert.equal(head.subarray(1, 4).toString('ascii'), 'PNG');
+  assert.equal(head.readUInt32BE(16), 180);   // width
+  assert.equal(head.readUInt32BE(20), 180);   // height
+});
