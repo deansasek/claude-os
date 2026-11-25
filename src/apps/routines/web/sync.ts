@@ -4,7 +4,7 @@
 // taken from the PC once; while the PC is off then, the page waits and nothing is copied. run.ts loads this module, so
 // the queue is sent even when the Routines app is not open.
 import { getJson, postJson, store } from '../../../core/web/dom.ts';
-import { onTablet } from '../../../core/web/device.ts';
+import { caps } from '../../../core/web/device.ts';
 import { hubReachable, onHubReachable } from '../../../core/web/hub-link.ts';
 import type { Routine, RoutinesResult } from '../api.ts';
 import { applyOp, remapIds, type Op, type OpResult } from './local.ts';
@@ -20,8 +20,8 @@ function readArr<T>(key: string): T[] | null {
   } catch { return null; }
 }
 
-let copy: Routine[] | null = onTablet ? readArr<Routine>(COPY_KEY) : null;
-let queue: Op[] = (onTablet && readArr<Op>(QUEUE_KEY)) || [];
+let copy: Routine[] | null = caps.localState ? readArr<Routine>(COPY_KEY) : null;
+let queue: Op[] = (caps.localState && readArr<Op>(QUEUE_KEY)) || [];
 let pulledAt = 0;
 const watchers = new Set<() => void>();
 
@@ -69,7 +69,7 @@ async function sendQueue(): Promise<void> {
 
 /** Take the PC's routines when the queue is empty. A first run copies them; a PC with no file gets the copy back. */
 async function pullNow(): Promise<void> {
-  if (!onTablet || queue.length) return;
+  if (!caps.localState || queue.length) return;
   let r: RoutinesResult;
   try {
     r = await getJson<RoutinesResult>(`${API}/list`);
@@ -94,7 +94,7 @@ export function apply(op: Op): OpResult | null {
   return r;
 }
 
-if (onTablet) {
+if (caps.localState) {
   void flush();                                            // a queue left from before, or the first copy
   onHubReachable(() => { if (hubReachable()) void flush(); });   // the PC is back: send what waited
 }

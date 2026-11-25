@@ -13,7 +13,7 @@
 // order whenever the PC answers, and then the PC's lists (with Claude's edits) replace the copy. On the first run the
 // copy is taken from the PC once (GET lists); if the PC has lost its file, the copy is sent back (POST restore).
 import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
-import { onTablet } from '../../../core/web/device.ts';
+import { caps } from '../../../core/web/device.ts';
 import { hubReachable, onHubReachable } from '../../../core/web/hub-link.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
@@ -55,10 +55,10 @@ const listNow = (): FamilyList | undefined => lists.find(l => l.id === current) 
 
 // ---------- the tablet's copy ----------
 const readKey = <T>(k: string): T | null => { try { return JSON.parse(store.get(k) || 'null') as T | null; } catch { return null; } };
-const copy = onTablet ? readKey<FamilyList[]>(COPY_KEY) : null;
+const copy = caps.localState ? readKey<FamilyList[]>(COPY_KEY) : null;
 if (Array.isArray(copy)) { lists = copy; loaded = true; }
 /** Changes apply on the tablet first once it has its copy (taken from the PC on the first run). */
-const local = (): boolean => onTablet && store.get(COPY_KEY) != null;
+const local = (): boolean => caps.localState && store.get(COPY_KEY) != null;
 // Only the copy is written here. The queue is written by queue.ts alone (read first, then one change), so a change
 // queued by a voice write while this page is open is kept.
 function keep(): void {
@@ -71,7 +71,7 @@ function take(r: ListsResult | null | undefined): void {
   if (r && Array.isArray(r.lists) && (r.ok || !local())) {
     lists = r.lists;
     loaded = true;
-    if (onTablet && r.ok) keep();
+    if (caps.localState && r.ok) keep();
   }
   if (!lists.some(l => l.id === current) && lists.length) current = lists[0].id;
 }
