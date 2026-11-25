@@ -61,15 +61,17 @@ const androidBtns = new Map<string, HTMLElement>();
 let railApps: HTMLElement | null = null;
 const UNCLOSABLE = new Set(['home', 'claude']);
 
-const fixedIds = () => apps.slice(0, 1).map(a => a.id).concat(apps.some(a => a.id === 'launcher') ? ['launcher'] : []);
+// Home stays first. Apps stays on the rail too, but it moves like any other item (the saved order holds it).
+const fixedIds = () => apps.slice(0, 1).map(a => a.id);
 function loadPins(): string[] {
   let p: unknown = null;
   try { p = JSON.parse(store.get(PIN_KEY) || 'null'); } catch { /* default */ }
-  const list = Array.isArray(p) ? p.filter((x): x is string => typeof x === 'string') : ['claude'];
+  const list = Array.isArray(p) ? p.filter((x): x is string => typeof x === 'string') : ['launcher', 'claude'];
+  if (apps.some(a => a.id === 'launcher') && !list.includes('launcher')) list.unshift('launcher');   // a saved list from before Apps moved
   return list.filter(id => apps.some(a => a.id === id) && !fixedIds().includes(id));
 }
 /** Can this app be pinned to the rail? (Home and Apps are always there.) */
-export function pinnable(id: string): boolean { return apps.some(a => a.id === id) && !fixedIds().includes(id); }
+export function pinnable(id: string): boolean { return apps.some(a => a.id === id) && !fixedIds().includes(id) && id !== 'launcher'; }
 export function isPinned(id: string): boolean { return pins.includes(id); }
 export function setPinned(id: string, on: boolean): void {
   if (!pinnable(id)) return;
@@ -83,7 +85,7 @@ const HOLD_MS = 450;
 const DRAG_PX = 10;   // the pointer must move this far before a held item drags
 let dragBtn: HTMLElement | null = null;   // the item under the finger; renderRail() does not glide it
 
-/** Hold a pinned rail item for a moment, then drag it along the rail. The order is saved as it changes.
+/** Hold a rail item for a moment, then drag it along the rail. Pinned and open items both move. The order is saved as it changes.
  *  A column rail drags up or down. A row rail (rail-horizontal) drags left or right.
  *  Leave the rail across its axis to put the order back as it was before the drag. */
 function initRailReorder(): void {
@@ -101,9 +103,11 @@ function initRailReorder(): void {
     cur.btn.style.touchAction = '';
     if (cur.dragging) {
       dragBtn = null;
+      cur.btn.classList.remove('rail-lift');
       cur.btn.style.transform = '';
       justDragged = true;
       if (revert) { pins = cur.before; store.set(PIN_KEY, JSON.stringify(pins)); renderRail(); }
+      if (pill && current) { pill.style.transition = ''; placePill(current, true); }   // the pill glides to the item's final place
     }
     s = null;
   };
@@ -115,36 +119,50 @@ function initRailReorder(): void {
       if (Math.hypot(e.clientX - cur.x, e.clientY - cur.y) <= DRAG_PX) return;
       if (!cur.held) { stop(false); return; }   // a scroll or a slide before the hold, not a drag
       cur.dragging = true; dragBtn = cur.btn;   // the hold passed and the finger moved: start the drag
+      cur.btn.classList.add('rail-lift');       // the item lifts and its icon rocks (core.css)
     }
     const h = document.documentElement.classList.contains('rail-horizontal');   // a row rail: the drag runs along x
     const r = rail.getBoundingClientRect();
     const across = h ? e.clientY : e.clientX, lo = h ? r.top : r.left, hi = h ? r.bottom : r.right;
     if (across < lo || across > hi) { stop(true); return; }   // left the rail across its axis: put the order back
-    // the pinned item under the finger gives its place to the dragged item
-    const along = h ? e.clientX : e.clientY;
-    const over = [...rail.querySelectorAll<HTMLElement>('.ri[data-app]')]
-      .filter(b => !b.hidden && b !== cur.btn && pins.includes(b.dataset.app!))
-      .find(b => { const br = b.getBoundingClientRect(); return along >= (h ? br.left : br.top) && along < (h ? br.right : br.bottom); });
+    // the stage is scaled to fit the screen (dom.ts fitStage): a finger move in screen px is k CSS px here
+    const rr = rail.getBoundingClientRect();
+    const k = (h ? rr.width / (rail.offsetWidth || 1) : rr.height / (rail.offsetHeight || 1)) || 1;
+    const size = h ? cur.btn.offsetWidth : cur.btn.offsetHeight;
+    const scroll = h ? rail.scrollLeft : rail.scrollTop;
+    // the item follows the finger in the rail's content coordinates, kept inside the visible strip
+    const room = Math.max(0, (h ? rail.clientWidth : rail.clientHeight) - size);
+    const wanted = cur.off + ((h ? e.clientX - cur.x : e.clientY - cur.y) / k);
+    const pos = Math.min(Math.max(wanted, scroll), scroll + room);
+    // the item's centre decides the swap, so a neighbour must pass half an item (no swap-back on finger noise)
+    const along = pos + size / 2;
+    const shown = [...rail.querySelectorAll<HTMLElement>('.ri[data-app]')].filter(b => !b.hidden && !fixedIds().includes(b.dataset.app!));
+    const over = shown.filter(b => b !== cur.btn)
+      .find(b => { const a = h ? b.offsetLeft : b.offsetTop, len = h ? b.offsetWidth : b.offsetHeight; return along >= a && along < a + len; });
     if (over) {
-      const from = pins.indexOf(cur.id), to = pins.indexOf(over.dataset.app!);
-      if (from !== to) {
-        pins = pins.filter(p => p !== cur.id);
-        const at = pins.indexOf(over.dataset.app!) + (from < to ? 1 : 0);   // moving down: land after the item
-        pins.splice(at, 0, cur.id);
+      const keys = shown.map(b => b.dataset.app!);
+      const from = keys.indexOf(cur.id), to = keys.indexOf(over.dataset.app!);
+      if (from >= 0 && to >= 0 && from !== to) {
+        const next = keys.filter(key => key !== cur.id);
+        next.splice(next.indexOf(over.dataset.app!) + (from < to ? 1 : 0), 0, cur.id);   // moving down: land after the item
+        pins = next;   // the saved order now covers every shown item
         store.set(PIN_KEY, JSON.stringify(pins));
         renderRail();
       }
     }
-    // the reorder moves the item's layout; the transform keeps it under the finger
-    cur.btn.style.transform = h
-      ? `translateX(${e.clientX - cur.x - (cur.btn.offsetLeft - cur.off)}px)`
-      : `translateY(${e.clientY - cur.y - (cur.btn.offsetTop - cur.off)}px)`;
+    const layoutAt = h ? cur.btn.offsetLeft : cur.btn.offsetTop;   // the reorder moves the layout; the transform makes up the rest
+    cur.btn.style.transform = h ? `translateX(${pos - layoutAt}px)` : `translateY(${pos - layoutAt}px)`;
+    // the active pill sits under its item's layout slot, not the item's transform, so it follows the finger here
+    if (pill && cur.id === current) {
+      pill.style.transition = 'none';
+      pill.style.transform = h ? `translate(${pos}px, ${cur.btn.offsetTop}px)` : `translate(${cur.btn.offsetLeft}px, ${pos}px)`;
+    }
   };
 
   rail.addEventListener('pointerdown', e => {
     const btn = (e.target as HTMLElement).closest<HTMLElement>('.ri[data-app]');
     const id = btn?.dataset.app;
-    if (!btn || !id || e.button !== 0 || !pins.includes(id)) return;
+    if (!btn || !id || e.button !== 0 || fixedIds().includes(id)) return;   // Home and Apps stay where they are
     justDragged = false;
     btn.style.touchAction = 'none';   // the browser must not scroll the rail during the drag
     const h = document.documentElement.classList.contains('rail-horizontal');
@@ -195,15 +213,28 @@ function renderRail(): void {
   railApps.querySelectorAll<HTMLElement>('.ri').forEach(b => { if (b.isConnected && !b.hidden) before.set(b, at(b)); });
   // hide what's left, then append in order (appending moves an element)
   [...ownBtns.values(), ...androidBtns.values()].forEach(b => { if (!want.includes(b)) { b.hidden = true; if (b.parentElement !== railApps) railApps!.appendChild(b); } });
-  want.forEach(b => { b.hidden = false; railApps!.appendChild(b); });
+  // place each shown item after the one before it. Move a node only when it is out of place: a moved node restarts its
+  // CSS animations (the lifted item's rock), so the items that stay put keep them.
+  let prev: Element | null = pill;
+  want.forEach(b => {
+    b.hidden = false;
+    const inPlace = prev ? prev.nextElementSibling : railApps!.firstElementChild;
+    if (inPlace !== b) { if (prev) prev.after(b); else railApps!.prepend(b); }
+    prev = b;
+  });
   for (const b of [...androidBtns.values()]) if (!want.includes(b)) { b.remove(); androidBtns.forEach((v, k) => { if (v === b) androidBtns.delete(k); }); }
   if (!reducedMotion()) {
     want.forEach(b => {
       if (b === dragBtn) return;   // the item in hand follows the finger, not the glide
       const was = before.get(b);
       const slide = (n: number): string => h ? `translateX(${n}px)` : `translateY(${n}px)`;
+      // a slide still running: start the new one from where the item is drawn, not from its slot (no jump)
+      const running = b.getAnimations().filter(a => !('transitionProperty' in a));   // our slides only, not the colour transitions
+      const drawn = running.length ? new DOMMatrixReadOnly(getComputedStyle(b).transform) : null;
+      const drawnBy = drawn ? (h ? drawn.m41 : drawn.m42) : 0;
+      running.forEach(a => a.cancel());
       if (was == null) { b.animate([{ opacity: 0, transform: slide(6) }, { opacity: 1, transform: 'none' }], { duration: motionMs('--dur-base'), easing: 'cubic-bezier(.2, .8, .2, 1)' }); return; }
-      const d = was - at(b);
+      const d = was - at(b) + drawnBy;
       if (d) b.animate([{ transform: slide(d) }, { transform: 'none' }], { duration: motionMs('--dur-slow'), easing: 'cubic-bezier(.16, 1, .3, 1)' });
     });
   }
@@ -386,7 +417,7 @@ function watchVersion(): void {
 /** Claude Home's own apps, in rail order (the Apps screen lists them). */
 export function installedApps(): { id: string; name: string; icon: string }[] {
   const hidden = focusHidden();
-  return apps.filter(a => !hidden.includes(a.id) || fixedIds().includes(a.id)).map(a => ({ id: a.id, name: a.name, icon: a.icon }));
+  return apps.filter(a => !hidden.includes(a.id) || a.id === 'launcher' || fixedIds().includes(a.id)).map(a => ({ id: a.id, name: a.name, icon: a.icon }));
 }
 
 export async function startHub(list: HubApp[]): Promise<void> {
