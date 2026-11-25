@@ -82,6 +82,8 @@
     gap: 8px; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; overscroll-behavior: contain; }
   .rail-apps::-webkit-scrollbar { display: none; }
   .rail-apps > .ri { flex: none; }
+  /* a held item drags to reorder (shell.ts initRailReorder): the browser must not take that drag as a rail scroll */
+  .rail-apps > .ri[data-app] { touch-action: none; }
   .ri[hidden] { display: none; }
   .ri-android .ri-icon img { width: 26px; height: 26px; border-radius: 7px; display: block; }
   .ri-letter { width: 26px; height: 26px; border-radius: 7px; background: var(--card-2); color: var(--t2); display: flex;
