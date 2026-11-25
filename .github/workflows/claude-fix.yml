@@ -95,10 +95,16 @@ jobs:
         if: always()
         run: |
           cat > "$RUNNER_TEMP/usage.mjs" <<'EOF'
-          import { appendFileSync, existsSync, readFileSync } from 'node:fs';
+          import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
           import { join } from 'node:path';
-          const emit = (text) => (process.env.GITHUB_STEP_SUMMARY
-            ? appendFileSync(process.env.GITHUB_STEP_SUMMARY, text + '\n') : console.log(text));
+          const emit = (text) => {
+            // Also keep the line for the Claude comment step. Never fail here.
+            if (process.env.RUNNER_TEMP) {
+              try { writeFileSync(join(process.env.RUNNER_TEMP, 'usage-line.txt'), text + '\n'); } catch {}
+            }
+            if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, text + '\n');
+            else console.log(text);
+          };
           const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
           const fmt = (v) => Math.round(num(v)).toLocaleString('en-US');
           try {
@@ -121,6 +127,25 @@ jobs:
           process.exit(0);
           EOF
           node "$RUNNER_TEMP/usage.mjs"
+
+      # Add the usage line to the bottom of the Claude comment for this run. Never fails the job.
+      - name: Add the usage line to the Claude comment
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: '--model claude-haiku-5-5 --max-turns 6 --allowedTools "Read Bash(gh api:*)"'
+          show_full_output: true
+          prompt: |
+            Read ${{ runner.temp }}/usage-line.txt.
+            Find the comment on issue ${{ github.event.issue.number || inputs.issue }} in ${{ github.repository }} whose author is `claude` or `claude[bot]` and whose body contains `actions/runs/${{ github.run_id }}`. Use `gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number || inputs.issue }}/comments`.
+            Append the line from the file as the last line of that comment's body, after a blank line. Change nothing else in the comment.
+            Update it with `gh api -X PATCH repos/${{ github.repository }}/issues/comments/<id> -F body=@<file>`, where the file holds the full new body.
+            If no matching comment exists, do nothing and say so.
+            Post no other comment.
 
       - name: Remove the ai-fix label
         if: always()
