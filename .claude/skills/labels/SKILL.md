@@ -69,7 +69,7 @@ Do not add `ai-fix` to work that a person should do. A PIN change, for example, 
 | Label | Meaning |
 | --- | --- |
 | `ai-review` | Run the AI code review on this pull request. Only labeled pull requests are reviewed. |
-| `ai-generated` | The AI made this pull request. The AI never approves it. A person approves and merges it. |
+| `ai-generated` | The AI made this pull request. The AI never approves it. |
 | `ci` | The change touches GitHub Actions or checks. The labeler adds this from the paths. |
 | `github_actions` | The change touches GitHub Actions code. The labeler adds this from the paths. |
 | `dependencies` | The change touches a dependency file. |
