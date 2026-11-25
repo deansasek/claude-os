@@ -5,6 +5,7 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithPhoto } from '../../claude/web/reply.ts';
+import { nativeOn } from '../../claude/web/native.ts';
 import { thumbUrl } from '../../photos/api.ts';
 import type { PhotoList } from '../../photos/api.ts';
 import { manifest } from '../manifest.ts';
@@ -61,10 +62,12 @@ async function shoot(): Promise<void> {
 function showShot(id: string, url: string): void {
   shotId = id;
   $<HTMLImageElement>('caShot').src = url;
+  $('caNote').hidden = true;
   $('caAfter').hidden = false;
 }
 function hideShot(): void {
   shotId = null;
+  $('caNote').hidden = true;
   $('caAfter').hidden = true;
 }
 
@@ -108,6 +111,8 @@ const app: HubApp = {
     $('caAsk').addEventListener('click', () => {
       if (!shotId) return;
       report('camera:ask');
+      // Claude chats on this tablet take words only: say so on the card, keep the photo, and do not open the chat
+      if (nativeOn()) { $('caNote').hidden = false; return; }
       askWithPhoto(shotId);
       hideShot();
       openApp('claude');
