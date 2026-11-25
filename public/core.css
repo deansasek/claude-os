@@ -84,6 +84,12 @@
   .rail-apps > .ri { flex: none; }
   /* a held item drags to reorder (shell.ts initRailReorder): the browser must not take that drag as a rail scroll */
   .rail-apps > .ri[data-app] { touch-action: none; }
+  /* the item in hand lifts; its icon rocks while it is held (shell.ts initRailReorder). The rock is on the icon, so it
+     does not fight the item's own position transform. */
+  .rail-apps > .ri.rail-lift { z-index: 2; background: var(--card-2); box-shadow: 0 12px 36px rgba(20,20,19,.16); }
+  .rail-apps > .ri.rail-lift .ri-icon { animation: rail-rock var(--dur-slow) var(--ease-out) infinite alternate; }
+  @keyframes rail-rock { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+  :root.reduce-motion .rail-apps > .ri.rail-lift .ri-icon { animation: none; }
   .ri[hidden] { display: none; }
   .ri-android .ri-icon img { width: 26px; height: 26px; border-radius: 7px; display: block; }
   .ri-letter { width: 26px; height: 26px; border-radius: 7px; background: var(--card-2); color: var(--t2); display: flex;
