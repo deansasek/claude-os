@@ -1,0 +1,14 @@
+{
+  "name": "ClaudeOS",
+  "short_name": "ClaudeOS",
+  "description": "A home screen for your Claude sessions, timers, lists and more.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#faf9f5",
+  "theme_color": "#faf9f5",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
