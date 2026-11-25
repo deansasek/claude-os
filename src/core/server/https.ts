@@ -4,8 +4,10 @@
 // on full trust. Nothing here reaches the internet.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
+import type { RequestListener } from 'node:http';
 
 export interface CertFiles { dir: string; caKey: string; caCert: string; caDer: string; key: string; cert: string; hosts: string }
 
@@ -67,4 +69,18 @@ export function ensureCertificates(stateDir: string, names: string[], run: Run =
     fs.writeFileSync(f.hosts, want);
   }
   return f;
+}
+
+/**
+ * Serve `handler` over HTTPS on host:port. A listen error (the port is taken, say) goes to onError, and the Host keeps
+ * running on its plain port.
+ */
+export function serveHttps(opts: {
+  key: Buffer; cert: Buffer; handler: RequestListener; port: number; host: string;
+  onListening: () => void; onError: (e: Error) => void;
+}): https.Server {
+  const server = https.createServer({ key: opts.key, cert: opts.cert }, opts.handler);
+  server.on('error', opts.onError);
+  server.listen(opts.port, opts.host, opts.onListening);
+  return server;
 }
