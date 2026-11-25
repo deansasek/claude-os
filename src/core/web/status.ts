@@ -6,7 +6,7 @@
 //   addStatus(header, appId)  the shell gives each app's header its cluster (once, before the apps mount)
 //   initStatus()              starts it: a tick on each new minute, and every second only while a timer runs
 //
-// Home shows only the active indicators (it has its own clock and battery). Ambient and the sign-in sheet's inset hide
+// Home hides the time (its hero has the clock) and keeps Wi-Fi, the battery and the active indicators. Ambient and the sign-in sheet's inset hide
 // the cluster (core.css). The time, Wi-Fi and battery are read on each new minute and on resume, since the tablet has
 // no event for them; voice, downloads, notices and settings push their own changes, and the Clock app's timer writes
 // (the hub:store event) start or stop the countdown at once. Under low power the countdown moves every 15 seconds.
@@ -57,7 +57,7 @@ function countdown(ms: number): string {
 /** The cluster for one app's header. Tapping it, or Enter on it, opens the control center. */
 export function addStatus(header: HTMLElement, appId: string): void {
   const root = document.createElement('div');
-  root.className = 'hd-status' + (appId === 'home' ? ' cond-only' : '');
+  root.className = 'hd-status' + (appId === 'home' ? ' no-time' : '');
   root.setAttribute('role', 'button');
   root.tabIndex = 0;
   root.innerHTML =
@@ -147,11 +147,9 @@ function paint(): void {
   let bytes = 0, total = 0;
   for (const d of st.dl.values()) { bytes += d.bytes; total += d.total; }
   const frac = total > 0 ? Math.min(1, bytes / total) : -1;   // -1: no size yet, so the ring spins
-  const cond = st.listening || st.speaking || st.ringing || st.timerEnd > 0 || st.dl.size > 0 || st.muted || st.low || st.unread > 0;
   const up = st.online && hubReachable();
   const label = `Status: ${time}${st.online ? '' : ', offline'}${st.online && !hubReachable() ? ', PC not reached' : ''}${b ?`, battery ${b.percent}%${b.charging ? ', charging' : ''}` : ''}. Open the control center.`;
   for (const p of parts) {
-    p.root.classList.toggle('has-cond', cond);
     p.root.setAttribute('aria-label', label);
     p.mic.hidden = !st.listening;
     p.speak.hidden = !st.speaking;

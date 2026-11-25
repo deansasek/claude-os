@@ -188,7 +188,7 @@
   .hd-dl.spin svg { animation: hdSpin 1.1s linear infinite; }
   @keyframes hdSpin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
   :root.reduce-motion .hd-status * { animation: none !important; }
-  .hd-status.cond-only .hd-base, .hd-status.cond-only:not(.has-cond) { display: none; }   /* Home: only what's active */
+  .hd-status.no-time .hd-time { display: none; }   /* Home: the hero has the clock */
   .stage.amb-on .hd-status, .stage.inset .hd-status { visibility: hidden; }                /* ambient; the sign-in sheet's inset */
 
   /* three columns */
