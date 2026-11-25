@@ -42,6 +42,14 @@ jobs:
         with:
           node-version: 22.x
 
+      # The review posts as ClaudeOS Bot (a GitHub App), so the bot may approve a pull request that the Claude app opened.
+      - name: Create a ClaudeOS Bot token
+        id: bot
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FIX_APP_ID }}
+          private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
+
       - name: Run the code review
         id: claude-review
         uses: anthropics/claude-code-action@v1
@@ -49,6 +57,7 @@ jobs:
           CLAUDE_CODE_EXPERIMENTAL_CODE_MODE: "1"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ steps.bot.outputs.token }}
           additional_permissions: |
             actions: read
           plugin_marketplaces: 'https://github.com/anthropics/claude-plugins-official.git'
@@ -80,7 +89,7 @@ jobs:
           show_full_output: true
           prompt: |
             Read ${{ runner.temp }}/usage-line.txt.
-            Find the comment on pull request ${{ github.event.pull_request.number }} in ${{ github.repository }} whose author is `claude` or `claude[bot]` and whose body has `<!-- claudeos-note -->` on its first line. Use `gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments`.
+            Find the comment on pull request ${{ github.event.pull_request.number }} in ${{ github.repository }} whose author is `claude`, `claude[bot]` or `claudeos-bot[bot]` and whose body has `<!-- claudeos-note -->` on its first line. Use `gh api repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments`.
             Append the line from the file as the last line of that comment's body, after a blank line. If the body already has a line that starts with `Usage:`, replace that line instead. Change nothing else in the comment.
             Update it with `gh api -X PATCH repos/${{ github.repository }}/issues/comments/<id> -F body=@<file>`, where the file holds the full new body.
             If no matching comment exists, do nothing and say so.

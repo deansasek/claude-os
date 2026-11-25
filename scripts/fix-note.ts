@@ -24,7 +24,8 @@ export interface Comment {
   body: string;
 }
 
-const isClaude = (c: Comment): boolean => c.login === 'claude' || c.login === 'claude[bot]';
+// The review posts as ClaudeOS Bot (claudeos-bot[bot]), so its notes count as Claude's too.
+const isClaude = (c: Comment): boolean => c.login === 'claude' || c.login === 'claude[bot]' || c.login === 'claudeos-bot[bot]';
 
 /** True when a line of body is the marker. The native progress comment puts a header above Claude's text, so line 1 is not always the marker. */
 export const hasMarker = (body: string): boolean => body.split('\n').some(line => line.trim() === MARKER);
