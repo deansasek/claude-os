@@ -23,7 +23,7 @@ jobs:
   # Triage, fix, and open the pull request in this job. The agent runs
   # scripts/fix-ship.ts, which checks the patch and the PR text, then pushes the
   # branch and opens the pull request.
-  agent:
+  claude-fix:
     if: >-
       vars.AI_ENABLED == 'true' &&
       ((github.event_name == 'workflow_dispatch') ||
