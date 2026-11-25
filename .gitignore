@@ -68,3 +68,6 @@ android/assets/voice-warmup.raw
 
 # Generated page bundle (npm run build:page).
 /dist/
+
+# Local HTTPS certificates the Host makes (src/core/server/https.ts). Private keys: never commit.
+/https/
