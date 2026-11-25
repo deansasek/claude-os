@@ -118,3 +118,11 @@ export async function saveLocalPin(pin: string): Promise<void> {
   const saltHex = bytesToHex(salt);
   saveLocalRecord({ salt: saltHex, hash: pbkdf2Hex(pin, saltHex, ITERATIONS), iterations: ITERATIONS });
 }
+
+/**
+ * The PC just confirmed `pin` at the lock. A tablet with no copy (a PIN set before the copy existed) keeps one now,
+ * so the lock still works when the PC is off. An existing copy is left as it is.
+ */
+export async function keepCopyAfterUnlock(pin: string): Promise<void> {
+  if (!hasLocalPin()) await saveLocalPin(pin);
+}

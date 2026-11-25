@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { test } from 'node:test';
 import { pbkdf2Hex, sha256 } from '../src/core/web/pbkdf2.ts';
-import { applyGuess, matchesRecord, type LocalState } from '../src/core/web/pin-local.ts';
+import { applyGuess, keepCopyAfterUnlock, localRecord, matchesRecord, type LocalState } from '../src/core/web/pin-local.ts';
 
 const FRESH: LocalState = { fails: 0, lockedUntil: 0 };
 
@@ -40,6 +40,27 @@ test('five wrong tries start a 30-second cooldown, the right PIN is refused unti
   st = fifth.state;
   assert.deepEqual(applyGuess(st, true, now + 29_999).result, { ok: false, error: 'locked', lockedFor: 1 });
   assert.deepEqual(applyGuess(st, true, now + 30_000).result, { ok: true, lockedFor: 0 });
+});
+
+test('a confirmed unlock makes the copy when the tablet has none, and keeps an existing one', async () => {
+  const store = new Map<string, string>();
+  (globalThis as { localStorage?: unknown }).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => { store.set(k, v); },
+    removeItem: (k: string) => { store.delete(k); },
+  };
+  try {
+    assert.equal(localRecord(), null);
+    await keepCopyAfterUnlock('1234');
+    const first = localRecord();
+    assert.ok(first, 'a copy is made');
+    assert.equal(matchesRecord(first!, '1234'), true);
+    assert.equal(matchesRecord(first!, '4321'), false);
+    await keepCopyAfterUnlock('4321');   // a copy exists: it is not replaced
+    assert.deepEqual(localRecord(), first);
+  } finally {
+    delete (globalThis as { localStorage?: unknown }).localStorage;
+  }
 });
 
 test('a right PIN clears the wrong-try count', () => {

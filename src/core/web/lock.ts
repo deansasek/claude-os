@@ -9,7 +9,7 @@ import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from './pin-pad.ts';
 import { glanceLine } from './lock-glance.ts';
 import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
 import { I, nextAlarm, notifications, timerLeftText } from './system.ts';
-import { checkCopyFingerprint, checkLocally, clearLocalRecord, hasLocalPin, localLockedFor } from './pin-local.ts';
+import { checkCopyFingerprint, checkLocally, clearLocalRecord, hasLocalPin, keepCopyAfterUnlock, localLockedFor } from './pin-local.ts';
 
 interface Status { set: boolean; lockedFor: number; fingerprint?: string | null }
 interface Result { ok: boolean; lockedFor?: number; left?: number; error?: string }
@@ -251,7 +251,7 @@ async function done(): Promise<void> {
   phase = 'checking'; msg = '';
   paint();
   const r = await post('/api/settings/pin/check', { pin });
-  if (r) { typed = ''; handle(r); return; }
+  if (r) { typed = ''; if (r.ok) void keepCopyAfterUnlock(pin); handle(r); return; }
   // The PC can't be reached: check against the tablet's own copy, when there is one (pin-local.ts)
   const local = hasLocalPin() ? await checkLocally(pin) : null;
   typed = '';
