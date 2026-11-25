@@ -35,17 +35,17 @@ The verdict is the note. Write the note in exactly this form. Follow the ASD-STE
 - [x] Validate findings
 - [x] Post summary and verdict
 
-**Result:** no issues found, or the number of findings. Checked for bugs and CLAUDE.md compliance.
+Two or three short sentences, in plain words, with no label: what the pull request changes and what the review found.
 
-One or two short sentences: what the pull request changes and whether the change works.
+**Result:** no issues found, or the number of findings. Checked for bugs and CLAUDE.md compliance.
 
 **Verdict:** ✅ Approved, or ❌ Denied. One sentence on the next step.
 
 **Findings:**
-- `path/to/file:line` - the problem, in one sentence. Mark it **important** or **nit**. Write `None.` when there are no findings.
+- `path/to/file:line` - one sentence on the problem. **Why it matters:** one sentence on the impact for the reader or the code. Mark it **important** or **nit**. Write `None.` when there are no findings.
 
 **Notes:**
-- One short bullet for each point the reviewer must know, such as a review that was not posted or a check that was skipped. Omit this section when there is nothing to add.
+- One full sentence for each point the reviewer must know, such as a review that was not posted or a check that was skipped. Write the sentence in full, not as a fragment. Omit this section when there is nothing to add.
 ```
 
 ## Post the verdict
