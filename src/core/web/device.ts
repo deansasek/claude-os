@@ -210,7 +210,10 @@ export const device = {
 /** The tablet app calls window.hubResume() whenever the Hub comes back to the front. */
 const resumeHandlers: (() => void)[] = [];
 export function onResume(fn: () => void): void { resumeHandlers.push(fn); }
-(window as unknown as { hubResume: () => void }).hubResume = () => resumeHandlers.forEach(f => { try { f(); } catch { /* ignore */ } });
+const runResume = (): void => resumeHandlers.forEach(f => { try { f(); } catch { /* ignore */ } });
+(window as unknown as { hubResume: () => void }).hubResume = runResume;
+/** Without the tablet app, a page that comes back to the front (a tab shown again, a Home Screen app reopened) counts as a resume. */
+if (!api) document.addEventListener('visibilitychange', () => { if (!document.hidden) runResume(); });
 
 // ---------- voice: "Hey Claude", speech-to-text and speaking (android/VOICE.md) ----------
 // The wake word and transcription run on the tablet (offline); only text reaches the page.
