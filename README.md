@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  A home screen for the kitchen wall, powered by Claude Code.
+  A home screen for your desk, powered by Claude Code.
 </p>
 
 <p align="center">
