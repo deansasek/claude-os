@@ -13,7 +13,8 @@
   <a href="#get-started">Get started</a> ·
   <a href="docs/SETUP.md">Setup guide</a> ·
   <a href="docs/SECURITY.md">Security</a> ·
-  <a href="#contributing">Contributing</a>
+  <a href="#contributing">Contributing</a> ·
+  <a href="https://github.com/deansasek/claude-os/wiki">Wiki</a>
 </p>
 
 <p align="center">
