@@ -1,4 +1,4 @@
 ﻿# PR Claude test
 
-This file has a typo: teh review should flag it.
+This file has a typo: the review should flag it.
 
