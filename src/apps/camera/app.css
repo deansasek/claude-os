@@ -71,8 +71,8 @@ html.cam-live, html.cam-live body { background: transparent !important; }
 #app-camera .cam-shutter:active span { transform: scale(.92); background: var(--t2); }
 #app-camera .cam-shutter:disabled, #app-camera .cam-look:disabled, #app-camera .cam-round:disabled { opacity: .4; pointer-events: none; }
 
-/* rail bottom (344 to 400): the gallery and the flip, 16 px apart, centred on the rail; the flip caption sits at 408 */
-#app-camera .cam-row { top: 344px; height: var(--cam-round); display: flex; justify-content: center; align-items: flex-start; gap: 16px; }
+/* rail bottom (400 to 480): the gallery and the flip, 16 px apart, centred on the rail; the flip caption ends on the frame's bottom edge (480) */
+#app-camera .cam-row { top: 400px; height: var(--cam-round); display: flex; justify-content: center; align-items: flex-start; gap: 16px; }
 
 #app-camera .cam-last { all: unset; cursor: pointer; position: relative; flex: none; width: var(--cam-round); height: var(--cam-round); border-radius: 12px; overflow: hidden;
   background: var(--card); box-shadow: 0 0 0 1px var(--line); }
