@@ -143,11 +143,20 @@ jobs:
             echo "Type: could not set $type_name on issue #$ISSUE."
           fi
 
+      # The fix opens the pull request as ClaudeOS Bot (a GitHub App), so the Claude review can approve it.
+      - name: Create a ClaudeOS Bot token
+        id: bot
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.FIX_APP_ID }}
+          private-key: ${{ secrets.FIX_APP_PRIVATE_KEY }}
+
       - name: Triage the issue, make the fix, and open the pull request
         id: agent
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ steps.bot.outputs.token }}
           # The native progress comment (claude[bot]). Off for a manual run, which the action does not support.
           track_progress: ${{ github.event_name != 'workflow_dispatch' }}
           prompt: |
