@@ -62,8 +62,33 @@ test('postNote posts a new note when no marker comment exists', () => {
   assert.equal(calls[1][3], 'repos/deansasek/claude-os/issues/5/comments');
 });
 
-test('findNote needs the marker on line 1, not later in the body', () => {
-  assert.equal(findNote([{ id: 4, login: 'claude[bot]', body: `Intro\n${MARKER}\nOld` }]), undefined);
+test('findNote finds the marker on any line, so a header above it does not hide the note', () => {
+  assert.equal(findNote([{ id: 4, login: 'claude[bot]', body: `Claude finished @user's task\n---\n${MARKER}\nOld` }])?.id, 4);
+});
+
+test('findNote returns the newest note when several have the marker (comments are oldest first)', () => {
+  const older: Comment = { id: 1, login: 'claude[bot]', body: `${MARKER}\nFirst run` };
+  const newer: Comment = { id: 2, login: 'claude[bot]', body: `${MARKER}\nSecond run` };
+  assert.equal(findNote([older, newer])?.id, 2);
+});
+
+test('findNote skips a newer working comment that has no marker yet', () => {
+  const finished: Comment = { id: 1, login: 'claude[bot]', body: `${MARKER}\nDone` };
+  const working: Comment = { id: 2, login: 'claude[bot]', body: 'Claude Code is working…' };
+  assert.equal(findNote([finished, working])?.id, 1);
+});
+
+test('writeUsage does not add a second marker when the marker is below a header', () => {
+  const calls: string[][] = [];
+  const dir = mkdtempSync(join(tmpdir(), 'fix-note-test-'));
+  const usageFile = join(dir, 'usage-line.txt');
+  writeFileSync(usageFile, 'Usage: 7 tokens\n');
+  const bodyFile = join(dir, 'body.md');
+  const headed: Comment = { id: 9, login: 'claude[bot]', body: `Claude finished\n---\n${MARKER}\nResult` };
+  writeUsage({ repo: 'deansasek/claude-os', issue: '5', usageFile, bodyFile, gh: fakeGh(listingOf([headed]), calls) });
+  const written = readFileSync(bodyFile, 'utf8');
+  assert.equal(written.split(MARKER).length - 1, 1);
+  assert.match(written, /^Claude finished\n---\n<!-- claudeos-note -->\nResult\n\nUsage: 7 tokens\n$/);
 });
 
 test('findNoteOrLegacy falls back to an old review comment with the legacy title', () => {
