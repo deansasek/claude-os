@@ -48,15 +48,13 @@ One or two short sentences: what the pull request changes and whether the change
 - One short bullet for each point the reviewer must know, such as a review that was not posted or a check that was skipped. Omit this section when there is nothing to add.
 ```
 
-For an approval of an `ai-generated` PR, the verdict line says: "A person approves and merges this pull request."
-
 ## Post the verdict
 
 1. Find the pull request number from the prompt.
 2. Check the labels: `gh pr view <number> --json labels --jq '.labels[].name'`.
 3. Post the review with `gh pr review` only as follows. Do not pass `--body-file`.
    - Approved, and the PR has no `ai-generated` label: `gh pr review <number> --approve`. GitHub records the approval with no comment body.
-   - Approved, and the PR has the `ai-generated` label: post no review. Never approve an AI-made PR. A person approves and merges it.
+   - Approved, and the PR has the `ai-generated` label: post no review. Never approve an AI-made PR.
    - Denied, with or without the label: `gh pr review <number> --request-changes --body "Denied. See the review summary."`. GitHub requires a body for this event, so this adds one short comment. Do not add more text to the body.
 4. Write the final message in the template form. The final message carries the verdict and the findings. Do not post them as a review.
 
