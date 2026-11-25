@@ -161,6 +161,20 @@ jobs:
           REPO: ${{ github.repository }}
         run: gh api -X POST "repos/$REPO/issues/comments/$COMMENT_ID/reactions" -f content=eyes
 
+      # Keep one Claude comment per issue: collapse the earlier ones as outdated. The GitHub thread keeps them. Never fails the job.
+      - name: Collapse the earlier Claude comments on this issue
+        if: github.event_name == 'issue_comment' || github.event_name == 'issues'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          ISSUE: ${{ github.event.issue.number || inputs.issue }}
+          REPO: ${{ github.repository }}
+        run: |
+          ids=$(gh api --paginate "repos/$REPO/issues/$ISSUE/comments" --jq '.[] | select(.user.login == "claudeos-bot[bot]" or .user.login == "claude[bot]") | .node_id' || true)
+          for id in $ids; do
+            gh api graphql -f query='mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }' -F id="$id" >/dev/null || echo "Could not collapse $id."
+          done
+
       - name: Triage the issue, make the fix, and open the pull request
         id: agent
         uses: anthropics/claude-code-action@v1
