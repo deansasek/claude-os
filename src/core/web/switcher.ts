@@ -28,8 +28,14 @@ interface SwitcherHooks {
   close(key: string): void;    // close one app (shell.ts)
 }
 
-// geometry, in stage pixels (the stage is 1024 × 600; an app's section sits at left 84, 940 × 600)
-const SW = 1024, SEC_L = 84, SEC_W = 940, SEC_H = 600;
+// geometry, in stage pixels (the stage is 1024 × 600). The app section's box is read from the layout
+// (measureSection): the rail sets its edge, so the section starts after the rail on the left, or at 0 on the right or top.
+const SW = 1024, SEC_W = 940, SEC_H = 600;
+let box = { l: 84, t: 0, w: SEC_W, h: SEC_H };
+const measureSection = (): void => {
+  const a = stage.querySelector<HTMLElement>('.app');
+  if (a) box = { l: a.offsetLeft, t: a.offsetTop, w: a.offsetWidth, h: a.offsetHeight };   // offset* ignores the card transforms
+};
 const S = .46;                                   // card scale
 const CW = SEC_W * S, CH = SEC_H * S;            // 432 × 276
 const GAP = 34, PITCH = CW + GAP;
@@ -50,7 +56,7 @@ const scale = () => stage.getBoundingClientRect().width / stage.offsetWidth;
 const toStage = (e: PointerEvent) => { const r = stage.getBoundingClientRect(), s = scale(); return { x: (e.clientX - r.left) / s, y: (e.clientY - r.top) / s }; };
 const cx = (i: number) => SW / 2 + i * PITCH - scrollX;
 const maxScroll = () => Math.max(0, (cards.length - 1) * PITCH + CW / 2 + GAP + 76 - SW / 2 + 40);
-const cardTf = (i: number, dy = 0, dx = 0) => `translate3d(${(cx(i) + dx - (SEC_L + SEC_W / 2)).toFixed(1)}px, ${(CY - SEC_H / 2 + dy).toFixed(1)}px, 0) scale(${S})`;
+const cardTf = (i: number, dy = 0, dx = 0) => `translate3d(${(cx(i) + dx - (box.l + box.w / 2)).toFixed(1)}px, ${(CY - box.h / 2 + dy - box.t).toFixed(1)}px, 0) scale(${S})`;
 const labelTf = (i: number, dy = 0) => `translate3d(${(cx(i) - CW / 2).toFixed(1)}px, ${(CY - CH / 2 - 40 + dy).toFixed(1)}px, 0)`;
 const closeAllTf = () => `translate3d(${(cx(cards.length - 1) + CW / 2 + GAP).toFixed(1)}px, ${CY - 38}px, 0)`;
 
@@ -118,6 +124,7 @@ function shadeTop(on: boolean): void { setSwitcherShade(on); }
 function openSwitcher(): void {
   if (open || busy || !hooks) return;
   if (stage.classList.contains('amb-on')) return;
+  measureSection();
   if (Keyboard.isOpen) Keyboard.close('nav');
   closeControlCenter();
   cards = hooks.cards();
@@ -356,8 +363,9 @@ function scrollsBelow(t: EventTarget | null): boolean {
 function bindEdge(): void {
   stage.addEventListener('pointerdown', e => {
     if (!e.isPrimary || open || busy || stage.classList.contains('amb-on') || document.querySelector('.cc.on')) return;
+    measureSection();
     const p = toStage(e);
-    if (p.x > SEC_L && p.y > stage.offsetHeight - grabBottom() - GRAB && !scrollsBelow(e.target)) {
+    if (p.x > box.l && p.x < box.l + box.w && p.y > stage.offsetHeight - grabBottom() - GRAB && !scrollsBelow(e.target)) {
       swipe = { id: e.pointerId, x0: p.x, y0: p.y, y: p.y, t: e.timeStamp, dx: 0, dy: 0, vy: 0, live: false };
     }
   }, true);
