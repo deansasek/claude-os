@@ -10,6 +10,7 @@
     --lid: #3d3d3a; --base: #262624; --hatch: #b0aea5;
     --blue: #2468c4; --track: #e6e7ea; --track-edge: rgba(47,123,224,.10); --pillbg: #f5f4ed;
     --rail: #f0eee6; --cloud: #e3e1d7; --storm: #a9a79e; --bubble: #fffdf7;
+    --rail-w: 84px;                               /* width of the side rail; .app and the switcher start after it */
     --serif: "Source Serif 4", Georgia, serif; --sans: Inter, "Segoe UI", system-ui, sans-serif;
 
     /* motion (core/web/motion.ts reads these too). Calm and unhurried: things arrive on a soft
@@ -55,7 +56,7 @@
   .stage { position: absolute; left: 50%; top: 50%; width: 1024px; height: 600px; transform-origin: 0 0; overflow: hidden; }
 
   /* app rail */
-  .rail { position: absolute; left: 0; top: 0; bottom: 0; width: 84px; background: var(--rail); border-right: 1px solid var(--line);
+  .rail { position: absolute; left: 0; top: 0; bottom: 0; width: var(--rail-w); background: var(--rail); border-right: 1px solid var(--line);
     display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 0 18px; transition: background-color .5s; }
   .ri { all: unset; position: relative; width: 66px; height: 66px; border-radius: 14px; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 6px; color: var(--t3); font: 500 11px var(--sans); cursor: pointer;
@@ -98,7 +99,7 @@
     /* --tall: 0 on the 600-tall stage, 1 on a taller one (below). Apps spend the extra room with
        calc(… + … * var(--tall)) instead of repeating the media query. */
     --tall: 0;
-    position: absolute; left: 84px; top: 0; width: 940px; height: 100%; padding: var(--app-top) var(--app-r) 0 var(--app-l);
+    position: absolute; left: var(--rail-w); top: 0; width: 940px; height: 100%; padding: var(--app-top) var(--app-r) 0 var(--app-l);
     /* switching (shell.ts toggles .on): the page you leave fades out quickly where it is; the one you open
        follows a beat later (so the two barely overlap), fading in and rising --rise into place.
        Input is never held: the new page takes taps at once and the old one stops at once. */
@@ -499,7 +500,7 @@
      banners and ambient screen stay above. */
   /* sits just above Android's own bottom gesture band (--grab-bottom, from the tablet: a swipe up that starts in that
      band is taken by Android, see switcher.ts); touch-action none keeps the browser from starting a scroll on it */
-  .sw-handle { position: absolute; left: 84px; right: 0; bottom: var(--grab-bottom, 0px); height: 18px; z-index: 40; cursor: pointer; touch-action: none; }
+  .sw-handle { position: absolute; left: var(--rail-w); right: 0; bottom: var(--grab-bottom, 0px); height: 18px; z-index: 40; cursor: pointer; touch-action: none; }
   .sw-handle::after { content: ''; position: absolute; bottom: 2px; left: 50%; width: 112px; height: 4px; margin-left: -56px;
     border-radius: 4px; background: var(--t5); opacity: .55; transition: opacity var(--dur-base) var(--ease-out); }
   .stage:not(.on-tablet) .sw-handle::after { opacity: .3; }
@@ -522,7 +523,7 @@
   .sw-label .sw-ic { display: flex; flex: none; width: 22px; height: 22px; color: #faf9f5; }
   .sw-label .sw-ic svg, .sw-label .sw-ic img { width: 22px; height: 22px; border-radius: 6px; }
   .sw-label .ri-letter { width: 22px; height: 22px; }
-  .sw-acard { left: 84px; width: 940px; height: 600px; transform-origin: 50% 50%; border-radius: 30px; background: var(--card);
+  .sw-acard { left: var(--rail-w); width: 940px; height: 600px; transform-origin: 50% 50%; border-radius: 30px; background: var(--card);
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; pointer-events: none;
     box-shadow: 0 14px 36px rgba(20, 20, 19, .3); }
   .sw-acard-ic, .sw-acard-ic img { width: 170px; height: 170px; border-radius: 40px; display: flex; }
