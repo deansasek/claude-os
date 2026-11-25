@@ -4,10 +4,10 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { resolveStatic } from '../src/core/server/index.ts';
 
-const HUB = path.resolve(import.meta.dirname, '..');
+const HOST_DIR = path.resolve(import.meta.dirname, '..');
 
 test('browser code and the page are served', () => {
-  assert.equal(resolveStatic('/src/main.web.ts'), path.join(HUB, 'src', 'main.web.ts'));
+  assert.equal(resolveStatic('/src/main.web.ts'), path.join(HOST_DIR, 'src', 'main.web.ts'));
   assert.ok(resolveStatic('/src/core/web/dom.ts'));
   assert.ok(resolveStatic('/src/apps/claude/web/reply.ts'));
   assert.ok(resolveStatic('/src/apps/claude/view.html'));

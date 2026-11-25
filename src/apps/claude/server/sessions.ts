@@ -8,7 +8,7 @@ import { type ChoiceEvent, currentChoices, WRAP_UP_TOOL } from '../web/sessions/
 import { relayedTabletReply, tabletReplyIn } from './pclink.ts';
 import { PROJECTS } from '../../../core/server/paths.ts';
 import { openSessions } from './registry.ts';
-import { folderOf, hubSession, hubSessionIds } from './hubsessions.ts';
+import { folderOf, hostSession, hostSessionIds } from './hostsessions.ts';
 import { archivedIds } from './state.ts';
 import { Lru } from './lru.ts';
 
@@ -100,7 +100,7 @@ function readSession(file: string): Info {
 }
 
 /** What one log says about its session right now (from the tail of the log). */
-function describe(file: string, now: number, open: Set<string> | Map<string, unknown>, hubIds: Set<string>, tokensBySession: Map<string, number>, minAge = 0): SessionDetail | null {
+function describe(file: string, now: number, open: Set<string> | Map<string, unknown>, hostIds: Set<string>, tokensBySession: Map<string, number>, minAge = 0): SessionDetail | null {
   const s = readSession(file);
   if (!s.last) return null;
   const last = Date.parse(s.last);
@@ -115,11 +115,11 @@ function describe(file: string, now: number, open: Set<string> | Map<string, unk
     subagents = fs.readdirSync(subDir).filter(n => n.endsWith('.jsonl') && now - fs.statSync(path.join(subDir, n)).mtimeMs < 60e3).length;
   } catch { /* none */ }
   const fo = folderOf(s.cwd);
-  const fromHub = !!(s.id && hubIds.has(s.id));
-  const title = s.title || s.agent || (fromHub && s.id ? hubSession(s.id)?.title : null) || (s.prompt || '').slice(0, 60) || fo.name || 'Session';
+  const fromHost = !!(s.id && hostIds.has(s.id));
+  const title = s.title || s.agent || (fromHost && s.id ? hostSession(s.id)?.title : null) || (s.prompt || '').slice(0, 60) || fo.name || 'Session';
   const live: LiveSession = { id: s.id, title, folder: fo.name, folderId: fo.id, branch: s.branch, model: s.model, state, tool: s.tool,
     age: Math.round(age), subagents, working: s.working, tokens: (s.id && tokensBySession.get(s.id)) || 0, surface: s.entry,
-    open: !!(s.id && open.has(s.id)), hub: fromHub };
+    open: !!(s.id && open.has(s.id)), hub: fromHost };
   return s.id && s.cwd ? { id: s.id, cwd: s.cwd, file, model: s.model, lastText: s.lastText, live } : { id: '', cwd: '', file, model: null, lastText: null, live };
 }
 
@@ -129,7 +129,7 @@ export function liveSessions(tokensBySession: Map<string, number>): LiveSession[
   let dirs: string[] = [];
   try { dirs = fs.readdirSync(PROJECTS); } catch { return out; }
   const open = openSessions();
-  const hubIds = hubSessionIds();
+  const hostIds = hostSessionIds();
   const archived = archivedIds();
   details.clear();
   lastTokens = tokensBySession;
@@ -141,8 +141,8 @@ export function liveSessions(tokensBySession: Map<string, number>): LiveSession[
       let r: SessionDetail | null;
       try {
         // Hub-started sessions stay listed however long they've been quiet
-        if (now - fs.statSync(file).mtimeMs > LIVE_WINDOW_MS && !hubIds.has(f.slice(0, -6))) continue;
-        r = describe(file, now, open, hubIds, tokensBySession);
+        if (now - fs.statSync(file).mtimeMs > LIVE_WINDOW_MS && !hostIds.has(f.slice(0, -6))) continue;
+        r = describe(file, now, open, hostIds, tokensBySession);
       } catch { continue; }
       if (!r) continue;
       if (r.id) details.set(r.id, r);
@@ -168,7 +168,7 @@ function findSession(id: string): SessionDetail | undefined {
     let st: fs.Stats;
     try { st = fs.statSync(file); } catch { continue; }
     try {
-      const r = describe(file, now, openSessions(), hubSessionIds(), lastTokens, (now - st.mtimeMs) / 1000);
+      const r = describe(file, now, openSessions(), hostSessionIds(), lastTokens, (now - st.mtimeMs) / 1000);
       if (r?.id === id) { details.set(id, r); return r; }
     } catch { /* unreadable */ }
   }

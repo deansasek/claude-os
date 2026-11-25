@@ -8,12 +8,12 @@ export const HOME = os.homedir();
 export const PROJECTS = config.projectsDir;   // default ~/.claude/projects
 export const CREDS_FILE = path.join(HOME, '.claude', '.credentials.json');
 export const TOKEN_FILE = path.join(HOME, '.claude-meter-token');
-export const HUB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');   // src/core/server → 
+export const HOST_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');   // src/core/server → 
 // The folder for state the host writes (settings, lists, PIN, sessions). Defaults to the repository root.
-export const STATE = process.env.CLAUDEOS_STATE_DIR ? path.resolve(process.env.CLAUDEOS_STATE_DIR) : HUB;
-export const PUBLIC = path.join(HUB, 'public');
-export const SRC = path.join(HUB, 'src');
-export const CONFIG_FILE = path.join(HUB, 'meter-config.json');
+export const STATE = process.env.CLAUDEOS_STATE_DIR ? path.resolve(process.env.CLAUDEOS_STATE_DIR) : HOST_DIR;
+export const PUBLIC = path.join(HOST_DIR, 'public');
+export const SRC = path.join(HOST_DIR, 'src');
+export const CONFIG_FILE = path.join(HOST_DIR, 'meter-config.json');
 
 /** Every *.jsonl under a folder (recursive). */
 export function listJsonl(root: string): string[] {

@@ -8,10 +8,10 @@ import path from 'node:path';
 import { after, test } from 'node:test';
 import { pageAssetEntries, pageBundleProblem } from '../android/toolchain.ts';
 
-const HUB = path.resolve(import.meta.dirname, '..');
+const HOST_DIR = path.resolve(import.meta.dirname, '..');
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'apk-page-'));
 const bundle = path.join(scratch, 'page');
-execFileSync(process.execPath, ['--disable-warning=ExperimentalWarning', path.join(HUB, 'scripts', 'build-page.ts'), bundle], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--disable-warning=ExperimentalWarning', path.join(HOST_DIR, 'scripts', 'build-page.ts'), bundle], { stdio: 'pipe' });
 const manifest = JSON.parse(fs.readFileSync(path.join(bundle, 'manifest.json'), 'utf8')) as { files: { path: string }[] };
 const assets = new Set(pageAssetEntries(bundle).map(e => e.to));
 

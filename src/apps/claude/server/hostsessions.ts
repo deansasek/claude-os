@@ -14,17 +14,17 @@ const FILE = path.join(STATE, 'hub-sessions.json');
 export const SCRATCH = path.join(STATE, 'workspace');
 const RECENT_MS = 60 * 864e5;
 /** Hub-started sessions kept in hub-sessions.json. Past this many, the oldest are forgotten and read as too old to continue. */
-const HUB_SESSION_CAP = 500;
+const HOST_SESSION_CAP = 500;
 
-export interface HubSessionRecord { id: string; cwd: string; title: string; createdAt: string }
+export interface HostSessionRecord { id: string; cwd: string; title: string; createdAt: string }
 
-let records: HubSessionRecord[] = readJsonOrSetAside<{ sessions: HubSessionRecord[] }>(FILE)?.sessions || [];   // a bad file is set aside
+let records: HostSessionRecord[] = readJsonOrSetAside<{ sessions: HostSessionRecord[] }>(FILE)?.sessions || [];   // a bad file is set aside
 
-export const hubSessionIds = (): Set<string> => new Set(records.map(r => r.id));
-export const hubSession = (id: string): HubSessionRecord | undefined => records.find(r => r.id === id);
+export const hostSessionIds = (): Set<string> => new Set(records.map(r => r.id));
+export const hostSession = (id: string): HostSessionRecord | undefined => records.find(r => r.id === id);
 
-export function rememberHubSession(r: HubSessionRecord): void {
-  records = [r, ...records.filter(x => x.id !== r.id)].slice(0, HUB_SESSION_CAP);
+export function rememberHostSession(r: HostSessionRecord): void {
+  records = [r, ...records.filter(x => x.id !== r.id)].slice(0, HOST_SESSION_CAP);
   writeJsonFile(FILE, { sessions: records }, { indent: 2 });
 }
 

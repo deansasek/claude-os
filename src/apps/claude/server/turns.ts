@@ -12,7 +12,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { query, type ModelInfo, type PermissionMode, type Query, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
 import type { Approval, ContextUse, HubEffort, HubPermission, HubTurn, ModelChoice, ModelList, NewSessionResult, ReplyBlock, SessionSettings, SessionView, TurnStatus } from '../api.ts';
-import { projectFolder, rememberHubSession, SCRATCH } from './hubsessions.ts';
+import { projectFolder, rememberHostSession, SCRATCH } from './hostsessions.ts';
 import { logAction } from './guard.ts';
 import { askFor, describeTool } from './describe.ts';
 import { lookupSession, nextStepFor, transcriptFor, transcriptVersion } from './sessions.ts';
@@ -239,7 +239,7 @@ const view = (t: Live): HubTurn => ({
 });
 const runningFor = (sessionId: string) => [...turns.values()].find(t => t.sessionId === sessionId && (t.status === 'running' || t.status === 'approval'));
 /** Is a reply from the Hub running in this session right now? */
-export const hubTurnRunning = (sessionId: string): boolean => !!runningFor(sessionId);
+export const hostTurnRunning = (sessionId: string): boolean => !!runningFor(sessionId);
 
 const step = (t: Live, line: string) => { t.progress.push(line); if (t.progress.length > 20) t.progress.shift(); t.lastEventAt = Date.now(); };
 
@@ -379,7 +379,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
       mcpServers: { ...(pluginOpts.mcpServers ?? {}), claudeos_browser: browserServer, claudeos_ha: haServer, claudeos_tablet: tabletServer, claudeos_lists: listsServer, claudeos_calendar: calendarServer, claudeos_weather: weatherServer, claudeos_routines: routinesServer },
       abortController: t.abort,
       // the PC link's hooks (scripts/claude-os-pc-hook.ts) load with the user's settings: this tells them the Hub runs this turn
-      env: { ...process.env, CLAUDEOS_HUB_TURN: '1' },
+      env: { ...process.env, CLAUDEOS_HOST_TURN: '1' },
       ...(append ? { systemPrompt: { type: 'preset' as const, preset: 'claude_code' as const, append } } : {}),
       canUseTool: (tool, input, { signal }) => new Promise(resolve => {
         const isPlan = tool === 'ExitPlanMode';
@@ -581,7 +581,7 @@ export async function startNew(projectId: string, text: string, from: string, vo
   const remember = (id: string) => {
     if (!id) return;
     if (!modeNow.has(id)) modeNow.set(id, run.mode as HubPermission);
-    rememberHubSession({ id, cwd, title, createdAt: new Date().toISOString() });
+    rememberHostSession({ id, cwd, title, createdAt: new Date().toISOString() });
   };
   sessionId.then(remember);
   const id = await Promise.race([sessionId, new Promise<string>(r => setTimeout(() => r(''), 45e3))]);

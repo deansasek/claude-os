@@ -98,7 +98,7 @@ function writeSettings(next: Record<string, any>): void {
 async function main(): Promise<number> {
   const cmd = process.argv[2];
   if (cmd === 'stop' || cmd === 'permission') {
-    if (process.env.CLAUDEOS_HUB_TURN === '1') return 0;   // the hub runs this turn and answers it itself
+    if (process.env.CLAUDEOS_HOST_TURN === '1') return 0;   // the hub runs this turn and answers it itself
     return cmd === 'stop' ? stopHook() : permissionHook();
   }
   if (cmd === 'install') {

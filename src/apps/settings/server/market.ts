@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { HUB, readJson } from '../../../core/server/paths.ts';
+import { HOST_DIR, readJson } from '../../../core/server/paths.ts';
 import { MARKETPLACE, type MarketError, type MarketPlugin, type MarketResult, type MarketView } from '../api.ts';
 import { partsOf } from './plugins.ts';
 
@@ -26,7 +26,7 @@ const text = (v: unknown, n: number): string => (isStr(v) ? clip(v.replace(/\s+/
 /** The SDK's bundled Claude Code binary for this platform (the same version the sessions use). */
 function cliPath(): string | null {
   const exe = process.platform === 'win32' ? 'claude.exe' : 'claude';
-  const p = path.join(HUB, 'node_modules', '@anthropic-ai', `claude-agent-sdk-${process.platform}-${process.arch}`, exe);
+  const p = path.join(HOST_DIR, 'node_modules', '@anthropic-ai', `claude-agent-sdk-${process.platform}-${process.arch}`, exe);
   return fs.existsSync(p) ? p : null;
 }
 

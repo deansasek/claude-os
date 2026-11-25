@@ -7,8 +7,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 
-const HUB = path.resolve(import.meta.dirname, '..');
-const voice = fs.readFileSync(path.join(HUB, 'android', 'src', 'hub', 'kiosk', 'VoiceService.java'), 'utf8').replace(/\r\n/g, '\n');
+const HOST_DIR = path.resolve(import.meta.dirname, '..');
+const voice = fs.readFileSync(path.join(HOST_DIR, 'android', 'src', 'hub', 'kiosk', 'VoiceService.java'), 'utf8').replace(/\r\n/g, '\n');
 
 /** The body of a method: from its signature to the next line that starts a method or section comment. */
 function methodBody(src: string, signature: string): string {

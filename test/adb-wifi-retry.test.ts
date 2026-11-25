@@ -6,9 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
 
-const HUB = path.resolve(import.meta.dirname, '..');
-const adb = fs.readFileSync(path.join(HUB, 'android', 'src', 'hub', 'kiosk', 'AdbWifi.java'), 'utf8');
-const main = fs.readFileSync(path.join(HUB, 'android', 'src', 'hub', 'kiosk', 'MainActivity.java'), 'utf8');
+const HOST_DIR = path.resolve(import.meta.dirname, '..');
+const adb = fs.readFileSync(path.join(HOST_DIR, 'android', 'src', 'hub', 'kiosk', 'AdbWifi.java'), 'utf8');
+const main = fs.readFileSync(path.join(HOST_DIR, 'android', 'src', 'hub', 'kiosk', 'MainActivity.java'), 'utf8');
 
 /** The delays in RETRY_MS, in ms. Underscores in Java literals are ignored. */
 function retryDelays(src: string): number[] {
