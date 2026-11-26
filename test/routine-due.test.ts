@@ -1,7 +1,7 @@
 // Which routines are due: at their time, on their days, once a day, within the window. Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { dayKey, dueRoutines, type Routine } from '../src/apps/routines/api.ts';
+import { dayKey, dueRoutines, parseRanDays, type Routine } from '../src/apps/routines/api.ts';
 
 const at = (h: number, m: number, days: number[] = []): Routine =>
   ({ id: 'wake', name: 'Wake', phrases: ['wake'], steps: [{ kind: 'weather' }], at: { h, m, days } });
@@ -32,4 +32,13 @@ test('the days are respected: no days means every day', () => {
 test('a routine with no time is never due', () => {
   const plain: Routine = { id: 'plain', name: 'Plain', phrases: ['plain'], steps: [{ kind: 'weather' }] };
   assert.equal(dueRoutines([plain], sunday(7, 0), {}).length, 0);
+});
+
+test('a saved ran-today record that is not an object of text values is no record, so no routine is due twice or thrown on', () => {
+  assert.deepEqual(parseRanDays(null), {});
+  assert.deepEqual(parseRanDays([1, 2]), {});
+  assert.deepEqual(parseRanDays('x'), {});
+  assert.deepEqual(parseRanDays({ a: '2026-11-26', b: 5, c: null }), { a: '2026-11-26' });
+  const r: Routine = { id: 'a', name: 'Morning', phrases: [], steps: [], at: { h: 7, m: 0, days: [] } } as unknown as Routine;
+  assert.equal(dueRoutines([r], new Date(2026, 10, 26, 7, 5), parseRanDays({ a: dayKey(new Date(2026, 10, 26)) })).length, 0);
 });

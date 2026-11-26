@@ -120,6 +120,14 @@ export function cleanStep(raw: unknown): Step | { error: string } {
 /** The day a time falls on, as a key ("2026-11-22"); a routine's run is marked with it. */
 export const dayKey = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+/** The saved ran-today record as a map of routine id → day key. Anything that is not an object of text values is no record. */
+export function parseRanDays(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [id, day] of Object.entries(raw as Record<string, unknown>)) if (typeof day === 'string') out[id] = day;
+  return out;
+}
+
 /** The routines whose time has come: due today, not yet run today (ran: routine id → day key), and within AT_WINDOW_MIN of it. */
 export function dueRoutines(list: Routine[], now: Date, ran: Record<string, string>): Routine[] {
   const today = dayKey(now), nowMin = now.getHours() * 60 + now.getMinutes();
