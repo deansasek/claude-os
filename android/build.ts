@@ -55,6 +55,9 @@ function main(): void {
   // the signing key must already exist (stop before any work; never make a new one)
   const keyProblem = keystoreProblem();
   if (keyProblem) fail(keyProblem);
+  // the passwords too: a missing one fails here, not after the whole build
+  if (!process.env.CLAUDEOS_KEYSTORE_PASS) fail('Set CLAUDEOS_KEYSTORE_PASS to the original signing key password (docs/SETUP.md).');
+  if (!process.env.CLAUDEOS_KEYSTORE_PASS_NEW) fail('Set CLAUDEOS_KEYSTORE_PASS_NEW to the new signing key password (docs/SETUP.md).');
   // the web page bundle (scripts/build-page.ts) goes into the APK as assets/page/; stop if it is not whole
   run(process.execPath, ['--disable-warning=ExperimentalWarning', join(here, '..', 'scripts', 'build-page.ts')], 'npm run build:page');
   const pageProblem = pageBundleProblem();
@@ -157,8 +160,6 @@ function main(): void {
   // (hub-new.keystore) is the next signer, and hub.lineage proves the hand-over, so an installed app
   // signed with the original key accepts the update. Both keys sit next to this script.
   // The passwords come from the environment, never from this file (see docs/SETUP.md).
-  if (!process.env.CLAUDEOS_KEYSTORE_PASS) fail('Set CLAUDEOS_KEYSTORE_PASS to the original signing key password (docs/SETUP.md).');
-  if (!process.env.CLAUDEOS_KEYSTORE_PASS_NEW) fail('Set CLAUDEOS_KEYSTORE_PASS_NEW to the new signing key password (docs/SETUP.md).');
   const apk = join(out, 'claude-hub.apk');
   run(apksigner, [
     'sign',
