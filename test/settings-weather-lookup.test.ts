@@ -77,3 +77,62 @@ test('findWeatherCity opens the chooser when the place search answers with place
   assert.equal(rec.sheets.length, 0);
   assert.equal(chooserOpened, true);
 });
+// Load paintWeatherPlace and saveWeatherPlace from the source. The note is a stub that keeps the last text written.
+function loadWeatherPlace(
+  getJson: (url: string) => Promise<unknown>,
+  postJson: (url: string, body: unknown) => Promise<unknown>,
+  confirmSheet: (title: string, body: string, ok: string, done: () => void) => void,
+  note: { value: string },
+) {
+  const cut = (marker: string) => {
+    const start = src.indexOf(marker);
+    return src.slice(start, src.indexOf('\n}\n', start) + 3);
+  };
+  const body = [cut('async function paintWeatherPlace(): Promise<void> {'), cut('async function saveWeatherPlace(p: Place): Promise<void> {')]
+    .join('\n')
+    .replace('(): Promise<void>', '()')
+    .replace('(p: Place): Promise<void>', '(p)')
+    .replace(/<Weather>/g, '');
+  const esc = (s: unknown): string => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
+  const $ = () => ({ set textContent(v: string) { note.value = v; }, set innerHTML(v: string) { note.value = v; } });
+  return new Function('getJson', 'postJson', 'confirmSheet', '$', 'esc', 'report', `${body}\nreturn { paintWeatherPlace, saveWeatherPlace };`)(
+    getJson, postJson, confirmSheet, $, esc, () => {},
+  ) as { paintWeatherPlace: () => Promise<void>; saveWeatherPlace: (p: { name: string; lat: number; lon: number }) => Promise<void> };
+}
+
+const lisbon = { name: 'Lisbon', lat: 38.7, lon: -9.1, country: 'Portugal', region: null };
+
+test('paintWeatherPlace names the city when the forecast is ok', async () => {
+  const note = { value: '' };
+  const { paintWeatherPlace } = loadWeatherPlace(async () => ({ status: 'ok', place: 'Lisbon' }), async () => ({}), () => {}, note);
+  await paintWeatherPlace();
+  assert.equal(note.value, 'The weather is for Lisbon.');
+});
+
+test('paintWeatherPlace says the service did not answer when the forecast read is an error', async () => {
+  const note = { value: '' };
+  const { paintWeatherPlace } = loadWeatherPlace(async () => ({ status: 'error', error: 'down' }), async () => ({}), () => {}, note);
+  await paintWeatherPlace();
+  assert.equal(note.value, 'The weather service didn’t answer, so the city can’t be checked.');
+});
+
+test('paintWeatherPlace names the city that was not found, escaped', async () => {
+  const note = { value: '' };
+  const { paintWeatherPlace } = loadWeatherPlace(async () => ({ status: 'not_found', city: 'Lisb<on>' }), async () => ({}), () => {}, note);
+  await paintWeatherPlace();
+  assert.equal(note.value, 'City not found: Lisb&lt;on&gt;. Choose a city.');
+});
+
+test('saveWeatherPlace keeps the place name when the save works but the forecast read fails', async () => {
+  const note = { value: '' };
+  let forecastReads = 0;
+  const { saveWeatherPlace } = loadWeatherPlace(
+    async () => { forecastReads++; return { status: 'error', error: 'down' }; },
+    async () => ({ status: 'error', error: 'down' }),
+    () => { throw new Error('no sheet expected'); },
+    note,
+  );
+  await saveWeatherPlace(lisbon);
+  assert.equal(note.value, 'The weather is for Lisbon.');
+  assert.equal(forecastReads, 0);
+});
