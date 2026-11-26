@@ -11,6 +11,7 @@ process.env.CLAUDEOS_LISTS_FILE = path.join(dir, 'lists.json');
 process.env.CLAUDEOS_LISTS_HISTORY = path.join(dir, 'history.json');
 const L = await import('../src/apps/lists/server/store.ts');
 const H = await import('../src/apps/lists/server/history.ts');
+const { keptSuggest } = await import('../src/apps/lists/web/suggest.ts');
 
 after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
@@ -47,4 +48,16 @@ test('the history file is kept for the next start', () => {
   assert.equal(fs.existsSync(process.env.CLAUDEOS_LISTS_HISTORY!), true);
   const saved = JSON.parse(fs.readFileSync(process.env.CLAUDEOS_LISTS_HISTORY!, 'utf8'));
   assert.equal(saved.counts.milk.n, 2);
+});
+
+test('a good suggest read replaces the chips', () => {
+  assert.deepEqual(keptSuggest(['Eggs'], ['Milk', 'Bread'], []), ['Milk', 'Bread']);
+});
+
+test('a failed suggest read keeps the chips on screen', () => {
+  assert.deepEqual(keptSuggest(['Eggs', 'Milk'], null, []), ['Eggs', 'Milk']);
+});
+
+test('a failed suggest read drops a chip that is now open on Shopping, ignoring case', () => {
+  assert.deepEqual(keptSuggest(['Eggs', 'Milk'], null, ['milk']), ['Eggs']);
 });
