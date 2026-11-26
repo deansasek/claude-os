@@ -551,7 +551,7 @@ function armHistoryClear(): void {
 function historyRows(): SettingRow[] {
   if (!historyClearArmed) return [{ kind: 'action', id: 'history', title: 'History', detail: 'The pages you opened',
     value: () => S.history.length ? `${S.history.length} page${S.history.length === 1 ? '' : 's'}` : 'Empty',
-    label: 'Clear', run: armHistoryClear }];
+    disabled: () => !S.history.length, label: 'Clear', run: armHistoryClear }];
   return [
     { kind: 'action', id: 'history', title: 'Clear all of your history?', detail: 'This can’t be undone.', label: 'Clear all',
       run: () => { disarmHistoryClear(); S.history = []; saveHistory(); renderNtp(); appSettingsChanged(); report('browser:clear-history'); } },
