@@ -124,7 +124,9 @@ async function send(text: string, photoIds: string[]): Promise<{ sessionId: stri
     catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
     if (v.canReply) {
       const id = sessionId;
-      const r = await unlocked(() => apiCall<{ ok: boolean; error?: string; turn?: HubTurn }>('reply', { id, text, photoIds, ...wantFor(id) }));
+      let r: { ok: boolean; error?: string; turn?: HubTurn } | null;
+      try { r = await unlocked(() => apiCall<{ ok: boolean; error?: string; turn?: HubTurn }>('reply', { id, text, photoIds, ...wantFor(id) })); }
+      catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
       if (r == null) { say('Enter your PIN on the screen first.'); return null; }
       if (!r.ok) { say('I couldn’t send that. Try again in a moment.'); return null; }
       return { sessionId: id, turnId: r.turn?.id || null };
@@ -135,7 +137,9 @@ async function send(text: string, photoIds: string[]): Promise<{ sessionId: stri
   const projects = await getJson<Project[]>('/api/claude/projects').catch(() => [] as Project[]);
   const scratch = projects.find(p => p.name === 'Scratch space');
   if (!scratch) { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
-  const r = await unlocked(() => apiCall<NewSessionResult>('new', { project: scratch.id, text, photoIds, voice: true, ...voiceDefaults() }));
+  let r: NewSessionResult | null;
+  try { r = await unlocked(() => apiCall<NewSessionResult>('new', { project: scratch.id, text, photoIds, voice: true, ...voiceDefaults() })); }
+  catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
   if (r == null) { say('Enter your PIN on the screen first.'); return null; }
   if (!r.ok || !r.sessionId) { say('That didn’t start. Try again in a moment.'); return null; }
   sessionId = r.sessionId;

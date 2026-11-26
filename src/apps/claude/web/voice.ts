@@ -103,7 +103,7 @@ async function handle(raw: string): Promise<void> {
   if (CANCEL.test(t) && convo?.turnId && v?.turn?.id === convo.turnId && v.turn.status === 'running') {
     const turn = convo.turnId;
     convo = null; voiceUi.setBase({ kind: 'idle' });
-    void unlocked(() => apiCall('stop', { turn })).then(() => { void refreshView(); });
+    void unlocked(() => apiCall('stop', { turn })).catch(() => {}).then(() => { void refreshView(); });
     voiceUi.notice('Stopped Claude', 'It won’t finish that one');
     return;
   }
@@ -161,7 +161,8 @@ async function handle(raw: string): Promise<void> {
     if (!res.ok || !res.sessionId) failed(res.error === 'too_many' ? 'Two sessions are already working. Try again in a moment.' : 'That didn’t start. Try again in a moment.');
     else if (mine === token) { openSession(res.sessionId); follow(res.sessionId, null, mine); }
     return res;
-  });
+  }).catch(() => { failed('I can’t reach your PC right now.'); return undefined; });
+  if (r === undefined) return;
   if (r == null) needPin();
 }
 
@@ -174,7 +175,8 @@ async function send(go: () => Promise<{ ok: boolean; error?: string; turn?: HubT
     if (!res.ok) failed(res.error === 'open_on_pc' ? 'That session is open on your PC, so answer it there.' : 'I couldn’t send that. Try again in a moment.');
     else { void refreshView(); if (mine === token) follow(sessionId, res.turn?.id || null, mine); }
     return res;
-  });
+  }).catch(() => { failed('I can’t reach your PC right now.'); return undefined; });
+  if (r === undefined) return;
   if (r == null) needPin();
 }
 
