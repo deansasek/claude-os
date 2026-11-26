@@ -90,3 +90,14 @@ test('the PC keeps the tablet ids, and a queue made offline lands on top of what
   assert.deepEqual(shop.items.map(i => [i.text, i.done]), [['Milk', false], ['Bread', false], ['Eggs', true]]);
   assert.ok(pc.some(l => l.id === 'camping'));
 });
+
+// The Lists screen is DOM code with no unit seam, so this reads the source of refresh().
+test('a failed refresh warns that the lists may be out of date only when the PC copy is shown', () => {
+  const src = fs.readFileSync(new URL('../src/apps/lists/web/index.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const start = src.indexOf('async function refresh(');
+  assert.ok(start > 0, 'refresh() exists');
+  const body = src.slice(start, src.indexOf('\n}\n', start));
+  const catchBody = body.slice(body.lastIndexOf('} catch {'));
+  assert.match(catchBody, /local\(\)/);
+  assert.match(catchBody, /Couldn’t reach the PC, so this may be out of date\. Trying again…/);
+});

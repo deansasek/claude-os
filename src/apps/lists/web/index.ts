@@ -118,7 +118,10 @@ async function refresh(keepNote = false): Promise<void> {
     if (local() && r.ok && r.stored === false) take(await postJson<ListsResult>(`${API}/restore`, { lists }));
     else take(r);
     if (!keepNote) note = r.ok ? '' : r.error ?? '';
-  } catch { if (g === gen && !keepNote) note = loaded ? '' : 'Couldn’t reach the PC. Trying again…'; }
+  } catch {
+    // The tablet's own copy stays current (changes wait in the queue). A PC-only list may be old.
+    if (g === gen && !keepNote) note = !loaded ? 'Couldn’t reach the PC. Trying again…' : local() ? '' : 'Couldn’t reach the PC, so this may be out of date. Trying again…';
+  }
   render();
   void loadSuggest();
 }
