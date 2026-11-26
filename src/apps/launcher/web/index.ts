@@ -398,11 +398,26 @@ function installApps(): void {
     if (!r?.ok) console.warn('launcher: Play did not open');
   } catch (e) { console.warn('launcher: install apps', e); }
 }
+/** Shows one status line under the Add apps subtitle. Sets text only, never markup. */
+function showSheetNote(text: string): void {
+  const sheet = $('lnSheet');
+  let note = sheet.querySelector<HTMLElement>('.ln-sheet-note');
+  if (!note) {
+    note = document.createElement('p');
+    note.className = 'ln-panel-sub ln-sheet-note';
+    sheet.querySelector('.ln-panel-sub')!.after(note);
+  }
+  note.textContent = text;
+}
 function toggleAllowed(pkg: string): void {
   const ids = tabApps.map(a => a.id);
   const removing = ids.includes(pkg);
   const next = removing ? ids.filter(x => x !== pkg) : [...ids, pkg];
-  try { androidApps.setAllowed(next); } catch (e) { console.warn('launcher: setAllowed', e); }
+  document.querySelector('.ln-sheet-note')?.remove();   // a new try clears the last failure note
+  try { androidApps.setAllowed(next); } catch (e) {
+    console.warn('launcher: setAllowed', e);
+    showSheetNote('Couldn’t change it. Check the tablet app is up to date, then try again.');
+  }
   loadTablet();
   // an app no longer allowed leaves the layout too (a new one joins at the end, unplaced, until it is moved)
   if (removing && tabOk && !tabApps.some(a => a.id === pkg)) saveLayout();
