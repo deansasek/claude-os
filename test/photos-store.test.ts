@@ -105,3 +105,31 @@ test('a photo the PC cannot write is reported as write_failed, with no path in t
     fs.mkdirSync = realMkdir;
   }
 });
+
+test('a thumbnail the PC cannot rename is reported as write_failed, with no part file and no path in the answer', async () => {
+  const { saveThumb } = await import('../src/apps/photos/server/store.ts');
+  const realRead = fs.readdirSync;
+  const day = '2026-11-26';
+  const id = 'a1b2c3d4e5f6';
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]);
+  fs.readdirSync = ((p: fs.PathLike, o?: unknown) => (String(p) === PHOTOS ? [day] : realRead(p, o as never))) as unknown as typeof fs.readdirSync;
+  const realWrite = fs.writeFileSync, realRename = fs.renameSync, realExists = fs.existsSync;
+  // the photo itself counts as there (locate looks for it)
+  fs.existsSync = ((p: fs.PathLike) => String(p).endsWith(`${id}.jpg`) || realExists(p)) as typeof fs.existsSync;
+  // no real folder is made or touched: the writes and the rename are stubbed
+  const writes: string[] = [];
+  fs.writeFileSync = ((p: fs.PathOrFileDescriptor) => { writes.push(String(p)); })as unknown as typeof fs.writeFileSync;
+  fs.renameSync = (() => { throw Object.assign(new Error('EPERM: locked'), { code: 'EPERM' }); }) as unknown as typeof fs.renameSync;
+  try {
+    const r = saveThumb(id, jpeg);
+    assert.deepEqual(r, { ok: false, error: 'write_failed' });
+    assert.equal(JSON.stringify(r).includes(PHOTOS), false, 'no folder path reaches the answer');
+    assert.equal(writes.length, 1, 'the part file was written once');
+    assert.ok(writes[0].endsWith('_thumb.jpg.part'));
+  } finally {
+    fs.readdirSync = realRead;
+    fs.writeFileSync = realWrite;
+    fs.renameSync = realRename;
+    fs.existsSync = realExists;
+  }
+});

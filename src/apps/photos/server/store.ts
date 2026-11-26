@@ -90,8 +90,15 @@ export function saveThumb(id: string, data: Buffer): { ok: true } | { ok: false;
   if (!hit) return { ok: false, error: 'not_found' };
   const file = thumbFile(id, hit.day), part = `${file}.part`;
   if (!insidePhotos(file) || !insidePhotos(part)) return { ok: false, error: 'bad_id' };
-  fs.writeFileSync(part, data);
-  fs.renameSync(part, file);
+  // a failed write or rename leaves no part file, and the answer carries no path (the route passes the text to the tablet)
+  try {
+    fs.writeFileSync(part, data);
+    fs.renameSync(part, file);
+  } catch (e) {
+    console.log('photos: could not save a thumbnail:', (e as NodeJS.ErrnoException).code ?? 'error');
+    try { fs.rmSync(part, { force: true }); } catch { /* nothing more to do */ }
+    return { ok: false, error: 'write_failed' };
+  }
   return { ok: true };
 }
 
