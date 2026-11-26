@@ -626,7 +626,7 @@ function renderAlarms(): void {
       return `<div class="ck-arow${a.on || a.snooze ? ' on' : ''}" data-id="${a.id}">`
         + `<div class="ck-atime num">${p.hm}${p.period ? `<small>${p.period}</small>` : ''}</div>`
         + `<div class="ck-ainfo"><b>${head}</b><span>${detail}</span></div>`
-        + `<button class="ck-switch hit${a.on || a.snooze ? ' on' : ''}" data-toggle="${a.id}" role="switch" aria-checked="${a.on}" aria-label="Alarm ${alarmText(a.h, a.m)}"><i></i></button></div>`;
+        + `<button class="ck-switch hit${a.on || a.snooze ? ' on' : ''}" data-toggle="${a.id}" role="switch" aria-checked="${!!(a.on || a.snooze)}" aria-label="Alarm ${alarmText(a.h, a.m)}"><i></i></button></div>`;
     }).join('');
   }
   $('ckAlarmPresets').querySelectorAll<HTMLElement>('.ck-chip').forEach(c =>
