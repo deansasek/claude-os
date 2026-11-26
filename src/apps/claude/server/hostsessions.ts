@@ -31,7 +31,7 @@ function cleanRecords(raw: unknown): HostSessionRecord[] {
   const good: HostSessionRecord[] = [];
   for (const v of raw) {
     const r = v as Partial<HostSessionRecord> | null;
-    if (r && typeof r === 'object' && typeof r.id === 'string' && typeof r.cwd === 'string' && typeof r.title === 'string' && typeof r.createdAt === 'string') {
+    if (r && typeof r === 'object' && typeof r.id === 'string' && typeof r.cwd === 'string' && typeof r.title === 'string' && typeof r.createdAt === 'string' && Number.isFinite(Date.parse(r.createdAt))) {
       if (!seen.has(r.id) && good.length < HOST_SESSION_CAP) { seen.add(r.id); good.push({ id: r.id, cwd: r.cwd, title: r.title, createdAt: r.createdAt }); }
     } else {
       unreadable.push(v);
@@ -141,7 +141,10 @@ function allProjects(): (Project & { cwd: string })[] {
     if (!cwd || /scratch-workspaces|[\\/]Temp[\\/]|[\\/]tmp[\\/]/i.test(cwd) || !fs.existsSync(cwd)) continue;
     add(cwd, newest.at);
   }
-  for (const r of records) if (r.cwd !== SCRATCH && fs.existsSync(r.cwd)) add(r.cwd, Date.parse(r.createdAt));
+  for (const r of records) {
+    const at = Date.parse(r.createdAt);
+    if (r.cwd !== SCRATCH && Number.isFinite(at) && fs.existsSync(r.cwd)) add(r.cwd, at);   // a bad date is not listed: new Date(NaN) would throw
+  }
   const list = [...seen.values()].sort((a, b) => b.lastUsed.localeCompare(a.lastUsed)).slice(0, 12);
   list.push({ id: idFor(SCRATCH), name: 'Scratch space', detail: 'A blank folder for quick questions and one-offs', lastUsed: '', cwd: SCRATCH });
   cache = { at: Date.now(), list };
