@@ -29,11 +29,15 @@ export const isJpeg = (b: Buffer): boolean => b.length > 3 && b[0] === 0xff && b
 
 const dayName = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-/** Where a photo is, if it exists: the file's full path and its day. */
+/** A folder that is not there (ENOENT). */
+const missing = (e: unknown): boolean => (e as NodeJS.ErrnoException).code === 'ENOENT';
+
+/** Where a photo is, if it exists: the file's full path and its day. Throws when the folder cannot be read (not ENOENT), so a failed read is never taken for a photo that is gone. */
 function locate(id: string): { file: string; day: string } | null {
   if (!safeId(id)) return null;
   let days: string[];
-  try { days = fs.readdirSync(PHOTOS).filter(d => DAY.test(d)); } catch { return null; }
+  try { days = fs.readdirSync(PHOTOS).filter(d => DAY.test(d)); }
+  catch (e) { if (missing(e)) return null; throw e; }
   for (const day of days.sort().reverse()) {
     const file = path.join(PHOTOS, day, `${id}.jpg`);
     if (fs.existsSync(file)) return { file, day };
@@ -46,7 +50,9 @@ export function savePhoto(id: string, data: Buffer): { ok: true; day: string } |
   if (!safeId(id)) return { ok: false, error: 'bad_id' };
   if (data.length === 0 || data.length > MAX_BYTES) return { ok: false, error: 'too_big' };
   if (!isJpeg(data)) return { ok: false, error: 'not_jpeg' };
-  if (locate(id)) return { ok: false, error: 'exists' };
+  let existing: unknown;
+  try { existing = locate(id); } catch { return { ok: false, error: 'read_failed' }; }
+  if (existing) return { ok: false, error: 'exists' };
   const day = dayName(new Date());
   fs.mkdirSync(path.join(PHOTOS, day), { recursive: true });
   fs.writeFileSync(path.join(PHOTOS, day, `${id}.jpg`), data, { flag: 'wx' });
@@ -58,7 +64,8 @@ const thumbFile = (id: string, day: string): string => path.join(PHOTOS, day, `$
 
 /** The JPEG bytes of a photo, or null. With thumb, its thumbnail if it has one (else the picture itself). */
 export function readPhoto(id: string, thumb = false): Buffer | null {
-  const hit = locate(id);
+  let hit: ReturnType<typeof locate>;
+  try { hit = locate(id); } catch { return null; }
   if (!hit) return null;
   if (thumb) { try { return fs.readFileSync(thumbFile(id, hit.day)); } catch { /* no thumbnail yet: the picture itself */ } }
   try { return fs.readFileSync(hit.file); } catch { return null; }
@@ -69,7 +76,8 @@ export function saveThumb(id: string, data: Buffer): { ok: true } | { ok: false;
   if (!safeId(id)) return { ok: false, error: 'bad_id' };
   if (data.length === 0 || data.length > THUMB_MAX_BYTES) return { ok: false, error: 'too_big' };
   if (!isJpeg(data)) return { ok: false, error: 'not_jpeg' };
-  const hit = locate(id);
+  let hit: ReturnType<typeof locate>;
+  try { hit = locate(id); } catch { return { ok: false, error: 'read_failed' }; }
   if (!hit) return { ok: false, error: 'not_found' };
   const file = thumbFile(id, hit.day), part = `${file}.part`;
   if (!insidePhotos(file) || !insidePhotos(part)) return { ok: false, error: 'bad_id' };
@@ -99,7 +107,8 @@ function derivedFiles(id: string, day: string): string[] {
 export function deletePhotos(ids: string[]): { deleted: string[]; missing: string[]; failed: string[] } {
   const out = { deleted: [] as string[], missing: [] as string[], failed: [] as string[] };
   for (const id of new Set(ids)) {
-    const hit = locate(id);
+    let hit: ReturnType<typeof locate>;
+    try { hit = locate(id); } catch { out.failed.push(id); continue; }   // the folder could not be read: not known to be gone
     if (!hit) { out.missing.push(id); continue; }
     try { fs.unlinkSync(hit.file); } catch { out.failed.push(id); continue; }
     out.deleted.push(id);
@@ -111,9 +120,6 @@ export function deletePhotos(ids: string[]): { deleted: string[]; missing: strin
 
 export interface PhotoItem { id: string; at: string; url: string; hasThumb: boolean }
 export interface PhotoDay { day: string; photos: PhotoItem[] }
-
-/** A folder that is not there (ENOENT). */
-const missing = (e: unknown): boolean => (e as NodeJS.ErrnoException).code === 'ENOENT';
 
 /**
  * Photos newest first, grouped by day, up to limit. more: true when photos were left out at the limit.
