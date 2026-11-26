@@ -873,8 +873,9 @@ export function ago(at: number): string {
   const m = Math.round((Date.now() - at) / 60e3);
   if (m < 1) return 'now';
   if (m < 60) return `${m} min`;
-  if (m < 60 * 20) return `${Math.round(m / 60)} hr`;
   const d = new Date(at), y = new Date(); y.setDate(y.getDate() - 1);
+  // hours for anything under 20 hours, and for anything from earlier today, however old it is
+  if (m < 60 * 20 || d.toDateString() === new Date().toDateString()) return `${Math.round(m / 60)} hr`;
   if (d.toDateString() === y.toDateString()) return 'Yesterday';
   return d.toLocaleDateString([], m < 7 * 1440 ? { weekday: 'short' } : { month: 'short', day: 'numeric' });
 }
