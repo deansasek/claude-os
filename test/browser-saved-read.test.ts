@@ -23,3 +23,9 @@ test('permissions must be a plain object', () => {
   assert.equal(readSavedObject('[1]'), null);
   assert.equal(readSavedObject('7'), null);
 });
+
+test('a saved history visit with no string title or a bad time is left out, and a good one is kept', async () => {
+  const { isVisit } = await import('../src/apps/browser/web/saved-list.ts');
+  const raw = JSON.stringify([{ url: 'https://a.example', at: 1 }, { url: 'https://b.example', title: 'B', at: 2 }, { url: 'https://c.example', title: 7, at: 3 }, { url: 'https://d.example', title: 'D', at: 'x' }]);
+  assert.deepEqual(readSavedList(raw, isVisit), [{ url: 'https://b.example', title: 'B', at: 2 }]);
+});

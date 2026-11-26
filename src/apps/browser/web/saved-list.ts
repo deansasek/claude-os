@@ -5,6 +5,8 @@ const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 
 
 /** An entry with a string url (history, bookmarks, quick links). */
 export const hasUrl = (v: unknown): boolean => isObj(v) && typeof v.url === 'string';
+/** A history visit: a string url and title, and a numeric time. A visit with any other shape is left out. */
+export const isVisit = (v: unknown): boolean => hasUrl(v) && isObj(v) && typeof v.title === 'string' && typeof v.at === 'number' && Number.isFinite(v.at);
 /** An entry with a string id (tabs). */
 export const hasStringId = (v: unknown): boolean => isObj(v) && typeof v.id === 'string';
 /** An entry with a numeric id (downloads). */
