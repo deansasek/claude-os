@@ -292,19 +292,22 @@ function renderHistory(): void {
   if (!S.history.length) clearArmed = false;
   const q = historyQ.trim().toLowerCase();
   const rows = S.history.filter(v => !q || v.url.toLowerCase().includes(q) || v.title.toLowerCase().includes(q));
+  let items = '';
+  let day = '';
+  for (const v of rows) {
+    const d = dayOf(v.at);
+    if (d !== day) { day = d; items += `<div class="br-day">${esc(d)}</div>`; }
+    items += `<button class="br-item" data-hurl="${esc(v.url)}"><span class="br-ic">${I.globeSm}</span><span class="br-it-t"><b>${esc(v.title || host(v.url))}</b>`
+      + `<small>${esc(host(v.url))} · ${esc(ago(v.at))}</small></span></button>`;
+  }
+  // no rows: the empty message, so it still shows when the Clear all row is on screen
+  if (!rows.length) items = `<div class="br-empty-l">${q ? 'Nothing matches that.' : 'Pages you open will show up here.'}</div>`;
   let html = '';
   if (clearArmed) {
     html += `<div class="br-item"><span class="br-it-t"><b>Clear all of your history?</b><small>This can’t be undone.</small></span>`
       + `<span class="br-acts"><button class="br-mini danger" data-hclear="1">Clear all</button><button class="br-mini" data-hkeep="1">Keep</button></span></div>`;
   }
-  let day = '';
-  for (const v of rows) {
-    const d = dayOf(v.at);
-    if (d !== day) { day = d; html += `<div class="br-day">${esc(d)}</div>`; }
-    html += `<button class="br-item" data-hurl="${esc(v.url)}"><span class="br-ic">${I.globeSm}</span><span class="br-it-t"><b>${esc(v.title || host(v.url))}</b>`
-      + `<small>${esc(host(v.url))} · ${esc(ago(v.at))}</small></span></button>`;
-  }
-  el('brHistoryList').innerHTML = html || `<div class="br-empty-l">${q ? 'Nothing matches that.' : 'Pages you open will show up here.'}</div>`;
+  el('brHistoryList').innerHTML = html + items;
 }
 
 function openBookmarks(): void { renderBookmarks(); openOver('brBookmarks'); }
