@@ -38,9 +38,14 @@ export function screenFor(res: NewsFeedResponse | null): NewsScreen {
   return { state: 'stories', headline, shelves, notes, updated: res.updated };
 }
 
-/** Every story on the screen, by id, for the reader sheet. */
+/** The key for one story: its feed and its id. Two feeds can carry the same story under the same id. */
+export function storyKey(item: NewsItem): string {
+  return `${item.sourceId}|${item.id}`;
+}
+
+/** Every story on the screen, by storyKey, for the reader sheet. */
 export function storiesById(s: Extract<NewsScreen, { state: 'stories' }>): Map<string, NewsItem> {
-  return new Map([s.headline, ...s.shelves.flatMap(x => x.stories)].map(i => [i.id, i] as const));
+  return new Map([s.headline, ...s.shelves.flatMap(x => x.stories)].map(i => [storyKey(i), i] as const));
 }
 
 /** The picture for a story: never while SHOW_IMAGES is off. The page then shows the letter block. */

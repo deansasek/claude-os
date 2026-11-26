@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import type { NewsFeedResponse, NewsItem } from '../src/apps/news/api.ts';
 import { parseFeed } from '../src/apps/news/web/rss.ts';
 import {
-  ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, SHOW_IMAGES, storiesById, ERROR_TEXT, NO_FEED_TEXT, NO_SUMMARY_TEXT,
+  ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, SHOW_IMAGES, storiesById, storyKey, ERROR_TEXT, NO_FEED_TEXT, NO_SUMMARY_TEXT,
 } from '../src/apps/news/web/screen.ts';
 
 const T = '2026-11-24T10:00:00Z';
@@ -137,12 +137,27 @@ test('a tile opens the reader with that story, and the reader links to its origi
   if (s.state !== 'stories') assert.fail('expected stories');
   const byId = storiesById(s);
   // every tile on the screen (the shelves) finds its story; the headline is in the map too
-  for (const shelf of s.shelves) for (const tileStory of shelf.stories) assert.ok(byId.has(tileStory.id));
-  const r = readerFor(byId.get('b')!, Date.parse(T));
+  for (const shelf of s.shelves) for (const tileStory of shelf.stories) assert.ok(byId.has(storyKey(tileStory)));
+  const r = readerFor(byId.get(storyKey(story('b', 'npr')))!, Date.parse(T));
   assert.equal(r.title, 'NPR tile');
   assert.equal(r.description, 'NPR words.');
   assert.equal(r.link, 'https://example.com/b');
   assert.equal(r.source, 'NPR');
+});
+
+test('the same story id in two feeds: each storyKey gives the item with its own source', () => {
+  const res: NewsFeedResponse = {
+    status: 'ok', updated: T,
+    items: [story('a', 'bbc'), story('x', 'bbc'), story('x', 'npr')],
+    sources: [bbc(), npr()],
+  };
+  const s = screenFor(res);
+  if (s.state !== 'stories') assert.fail('expected stories');
+  const byId = storiesById(s);
+  assert.equal(byId.get(storyKey(story('x', 'bbc')))?.sourceId, 'bbc');
+  assert.equal(byId.get(storyKey(story('x', 'bbc')))?.source, 'BBC News');
+  assert.equal(byId.get(storyKey(story('x', 'npr')))?.sourceId, 'npr');
+  assert.equal(byId.get(storyKey(story('x', 'npr')))?.source, 'NPR');
 });
 
 test('the page asks for the feed no more often than every 15 minutes', () => {
