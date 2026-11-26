@@ -28,3 +28,18 @@ test('a Look new session reads projects on its own and says when Scratch space i
   assert.match(missing[0], /I need a Scratch space project on your PC first\./);
   assert.doesNotMatch(missing[0], /can’t reach your PC/);
 });
+
+test('a Look follow-up that hits too many sessions keeps its conversation', () => {
+  // the too_many branch comes before the reset, so the Look session id survives
+  const tooMany = body.indexOf("v.reason === 'too_many'");
+  assert.ok(tooMany > 0, 'send() has a too_many branch');
+  assert.match(body.slice(tooMany, tooMany + 160), /Two sessions are already working\. Try again in a moment\./);
+  assert.ok(tooMany < body.indexOf('sessionId = null'), 'the too_many branch comes before sessionId = null');
+});
+
+test('a Look new session that fails with too_many says two sessions are working', () => {
+  const fail = body.indexOf("r.error === 'too_many'");
+  assert.ok(fail > 0, 'send() checks the new-session error for too_many');
+  assert.match(body.slice(fail, fail + 160), /Two sessions are already working\. Try again in a moment\./);
+  assert.ok(fail < body.indexOf("That didn’t start."), 'the too_many check comes before the generic failure line');
+});
