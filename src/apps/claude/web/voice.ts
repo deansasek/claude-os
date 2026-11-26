@@ -102,9 +102,18 @@ async function handle(raw: string): Promise<void> {
   // "stop" / "cancel" while Claude is working on what you asked: stop the turn
   if (CANCEL.test(t) && convo?.turnId && v?.turn?.id === convo.turnId && v.turn.status === 'running') {
     const turn = convo.turnId;
-    convo = null; voiceUi.setBase({ kind: 'idle' });
-    void unlocked(() => apiCall('stop', { turn })).catch(() => {}).then(() => { void refreshView(); });
-    voiceUi.notice('Stopped Claude', 'It won’t finish that one');
+    // the conversation stays until the PC answers: a failed stop leaves the turn running, so "stop" can be said again
+    let r: { ok: boolean; error?: string } | null;
+    try { r = await unlocked(() => apiCall<{ ok: boolean; error?: string }>('stop', { turn })); }
+    catch { r = { ok: false, error: 'unreachable' }; }
+    void refreshView();
+    if (r === null) { needPin(); return; }   // the PIN pad came up and the stop did not run
+    if (r.ok) {
+      convo = null; voiceUi.setBase({ kind: 'idle' });
+      voiceUi.notice('Stopped Claude', 'It won’t finish that one');
+    } else {
+      voiceUi.notice('Couldn’t stop Claude', 'Can’t reach your PC. Try again.');
+    }
     return;
   }
   if (CANCEL.test(t)) { sayLine('ok!'); voiceUi.notice('Okay', ''); convo = null; voiceUi.setBase({ kind: 'idle' }); expect = 'request'; return; }
