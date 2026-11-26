@@ -13,7 +13,9 @@ export function dur(ms: number, ceil = true): string {
 /** "8h 12m", "12m", "40s" */
 export function words(ms: number): string {
   const m = Math.round(ms / 60e3);
-  if (ms < 60e3) return `${Math.max(1, Math.round(ms / 1e3))}s`;
+  // seconds only while they round to under a minute: 59.7 s is "1m", not "60s"
+  const sec = Math.round(ms / 1e3);
+  if (sec < 60) return `${Math.max(1, sec)}s`;
   return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60 ? `${m % 60}m` : ''}`.trim() : `${m}m`;
 }
 
