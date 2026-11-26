@@ -263,7 +263,6 @@
     browserReadPage: () => j({ ok: false, error: 'no_browser' }),
     browserScreenshot: () => j({ ok: false, error: 'no_browser' }),
     browserType: () => j({ ok: false, error: 'no_browser' }),
-    newsFetch: () => j({ status: 'error', error: 'The news feed needs the tablet.' }),
     screenshot: () => j({ ok: false }),
     updateAvailable: () => j({ status: 'not owner' }),
     updateCheck: () => j({ status: 'error', error: 'Updates come from the tablet.' }),
