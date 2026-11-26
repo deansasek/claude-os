@@ -132,6 +132,7 @@ async function send(text: string, photoIds: string[]): Promise<{ sessionId: stri
       return { sessionId: id, turnId: r.turn?.id || null };
     }
     if (v.reason === 'running') { say('Claude is still working on the last one.'); return null; }
+    if (v.reason === 'too_many') { say('Two sessions are already working. Try again in a moment.'); return null; }
     sessionId = null;   // the session has gone on: start a fresh one below
   }
   // a failed read is not an empty list: only a read that worked can say there is no Scratch space
@@ -144,6 +145,7 @@ async function send(text: string, photoIds: string[]): Promise<{ sessionId: stri
   try { r = await unlocked(() => apiCall<NewSessionResult>('new', { project: scratch.id, text, photoIds, voice: true, ...voiceDefaults() })); }
   catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
   if (r == null) { say('Enter your PIN on the screen first.'); return null; }
+  if (!r.ok && r.error === 'too_many') { say('Two sessions are already working. Try again in a moment.'); return null; }
   if (!r.ok || !r.sessionId) { say('That didn’t start. Try again in a moment.'); return null; }
   sessionId = r.sessionId;
   return { sessionId, turnId: null };
