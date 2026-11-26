@@ -107,3 +107,10 @@ test('saving a backup over an unreadable file keeps the old bytes as .corrupt', 
     fs.rmSync(`${file}.corrupt`, { force: true });
   }
 });
+
+test('a restore this tablet could not write is reported as not complete, and the page does not reload for it', () => {
+  assert.equal(restoreOutcome(-3).msg, 'This tablet couldn’t save its settings, so the restore is not complete.');
+  assert.equal(restoreOutcome(-3).note, null);
+  const src = fs.readFileSync(new URL('../src/apps/settings/web/backup.ts', import.meta.url), 'utf8');
+  assert.match(src, /if \(failed\) return -3;/);
+});

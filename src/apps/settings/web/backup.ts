@@ -44,19 +44,26 @@ export function savedNote(saved: string, count: number): string {
   return `${when} · ${count} settings`;
 }
 
-/** Write the PC's settings back to this tablet. Returns how many were written, -1 when the PC cannot be reached, or -2 when its backup cannot be read. */
+/** Write the PC's settings back to this tablet. Returns how many were written, -1 when the PC cannot be reached, -2 when its backup cannot be read, or -3 when this tablet's storage would not take some settings. */
 export async function restoreSettings(): Promise<number> {
   const b = await loadSettings();
   if (!b) return -1;
   if (b.ok === false) return -2;
-  const values = backupValues(b.values);
-  for (const [k, v] of Object.entries(values)) store.set(k, v);
+  const values = backupValues(b.values ?? {});
+  // each write is read back: store.set swallows a refused write, so a setting that did not land is counted as a failure
+  let failed = 0;
+  for (const [k, v] of Object.entries(values)) {
+    try { localStorage.setItem(k, v); } catch { failed++; continue; }
+    if (localStorage.getItem(k) !== v) failed++;
+  }
+  if (failed) return -3;
   return Object.keys(values).length;
 }
 
 /** The status line and the note under Save for a restore that wrote `n` settings (see restoreSettings). */
 export function restoreOutcome(n: number): { msg: string; note: string | null } {
   if (n === -2) return { msg: 'The PC couldn’t read its settings backup, so nothing was restored.', note: null };
+  if (n === -3) return { msg: 'This tablet couldn’t save its settings, so the restore is not complete.', note: null };
   if (n < 0) return { msg: 'Can’t reach your PC. Try again when it’s back.', note: backupNote(null) };
   if (n === 0) return { msg: 'Nothing is saved on your PC yet. Tap Save to PC first.', note: null };
   return { msg: '', note: null };
