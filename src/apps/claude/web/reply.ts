@@ -594,9 +594,9 @@ export const chosenFolder = (): Project | null => (mode === 'new' ? chosen : nul
  * PIN pad had to come up first (the action then still runs once you've typed the PIN).
  */
 export function unlocked<T>(fn: () => Promise<T>): Promise<T | null> {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     let ran = false;
-    void withPin(async () => { const r = await fn(); ran = true; resolve(r); }).then(() => { if (!ran) resolve(null); });
+    void withPin(async () => { const r = await fn(); ran = true; resolve(r); }).then(() => { if (!ran) resolve(null); }, reject);
   });
 }
 /** POST to /api/claude/<path> with the unlock token; throws 'locked_out' when the PIN is needed. */
