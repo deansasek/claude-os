@@ -38,7 +38,9 @@ test('MainActivity.onCreate starts the retries next to the existing reapply and 
 });
 
 test('the retries add no dialog, permission request or pref default change', () => {
-  const block = adb.slice(adb.indexOf('static final long[] RETRY_MS'), adb.indexOf('static void retryAtStart'));
+  // the array and retryAtStart's body: the slice ends at the next method, watch
+  const block = adb.slice(adb.indexOf('static final long[] RETRY_MS'), adb.indexOf('static synchronized void watch'));
+  assert.match(block, /postDelayed/, 'the retry body is in the checked slice');
   assert.doesNotMatch(block, /requestPermissions|Dialog|Toast|startActivity/);
   assert.match(adb, /private static final String PREF_KEEP = "adbWifiKeep";/);
   assert.match(adb, /static boolean keep\(Context c\) \{ return prefs\(c\)\.getBoolean\(PREF_KEEP, false\); \}/);
