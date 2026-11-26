@@ -10,7 +10,20 @@ const geoCache = new Map<string, any>();
 let wxCache: { key: string; at: number; data: WeatherOk } | null = null;
 let inflight: { key: string; promise: Promise<any> } | null = null;   // the forecast request now on its way
 
-export const readConfig = (): Config => readJson<Config>(CONFIG_FILE) || {};
+/** The saved config with only the fields that are the right shape: coordinates on the map, a city name, a known unit. Anything else is dropped. */
+export function cleanConfig(raw: unknown): Config {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const o = raw as Record<string, unknown>;
+  const c: Config = {};
+  if (typeof o.lat === 'number' && Number.isFinite(o.lat) && o.lat >= -90 && o.lat <= 90) c.lat = o.lat;
+  if (typeof o.lon === 'number' && Number.isFinite(o.lon) && o.lon >= -180 && o.lon <= 180) c.lon = o.lon;
+  if (typeof o.place === 'string') c.place = o.place;
+  if (typeof o.city === 'string') c.city = o.city;
+  if (o.units === 'celsius' || o.units === 'fahrenheit') c.units = o.units;
+  return c;
+}
+
+export const readConfig = (): Config => cleanConfig(readJson<unknown>(CONFIG_FILE));
 
 async function getJson(url: string): Promise<any> {
   const r = await fetch(url, { headers: { 'User-Agent': 'claude-usage-meter', Accept: 'application/json' }, signal: AbortSignal.timeout(20e3) });
@@ -106,7 +119,13 @@ export async function searchPlaces(q: string): Promise<Place[]> {
 
 /** Called by the Hub's city picker. Merges into meter-config.json. */
 export async function saveLocation(body: LocationUpdate): Promise<Weather> {
-  const cfg = readJsonOrSetAside<Config>(CONFIG_FILE) ?? {};   // a bad file is set aside, not saved over
+  // a file that is not an object is left as it is (never saved over); a bad file is set aside first
+  const raw = readJsonOrSetAside<unknown>(CONFIG_FILE) ?? {};
+  if (typeof raw !== 'object' || Array.isArray(raw)) return { status: 'error', saved: false, error: 'The PC couldn’t save the weather settings.' };
+  // the other keys stay; the weather fields are checked, and a bad one is dropped
+  const clean = cleanConfig(raw) as Record<string, unknown>;
+  const cfg = { ...(raw as Record<string, unknown>) } as Record<string, unknown>;
+  for (const k of ['lat', 'lon', 'place', 'city', 'units']) { if (k in clean) cfg[k] = clean[k]; else delete cfg[k]; }
   if (body.lat != null && body.lon != null) {
     const lat = Number(body.lat), lon = Number(body.lon);
     if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) return { status: 'error', saved: false, error: 'That place isn’t on the map.' };

@@ -62,7 +62,7 @@ const saveBody = weatherSrc.slice(saveStart, weatherSrc.indexOf('\n}\n', saveSta
 
 test('saveLocation reads meter-config.json with readJsonOrSetAside, not readConfig', () => {
   assert.ok(saveStart > 0, 'saveLocation exists');
-  assert.match(saveBody, /readJsonOrSetAside<Config>\(CONFIG_FILE\) \?\? \{\}/);
+  assert.match(saveBody, /readJsonOrSetAside<unknown>\(CONFIG_FILE\) \?\? \{\}/);
   assert.doesNotMatch(saveBody, /readConfig\(\)/);
 });
 
