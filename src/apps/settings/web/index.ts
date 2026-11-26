@@ -527,8 +527,13 @@ function paintUsage(): void {
 // ---------- Your Claude: instructions for every new session (kept on the PC) ----------
 let instructions = '';
 let instructionsLoaded = false;
+let instructionsFailed = false;
 async function loadInstructions(): Promise<void> {
-  try { instructions = (await getJson<{ text: string }>('/api/settings/instructions')).text || ''; instructionsLoaded = true; } catch { /* keep what we have */ }
+  try {
+    const r = await fetch('/api/settings/instructions', { cache: 'no-store' });
+    if (!r.ok) throw new Error(`PC answered ${r.status}`);
+    instructions = ((await r.json()) as { text: string }).text || ''; instructionsLoaded = true; instructionsFailed = false;
+  } catch { instructionsFailed = true; /* keep what we have */ }
   if (section === 'yourclaude') paintInstructions();
 }
 function paintInstructions(): void {
@@ -537,9 +542,13 @@ function paintInstructions(): void {
   v.classList.toggle('st-unset', !instructions);
   $('stInstrNote').textContent = instructionsLoaded
     ? 'Tap to write them. Claude follows them in sessions you start from now on.'
-    : 'Checking your PC…';
+    : instructionsFailed ? 'Couldn’t reach your PC. Your instructions show when it’s back.' : 'Checking your PC…';
 }
-function editInstructions(): void {
+async function editInstructions(): Promise<void> {
+  if (!instructionsLoaded) {
+    await loadInstructions();
+    if (!instructionsLoaded) { confirmSheet('Couldn’t reach your PC', 'Try again when it is back on.', 'OK', () => {}); return; }
+  }
   Keyboard.open({
     value: instructions, placeholder: 'How Claude should work with you', done: 'Save', autoCap: true, max: INSTRUCTIONS_MAX,
     onDone: text => { void saveInstructions(text); },
