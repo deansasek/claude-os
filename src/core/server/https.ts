@@ -3,6 +3,7 @@
 // trusts the authority once: it downloads /claudeos-ca.cer from the plain HTTP port, installs the profile, and turns
 // on full trust. Nothing here reaches the internet.
 import { execFileSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import https from 'node:https';
 import os from 'node:os';
@@ -43,11 +44,24 @@ const runOpenssl: Run = (file, args, cwd) => {
   }
 };
 
+/** Remake the server certificate this many days before it expires. */
+const RENEW_BEFORE_DAYS = 30;
+
+/** True when the server certificate file is missing, unreadable, or expires within RENEW_BEFORE_DAYS of `now`. */
+function serverCertExpiringSoon(certPath: string, now: Date): boolean {
+  try {
+    const expires = Date.parse(new crypto.X509Certificate(fs.readFileSync(certPath)).validTo);
+    return Number.isNaN(expires) || expires - now.getTime() < RENEW_BEFORE_DAYS * 86_400_000;
+  } catch {
+    return true;
+  }
+}
+
 /**
  * Make the authority once, and the server certificate for these addresses. The server certificate is remade when the
- * addresses change (a new Wi-Fi address, say). Returns the file set.
+ * addresses change (a new Wi-Fi address, say), or when it is close to expiry. Returns the file set.
  */
-export function ensureCertificates(stateDir: string, names: string[], run: Run = runOpenssl): CertFiles {
+export function ensureCertificates(stateDir: string, names: string[], run: Run = runOpenssl, now: Date = new Date()): CertFiles {
   const f = certFiles(stateDir);
   fs.mkdirSync(f.dir, { recursive: true });
   const want = altNames(names);
@@ -58,7 +72,7 @@ export function ensureCertificates(stateDir: string, names: string[], run: Run =
       '-addext', 'basicConstraints=critical,CA:TRUE', '-addext', 'keyUsage=critical,keyCertSign,cRLSign'], f.dir);
     run('openssl', ['x509', '-in', f.caCert, '-outform', 'DER', '-out', f.caDer], f.dir);
   }
-  if (!fs.existsSync(f.cert) || !fs.existsSync(f.key) || have !== want) {
+  if (!fs.existsSync(f.cert) || !fs.existsSync(f.key) || have !== want || serverCertExpiringSoon(f.cert, now)) {
     const ext = path.join(f.dir, 'server.ext');
     fs.writeFileSync(ext, `basicConstraints=CA:FALSE\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth\nsubjectAltName=${want}\n`);
     run('openssl', ['req', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes',
