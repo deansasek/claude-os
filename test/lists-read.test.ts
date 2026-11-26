@@ -14,9 +14,17 @@ test('the tablet copy is used when present, and the PC is not asked', async () =
   assert.equal(asked, 0);
 });
 
-test('the PC is used when there is no copy (first run, Nest Hub), and a PC with no lists reads as none', async () => {
+test('the PC is used when there is no copy (first run, Nest Hub)', async () => {
   assert.deepEqual(await pickLists(null, async () => pc), pc.lists);
-  assert.deepEqual(await pickLists(null, async () => ({ ok: false, lists: undefined as unknown as FamilyList[], error: 'x' })), []);
+});
+
+test('a PC answer with ok: true and no lists array reads as none', async () => {
+  assert.deepEqual(await pickLists(null, async () => ({ ok: true, lists: undefined as unknown as FamilyList[] })), []);
+});
+
+test('a PC answer with ok: false rejects with the PC error, not empty lists', async () => {
+  const unreadable = 'The lists file on the PC couldn’t be read, so nothing was changed.';
+  await assert.rejects(pickLists(null, async () => ({ ok: false, lists: [], error: unreadable, retry: true })), (e: Error) => e.message === unreadable);
 });
 
 test('a PC that cannot be reached still throws, so the caller can say so', async () => {
