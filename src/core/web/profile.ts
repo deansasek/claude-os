@@ -29,7 +29,9 @@ export async function refreshProfile(): Promise<void> {
 export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (!words.length) return '';
-  const first = words[0][0], last = words.length > 1 ? words[words.length - 1][0] : (words[0][1] ?? '');
+  // split into characters, not code units: an emoji or another astral letter is one character, not half of one
+  const chars = words.map(w => Array.from(w));
+  const first = chars[0][0] ?? '', last = chars.length > 1 ? (chars[chars.length - 1][0] ?? '') : (chars[0][1] ?? '');
   return (first + last).toUpperCase();
 }
 
