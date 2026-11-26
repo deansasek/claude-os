@@ -422,6 +422,13 @@ async function connectorCommand(day: 'today' | 'tomorrow', cachedOnly = false): 
   return { say: `${day === 'today' ? 'Coming up' : 'Tomorrow'}: ${words}.`, react: 'look', app: 'calendar' };
 }
 
+/** A write the PC could not take: writeList queued it on the tablet and threw queued: true. Any other error is rethrown,
+ *  so the caller's catch says it can't reach the list. */
+function queuedReply(e: unknown, said: string): CommandResult {
+  if (!isQueued(e)) throw e;
+  return { say: `${said} The PC will get it when it’s back.`, react: 'hop' };
+}
+
 /** The family's own tick-off lists (id and name), for voice. Shopping, To-do and Notes are not among them. */
 async function voiceCustomLists(): Promise<{ id: string; name: string }[]> {
   try {
@@ -451,7 +458,9 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, true);
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
-      const r = await writeList('tick', { list: c.list, id: hit.id, done: true });
+      let r: ListsResult;
+      try { r = await writeList('tick', { list: c.list, id: hit.id, done: true }); }
+      catch (e) { return queuedReply(e, `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`); }
       if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
       return { say: `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`, react: 'hop' };
     }
@@ -468,7 +477,9 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       return { say: addManyReply(c.texts, ok, waiting, name), react: 'hop' };
     }
     if (c.op === 'clear') {
-      const r = await writeList('clear-done', { list: c.list });
+      let r: ListsResult;
+      try { r = await writeList('clear-done', { list: c.list }); }
+      catch (e) { return queuedReply(e, `Cleared the ticked items on ${name}.`); }
       if (!r?.ok) return { say: r?.error ?? `I couldn’t clear ${name}.` };
       return { say: `Cleared the ticked items on ${name}.`, react: 'hop' };
     }
@@ -479,7 +490,9 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, false);
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
-      const r = await writeList('remove', { list: c.list, id: hit.id });
+      let r: ListsResult;
+      try { r = await writeList('remove', { list: c.list, id: hit.id }); }
+      catch (e) { return queuedReply(e, `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`); }
       if (!r?.ok) return { say: r?.error ?? `I couldn’t remove that from ${name}.` };
       return { say: `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`, react: 'hop' };
     }
@@ -509,7 +522,9 @@ const spokenName = (l: { id: string; name: string }): string =>
 
 /** POST /api/lists/edit and the reply to say. */
 async function editSay(list: string, id: string, was: string, to: string, name: string): Promise<CommandResult> {
-  const r = await writeList('edit', { list, id, text: to });
+  let r: ListsResult;
+  try { r = await writeList('edit', { list, id, text: to }); }
+  catch (e) { return queuedReply(e, `Changed ${lower(was)} to ${lower(to)} on ${name}.`); }
   if (!r?.ok) return { say: r?.error ?? `I couldn’t change that on ${name}.` };
   return { say: `Changed ${lower(was)} to ${lower(r.item?.text ?? to)} on ${name}.`, react: 'hop' };
 }

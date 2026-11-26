@@ -103,3 +103,21 @@ test('the reply says how many went, and which are waiting for the PC', () => {
   assert.equal(addManyReply(['Milk', 'Eggs'], 0, 2, 'the shopping list'), 'I can’t reach the shopping list right now. The 2 items will be added when the PC is back.');
   assert.equal(addManyReply(['Milk'], 0, 1, 'the shopping list'), 'I can’t reach the shopping list right now. It will be added when the PC is back.');
 });
+
+test('tick, remove, edit and clear say the PC will get a queued change, through one helper', () => {
+  const src = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/core/web/voice-commands.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // the helper: a queued write (isQueued) gets the will-get-it wording; any other error is rethrown
+  assert.match(src, /function queuedReply\(e: unknown, said: string\): CommandResult \{\s*if \(!isQueued\(e\)\) throw e;\s*return \{ say: `\$\{said\} The PC will get it when it’s back\.`, react: 'hop' \};/);
+  // each write sits in its own try, and its catch goes through the helper
+  assert.match(src, /writeList\('tick', [^\n]*\);\s*\}\s*catch \(e\) \{ return queuedReply\(e, `Ticked off /);
+  assert.match(src, /writeList\('remove', [^\n]*\);\s*\}\s*catch \(e\) \{ return queuedReply\(e, `Removed /);
+  assert.match(src, /writeList\('edit', [^\n]*\);\s*\}\s*catch \(e\) \{ return queuedReply\(e, `Changed /);
+  assert.match(src, /writeList\('clear-done', [^\n]*\);\s*\}\s*catch \(e\) \{ return queuedReply\(e, `Cleared the ticked items /);
+});
+
+test('other errors from those writes are rethrown to the outer catch, which says can’t reach', () => {
+  const src = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/core/web/voice-commands.ts'), 'utf8').replace(/\r\n/g, '\n');
+  // exactly the four writes go through the helper: no other catch swallows an error
+  assert.equal((src.match(/catch \(e\) \{ return queuedReply\(e, /g) ?? []).length, 4);
+  assert.match(src, /\} catch \{ return \{ say: `I can’t reach \$\{name\} right now\.` \}; \}/);
+});
