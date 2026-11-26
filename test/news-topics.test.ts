@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
 import { FEEDS } from '../src/apps/news/web/feeds.ts';
-import { activeFeeds, cleanChoices, topicsFor } from '../src/apps/news/web/topics.ts';
+import { activeFeeds, cleanChoices, topicRows, topicsFor } from '../src/apps/news/web/topics.ts';
 import { newsFeed } from '../src/apps/news/server/news.ts';
 import { setTopic, topicChoices, topicsView } from '../src/apps/news/server/topics.ts';
 
@@ -54,4 +54,38 @@ test('an unknown topic name is refused and nothing is saved', () => {
 test('unknown names in the saved file are dropped', () => {
   assert.deepEqual(cleanChoices({ bbc: false, sport: false, npr: 'yes' }, FEEDS), { bbc: false });
   assert.deepEqual(cleanChoices(null, FEEDS), {});
+});
+
+test('topic rows: loaded shows one switch per topic that reflects the choices', () => {
+  const rows = topicRows(FEEDS, { 'bbc-world': false }, 'loaded', async () => {});
+  assert.equal(rows.length, FEEDS.length);
+  assert.ok(rows.every(r => r.kind === 'switch'));
+  const off = rows.find(r => r.id === 'topic-bbc-world');
+  assert.ok(off && off.kind === 'switch' && off.get() === false);
+  const on = rows.find(r => r.id === 'topic-bbc');
+  assert.ok(on && on.kind === 'switch' && on.get() === true);
+});
+
+test('topic rows: a switch saves through the callback with its topic id', async () => {
+  const saved: [string, boolean][] = [];
+  const rows = topicRows(FEEDS, {}, 'loaded', async (id, on) => { saved.push([id, on]); });
+  const row = rows.find(r => r.id === 'topic-bbc-world');
+  assert.ok(row && row.kind === 'switch');
+  await row.set(false);
+  assert.deepEqual(saved, [['bbc-world', false]]);
+});
+
+test('topic rows: loading shows an info row, not switches', () => {
+  const rows = topicRows(FEEDS, {}, 'loading', async () => {});
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].kind, 'info');
+  assert.equal(rows[0].kind === 'info' && rows[0].value(), 'Loading…');
+});
+
+test('topic rows: failed shows an info row with the PC detail, not switches', () => {
+  const rows = topicRows(FEEDS, {}, 'failed', async () => {});
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].kind, 'info');
+  assert.equal(rows[0].detail, 'Can’t reach the PC right now.');
+  assert.equal(rows[0].kind === 'info' && rows[0].value(), 'Couldn’t load');
 });

@@ -11,7 +11,7 @@ import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../
 import type { NewsFeedResponse, NewsItem, NewsTopicsResponse } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { FEEDS } from './feeds.ts';
-import { activeFeeds, isOn, type TopicChoices } from './topics.ts';
+import { activeFeeds, topicRows, type TopicChoices } from './topics.ts';
 import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
 import { feedSource, tabletFeed, type KeyValue } from './tablet.ts';
 
@@ -22,6 +22,8 @@ let hasStories = false;                        // the screen currently shows sto
 let stories = new Map<string, NewsItem>();     // the stories on the screen, by id, for the reader sheet
 let choices: TopicChoices = {};                // the topics the owner has switched off (web/topics.ts); all on until the PC says otherwise
 let topicsDirty = false;                       // a topic changed in Settings: the next time News shows, it reads the feeds again
+let topicsLoaded = false;                      // the PC has answered with the topics at least once (the switches show)
+let topicsFailed = false;                      // the last topic read got no answer from the PC (Settings says so, no switches)
 
 const clockTime = (iso: string | null): string =>
   iso && !Number.isNaN(Date.parse(iso)) ? whenText(new Date(iso)) : '';
@@ -197,8 +199,14 @@ async function loadTopics(): Promise<void> {
   try {
     const r = await getJson<NewsTopicsResponse>('/api/news/topics');
     choices = Object.fromEntries(r.topics.map(t => [t.id, t.on]));
+    topicsLoaded = true;
+    topicsFailed = false;
     appSettingsChanged();
-  } catch { /* keep the choices already known */ }
+  } catch {
+    // keep the choices already known; with none, Settings shows the topics could not load
+    topicsFailed = true;
+    appSettingsChanged();
+  }
 }
 
 /** Saves one topic on or off on the PC. Throws when the PC does not save it, so Settings shows the error. */
@@ -210,15 +218,12 @@ async function saveTopic(id: string, on: boolean): Promise<void> {
   appSettingsChanged();
 }
 
-/** Settings → Apps → News: one switch per topic. Every topic starts on. */
+/** Settings → Apps → News: one switch per topic once the PC has answered; until then, an info row (web/topics.ts). */
 function registerSettings(): void {
   registerAppSettings({
     app: manifest.id, name: manifest.name, icon: appIcon('news'), blurb: 'Which news topics the screen shows',
-    rows: (): SettingRow[] => FEEDS.map((f): SettingRow => ({
-      kind: 'switch', id: `topic-${f.id}`, title: f.name, detail: 'Shows its shelf on News.',
-      get: () => isOn(choices, f.id),
-      set: v => saveTopic(f.id, v),
-    })),
+    rows: (): SettingRow[] => topicRows(FEEDS, choices,
+      topicsLoaded ? 'loaded' : topicsFailed ? 'failed' : 'loading', saveTopic),
   });
 }
 
