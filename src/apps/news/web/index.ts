@@ -1,6 +1,7 @@
 // The News app: a top story, one shelf per feed, and a reader sheet for one story. Stories come from /api/news/feed.
 // Text is set with textContent, never innerHTML, so a feed's words cannot inject markup.
 import { getJson, postJson, report } from '../../../core/web/dom.ts';
+import { whenText } from '../../../core/web/format.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { critterSvg } from '../../../core/web/critter-svg.ts';
@@ -23,7 +24,7 @@ let choices: TopicChoices = {};                // the topics the owner has switc
 let topicsDirty = false;                       // a topic changed in Settings: the next time News shows, it reads the feeds again
 
 const clockTime = (iso: string | null): string =>
-  iso && !Number.isNaN(Date.parse(iso)) ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '';
+  iso && !Number.isNaN(Date.parse(iso)) ? whenText(new Date(iso)) : '';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);

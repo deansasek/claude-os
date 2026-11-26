@@ -2,7 +2,7 @@
 //   an hour in the strip → that hour      a day in the week → that day     the big temperature → °F / °C
 //   the critter → a hop and a tip          the place name → pick a different city (saved on the server)
 import { esc, getJson, params, postJson, replay, report, store } from '../../../core/web/dom.ts';
-import { clock, localDate, localHour } from '../../../core/web/format.ts';
+import { localDate, localHour, whenText } from '../../../core/web/format.ts';
 import { inkSay } from '../../../core/web/ink.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -285,7 +285,7 @@ function renderWx(): void {
 
   // header
   $('wPill').className = `live ${stale ? 'bad' : 'ok'}`;
-  $('wPillText').textContent = stale ? `Offline · ${clock(updated)}` : `Updated ${clock(updated)}`;
+  $('wPillText').textContent = stale ? `Offline · ${whenText(updated)}` : `Updated ${whenText(updated)}`;
   $('wPlace').textContent = w.place || 'Your city';
   $('wPlaceBtn').classList.remove('unset');
   $('wPlaceBtn').style.visibility = '';
