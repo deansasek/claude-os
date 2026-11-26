@@ -28,7 +28,9 @@ async function directory(pathAndQuery: string): Promise<unknown[]> {
       const r = await fetch(`https://${host}/json/${pathAndQuery}`, { headers: HEADERS, signal: AbortSignal.timeout(8e3) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const body: unknown = await r.json();
-      const list = Array.isArray(body) ? body : [];
+      // the directory always answers a list: anything else is a bad mirror, so the next one is tried
+      if (!Array.isArray(body)) throw new Error('the mirror did not send a list');
+      const list = body;
       lastGood = host;
       if (cache.size > 100) cache.clear();
       cache.set(pathAndQuery, { at: Date.now(), body: list });
