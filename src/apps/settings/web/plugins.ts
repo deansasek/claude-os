@@ -46,6 +46,7 @@ const ERRORS: Record<string, string> = {
 
 let deps!: Deps;
 let view: PluginsView | null = null;
+let stale = false;            // the last read failed and the list on screen is the one we had before
 let loading = false;
 let tab: Tab = 'all';
 let filter = '';
@@ -119,6 +120,7 @@ export function paintPlugins(): void {
     return;
   }
   if (loading) note.textContent = 'Checking again…';
+  else if (stale) { note.textContent = 'Couldn’t reach your PC, so this list may be out of date.'; again.hidden = false; }
   else if (view.probe?.error) { note.textContent = `Couldn’t check the connectors and servers: ${view.probe.error}`; again.hidden = false; }
   else note.textContent = 'Applies to new sessions and to replies you send from now on. Your Claude Code settings on this PC stay as they are.';
 
@@ -141,8 +143,8 @@ export async function loadPlugins(fresh = false): Promise<void> {
   if (loading) return;
   loading = true;
   paintPlugins();
-  try { view = await getJson<PluginsView>(`/api/settings/plugins${fresh ? '?fresh=1' : ''}`, PLUGINS_TIMEOUT_MS); }
-  catch { /* keep what we had */ }
+  try { view = await getJson<PluginsView>(`/api/settings/plugins${fresh ? '?fresh=1' : ''}`, PLUGINS_TIMEOUT_MS); stale = false; }
+  catch { stale = view !== null; /* keep what we had */ }
   finally { loading = false; }
   paintPlugins();
   if (openKey) paintDetail();
