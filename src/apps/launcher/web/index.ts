@@ -440,13 +440,19 @@ let lists: SearchSources['lists'] = [];
 let sessions: SearchSources['sessions'] = [];
 let loadedAt = 0;
 let searchReadFailed = false;
+let listsReadFailed = false;
 
 async function loadSearchData(): Promise<void> {
   if (Date.now() - loadedAt < 60e3) return;   // read again at most once a minute
   loadedAt = Date.now();
   try {
     lists = (await readLists()).map(l => ({ id: l.id, name: l.name, items: l.items.map(i => i.text) }));
-  } catch { lists = []; }
+    listsReadFailed = false;
+  } catch {
+    lists = [];
+    loadedAt = 0;   // read again on the next search open
+    listsReadFailed = true;
+  }
   try {
     const u = await getJson<{ sessions?: { id: string | null; title: string; folder: string }[] }>('/api/claude/usage');
     sessions = (u.sessions ?? []).filter(s => !!s.id).map(s => ({ id: s.id!, title: s.title, folder: s.folder }));
@@ -471,7 +477,7 @@ function paintResults(): void {
   $('lnResults').hidden = !on;
   $('lnResults').innerHTML = !on ? '' : hits.length
     ? hits.map((h, i) => `<button class="ln-result hit" data-hit="${i}"><b>${esc(h.label)}</b><span>${esc(h.sub)}</span></button>`).join('')
-    : `<p class="ln-empty">Nothing matches “${esc(query)}”.${searchReadFailed ? ' Claude sessions couldn’t be read from your PC.' : ''}</p>`;
+    : `<p class="ln-empty">Nothing matches “${esc(query)}”.${listsReadFailed && searchReadFailed ? ' Lists and Claude sessions couldn’t be read from your PC.' : listsReadFailed ? ' Lists couldn’t be read from your PC.' : searchReadFailed ? ' Claude sessions couldn’t be read from your PC.' : ''}</p>`;
   $('lnSearchText').textContent = query || 'Search';
   $('lnSearch').classList.toggle('has', on);
   $('lnSearchClear').hidden = !on;
