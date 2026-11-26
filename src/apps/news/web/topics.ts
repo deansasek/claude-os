@@ -1,6 +1,7 @@
 // The News topics the owner switches on or off in Settings (#357). A topic is a feed in web/feeds.ts, named by its id.
 // Every topic is on until the owner turns it off. Pure: used by the PC route (server/topics.ts) and the page (index.ts).
 import type { NewsTopic } from '../api.ts';
+import type { SettingRow } from '../../../core/web/app-settings.ts';
 import type { Feed } from './feeds.ts';
 
 export type TopicChoices = Record<string, boolean>;   // only the topics the owner has changed; the rest are on
@@ -14,6 +15,22 @@ export const activeFeeds = (feeds: Feed[], choices: TopicChoices): Feed[] => fee
 /** Every topic with its state, in list order. */
 export const topicsFor = (feeds: Feed[], choices: TopicChoices): NewsTopic[] =>
   feeds.map(f => ({ id: f.id, name: f.name, on: isOn(choices, f.id) }));
+
+/** Where the topic read stands: in flight, failed (no answer from the PC), or loaded. */
+export type TopicsState = 'loading' | 'failed' | 'loaded';
+
+/** The Settings rows for the topics. One switch per topic once loaded; until then, one info row. */
+export function topicRows(feeds: Feed[], choices: TopicChoices, state: TopicsState,
+  save: (id: string, on: boolean) => Promise<void>): SettingRow[] {
+  if (state === 'loading') return [{ kind: 'info', id: 'topics-state', title: 'News topics', value: () => 'Loading…' }];
+  if (state === 'failed') return [{ kind: 'info', id: 'topics-state', title: 'News topics',
+    detail: 'Can’t reach the PC right now.', value: () => 'Couldn’t load' }];
+  return feeds.map((f): SettingRow => ({
+    kind: 'switch', id: `topic-${f.id}`, title: f.name, detail: 'Shows its shelf on News.',
+    get: () => isOn(choices, f.id),
+    set: v => save(f.id, v),
+  }));
+}
 
 /** Keeps only the choices for known topics, with a true or false value each. Anything else is dropped. */
 export function cleanChoices(raw: unknown, feeds: Feed[]): TopicChoices {
