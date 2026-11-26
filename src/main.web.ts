@@ -6,6 +6,7 @@ import './apps/recipes/web/mock.ts';
 import './apps/lists/web/mock.ts';
 import './apps/calendar/web/mock.ts';
 import './apps/photos/web/mock.ts';
+import './apps/home-assistant/web/mock.ts';
 // Page entry point: the core shell plus the list of apps, in rail order.
 import home from './apps/home/web/index.ts';
 import launcher from './apps/launcher/web/index.ts';
