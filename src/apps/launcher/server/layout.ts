@@ -70,7 +70,7 @@ export function saveLayout(screen: unknown, raw: unknown, allowed: unknown): Lau
   const l = clean(screen, raw, allow, true);
   if (!l) return { ok: false, screen, layout: copy(store[screen]), error: 'That isn’t an Apps layout.' };
   const next: Store = { ...store, [screen]: l };
-  if (!persist(next)) return { ok: false, screen, layout: copy(store[screen]), error: 'The PC couldn’t save the layout.' };
+  if (!persist(next)) return { ok: false, screen, layout: copy(store[screen]), error: 'The PC couldn’t save the layout.', retry: true };
   store = next;
   return { ok: true, screen, layout: copy(l) };
 }

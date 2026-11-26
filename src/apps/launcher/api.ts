@@ -7,7 +7,7 @@
 export type LauncherScreen = 'tablet' | 'hub';
 export interface LauncherLayout { order: string[]; hidden: string[] }
 /** What GET and POST /api/launcher/layout answer. layout is null when the PC has none saved for that screen yet. */
-export interface LauncherLayoutResult { ok: boolean; screen: LauncherScreen; layout: LauncherLayout | null; error?: string }
+export interface LauncherLayoutResult { ok: boolean; screen: LauncherScreen; layout: LauncherLayout | null; error?: string; retry?: boolean }   // retry: the PC could not save it, so send it again later
 
 export const LAYOUT_MAX_BYTES = 16 * 1024;   // a POST bigger than this is refused (413)
 export const MAX_KEYS = 200;                 // tiles in one list, at most
