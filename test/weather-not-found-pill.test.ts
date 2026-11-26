@@ -19,3 +19,13 @@ test('paintEmpty shows City not found in the pill when the city is not found', (
 test('paintEmpty keeps Not set up as the pill fallback for no_location', () => {
   assert.match(body, /st === 'not_found' \? 'City not found' : 'Not set up';/);
 });
+
+test('paintEmpty gives the warning dot to the City not found pill', () => {
+  assert.match(body, /st === 'error' \|\| st === 'not_found' \? 'bad' : ''/);
+});
+
+test('paintEmpty does not give the warning dot to no_location', () => {
+  const cls = body.match(/wPill'\)\.className = `live \$\{(.+)\}`;/);
+  assert.ok(cls, 'pill class expression exists');
+  assert.doesNotMatch(cls[1], /no_location/);
+});
