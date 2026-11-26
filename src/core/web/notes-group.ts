@@ -22,6 +22,15 @@ export function groupNotices<T extends GroupableNotice>(list: readonly T[]): Not
   return [...byApp.values()].sort((a, b) => b.latest - a.latest);
 }
 
+/**
+ * The arrival time for a new notice. It is `now`, or one millisecond after the newest notice when that notice
+ * has the same time. Notices sent in the same millisecond then keep unique times, so dismissing one keeps the other.
+ * The list is newest first.
+ */
+export function nextNoticeAt(list: readonly GroupableNotice[], now: number): number {
+  return Math.max(now, (list[0]?.at ?? 0) + 1);
+}
+
 /** The list without the notice that arrived at `at`. Other notices keep their order. */
 export function withoutNotice<T extends GroupableNotice>(list: readonly T[], at: number): T[] {
   return list.filter(n => n.at !== at);
