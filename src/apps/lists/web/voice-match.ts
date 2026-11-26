@@ -91,3 +91,15 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
   if (m) return { op: 'read', list: which(m[1], custom) };
   return null;
 }
+
+/** What the voice says after several items were added: how many went, and how many wait for the PC to be back. */
+export function addManyReply(texts: string[], ok: number, waiting: number, name: string): string {
+  const words = texts.map(t => t.replace(/^./, ch => ch.toLowerCase()));
+  const n = words.length;
+  if (waiting === 0) {
+    const said = n === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[n - 1]}`;
+    return ok === n ? `Added ${said} to ${name}.` : `Added ${ok} of ${n} to ${name}.`;
+  }
+  if (ok === 0) return `I can’t reach ${name} right now. ${n === 1 ? 'It' : `The ${n} items`} will be added when the PC is back.`;
+  return `Added ${ok} of ${n} to ${name}. The other ${waiting === 1 ? 'one' : waiting} will be added when the PC is back.`;
+}
