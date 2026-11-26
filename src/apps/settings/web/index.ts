@@ -1199,8 +1199,12 @@ function clearClaudeHistory(): void {
 async function paintWeatherPlace(): Promise<void> {
   try {
     const w = await getJson<Weather>('/api/weather/forecast');
-    const p = w.status === 'ok' ? w.place : null;
-    $('stWxNote').textContent = p ? `The weather is for ${p}.` : w.status === 'no_location' ? 'Not set yet. Choose a city.' : 'Where the weather is for.';
+    const note = $('stWxNote');
+    if (w.status === 'ok' && w.place) note.innerHTML = `The weather is for ${esc(w.place)}.`;
+    else if (w.status === 'no_location') note.textContent = 'Not set yet. Choose a city.';
+    else if (w.status === 'not_found') note.innerHTML = `City not found: ${esc(w.city)}. Choose a city.`;
+    else if (w.status === 'error') note.textContent = 'The weather service didn’t answer, so the city can’t be checked.';
+    else note.textContent = 'Where the weather is for.';
   } catch { $('stWxNote').textContent = 'Couldn’t reach your PC to check.'; }
 }
 
@@ -1224,8 +1228,10 @@ async function findWeatherCity(q: string): Promise<void> {
 
 async function saveWeatherPlace(p: Place): Promise<void> {
   try {
-    await postJson<Weather>('/api/weather/location', { lat: p.lat, lon: p.lon, place: p.name });
+    const w = await postJson<Weather>('/api/weather/location', { lat: p.lat, lon: p.lon, place: p.name });
     report('settings:privacy:weather');
+    // The city is saved. A forecast that did not load still names it, and the repaint is skipped so this text stays.
+    if (w.status !== 'ok') { $('stWxNote').innerHTML = `The weather is for ${esc(p.name)}.`; return; }
   } catch { confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
   void paintWeatherPlace();
 }
