@@ -122,6 +122,11 @@ function ensureMoreLike(tag: string): void {
     .finally(() => { if (view.kind === 'station') render(); });
 }
 
+/** Drops the failed reads, so the next station view or page show asks the PC again. */
+function forgetFailedMoreLike(): void {
+  for (const [tag, v] of byTag) if (v === 'error') byTag.delete(tag);
+}
+
 function moreStation(id: string): Station | undefined {
   for (const v of byTag.values()) {
     if (Array.isArray(v)) { const hit = v.find(s => s.id === id); if (hit) return hit; }
@@ -460,7 +465,7 @@ function onPageClick(ev: Event): void {
   const open = d('open');
   if (open) {
     const s = find(open);
-    if (s) go({ kind: 'station', station: s, back: view.kind === 'station' ? view.back : view });
+    if (s) { forgetFailedMoreLike(); go({ kind: 'station', station: s, back: view.kind === 'station' ? view.back : view }); }
     return;
   }
   const tab = d('tab');
@@ -873,6 +878,7 @@ const app: HubApp = {
   },
   onShow() {
     // the first visit, or a load that failed, asks the directory again
+    forgetFailedMoreLike();
     if (view.kind === 'home') void loadHome(home.topState === 'error' || home.genresState === 'error' || home.countriesState === 'error');
     else if (listState !== 'ok') void load(true);
   },

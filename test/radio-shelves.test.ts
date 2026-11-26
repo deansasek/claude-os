@@ -1,8 +1,18 @@
 // The Home shelves' order, counts and empty states, and the category tiles' warm colour. Run with: npm test
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { Facet } from '../src/apps/radio/api.ts';
 import { FACET_COUNT, MORE_COUNT, TOP_COUNT, TOP_ERROR, WARM_HUES, homeShelves, moreLikeThis, tileHue, topFacets, type HomeInput } from '../src/apps/radio/web/shelves.ts';
+
+// The radio page source, for the checks that read its text rather than run it.
+const radioSource = readFileSync(new URL('../src/apps/radio/web/index.ts', import.meta.url), 'utf8');
+/** The text of a top-level function, from its header to the closing brace at column 0. */
+const bodyOf = (header: string): string => {
+  const start = radioSource.indexOf(header);
+  assert.notEqual(start, -1, `${header} is in the radio page`);
+  return radioSource.slice(start, radioSource.indexOf('\n}', start));
+};
 
 const full: HomeInput = { favs: 3, recent: 4, top: 'ok', topCount: 100, genres: 'ok', genreCount: 40, countries: 'ok', countryCount: 30 };
 const plan = (over: Partial<HomeInput>) => homeShelves({ ...full, ...over });
@@ -64,4 +74,17 @@ test('More like this leaves the station itself out and holds twenty cards', () =
   assert.equal(more.length, MORE_COUNT);
   assert.equal(more[0].id, 's0');
   assert.equal(moreLikeThis([{ id: 'only' }], 'only').length, 0);
+});
+
+test('a failed More like this read is forgotten on station open and on show', () => {
+  assert.match(bodyOf('function forgetFailedMoreLike('), /byTag\.delete\(tag\)/);
+  assert.match(radioSource, /forgetFailedMoreLike\(\);\s*go\(\{ kind: 'station'/);
+  const onShow = radioSource.slice(radioSource.indexOf('  onShow() {'), radioSource.indexOf('\n  },', radioSource.indexOf('  onShow() {')));
+  assert.match(onShow, /forgetFailedMoreLike\(\);/);
+});
+
+test('More like this and render never clear the reads, so a failed read is not retried in a loop', () => {
+  for (const header of ['function moreHtml(', 'function render(']) {
+    assert.doesNotMatch(bodyOf(header), /byTag\.(delete|clear|set)\(/, `${header} does not clear byTag`);
+  }
 });
