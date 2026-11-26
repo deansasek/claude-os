@@ -898,7 +898,8 @@ function onJoin(ssid: string): void {
   if (!n || n.ssid === joining) return;
   if (n.enterprise) { confirmSheet('Work network', 'Networks that need a username aren’t supported in ClaudeOS yet. The device settings (in About) can join them.', 'OK', () => {}); return; }
   if (n.saved || !n.secure || !setup?.owner) { join(n.ssid); return; }   // otherwise Android's panel asks for the password
-  Keyboard.open({ placeholder: `Password for ${n.ssid}`, done: 'Join', onDone: pw => { if (pw.length < 8) return false; join(n.ssid, pw); } });
+  // a WPA passphrase is up to 63 characters; a secret is shown as dots
+  Keyboard.open({ placeholder: `Password for ${n.ssid}`, done: 'Join', max: 63, mask: true, onDone: pw => { if (pw.length < 8) return false; join(n.ssid, pw); } });
 }
 
 // ---------- Bluetooth: read only ----------

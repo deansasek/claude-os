@@ -227,7 +227,7 @@ function onJoin(ssid: string): void {
   // a new secured network asks for its password here; otherwise the tablet joins (Android's own panel may open)
   if (n.saved || !n.secure || !owner) { join(ssid); return; }
   Keyboard.open({
-    placeholder: `Password for ${ssid}`, done: 'Join',
+    placeholder: `Password for ${ssid}`, done: 'Join', max: 63, mask: true,
     onDone: pw => { if (pw.length < 8) return false; join(ssid, pw); },
   });
 }
