@@ -9,6 +9,7 @@ import { openApp } from '../../../core/web/system.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import { askWithText } from '../../claude/web/reply.ts';
 import { askAboutPage } from './claude-panel.ts';
+import { articleOf } from './reader.ts';
 import { thumbUrl } from '../../photos/api.ts';
 import type { PhotoList } from '../../photos/api.ts';
 import {
@@ -318,7 +319,7 @@ function saveLater(list: Later[]): void { store.set(LATER_KEY, JSON.stringify(li
 function keepForLater(json: string): void {
   const p = laterPending!;
   laterPending = null;
-  if (!json) { D.flash('Nothing to save on this page'); return; }
+  if (!articleOf(json)) { D.flash('Nothing to save on this page'); return; }
   const list = laterList().filter(x => x.url !== p.url);
   list.unshift({ url: p.url, title: p.title, json, at: Date.now() });
   saveLater(list);
@@ -419,9 +420,8 @@ function speakArticle(json: string): void {
 voice.on(e => { if (e.type === 'spoken' && e.id === 'page') listening = false; });
 
 function showArticle(json: string): void {
-  let a: { title?: string; byline?: string; host?: string; blocks?: { tag: string; text: string }[] } | null = null;
-  try { a = json ? JSON.parse(json) : null; } catch { a = null; }
-  if (!a || !a.blocks || !a.blocks.length) { D.flash('No article to read on this page'); return; }
+  const a = articleOf(json);
+  if (!a) { D.flash('No article to read on this page'); return; }
   const head = `<h1>${esc(a.title || '')}</h1><p class="br-by">${esc([a.byline, a.host].filter(Boolean).join(' · '))}</p>`;
   el('brArticle').innerHTML = head + a.blocks.map(b => {
     const t = esc(b.text);
@@ -780,7 +780,6 @@ export function initPanels(deps: PanelDeps): void {
       if (!x) return;
       closeOver('brLater');
       showArticle(x.json);
-      openOver('brReader');
     }
   });
   el('brDelKeep').addEventListener('click', () => closeOver('brDel'));
