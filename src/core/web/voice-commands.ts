@@ -376,7 +376,7 @@ async function sceneCommand(raw: string): Promise<CommandResult | null> {
 /** The next three events still to come today, read aloud (the Calendar app's own route, GET /api/calendar/events). */
 export async function calendarCommand(day: 'today' | 'tomorrow' = 'today', cachedOnly = false): Promise<CommandResult> {
   let r: CalEvents;
-  try { r = await getJson<CalEvents>('/api/calendar/events'); } catch { return { say: 'I can’t reach the calendar right now.' }; }
+  try { r = await getJson<CalEvents>('/api/calendar/events'); } catch { return { say: 'I can’t reach your PC right now.' }; }
   // no calendar address set: the claude.ai calendar connector answers instead (the PC's cached read)
   if (r?.status === 'not_set') return connectorCommand(day, cachedOnly);
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
@@ -405,7 +405,7 @@ export async function calendarCommand(day: 'today' | 'tomorrow' = 'today', cache
 async function connectorCommand(day: 'today' | 'tomorrow', cachedOnly = false): Promise<CommandResult> {
   type Ev = { title: string; start: number; end: number; allDay: boolean };
   let r: { status?: string; events?: Ev[] };
-  try { r = await getJson<{ status?: string; events?: Ev[] }>(`/api/calendar/connector?day=${day}${cachedOnly ? '&cached=1' : ''}`); } catch { return { say: 'I can’t reach the calendar right now.' }; }
+  try { r = await getJson<{ status?: string; events?: Ev[] }>(`/api/calendar/connector?day=${day}${cachedOnly ? '&cached=1' : ''}`); } catch { return { say: 'I can’t reach your PC right now.' }; }
   // a routine must not start a Claude read: with nothing cached it says so instead
   if (r?.status === 'miss') return { say: 'I haven’t read the calendar yet today.' };
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };

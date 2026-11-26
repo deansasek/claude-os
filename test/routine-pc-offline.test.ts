@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/apps');
 const read = (f: string) => readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
+const voice = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/core/web/voice-commands.ts'), 'utf8').replace(/\r\n/g, '\n');
 const run = read('routines/web/run.ts');
 const routines = read('routines/web/index.ts');
 const home = read('home/web/index.ts');
@@ -68,4 +69,13 @@ test('pickScene says why there are no scenes: not set up, cannot be read, or non
   assert.match(body, /scenesWhy === 'not_set_up' \? 'Home Assistant isn’t set up yet\. Set it up in the Home Assistant app first\.'/);
   assert.match(body, /scenesWhy === 'error' \? 'Your scenes can’t be read just now\. Try again in a moment\.'/);
   assert.match(body, /No scenes are on the Home screen or the Home Assistant dashboard yet\. Add one in Home Assistant first; then it can go in a routine\./);
+});
+
+test('calendar and connector reads say the PC is not answering, not that the calendar is unreachable', () => {
+  const calendar = between(voice, 'export async function calendarCommand(', '// ---------- Lists:');
+  const connector = between(voice, 'async function connectorCommand(', '/** The family');
+  for (const body of [calendar, connector]) {
+    assert.match(body, /catch \{ return \{ say: 'I can’t reach your PC right now\.' \}; \}/);
+    assert.doesNotMatch(body, /reach the calendar/);
+  }
 });
