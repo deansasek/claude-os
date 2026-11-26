@@ -357,10 +357,15 @@ async function setHomeScene(id: string, on: boolean): Promise<void> {
 
 async function setAllowed(id: string, on: boolean): Promise<void> {
   const d = devices?.devices.find(x => x.entity_id === id);
+  const before = d?.allowed === true;
   if (d) d.allowed = on;   // the switch moves at once; the PC's answer settles it
   appSettingsChanged();
-  try { await postJson(`${API}/allow`, { entity_id: id, allowed: on }); } catch { /* the reload below shows the truth */ }
+  let r: HaResult | undefined;
+  try { r = await postJson<HaResult>(`${API}/allow`, { entity_id: id, allowed: on }); } catch { r = undefined; }
+  if (r?.ok === true) { await loadDevices(); return; }
+  if (d) d.allowed = before;   // the PC did not save it: the switch goes back
   await loadDevices();
+  throw new Error(r?.error || 'Can’t reach the PC right now, so that wasn’t saved.');
 }
 
 // ---------- layout edits ----------
@@ -704,7 +709,7 @@ function settingRows(): SettingRow[] {
   for (const d of allowable) {
     rows.push({ kind: 'switch', id: `allow:${d.entity_id}`, title: d.name,
       detail: `${DOMAIN_LABEL[d.domain] ?? 'Device'}${d.dashboard ? ' · on Home' : ''}`,
-      get: () => d.allowed, set: v => { void setAllowed(d.entity_id, v); } });
+      get: () => d.allowed, set: v => setAllowed(d.entity_id, v) });
   }
   // the Home screen's quick actions: up to three scenes
   const sl = sceneList;
