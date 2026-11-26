@@ -1193,12 +1193,12 @@ function editWeatherCity(): void {
 
 async function findWeatherCity(q: string): Promise<void> {
   if (q.length < 2) return;
-  let res: Place[] = [];
+  let r: PlacesResponse;
   try {
-    const r = await getJson<PlacesResponse>(`/api/weather/places?q=${encodeURIComponent(q)}`);
-    if (r.status !== 'ok') throw new Error('lookup');
-    res = r.results;
+    r = await getJson<PlacesResponse>(`/api/weather/places?q=${encodeURIComponent(q)}`);
   } catch { confirmSheet('Couldn’t look that up', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
+  if (r.status !== 'ok') { confirmSheet('Couldn’t look that up', 'The city search service didn’t answer. Try again in a moment.', 'OK', () => {}); return; }
+  const res = r.results;
   if (!res.length) { confirmSheet('No place found', `Nothing matches “${q}”. Try the city’s country too.`, 'OK', () => {}); return; }
   openChooser('Weather for', 'Pick the place the weather is for.',
     res.map((p, i) => ({ id: String(i), label: p.name, sub: [p.region, p.country].filter(Boolean).join(', ') })), '',
