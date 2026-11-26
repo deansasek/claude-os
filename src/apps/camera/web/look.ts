@@ -118,7 +118,10 @@ async function ask(raw: string): Promise<void> {
 /** Send the words and the photo: to the Look session if it can take a reply, else a new one in Scratch space. */
 async function send(text: string, photoIds: string[]): Promise<{ sessionId: string; turnId: string | null } | null> {
   if (sessionId) {
-    const v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(sessionId)}`);
+    // a failed read is not a finished session: say the PC could not be reached
+    let v: SessionView;
+    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(sessionId)}`); }
+    catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
     if (v.canReply) {
       const id = sessionId;
       const r = await unlocked(() => apiCall<{ ok: boolean; error?: string; turn?: HubTurn }>('reply', { id, text, photoIds, ...wantFor(id) }));
