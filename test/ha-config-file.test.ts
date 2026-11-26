@@ -35,3 +35,20 @@ test('a config the PC cannot write is reported, not saved silently', async () =>
   assert.equal(res.ok, false, 'a save that fails says so');
   assert.match(res.message ?? '', /couldn’t save/);
 });
+
+test('a second broken config is kept as .2.corrupt, and the first .corrupt copy (with its token) is unchanged', async () => {
+  process.env.CLAUDEOS_HA_CONFIG = file;   // the test above points the variable elsewhere
+  fs.rmSync(file, { force: true });
+  fs.writeFileSync(file, '{ "token": "second-broken", broken');
+  await import(`../src/apps/home-assistant/server/ha.ts?second=${Date.now()}`);
+  assert.equal(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{ "token": "keep-me", broken', 'the first copy is not replaced');
+  assert.equal(fs.readFileSync(`${file}.2.corrupt`, 'utf8'), '{ "token": "second-broken", broken');
+});
+
+test('a config that is valid JSON but not an object loads as not set up, and does not throw', async () => {
+  process.env.CLAUDEOS_HA_CONFIG = file;
+  fs.rmSync(file, { force: true });
+  fs.writeFileSync(file, '[]');
+  const ha = await import(`../src/apps/home-assistant/server/ha.ts?array=${Date.now()}`);
+  assert.equal(ha.isDemo(), false);
+});
