@@ -229,7 +229,13 @@ async function send(): Promise<void> {
     const ctx = await pageContext();
     const msg = ctx ? `${text}${PAGE_MARK}${ctx}` : text;
     if (!sessionId) {
-      projectId ??= (await getJson<Project[]>('/api/claude/projects').catch(() => [] as Project[]))[0]?.id ?? null;
+      if (projectId == null) {
+        // a failed read is not an empty list: say the PC could not be reached, not that there is no folder
+        let list: Project[];
+        try { list = await getJson<Project[]>('/api/claude/projects'); }
+        catch { throw new Error('Can’t reach your PC just now.'); }
+        projectId = list[0]?.id ?? null;
+      }
       if (!projectId) throw new Error('There’s no project folder on the PC to start in.');
       const r = await call<NewSessionResult>('new', { project: projectId, text: msg, model: settings.model, effort: settings.effort, mode: settings.mode });
       if (!r.ok || !r.sessionId) throw new Error(explain(r.error));
