@@ -11,7 +11,7 @@ import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../
 import type { NewsFeedResponse, NewsItem, NewsTopicsResponse } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { FEEDS } from './feeds.ts';
-import { activeFeeds, topicRows, type TopicChoices } from './topics.ts';
+import { activeFeeds, topicRows, topicSaveError, type TopicChoices } from './topics.ts';
 import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, staleNotes, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
 import { feedSource, tabletFeed, type KeyValue } from './tablet.ts';
 
@@ -218,10 +218,11 @@ async function loadTopics(): Promise<void> {
   }
 }
 
-/** Saves one topic on or off on the PC. Throws when the PC does not save it, so Settings shows the error. */
+/** Saves one topic on or off on the PC. Throws when the PC does not save it, so Settings shows the error (web/topics.ts). */
 async function saveTopic(id: string, on: boolean): Promise<void> {
-  const r = await postJson<{ ok: boolean }>('/api/news/topics', { id, on });
-  if (!r.ok) throw new Error('ClaudeOS could not save that topic. Check the computer is connected, then try again.');
+  let r: { ok: boolean } | null = null;   // null: the request failed and the PC gave no answer
+  try { r = await postJson<{ ok: boolean }>('/api/news/topics', { id, on }); } catch { r = null; }
+  if (!r || !r.ok) throw new Error(topicSaveError(r));
   choices[id] = on;
   topicsDirty = true;
   appSettingsChanged();

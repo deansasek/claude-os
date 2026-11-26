@@ -50,3 +50,7 @@ export function parseChange(body: unknown, feeds: Feed[]): { ok: true; id: strin
   if (typeof b.on !== 'boolean') return { ok: false, error: 'bad_value' };
   return { ok: true, id: b.id, on: b.on };
 }
+
+/** The message when a topic change is not saved. Null means no answer from the PC; ok: false means the PC answered and did not save. */
+export const topicSaveError = (answer: { ok: boolean } | null): string =>
+  answer === null ? 'Can’t reach your PC. Check it’s on, then try again.' : 'The PC couldn’t save that topic. Try again.';
