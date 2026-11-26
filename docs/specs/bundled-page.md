@@ -44,7 +44,7 @@ Five PRs, in order. PR 1 to 2 change no behaviour. PR 3 adds the loader behind a
 
 ### PR 1: write the web page as a static bundle
 
-- **Changes:** a new `scripts/bundle-page.ts` and an `npm run bundle:page` script in `package.json`. The script copies `public/**` and every `src/` file that matches `WEB_FILE` into an output folder (default `build/page/`, added to `.gitignore`), strips `.ts` with `stripTypeScriptTypes` (the same call as `serveStatic`), and writes `page-manifest.json` with each path, its size, a SHA-1, and one bundle version (a hash of all files). It reads `WEB_FILE` from `src/core/server/index.ts`, as `scripts/check-web-imports.ts` does, so the two cannot drift.
+- **Changes:** a new `scripts/build-page.ts` and an `npm run build:page` script in `package.json`. The script copies `public/**` and every `src/` file that matches `WEB_FILE` into an output folder (default `build/page/`, added to `.gitignore`), strips `.ts` with `stripTypeScriptTypes` (the same call as `serveStatic`), and writes `page-manifest.json` with each path, its size, a SHA-1, and one bundle version (a hash of all files). It reads `WEB_FILE` from `src/core/server/index.ts`, as `scripts/check-web-imports.ts` does, so the two cannot drift.
 - **Test:** `test/page-bundle.test.ts` (added to `npm test`): the bundle holds `index.html`, `core.css`, `src/main.web.ts` and every module in the import graph that `check-web-imports.ts` walks; it holds no path with a `server` folder; a stripped `.ts` file equals the server's output for the same file. Plus `npm run check`.
 - **Rollback:** revert. Nothing reads the bundle yet.
 - **Device check:** no. No Android change.
