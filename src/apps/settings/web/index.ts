@@ -589,16 +589,27 @@ const MODE_NAME: Record<string, string> = Object.fromEntries(MODE_CHOICES.map(c 
 let projects: Project[] | null = null;
 let foldersFailed = false;   // the last folder read did not reach the PC (not: the PC has none)
 
+// The Default folder value. A saved folder that is missing from a good read says Unavailable.
+// A failed read says the PC is unreachable, and an unfinished read says Loading.
+function folderLabel(fid: string): string {
+  if (!fid) return 'Most recent';
+  const found = projects?.find(p => p.id === fid);
+  if (found) return found.name;
+  if (foldersFailed) return 'Can’t reach the PC';
+  if (!projects) return 'Loading…';
+  return 'Unavailable';
+}
+
 async function paintSessions(): Promise<void> {
   const mid = newPref('model'), mode = newPref('mode') || 'default', fid = newFolderPref();
   $('stNewModelV').textContent = mid ? (modelChoices().find(m => m.id === mid)?.label ?? mid) : 'Automatic';
   $('stNewModeV').textContent = MODE_NAME[mode] ?? 'Manual';
-  $('stNewFolderV').textContent = projects?.find(p => p.id === fid)?.name ?? (fid ? 'Unavailable' : 'Most recent');
+  $('stNewFolderV').textContent = folderLabel(fid);
   await loadModels();   // the models this PC's Claude offers (cached on the tablet)
   if (section === 'sessions') $('stNewModelV').textContent = mid ? (modelChoices().find(m => m.id === mid)?.label ?? mid) : 'Automatic';
   if (!projects) {
     try { projects = await getJson<Project[]>('/api/claude/projects'); foldersFailed = false; } catch { foldersFailed = true; }
-    if (section === 'sessions') $('stNewFolderV').textContent = projects?.find(p => p.id === newFolderPref())?.name ?? (newFolderPref() ? 'Unavailable' : 'Most recent');
+    if (section === 'sessions') $('stNewFolderV').textContent = folderLabel(newFolderPref());
   }
 }
 
