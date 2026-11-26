@@ -36,7 +36,7 @@ import { checkUsage, nativeLimits, usageCheck, usageCheckable } from '../../clau
 import { limitsUpdated, usageRows } from '../../claude/web/native-stream.ts';
 import { loadModels, modelChoices, newFolderPref, newPref, setNewFolderPref, setNewPref } from '../../claude/web/sessions/controls.ts';
 import { manifest } from '../manifest.ts';
-import { INSTRUCTIONS_MAX, NAME_MAX, NICK_MAX, ROLES } from '../api.ts';
+import { INSTRUCTIONS_MAX, INSTRUCTIONS_READ_FAILED, NAME_MAX, NICK_MAX, ROLES } from '../api.ts';
 import { thumbUrl } from '../../photos/api.ts';
 import { handlePluginSeg, initPlugins, loadPlugins, paintPlugins } from './plugins.ts';
 import { initPinSettings, paintPinRow } from './pin.ts';
@@ -564,16 +564,26 @@ function paintUsage(): void {
 let instructions = '';
 let instructionsLoaded = false;
 let instructionsFailed = false;
+let instructionsReadFailed = false;   // the PC answered, but its file of instructions cannot be read
 async function loadInstructions(): Promise<void> {
   try {
     const r = await fetch('/api/settings/instructions', { cache: 'no-store' });
     if (!r.ok) throw new Error(`PC answered ${r.status}`);
-    instructions = ((await r.json()) as { text: string }).text || ''; instructionsLoaded = true; instructionsFailed = false;
+    const d = (await r.json()) as { text: string; error?: string };
+    instructionsReadFailed = !!d.error;
+    instructions = d.error ? '' : d.text || ''; instructionsLoaded = true; instructionsFailed = false;
   } catch { instructionsFailed = true; /* keep what we have */ }
   if (section === 'yourclaude') paintInstructions();
 }
 function paintInstructions(): void {
   const v = $('stInstrVal');
+  if (instructionsReadFailed) {
+    // Never the "Add instructions" prompt: that would invite the user to type over the saved file.
+    v.textContent = 'Not available right now.';
+    v.classList.add('st-unset');
+    $('stInstrNote').textContent = INSTRUCTIONS_READ_FAILED;
+    return;
+  }
   v.textContent = instructions || 'Add instructions, like “Keep answers short” or “I’m planning a trip to Lisbon”.';
   v.classList.toggle('st-unset', !instructions);
   $('stInstrNote').textContent = instructionsLoaded
@@ -581,8 +591,9 @@ function paintInstructions(): void {
     : instructionsFailed ? 'Couldn’t reach your PC. Your instructions show when it’s back.' : 'Checking your PC…';
 }
 async function editInstructions(): Promise<void> {
-  if (!instructionsLoaded || instructionsFailed) {
+  if (!instructionsLoaded || instructionsFailed || instructionsReadFailed) {
     await loadInstructions();
+    if (instructionsReadFailed) { confirmSheet(INSTRUCTIONS_READ_FAILED, 'Editing is off until it can be read. Try again later.', 'OK', () => {}); return; }
     if (!instructionsLoaded || instructionsFailed) { confirmSheet('Couldn’t reach your PC', 'Try again when it is back on.', 'OK', () => {}); return; }
   }
   Keyboard.open({
@@ -593,7 +604,7 @@ async function editInstructions(): Promise<void> {
 async function saveInstructions(text: string): Promise<void> {
   try {
     const r = await postJson<{ text: string }>('/api/settings/instructions', { text: text.trim() });
-    instructions = r.text || '';
+    instructions = r.text || ''; instructionsReadFailed = false;
     report('settings:instructions');
   } catch { confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
   paintInstructions();

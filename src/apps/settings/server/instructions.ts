@@ -3,19 +3,33 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { STATE } from '../../../core/server/paths.ts';
-import { INSTRUCTIONS_MAX } from '../api.ts';
+import { INSTRUCTIONS_MAX, INSTRUCTIONS_READ_FAILED } from '../api.ts';
 
 const FILE = process.env.CLAUDEOS_INSTRUCTIONS_FILE || path.join(STATE, 'instructions.txt');   // a test sets CLAUDEOS_INSTRUCTIONS_FILE
 
 const clean = (v: unknown): string => (typeof v === 'string' ? v.replace(/\r\n/g, '\n').trim().slice(0, INSTRUCTIONS_MAX) : '');
 
+// readFailed: the file may exist but could not be read. Settings then shows the error, not "none saved".
+let readFailed = false;
 let text = load();
 
+// Only a missing file means none saved. Any other error (EACCES, EBUSY, EISDIR) sets readFailed and returns ''.
 function load(): string {
-  try { return clean(fs.readFileSync(FILE, 'utf8')); } catch { return ''; }
+  try { const v = clean(fs.readFileSync(FILE, 'utf8')); readFailed = false; return v; }
+  catch (e) { readFailed = (e as NodeJS.ErrnoException).code !== 'ENOENT'; return ''; }
 }
 
-export const getInstructions = (): string => text;
+/** The saved text. While the last read failed, it reads the file again first. */
+export const getInstructions = (): string => {
+  if (readFailed) text = load();
+  return text;
+};
+
+/** The GET answer: {text}, or {text: '', error} while the file cannot be read. */
+export function instructionsView(): { text: string; error?: string } {
+  const t = getInstructions();
+  return readFailed ? { text: '', error: INSTRUCTIONS_READ_FAILED } : { text: t };
+}
 
 /** Save the instructions (empty clears them). Returns what is saved now. */
 export function setInstructions(v: unknown): string {
@@ -24,6 +38,7 @@ export function setInstructions(v: unknown): string {
   if (next) fs.writeFileSync(FILE, next);
   else { try { fs.rmSync(FILE, { force: true }); } catch { /* already gone */ } }
   text = next;
+  readFailed = false;   // the saved file is now the text this call wrote
   return text;
 }
 
