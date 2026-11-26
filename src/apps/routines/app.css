@@ -25,7 +25,8 @@
 #app-routines .rt-card .rt-home { position: absolute; top: 12px; right: 14px; font: 500 11px var(--sans); letter-spacing: .03em; color: var(--t4); }
 #app-routines .rt-card.running span.rt-sub { color: var(--clay-deep); }
 :root[data-theme="dark"] #app-routines .rt-card.running span.rt-sub { color: var(--clay); }
-#app-routines .rt-empty { padding: 28px 8px; text-align: center; font: italic 400 20px var(--serif); color: var(--t3); }
+#app-routines .rt-empty { padding: 28px 8px; text-align: center; font: italic 400 20px var(--serif); color: var(--t3); display: flex; flex-direction: column; gap: 8px; }
+#app-routines .rt-empty span { font: 400 14px var(--sans); font-style: normal; color: var(--t4); }
 #app-routines .rt-hint { margin: 0; font: 400 13px/1.45 var(--sans); color: var(--t4); }
 
 /* ---- right: the editor ---- */

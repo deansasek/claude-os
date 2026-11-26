@@ -152,7 +152,7 @@ function stepHtml(s: Step, i: number, n: number): string {
 function render(): void {
   if (!ctx) return;
   $('rtList').innerHTML = routines.length ? routines.map(cardHtml).join('')
-    : `<li class="rt-empty">${loaded ? 'No routines yet' : 'Loading…'}</li>`;
+    : `<li class="rt-empty">${loaded ? '<em>No routines yet.</em><span>Tap New routine to make one.</span>' : 'Loading…'}</li>`;
   ($('rtNew') as HTMLButtonElement).disabled = routines.length >= MAX_ROUTINES;
 
   const n = $('rtNote');
