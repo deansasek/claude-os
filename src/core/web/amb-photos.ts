@@ -5,8 +5,9 @@
 // photo with no thumbnail yet: the route falls back by itself).
 //
 // Nothing runs unless the ambient screen is on and visible: system.ts calls startFrame() / stopFrame() as the ambient
-// screen comes and goes, and a hidden page (screen off) pauses the timers. An empty library or a failed fetch leaves
-// the ambient screen exactly as it is without photos: the layers stay empty and .amb never gets .photo.
+// screen comes and goes, and a hidden page (screen off) pauses the timers. An empty library leaves the ambient screen
+// without photos: the layers stay empty and .amb never gets .photo. A failed re-read keeps the last list, so the photo
+// on screen stays. Only a first read with no list leaves the frame without photos.
 import { getJson } from './dom.ts';
 import { thumbUrl, type PhotoList } from '../../apps/photos/api.ts';
 
@@ -94,8 +95,8 @@ async function loadList(): Promise<void> {
     listAt = Date.now();
     misses = 0;
   } catch {
-    ids = []; bag = [];
-    listAt = Date.now() - LIST_MS + 5 * 60e3;   // the PC is away: try again in five minutes
+    // the PC is away: keep the last list and try again in five minutes
+    listAt = Date.now() - LIST_MS + 5 * 60e3;
   }
 }
 
