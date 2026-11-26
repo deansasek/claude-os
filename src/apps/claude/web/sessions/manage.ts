@@ -22,6 +22,7 @@ const MESSAGES: Record<string, string> = {
   not_found: 'That session is already gone.',
   not_this_session: 'Nothing was deleted: the file did not look like this session’s.',
   delete_failed: "Couldn't delete: the file is in use on your PC.",
+  unreachable: 'Can’t reach your PC just now. Nothing was changed.',
 };
 
 function show(acts: boolean): void {
@@ -33,6 +34,15 @@ function close(): void {
   target = null;
 }
 function say(text: string): void { $('smMsg').textContent = text; }
+
+/** Like call, but a PC that cannot be reached gives { ok: false, error: 'unreachable' } instead of a throw. */
+async function tryCall<T extends { ok: boolean; error?: string }>(path: string, body: Record<string, unknown>): Promise<T> {
+  try { return await call<T>(path, body); }
+  catch (e) {
+    if (e instanceof Error && e.message === 'locked_out') throw e;
+    return { ok: false, error: 'unreachable' } as T;
+  }
+}
 
 /** Open the menu for one session (from its row's ⋯). */
 export function openSessionMenu(id: string, title: string, archived: boolean): void {
@@ -55,7 +65,7 @@ async function changeState(on: boolean): Promise<void> {
   const t = target;
   if (!t || t.id === NATIVE_ID) return;
   const act = async (): Promise<void> => {
-    const r = await call<{ ok: boolean; error?: string }>('archive', { id: t.id, archived: on });
+    const r = await tryCall<{ ok: boolean; error?: string }>('archive', { id: t.id, archived: on });
     if (!r.ok) { say(MESSAGES[r.error || ''] || 'Nothing was changed. Try again.'); return; }
     close();
     done(t.id, on ? 'archived' : 'unarchived');
@@ -85,7 +95,7 @@ async function remove(): Promise<void> {
     return;
   }
   const act = async (): Promise<void> => {
-    const r = await call<{ ok: boolean; error?: string }>('delete', { id: t.id });
+    const r = await tryCall<{ ok: boolean; error?: string }>('delete', { id: t.id });
     if (!r.ok) {
       show(true);
       say(MESSAGES[r.error || ''] || 'Nothing was deleted. Try again.');
