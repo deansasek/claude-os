@@ -29,6 +29,9 @@ const RECENT_KEY = 'radio.recent';
 const SEARCHES_KEY = 'radio.searches';
 const ICON = appIcon('radio');
 const FAILED = failMessage(undefined);
+/** How long a stream may wait for data mid-play before it is taken as broken off (a live stream often never reports an error). */
+const STALL_MS = 15_000;
+let stallTimer = 0;
 const NO_DIRECTORY = 'No connection to the radio directory.';
 const RADIO_DOWN = 'Radio Browser is not available. Try again.';
 const FACET_NAMES: Record<FacetKind, string> = { tags: 'Genres', countries: 'Countries', languages: 'Languages' };
@@ -172,6 +175,7 @@ function find(id: string): Station | undefined {
 }
 
 function setState(next: PlayState): void {
+  if (next !== 'buffering') window.clearTimeout(stallTimer);
   state = next;
   syncMedia();
   if (state === 'off') { streamTitle = ''; clearSleep(); }
@@ -195,7 +199,12 @@ function getAudio(): HTMLAudioElement {
   if (audio) return audio;
   const a = new Audio();
   a.preload = 'none';
-  a.addEventListener('waiting', () => { if (state === 'playing') setState('buffering'); });
+  a.addEventListener('waiting', () => {
+    if (state !== 'playing') return;
+    setState('buffering');
+    window.clearTimeout(stallTimer);
+    stallTimer = window.setTimeout(() => { if (state === 'buffering' && audio) fail(failMessage(3)); }, STALL_MS);
+  });
   a.addEventListener('playing', () => { if (state !== 'off' && state !== 'paused') setState('playing'); });
   a.addEventListener('error', () => { if (state !== 'off') fail(failMessage(a.error?.code)); });
   audio = a;
