@@ -112,6 +112,7 @@ async function loadStatus(): Promise<void> {
   appSettingsChanged();
 }
 
+const RANGE_TIMEOUT_MS = 20_000;   // the PC's own calendar read gives up after 10 s (server/calendar.ts)
 /** The events for the view on screen. auto: the 5-minute timer. It sends auto=1, and it never makes a connector read. */
 async function load(force = false, auto = false): Promise<void> {
   if (loading) return;
@@ -121,7 +122,7 @@ async function load(force = false, auto = false): Promise<void> {
   render();
   try {
     const { from, to } = rangeFor();
-    const r = await getJson<RangeAnswer>(`${API}/range?from=${keyOf(from)}&to=${keyOf(to)}${force ? '&refresh=1' : ''}${auto ? '&auto=1' : ''}`);
+    const r = await getJson<RangeAnswer>(`${API}/range?from=${keyOf(from)}&to=${keyOf(to)}${force ? '&refresh=1' : ''}${auto ? '&auto=1' : ''}`, RANGE_TIMEOUT_MS);
     if (r.status === 'ok') {
       events = r.events ?? [];
       viaConnector = false;
