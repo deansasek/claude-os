@@ -67,6 +67,7 @@ let sendNote = '';
 // refreshes of the open session that failed in a row (the PC did not answer); two or more shows "Can’t reach your PC"
 let refreshFails = 0;
 const SEND_NOTE: Record<string, string> = {
+  unreachable: 'Can’t reach your PC just now. Your message is kept: send it again.',
   too_many_photos: 'Too many photos for one message. Take one off.',
   photos_on_pc: 'Photos can’t go to a session open on your PC. Send words only.',
 };
@@ -524,12 +525,14 @@ function send(text: string): void {
   }
   $('svPh').textContent = 'Sending…';   // shown until the next refresh repaints the composer (every 2 s)
   void withPin(async () => {
-    const r = await call<{ ok: boolean; error?: string; turn?: HubTurn }>('reply', { id, text, photoIds: photos, ...wantFor(id) });
+    let r: { ok: boolean; error?: string; turn?: HubTurn };
+    try { r = await call<{ ok: boolean; error?: string; turn?: HubTurn }>('reply', { id, text, photoIds: photos, ...wantFor(id) }); }
+    catch { r = { ok: false, error: 'unreachable' }; }
     if (r.ok) { photos = []; sendNote = ''; }
     else if (view && openId === id) {
       // a reason the composer has a sentence for: it blocks the reply (BLOCKED); anything else is a note that stays until you try again
       if (r.error && r.error in BLOCKED) { view = { ...view, canReply: false, reason: r.error as ReplyBlock }; sendNote = ''; }
-      else sendNote = SEND_NOTE[r.error || ''] || 'That didn’t send. Try again.';
+      else { sendNote = SEND_NOTE[r.error || ''] || 'That didn’t send. Try again.'; if (text) replyDraft = { id, text }; }
     }
     report('reply');
     void refresh();
