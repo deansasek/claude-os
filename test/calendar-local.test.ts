@@ -110,3 +110,15 @@ test('a ClaudeOS calendar file that cannot be read is not an empty calendar', as
   assert.deepEqual(fresh.localEventsBetween(0, Date.now() + 1e9), []);
   process.env.CLAUDEOS_CALENDAR_LOCAL_FILE = path.join(dir, 'calendar-local.json');
 });
+
+test('a stored entry that fails its check is kept in the file through a change, and is not shown', () => {
+  const bad = { id: 'badentry1', title: 42, start: at(9, 9), end: at(9, 10), allDay: false };
+  const good = { id: 'goodentry1', calendar: 'claudeos', title: 'Dentist', start: at(10, 9), end: at(10, 10), allDay: false };
+  fs.writeFileSync(L.FILE, JSON.stringify({ calendars: [], events: [good, bad] }));
+  const r = L.addLocalEvent(ev('Lunch', at(10, 12), at(10, 13)));
+  assert.equal(r.status, 'ok', 'the add still works');
+  const stored = JSON.parse(fs.readFileSync(L.FILE, 'utf8')).events as { id: string }[];
+  assert.equal(stored.some(e => e.id === 'badentry1'), true, 'the bad entry is still in the file');
+  const shown = L.localEventsIfReadable(at(1), at(30)) ?? [];
+  assert.deepEqual(shown.map(e => e.title).sort(), ['Dentist', 'Lunch']);
+});
