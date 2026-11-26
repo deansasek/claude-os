@@ -2,7 +2,7 @@
 // A copy older than COPY_MAX_MS is not used. Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { copyUsable, COPY_MAX_MS, noticeText, parseCopy } from '../src/apps/calendar/web/event-notice.ts';
+import { copyUsable, COPY_MAX_MS, noticeText, parseCopy, pcAnswer } from '../src/apps/calendar/web/event-notice.ts';
 
 const READ = Date.parse('2026-11-24T09:00:00');
 
@@ -24,4 +24,11 @@ test('a notice from a copy says when the PC read the calendar', () => {
   const e = { title: 'Dentist', start: '2026-11-24T14:00:00.000Z', end: '2026-11-24T14:30:00.000Z', allDay: false, day: 'today' as const };
   assert.deepEqual(noticeText(e, '2:00 PM', '9:00 AM'),
     { title: 'Coming up: Dentist', body: 'Starts at 2:00 PM · from a copy read at 9:00 AM' });
+});
+
+test('the PC answer decides the source: an ok read is used, not_set means no notices, and an error falls back to the copy', () => {
+  assert.equal(pcAnswer('ok'), 'use');
+  assert.equal(pcAnswer('not_set'), 'none');
+  assert.equal(pcAnswer('error'), 'copy');
+  assert.equal(pcAnswer(undefined), 'copy');
 });

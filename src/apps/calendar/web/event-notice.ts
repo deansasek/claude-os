@@ -58,3 +58,11 @@ export function parseCopy(raw: string | null): EventCopy | null {
 
 /** Whether a copy read at `readAt` may give notices at `now`. */
 export const copyUsable = (readAt: number, now: number): boolean => now - readAt <= COPY_MAX_MS;
+
+/**
+ * What the PC's answer to the events read means for notices: 'use' its events, 'none' (not set up: no notices), or 'copy'
+ * (the PC has no read to give, as after a restart with no internet, or it could not answer: use the tablet's copy).
+ */
+export function pcAnswer(status: 'ok' | 'not_set' | 'error' | undefined): 'use' | 'none' | 'copy' {
+  return status === 'ok' ? 'use' : status === 'not_set' ? 'none' : 'copy';
+}

@@ -13,7 +13,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts';
-import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, pruneNotified, type EventCopy, type Notified } from './event-notice.ts';
+import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, pcAnswer, pruneNotified, type EventCopy, type Notified } from './event-notice.ts';
 import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 import { flagsOf, tagCalendar, visibleEvents, type CalendarInfo } from './calendars.ts';
@@ -608,14 +608,16 @@ async function soonEvents(now: number): Promise<{ events: CalEvent[]; copyTime?:
   try { r = await getJson<CalEvents>(`${API}/events`); } catch { r = null; }   // the PC cannot be reached
   if (r) {
     if (r.status === 'not_set' && caps.localState) store.set(EVENTS_KEY, null);   // the address was removed: forget the copy
-    if (r.status !== 'ok') return null;                                     // not set up, or the read failed
-    if (caps.localState) {
+    const answer = pcAnswer(r.status);
+    if (answer === 'none') return null;                                      // not set up
+    if (answer === 'use' && caps.localState) {
       const next: EventCopy = { readAt: Date.parse(r.fetchedAt ?? '') || now, events: r.events };
       const json = JSON.stringify(next);
       if (json !== store.get(EVENTS_KEY)) store.set(EVENTS_KEY, json);
     }
-    return { events: r.events };
+    if (answer === 'use') return { events: r.events };
   }
+  // the PC could not answer with events: the tablet's copy, when it is recent enough
   const copy = caps.localState ? parseCopy(store.get(EVENTS_KEY)) : null;
   if (!copy || !copyUsable(copy.readAt, now)) return null;
   return { events: copy.events, copyTime: timeFmt.format(new Date(copy.readAt)) };
