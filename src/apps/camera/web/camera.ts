@@ -28,6 +28,7 @@ let facing: Facing = 'back';
 let target: HTMLElement | null = null;   // where the preview sits: the frame, or Look's full-screen view
 let isOn = false;                        // the native preview is up
 let wanted = false;                      // a screen wants the camera (reopened after Android paused it)
+let failed = false;                      // the last open failed: Switch tries the open again
 const waiters = new Map<string, (s: Shot) => void>();
 const listeners: ((state: CamState, message?: string) => void)[] = [];
 const emit = (state: CamState, message?: string) => listeners.forEach(f => { try { f(state, message); } catch (e) { console.error(e); } });
@@ -59,6 +60,7 @@ async function openWeb(): Promise<void> {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing === 'front' ? 'user' : 'environment' }, audio: false });
   } catch (e) {
+    failed = true;
     emit('error', camError(webCode((e as DOMException).name)));
     return;
   }
@@ -107,7 +109,7 @@ camera.on(e => {
     }
     case 'error': {
       // a photo that did not reach the PC leaves the preview open: the next shutter tap still works
-      if (!e.id) isOn = false;
+      if (!e.id) { isOn = false; failed = true; }
       if (e.id) { const w = waiters.get(e.id); waiters.delete(e.id); w?.({ ok: false, code: camCode(e.code), message: e.message }); }
       else emit('error', camError(e.code));
       break;
@@ -120,13 +122,14 @@ onResume(() => { if (wanted && target && !isOn) show(target); });
 
 /** Open the preview over `el` (or move it there if it's open already). */
 export function show(el: HTMLElement): void {
+  failed = false;
   target = el; wanted = true;
   if (!cameraAvailable) { emit('error', 'Camera needs the ClaudeOS tablet app.'); return; }
   if (!camera.available) { void openWeb(); return; }   // the browser's camera, in the frame
   if (isOn) { camera.move(screenRect(el)); return; }
   const r = camera.open(facing, screenRect(el));
   if (r.asking) { emit('asking'); return; }   // only if the grant was not re-applied: Android's prompt is the last resort
-  if (!r.ok) emit('error', camError(r.error === 'not allowed' ? 'denied' : 'failed'));
+  if (!r.ok) { failed = true; emit('error', camError(r.error === 'not allowed' ? 'denied' : 'failed')); }
 }
 
 /** Follow a screen that moved (the frame, or Look's full-screen view). */
@@ -146,7 +149,10 @@ export function hide(): void {
 /** Front and back: close, then open the other one once Android has let go of the first. */
 export function flip(): void {
   facing = facing === 'back' ? 'front' : 'back';
-  if (!isOn) return;
+  if (!isOn) {
+    if (failed && wanted && target) show(target);   // the last open failed: Switch tries it again on the other side
+    return;
+  }
   const el = target;
   if (camera.available) camera.close(); else stopWeb();
   isOn = false;
