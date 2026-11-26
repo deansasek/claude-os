@@ -83,8 +83,10 @@ function guess(s: Stored, pin: unknown): PinResult {
   }
   s.fails += 1;
   if (s.fails >= MAX_TRIES) {
-    s.fails = 0; s.lockedUntil = now + COOLDOWN_MS;
-    save(s);
+    // the cooldown is reported only once it is saved: a cooldown that cannot be saved would not hold
+    const next: Stored = { ...s, fails: 0, lockedUntil: now + COOLDOWN_MS };
+    if (!save(next)) return { ok: false, error: 'save_failed', lockedFor: 0 };
+    Object.assign(s, next);
     return locked(COOLDOWN_MS);
   }
   if (!save(s)) return { ok: false, error: 'save_failed', lockedFor: 0 };
