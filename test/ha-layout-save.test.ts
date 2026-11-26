@@ -22,6 +22,13 @@ test('saveLayout keeps the previous layout and restores it in the failure branch
   assert.match(body, /catch \{ if \(dash && prev\) dash\.layout = prev;/);
 });
 
+test('refresh keeps the caller note when the reload fails', () => {
+  const body = fnBody('refresh');
+  assert.match(body, /catch \{ if \(!keepNote \|\| !note\) note = 'Can’t reach the PC right now\.'; \}/);
+  const setOnHomeBody = fnBody('setOnHome');
+  assert.match(setOnHomeBody, /await refresh\(note !== ''\);/);
+});
+
 test('saveLayout and setOnHome assign r.layout only when r is ok and the layout is an object', () => {
   for (const name of ['saveLayout', 'setOnHome']) {
     const body = fnBody(name);

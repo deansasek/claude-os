@@ -221,7 +221,7 @@ async function loadStatus(): Promise<void> {
 // keepNote: the caller's message (a save that failed) stays on screen after the reload
 async function refresh(keepNote = false): Promise<void> {
   try { dash = await getJson<HaDashboard>(`${API}/layout`); if (!keepNote) note = ''; }
-  catch { note = 'Can’t reach the PC right now.'; }
+  catch { if (!keepNote || !note) note = 'Can’t reach the PC right now.'; }
   await loadStatus();
   render();
   appSettingsChanged();
