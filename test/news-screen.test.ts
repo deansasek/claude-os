@@ -1,12 +1,14 @@
 // The News screen's rules, with no DOM: the states (ok, partial, error), the headline and shelves, the notes for a
 // failed feed, the saved time on a stale shelf, the Read link (none for a story without a link), the feed terms
-// (no picture, text unchanged, a tile opens the reader, poll at most every 15 minutes). Run with: npm test
+// (no picture, text unchanged, a tile opens the reader, poll at most every 15 minutes), and the stale note after a
+// failed refresh. Run with: npm test
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { test } from 'node:test';
 import type { NewsFeedResponse, NewsItem } from '../src/apps/news/api.ts';
 import { parseFeed } from '../src/apps/news/web/rss.ts';
 import {
-  ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, SHOW_IMAGES, storiesById, storyKey, ERROR_TEXT, NO_FEED_TEXT, NO_SUMMARY_TEXT,
+  ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, SHOW_IMAGES, staleNotes, STALE_TEXT, storiesById, storyKey, ERROR_TEXT, NO_FEED_TEXT, NO_SUMMARY_TEXT,
 } from '../src/apps/news/web/screen.ts';
 
 const T = '2026-11-24T10:00:00Z';
@@ -162,4 +164,23 @@ test('the same story id in two feeds: each storyKey gives the item with its own 
 
 test('the page asks for the feed no more often than every 15 minutes', () => {
   assert.ok(POLL_MS >= 15 * 60e3);
+});
+
+test('a failed refresh with stories on screen gets the stale note, in the page copy style', () => {
+  assert.equal(STALE_TEXT, 'ClaudeOS could not reach the computer. These stories may be out of date.');
+  assert.deepEqual(staleNotes(), [{ sourceId: '', text: STALE_TEXT }]);
+});
+
+test('load(): the stale branch shows the note, restores topicsDirty and sets loadedAt to 0', () => {
+  const src = fs.readFileSync(new URL('../src/apps/news/web/index.ts', import.meta.url), 'utf8');
+  const start = src.indexOf('async function load()');
+  const end = src.indexOf('// ---------- opening the original story');
+  assert.ok(start >= 0 && end > start, 'load() is in index.ts');
+  const body = src.slice(start, end);
+  assert.match(body, /const wasDirty = topicsDirty;/);
+  const stale = body.slice(body.indexOf('if (!res && hasStories)'), body.indexOf('const s = screenFor(res)'));
+  assert.match(stale, /staleNotes\(\)/);
+  assert.match(stale, /if \(wasDirty\) topicsDirty = true;/);
+  assert.match(stale, /loadedAt = 0;/);
+  assert.match(stale, /return;/);
 });
