@@ -91,3 +91,32 @@ test('the server certificate is remade when it is within 30 days of expiry', { s
     fs.rmSync(state, { recursive: true, force: true });
   }
 });
+
+test('a new authority remakes the server certificate, so the old one is not left signed by a replaced authority', { skip: !hasOpenssl }, () => {
+  const state = fs.mkdtempSync(path.join(os.tmpdir(), 'https-ca-'));
+  try {
+    const first = ensureCertificates(state, ['127.0.0.1']);
+    const oldCert = fs.readFileSync(first.cert, 'utf8');
+    fs.rmSync(first.caCert, { force: true });
+    fs.rmSync(first.caKey, { force: true });
+    const again = ensureCertificates(state, ['127.0.0.1']);
+    assert.notEqual(fs.readFileSync(again.cert, 'utf8'), oldCert, 'the server certificate is remade');
+    execFileSync('openssl', ['verify', '-CAfile', again.caCert, again.cert]);
+  } finally {
+    fs.rmSync(state, { recursive: true, force: true });
+  }
+});
+
+test('a missing download copy of the authority is remade from ca.crt, and the authority is kept', { skip: !hasOpenssl }, () => {
+  const state = fs.mkdtempSync(path.join(os.tmpdir(), 'https-der-'));
+  try {
+    const first = ensureCertificates(state, ['127.0.0.1']);
+    const ca = fs.readFileSync(first.caCert, 'utf8');
+    fs.rmSync(first.caDer, { force: true });
+    ensureCertificates(state, ['127.0.0.1']);
+    assert.equal(fs.existsSync(first.caDer), true, 'the DER copy is back');
+    assert.equal(fs.readFileSync(first.caCert, 'utf8'), ca, 'the authority is unchanged');
+  } finally {
+    fs.rmSync(state, { recursive: true, force: true });
+  }
+});
