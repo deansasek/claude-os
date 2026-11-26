@@ -338,6 +338,9 @@ function bindApps(): void {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-tabapp]');
     if (!b) return;
     const id = b.dataset.tabapp!;
+    // re-read first: the tablet's allowed list can change after paintTabApps cached it (the Launcher's Add apps sheet saves too)
+    try { tabAllowed = new Set(androidApps.allowed().map(a => a.id)); }
+    catch { confirmSheet('Couldn’t change it', 'Couldn’t read the tablet’s apps, so nothing changed. Try again.', 'OK', () => {}); return; }
     const before = new Set(tabAllowed);
     tabAllowed.has(id) ? tabAllowed.delete(id) : tabAllowed.add(id);
     try { androidApps.setAllowed([...tabAllowed]); report('settings:apps:launcher'); }
