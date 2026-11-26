@@ -16,3 +16,8 @@ test('setUnits sends the unit to the PC without a loaded forecast as a condition
   assert.match(body, /try \{ await sendLocation\(\{ units: u \}\); \}\s*catch \{ notify\(/);
   assert.doesNotMatch(body, /isOk\(wx\)/);
 });
+
+test('setUnits restores the saved unit and repaints when the save fails', () => {
+  assert.match(body, /const prev = pickUnits;/);
+  assert.match(body, /catch \{ notify\([^]*?report\('wx-units-failed'\); pickUnits = prev; paintUnits\(\); \}/);
+});
