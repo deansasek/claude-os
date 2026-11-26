@@ -3,7 +3,7 @@
 import { getJson, postJson, store } from '../../../core/web/dom.ts';
 import { backupKey, backupValues } from './backup-keys.ts';
 
-export interface BackupState { saved: string | null; values: Record<string, string> }
+export interface BackupState { ok?: boolean; saved: string | null; values: Record<string, string>; error?: string }
 export interface SaveResult { ok: boolean; count?: number; saved?: string; error?: string }
 
 /** The tablet's settings that the backup keeps. Storage that cannot be read gives none. */
@@ -34,6 +34,7 @@ export async function loadSettings(): Promise<BackupState | null> {
 /** The note under the Save button: the saved time and the count, or a reason when there is no backup to show. */
 export function backupNote(b: BackupState | null): string {
   if (!b) return 'Can’t reach your PC';
+  if (b.ok === false) return b.error ?? 'The PC couldn’t read its settings backup.';
   return b.saved ? savedNote(b.saved, Object.keys(b.values).length) : 'Not saved yet';
 }
 
@@ -43,10 +44,11 @@ export function savedNote(saved: string, count: number): string {
   return `${when} · ${count} settings`;
 }
 
-/** Write the PC's settings back to this tablet. Returns how many were written, or -1 when the PC cannot be reached. */
+/** Write the PC's settings back to this tablet. Returns how many were written, -1 when the PC cannot be reached, or -2 when its backup cannot be read. */
 export async function restoreSettings(): Promise<number> {
   const b = await loadSettings();
   if (!b) return -1;
+  if (b.ok === false) return -2;
   const values = backupValues(b.values);
   for (const [k, v] of Object.entries(values)) store.set(k, v);
   return Object.keys(values).length;
@@ -54,6 +56,7 @@ export async function restoreSettings(): Promise<number> {
 
 /** The status line and the note under Save for a restore that wrote `n` settings (see restoreSettings). */
 export function restoreOutcome(n: number): { msg: string; note: string | null } {
+  if (n === -2) return { msg: 'The PC couldn’t read its settings backup, so nothing was restored.', note: null };
   if (n < 0) return { msg: 'Can’t reach your PC. Try again when it’s back.', note: backupNote(null) };
   if (n === 0) return { msg: 'Nothing is saved on your PC yet. Tap Save to PC first.', note: null };
   return { msg: '', note: null };

@@ -1,6 +1,7 @@
 // The settings backup on this PC (Settings → Storage): the tablet's os.* settings and sidebar pins, kept in
 // claudeos-settings-backup.json. The keys are filtered here too (web/backup-keys.ts), so a backup never keeps a token,
 // a key, the sign-in or the PIN state, whatever the tablet sends.
+import fs from 'node:fs';
 import path from 'node:path';
 import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import { backupValues } from '../web/backup-keys.ts';
@@ -10,10 +11,12 @@ const MAX_KEYS = 200;
 
 interface Saved { saved: string; values: Record<string, string> }
 
-/** The last backup, or nothing when none was saved. */
-export function readBackup(): { ok: true; saved: string | null; values: Record<string, string> } {
+/** The last backup, or nothing when none was saved. A file that exists but cannot be read is ok: false, so Save does not overwrite it silently. */
+export function readBackup(): { ok: boolean; saved: string | null; values: Record<string, string>; error?: string } {
+  if (!fs.existsSync(FILE)) return { ok: true, saved: null, values: {} };
   const s = readJson<Partial<Saved>>(FILE);
-  if (!s || typeof s.saved !== 'string' || !s.values || typeof s.values !== 'object') return { ok: true, saved: null, values: {} };
+  if (!s) return { ok: false, saved: null, values: {}, error: 'The PC couldn’t read its settings backup.' };
+  if (typeof s.saved !== 'string' || !s.values || typeof s.values !== 'object') return { ok: true, saved: null, values: {} };
   return { ok: true, saved: s.saved, values: backupValues(s.values) };
 }
 

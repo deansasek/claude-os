@@ -1,11 +1,19 @@
 // The settings backup's key filter (src/apps/settings/web/backup-keys.ts). Run with: npm test
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 import { backupKey, backupValues } from '../src/apps/settings/web/backup-keys.ts';
 
 // backup.ts imports core/web/dom.ts, which reads the page's location when it loads; node has none, so give it one first.
 Object.assign(globalThis, { location: { search: '' } });
 const { backupNote, restoreOutcome } = await import('../src/apps/settings/web/backup.ts');
+
+// The server reads its backup file named by CLAUDEOS_BACKUP_FILE when it loads, so point it at a temp folder first.
+const backupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-backup-'));
+process.env.CLAUDEOS_BACKUP_FILE = path.join(backupDir, 'claudeos-settings-backup.json');
+const { readBackup } = await import('../src/apps/settings/server/backup.ts');
 
 test('backupKey keeps the os.* settings and the sidebar pins', () => {
   assert.equal(backupKey('os.brightness'), true);
@@ -57,6 +65,26 @@ test('restoreOutcome shows the nothing-saved status and keeps the note when the 
 
 test('restoreOutcome leaves the note alone when settings were restored', () => {
   assert.deepEqual(restoreOutcome(3), { msg: '', note: null });
+});
+
+test('backupNote shows the PC’s read error when the backup cannot be read', () => {
+  const error = 'The PC couldn’t read its settings backup.';
+  assert.equal(backupNote({ ok: false, saved: null, values: {}, error }), error);
+});
+
+test('restoreOutcome says nothing was restored when the PC cannot read its backup', () => {
+  assert.deepEqual(restoreOutcome(-2), { msg: 'The PC couldn’t read its settings backup, so nothing was restored.', note: null });
+});
+
+test('readBackup says not saved for a missing file and ok: false for an unreadable one', () => {
+  const file = process.env.CLAUDEOS_BACKUP_FILE as string;
+  try {
+    assert.deepEqual(readBackup(), { ok: true, saved: null, values: {} });
+    fs.writeFileSync(file, '{ "saved": ');   // invalid JSON, so the file exists but cannot be read
+    assert.deepEqual(readBackup(), { ok: false, saved: null, values: {}, error: 'The PC couldn’t read its settings backup.' });
+  } finally {
+    fs.rmSync(backupDir, { recursive: true, force: true });
+  }
 });
 
 test('backupNote gives the saved time and the setting count', () => {
