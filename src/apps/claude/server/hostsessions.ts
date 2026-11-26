@@ -23,16 +23,28 @@ let records: HostSessionRecord[] = readJsonOrSetAside<{ sessions: HostSessionRec
 export const hostSessionIds = (): Set<string> => new Set(records.map(r => r.id));
 export const hostSession = (id: string): HostSessionRecord | undefined => records.find(r => r.id === id);
 
-export function rememberHostSession(r: HostSessionRecord): void {
-  records = [r, ...records.filter(x => x.id !== r.id)].slice(0, HOST_SESSION_CAP);
-  writeJsonFile(FILE, { sessions: records }, { indent: 2 });
+/** Save the list to hub-sessions.json. Returns false (and logs the error code) when the write fails; never throws. */
+function persist(): boolean {
+  try {
+    writeJsonFile(FILE, { sessions: records }, { indent: 2 });
+    return true;
+  } catch (e) {
+    console.log(`${path.basename(FILE)} could not be saved:`, (e as NodeJS.ErrnoException).code ?? 'error');
+    return false;
+  }
 }
 
-/** Forget a session the Hub started (after it is deleted). */
+/** Remember a session the Hub started. The record stays in memory even when the file cannot be saved. */
+export function rememberHostSession(r: HostSessionRecord): void {
+  records = [r, ...records.filter(x => x.id !== r.id)].slice(0, HOST_SESSION_CAP);
+  persist();
+}
+
+/** Forget a session the Hub started (after it is deleted). The record leaves memory even when the file cannot be saved. */
 export function forgetHubSession(id: string): void {
   if (!records.some(r => r.id === id)) return;
   records = records.filter(r => r.id !== id);
-  writeJsonFile(FILE, { sessions: records }, { indent: 2 });
+  persist();
 }
 
 // ---------- folders to start in ----------
