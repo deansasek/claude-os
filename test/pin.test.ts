@@ -94,3 +94,17 @@ test('removing the PIN needs the current PIN, then the file is gone and nothing 
   assert.equal(fs.existsSync(file), false);
   assert.equal(P.checkPin('1234').error, 'no_pin');
 });
+
+test('a cooldown that cannot be saved is reported as a save failure, not as a lock', (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: 2_000_000 });
+  P.setPin('1234', '');
+  for (let n = 1; n <= 4; n++) P.checkPin('0000');
+  // a directory where the PIN file's temporary copy goes: the save fails, and the PIN file itself stays readable
+  fs.mkdirSync(`${file}.tmp`);
+  try {
+    assert.deepEqual(P.checkPin('0000'), { ok: false, error: 'save_failed', lockedFor: 0 });
+    assert.equal(P.pinStatus().lockedFor, 0, 'no cooldown was started');
+  } finally {
+    fs.rmSync(`${file}.tmp`, { recursive: true, force: true });
+  }
+});
