@@ -10,7 +10,11 @@ export interface SearchSources {
   apps: { key: string; name: string }[];                       // tile keys as the grid has them ("c:photos", "a:com.x")
   lists: { id: string; name: string; items: string[] }[];
   sessions: { id: string; title: string; folder: string }[];
+  onTablet?: boolean;                                            // false on a Hub: the tablet-only Settings sections are not offered (default true)
 }
+
+/** Settings sections that only the tablet shows (Settings hides them on other screens: a hit there would open nothing). */
+const TABLET_ONLY_SECTIONS = new Set(['wifi', 'google', 'bluetooth', 'display', 'sound', 'battery', 'keyboard', 'apps', 'storage', 'datetime', 'security', 'developer']);
 
 /** The Settings sections a search can open (the names the Settings nav shows). */
 export const SETTINGS_ROWS: { section: string; label: string }[] = [
@@ -21,7 +25,7 @@ export const SETTINGS_ROWS: { section: string; label: string }[] = [
   { section: 'sound', label: 'Sound' }, { section: 'battery', label: 'Battery' }, { section: 'keyboard', label: 'Keyboard' },
   { section: 'apps', label: 'Apps' }, { section: 'storage', label: 'Storage' }, { section: 'datetime', label: 'Date and time' },
   { section: 'privacy', label: 'Privacy' }, { section: 'wellbeing', label: 'Wellbeing' }, { section: 'security', label: 'Security' },
-  { section: 'about', label: 'About' }, { section: 'developer', label: 'Developer' },
+  { section: 'about', label: 'About' }, { section: 'developer', label: 'Developer' }, { section: 'monitor', label: 'System monitor' },
 ];
 
 /** Lower case, no apostrophes, single spaces: so "Wi‑Fi", "wi-fi" and "Don’t" compare the same way. */
@@ -55,7 +59,10 @@ export function searchAll(query: string, src: SearchSources): Hit[] {
     if (s) found.push({ kind, label, sub, ref, s });
   };
   for (const a of src.apps) add('app', a.name, 'App', a.key);
-  for (const r of SETTINGS_ROWS) add('setting', r.label, 'Settings', r.section);
+  for (const r of SETTINGS_ROWS) {
+    if (src.onTablet === false && TABLET_ONLY_SECTIONS.has(r.section)) continue;
+    add('setting', r.label, 'Settings', r.section);
+  }
   for (const l of src.lists) {
     add('list', l.name, 'List', l.id);
     for (const it of l.items) add('item', it, `In ${l.name}`, l.id, it);

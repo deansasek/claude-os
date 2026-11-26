@@ -50,3 +50,10 @@ test('a better match comes first, and a tie keeps apps before Settings', () => {
   const ties = searchAll('sound', src);
   assert.equal(ties[0].label, 'Sound');
 });
+
+test('on a Hub, Apps search offers no tablet-only Settings section, and finds System monitor', () => {
+  const hub: SearchSources = { apps: [], lists: [], sessions: [], onTablet: false };
+  assert.equal(searchAll('wi-fi', hub).some(h => h.kind === 'setting'), false, 'Wi-Fi is tablet-only');
+  assert.equal(searchAll('wi-fi', { ...hub, onTablet: true }).some(h => h.kind === 'setting'), true, 'the tablet still offers Wi-Fi');
+  assert.equal(searchAll('system monitor', hub).some(h => h.ref === 'monitor'), true, 'System monitor is offered on every screen');
+});

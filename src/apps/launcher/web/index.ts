@@ -474,7 +474,7 @@ async function loadSearchData(): Promise<void> {
 }
 
 function sources(): SearchSources {
-  return { apps: allTiles().map(t => ({ key: t.key, name: t.name })), lists, sessions };
+  return { apps: allTiles().map(t => ({ key: t.key, name: t.name })), lists, sessions, onTablet };
 }
 
 /** Say what could not be read. A source never read says "couldn't be read"; a source with kept data says it may be out of date. */
