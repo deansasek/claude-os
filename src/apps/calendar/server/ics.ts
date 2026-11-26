@@ -4,7 +4,7 @@
 //   - DTSTART / DTEND as a date (all-day) or a date-time. "Z" times are UTC; a TZID is converted from its zone (IANA or common Windows names), and no zone at all is read as
 //     the PC's local time (the family's calendar is in the family's time zone). No DTEND: DURATION, else one day for
 //     an all-day event and no length for a timed one.
-//   - RRULE: FREQ DAILY, WEEKLY (BYDAY), MONTHLY (BYMONTHDAY, or BYDAY such as 2TU / -1FR) and YEARLY, with
+//   - RRULE: FREQ DAILY, WEEKLY (BYDAY), MONTHLY (BYMONTHDAY, or BYDAY such as 2TU / -1FR, narrowed by BYSETPOS such as -1) and YEARLY, with
 //     INTERVAL, COUNT and UNTIL. EXDATE removes an occurrence; an event with a RECURRENCE-ID replaces one.
 //   - STATUS:CANCELLED events are left out.
 // Anything it doesn't understand is skipped, never a crash.
@@ -208,7 +208,13 @@ function period(s: Stamp, r: Record<string, string>, k: number, interval: number
         const md = (r.BYMONTHDAY ?? '').split(',').map(Number).filter(x => Number.isInteger(x) && x !== 0);
         for (const x of md.length ? md : [s.d]) { const d = x > 0 ? x : n + 1 + x; if (d >= 1 && d <= n) days.add(d); }
       }
-      return { first, days: [...days].sort((a, b) => a - b).map(d => onDay(s, y, mo, d)) };
+      const sorted = [...days].sort((a, b) => a - b);
+      // BYSETPOS picks positions from the month's list: 1 is the first, -1 the last. Values that are not integers are ignored.
+      const sets = (r.BYSETPOS ?? '').split(',').map(x => x.trim()).filter(x => /^[+-]?\d+$/.test(x)).map(Number).filter(x => x !== 0 && x >= -366 && x <= 366);
+      if (!sets.length) return { first, days: sorted.map(d => onDay(s, y, mo, d)) };
+      const picked = new Set<number>();
+      for (const p of sets) { const i = p > 0 ? p - 1 : sorted.length + p; if (i >= 0 && i < sorted.length) picked.add(sorted[i]); }
+      return { first, days: [...picked].sort((a, b) => a - b).map(d => onDay(s, y, mo, d)) };
     }
     case 'YEARLY': {
       const y = s.y + k * interval;
