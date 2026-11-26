@@ -21,7 +21,8 @@ const app: ServerApp = {
     {
       method: 'GET', path: 'list', handle: ({ query }) => {
         const limit = Math.max(1, Math.min(2000, Number(query.get('limit')) || 500));
-        return { ok: true, days: listPhotos(limit) };
+        try { return { ok: true, days: listPhotos(limit) }; }
+        catch { return { ok: false, days: [], error: 'The PC couldn’t read its photos folder. Check that ClaudeOS can read it.' }; }
       },
     },
     {
