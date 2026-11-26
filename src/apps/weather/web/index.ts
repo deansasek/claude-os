@@ -414,7 +414,7 @@ async function choosePlace(p: Place): Promise<void> {
 }
 
 function openPicker(): void {
-  pickUnits = isOk(wx) ? wx.units : 'fahrenheit';
+  pickUnits = isOk(wx) ? wx.units : pickUnits;
   paintUnits();
   places = [];
   paintPlaces('Start typing your city. Only the city you pick is sent to the forecast service.');
