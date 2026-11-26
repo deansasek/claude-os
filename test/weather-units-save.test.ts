@@ -13,13 +13,13 @@ const body = src.slice(start, src.indexOf('\n}\n', start));
 
 test('setUnits sends the unit to the PC without a loaded forecast as a condition', () => {
   assert.ok(start > 0, 'setUnits exists');
-  assert.match(body, /try \{ await sendLocation\(\{ units: u \}\); \}\s*catch \{ notify\(/);
+  assert.match(body, /try \{ await sendLocation\(\{ units: u \}\); \}\s*catch \{ (?:pcDown = true; )?notify\(/);
   assert.doesNotMatch(body, /isOk\(wx\)/);
 });
 
 test('setUnits restores the saved unit and repaints when the save fails', () => {
   assert.match(body, /const prev = pickUnits;/);
-  assert.match(body, /catch \{ notify\([^]*?report\('wx-units-failed'\); pickUnits = prev; paintUnits\(\); \}/);
+  assert.match(body, /catch \{ (?:pcDown = true; )?notify\([^]*?report\('wx-units-failed'\); pickUnits = prev; paintUnits\(\); \}/);
 });
 
 test('sendLocation clears pcDown once the PC answers, before reading the status', () => {
@@ -42,6 +42,15 @@ test('choosePlace names the PC and marks it down when the save fails', () => {
   assert.match(catchBody, /pcDown = true;/);
   assert.match(catchBody, /Couldn’t reach your PC, so <em>\$\{esc\(p\.name\)\}<\/em> isn’t saved\. Try again\./);
   assert.doesNotMatch(pickBody, /Couldn’t save that\./);
+});
+
+test('setUnits marks the PC down before it names the PC in the notice', () => {
+  const catchBody = body.slice(body.indexOf('catch {'));
+  const marked = catchBody.indexOf('pcDown = true;');
+  const notified = catchBody.indexOf('notify(');
+  assert.match(catchBody, /pcDown = true;/);
+  assert.ok(marked > 0, 'pcDown = true is in the setUnits catch');
+  assert.ok(notified > marked, 'pcDown = true comes before notify(');
 });
 
 test('openPicker keeps the saved unit when no forecast is loaded', () => {
