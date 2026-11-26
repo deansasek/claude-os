@@ -66,13 +66,17 @@ export function ensureCertificates(stateDir: string, names: string[], run: Run =
   fs.mkdirSync(f.dir, { recursive: true });
   const want = altNames(names);
   const have = fs.existsSync(f.hosts) ? fs.readFileSync(f.hosts, 'utf8') : '';
+  // a new authority means the server certificate (signed by the old one) must be remade too
+  let freshCa = false;
   if (!fs.existsSync(f.caCert) || !fs.existsSync(f.caKey)) {
+    freshCa = true;
     run('openssl', ['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes',
       '-keyout', f.caKey, '-out', f.caCert, '-days', '3650', '-subj', '/CN=ClaudeOS Local CA',
       '-addext', 'basicConstraints=critical,CA:TRUE', '-addext', 'keyUsage=critical,keyCertSign,cRLSign'], f.dir);
-    run('openssl', ['x509', '-in', f.caCert, '-outform', 'DER', '-out', f.caDer], f.dir);
   }
-  if (!fs.existsSync(f.cert) || !fs.existsSync(f.key) || have !== want || serverCertExpiringSoon(f.cert, now)) {
+  // the download copy of the authority: remade from ca.crt when it is missing, without a new authority
+  if (!fs.existsSync(f.caDer)) run('openssl', ['x509', '-in', f.caCert, '-outform', 'DER', '-out', f.caDer], f.dir);
+  if (freshCa || !fs.existsSync(f.cert) || !fs.existsSync(f.key) || have !== want || serverCertExpiringSoon(f.cert, now)) {
     const ext = path.join(f.dir, 'server.ext');
     fs.writeFileSync(ext, `basicConstraints=CA:FALSE\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth\nsubjectAltName=${want}\n`);
     run('openssl', ['req', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes',
