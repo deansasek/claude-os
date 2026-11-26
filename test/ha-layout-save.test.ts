@@ -1,9 +1,10 @@
 // The Home Assistant layout saves must put back the previous layout when the PC save fails.
 // The page is DOM code with no unit seam, so this reads its source. Run with: npm test
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import fs, { readFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const file = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/apps/home-assistant/web/index.ts');
@@ -46,4 +47,35 @@ test('saveLayout and setOnHome assign r.layout only when r is ok and the layout 
     assert.match(body, /if \(r\.ok && r\.layout && typeof r\.layout === 'object'\)/);
     assert.doesNotMatch(body, /^\s*if \(dash\) dash\.layout = r\.layout;$/m);
   }
+});
+
+// The PC side: a failed file write must not change the layout the PC serves. Runs the real layout.ts on a scratch
+// state directory (CLAUDEOS_STATE_DIR is read when paths.ts loads, so it is set before the import below).
+const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-ha-layout-'));
+process.env.CLAUDEOS_STATE_DIR = stateDir;
+after(() => fs.rmSync(stateDir, { recursive: true, force: true }));
+
+test('a layout save that cannot be written keeps the saved layout, for the layout and the Home scenes', async () => {
+  const L = await import('../src/apps/home-assistant/server/layout.ts');
+  const first = L.saveLayout(false, { rooms: [{ id: 'rone', name: 'Kitchen', devices: ['light.kitchen'] }], other: [], names: {} });
+  assert.equal(first.ok, true);
+  const home = L.setHomeScene(false, 'scene.good_morning', true);
+  assert.equal(home.ok, true);
+  const saved = L.getLayout(false);
+
+  // a directory where the layout file goes makes the rename fail
+  const file = path.join(stateDir, '.ha-layout.json');
+  fs.rmSync(file, { force: true });
+  fs.mkdirSync(file);
+
+  const r = L.saveLayout(false, { rooms: [{ id: 'rone', name: 'Den', devices: ['light.kitchen', 'light.living_room'] }], other: [], names: {} });
+  assert.equal(r.ok, false);
+  assert.equal(r.error, 'The PC couldn’t save the layout.');
+  assert.deepEqual(r.layout, saved, 'the answer carries the saved layout, not the unsaved one');
+  assert.deepEqual(L.getLayout(false), saved, 'the layout served after the failure is still the saved one');
+
+  const scene = L.setHomeScene(false, 'scene.movie_night', true);
+  assert.equal(scene.ok, false);
+  assert.deepEqual(scene.home, ['scene.good_morning'], 'the Home scenes keep the saved pick');
+  assert.deepEqual(L.homeScenes(false), ['scene.good_morning']);
 });
