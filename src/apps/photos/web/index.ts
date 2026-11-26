@@ -158,6 +158,7 @@ function open(p: PhotoItem, day: string, dir = 0): void {
   resetZoom(true);
   const img = $<HTMLImageElement>('phFull');
   img.src = p.url;
+  paintMissing(false);
   img.classList.remove('swap');
   if (dir) {
     void img.offsetWidth;   // restart the slide-in
@@ -191,7 +192,23 @@ function close(): void {
   shown = null;
   resetZoom(true);
   $('phViewer').hidden = true;
+  paintMissing(false);
   $<HTMLImageElement>('phFull').removeAttribute('src');
+}
+
+/** A picture that cannot load: the stage shows a note in place of it, Ask Claude is off, and Delete stays on. */
+function paintMissing(missing: boolean): void {
+  $<HTMLImageElement>('phFull').hidden = missing;
+  $('phMissing').hidden = !missing;
+  $<HTMLButtonElement>('phAsk').disabled = missing;
+}
+
+/** The full picture failed to load. Ignore an error from an earlier photo that the viewer has moved on from. */
+function onFullError(): void {
+  const img = $<HTMLImageElement>('phFull');
+  if (!shown || img.getAttribute('src') !== shown.url) return;
+  $('phMissing').textContent = 'This photo can’t be shown. It may have been deleted on the PC.';
+  paintMissing(true);
 }
 
 // ---------- the viewer's zoom: pinch or double-tap to zoom, drag to move, a sideways swipe to go on ----------
@@ -419,6 +436,7 @@ const app: HubApp = {
     stage.addEventListener('pointermove', onStageMove);
     stage.addEventListener('pointerup', onStageUp);
     stage.addEventListener('pointercancel', onStageCancel);
+    $<HTMLImageElement>('phFull').addEventListener('error', onFullError);
     $('phDel').addEventListener('click', () => { if (shown) askDelete([shown.id]); });
     $('phAsk').addEventListener('click', () => {
       if (!shown) return;
