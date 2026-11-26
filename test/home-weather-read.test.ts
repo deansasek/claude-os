@@ -2,7 +2,7 @@
 // Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { weatherAfterRead } from '../src/apps/home/web/weather-read.ts';
+import { emptyTileText, weatherAfterRead } from '../src/apps/home/web/weather-read.ts';
 
 const ok: { status: string; place?: string } = { status: 'ok', place: 'Home' };
 
@@ -29,4 +29,25 @@ test('a no-location answer is a read, not a failure', () => {
   const r = weatherAfterRead(null, { status: 'no_location' });
   assert.equal(r.failed, false);
   assert.deepEqual(r.wx, { status: 'no_location' });
+});
+
+test('a city the hub cannot find says City not found on the tile', () => {
+  const r = weatherAfterRead(null, { status: 'not_found' });
+  assert.equal(r.failed, false);
+  assert.equal(emptyTileText(r.wx?.status, r.failed).temp, 'City not found');
+});
+
+test('the empty tile keeps its no-location words', () => {
+  assert.equal(emptyTileText('no_location', false).temp, 'Set your city');
+  assert.equal(emptyTileText('no_location', false).sub, 'Tap to choose where you live');
+});
+
+test('a failed read with no forecast says Offline', () => {
+  assert.equal(emptyTileText(undefined, true).temp, 'Offline');
+  assert.equal(emptyTileText(undefined, true).sub, 'Can’t reach the forecast');
+});
+
+test('the tile keeps its loading words before the first read', () => {
+  assert.equal(emptyTileText(undefined, false).temp, '–');
+  assert.equal(emptyTileText(undefined, false).sub, 'Checking the sky…');
 });
