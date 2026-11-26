@@ -14,6 +14,7 @@ import { initClaudePanel } from './claude-panel.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import { manifest } from '../manifest.ts';
+import { hasNumberId, hasStringId, hasUrl, readSavedList, readSavedObject } from './saved-list.ts';
 import {
   I, S, ENGINES, DEFAULT_QUICK, K, MAX_TABS, MAX_QUICK, MAX_DL, MAX_PAST, PERM_KINDS, PERM_LABEL, type Tab, type Engine, type Quick,
   type Visit, type Bookmark, type Dl, type Perms, type Live, host, liveOf, cur, newId, readJson, resolveInput, reading, ago, visit,
@@ -590,15 +591,16 @@ function siteDataRows(): SettingRow[] {
 // ---------- the app ----------
 function mount(c: AppContext): void {
   ctx = c;
-  const saved = readJson<{ tabs: Tab[]; active: string } | null>(K.tabs, null);
-  S.tabs = saved?.tabs?.filter(t => t && t.id) || [];
+  // each saved list is read field by field: a value that is not a list, or an entry that fails its check, is left out
+  const saved = readJson<{ active?: unknown; tabs?: unknown } | null>(K.tabs, null);
+  S.tabs = Array.isArray(saved?.tabs) ? (saved!.tabs as unknown[]).filter(hasStringId) as Tab[] : [];
   if (!S.tabs.length) S.tabs = [{ id: newId(), url: '', title: '', icon: '' }];
-  S.active = saved && S.tabs.some(t => t.id === saved.active) ? saved.active : S.tabs[0].id;
-  S.history = readJson<Visit[]>(K.history, []);
-  S.bookmarks = readJson<Bookmark[]>(K.bookmarks, []);
-  S.downloads = readJson<Dl[]>(K.downloads, []);
-  S.quick = readJson<Quick[]>(K.quick, DEFAULT_QUICK);
-  S.perms = readJson<Perms>(K.perms, {});
+  S.active = saved && typeof saved.active === 'string' && S.tabs.some(t => t.id === saved.active) ? saved.active : S.tabs[0].id;
+  S.history = readSavedList<Visit>(store.get(K.history), hasUrl) ?? [];
+  S.bookmarks = readSavedList<Bookmark>(store.get(K.bookmarks), hasUrl) ?? [];
+  S.downloads = readSavedList<Dl>(store.get(K.downloads), hasNumberId) ?? [];
+  S.quick = readSavedList<Quick>(store.get(K.quick), hasUrl) ?? DEFAULT_QUICK;
+  S.perms = readSavedObject<Perms>(store.get(K.perms)) ?? {};
   const eng = store.get(K.engine);
   S.engine = (Object.keys(ENGINES) as Engine[]).find(e => e === eng) || 'duckduckgo';
 
