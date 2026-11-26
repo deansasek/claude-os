@@ -90,7 +90,7 @@ async function load(): Promise<Routine[] | null> {
   return (await loadFile())?.routines ?? null;
 }
 
-/** A save or delete would drop these entries from the file, so it is refused and the file is left as it is. */
+/** A save or delete would drop these entries from the file, so it is refused and the file is left as it is. The refusal is retryable: the tablet keeps the change until the file is fixed. */
 const kept = (skipped: string[]): string =>
   `${skipped.join(', ')} in .routines.json can’t be kept as it is, so nothing was saved. Fix or remove it there, then try again.`;
 
@@ -130,7 +130,7 @@ export async function saveRoutine(raw: unknown): Promise<RoutinesResult> {
   if (!loaded) return { ok: false, routines: [], error: UNREADABLE, retry: true };
   const list = loaded.routines;
   const fail = (error: string): RoutinesResult => ({ ok: false, routines: list, error });
-  if (loaded.skipped.length) return fail(kept(loaded.skipped));
+  if (loaded.skipped.length) return { ...fail(kept(loaded.skipped)), retry: true };
   const c = cleanRoutine(raw);
   if ('error' in c) return fail(c.error);
   for (const s of c.steps) {
@@ -164,7 +164,7 @@ export async function deleteRoutine(idRaw: unknown): Promise<RoutinesResult> {
   const loaded = await loadFile();
   if (!loaded) return { ok: false, routines: [], error: UNREADABLE, retry: true };
   const list = loaded.routines;
-  if (loaded.skipped.length) return { ok: false, routines: list, error: kept(loaded.skipped) };
+  if (loaded.skipped.length) return { ok: false, routines: list, error: kept(loaded.skipped), retry: true };
   if (typeof idRaw !== 'string' || !ROUTINE_ID.test(idRaw)) return { ok: false, routines: list, error: 'That isn’t a routine.' };
   const at = list.findIndex(r => r.id === idRaw);
   if (at < 0) return { ok: true, routines: list };   // already gone

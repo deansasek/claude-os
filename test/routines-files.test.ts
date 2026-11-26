@@ -64,8 +64,10 @@ test('a save or delete is refused, and the file kept, when a stored routine cann
   const s = await R.saveRoutine({ name: 'Morning walk', phrases: ['morning walk'], steps: [{ kind: 'weather' }] });
   assert.equal(s.ok, false);
   assert.match(s.error ?? '', /“Lights”/);
+  assert.equal(s.retry, true, 'the save is retryable');
   const d = await R.deleteRoutine('bedtime');
   assert.equal(d.ok, false);
+  assert.equal(d.retry, true, 'the delete is retryable');
   assert.equal(fs.readFileSync(file, 'utf8'), before);
 });
 
