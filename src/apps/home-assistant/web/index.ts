@@ -683,8 +683,8 @@ function settingRows(): SettingRow[] {
   const s = status;
   const unreachable = !s && statusFailed;   // no answer from the PC: the saved address and token are unknown
   const rows: SettingRow[] = [
-    { kind: 'info', id: 'mode', title: 'Status', detail: s?.error ? plain(s.error) : unreachable ? 'Can’t reach the PC right now.' : s?.configured ? undefined : 'Add the address and the access token to connect.',
-      value: () => (unreachable ? 'Couldn’t load' : !s?.configured ? 'Not set up' : s.connected ? 'Connected' : s.connected === false ? 'Not connected' : 'Not tested yet') },
+    { kind: 'info', id: 'mode', title: 'Status', detail: statusFailed ? (s?.error ? `${plain(s.error)} Can’t reach the PC right now.` : 'Can’t reach the PC right now.') : s?.error ? plain(s.error) : s?.configured ? undefined : 'Add the address and the access token to connect.',
+      value: () => (statusFailed ? 'Couldn’t load' : !s?.configured ? 'Not set up' : s.connected ? 'Connected' : s.connected === false ? 'Not connected' : 'Not tested yet') },
     // with no answer from the PC, the Add button is hidden: an info row has no button
     unreachable
       ? { kind: 'info', id: 'address', title: 'Address', detail: 'For example http://homeassistant.local:8123', value: () => 'Couldn’t load' }
