@@ -226,8 +226,9 @@ async function loadStatus(): Promise<void> {
   try { status = await getJson<HaStatus>(`${API}/status`); } catch { /* keep the last one */ }
 }
 
-async function refresh(): Promise<void> {
-  try { dash = await getJson<HaDashboard>(`${API}/layout`); note = ''; }
+// keepNote: the caller's message (a save that failed) stays on screen after the reload
+async function refresh(keepNote = false): Promise<void> {
+  try { dash = await getJson<HaDashboard>(`${API}/layout`); if (!keepNote) note = ''; }
   catch { note = 'Can’t reach the PC right now.'; }
   await loadStatus();
   render();
@@ -306,7 +307,7 @@ async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
     if (dash) dash.layout = r.layout;
     note = r.ok ? '' : r.error ?? 'That wasn’t saved.';
   } catch { note = 'Can’t reach the PC right now, so that wasn’t saved.'; }
-  await refresh();
+  await refresh(note !== '');
 }
 
 async function saveConfig(body: { address?: string; token?: string }): Promise<void> {
