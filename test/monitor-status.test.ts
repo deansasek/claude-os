@@ -10,6 +10,11 @@ test('uptimeText says hours and minutes, minutes, or under a minute', () => {
   assert.equal(uptimeText(-5), 'under a minute');
 });
 
+test('uptimeText reads 59 seconds as under a minute and 60 seconds as 1 min', () => {
+  assert.equal(uptimeText(59), 'under a minute');
+  assert.equal(uptimeText(60), '1 min');
+});
+
 test('monitorLines reports a running hub, a connected PC, and the open and failed apps', () => {
   const l = monitorLines({ uptimeSeconds: 3600, pcReachable: true, openNames: ['Claude', 'Photos'], failedNames: [] });
   assert.deepEqual(l, { uptime: 'Running for 1 h 0 min', pc: 'Connected', open: '2 open: Claude, Photos', failed: 'No apps failed to start' });
