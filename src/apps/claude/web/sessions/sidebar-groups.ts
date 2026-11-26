@@ -109,3 +109,17 @@ export const archiveEmpty = (failed: boolean, loaded: boolean): { head: string; 
 };
 /** The search's empty line: a failed history fetch says so first, else no match. */
 export const searchEmpty = (q: string, failed: boolean): string => (failed ? `${emptyText(true)}.` : `No sessions match “${q}”.`);
+
+/**
+ * The saved fold choices: [folder key, folded] pairs from claude.sb.fold. A value that is not a list of pairs is left
+ * out, and an older build's list of folded names (claude.sb.folded) is used when there is no pair list. Never throws.
+ */
+export function foldChoices(raw: string | null, legacy: string | null): [string, boolean][] {
+  const parse = (s: string | null): unknown => { try { return JSON.parse(s || 'null'); } catch { return null; } };
+  const v = parse(raw);
+  if (Array.isArray(v)) {
+    return v.filter((p): p is [string, boolean] => Array.isArray(p) && p.length === 2 && typeof p[0] === 'string' && typeof p[1] === 'boolean');
+  }
+  const names = parse(legacy);
+  return Array.isArray(names) ? names.filter((n): n is string => typeof n === 'string').map(n => [n, true] as [string, boolean]) : [];
+}
