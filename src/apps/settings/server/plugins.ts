@@ -16,6 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { query, type McpServerStatus, type Options, type Query } from '@anthropic-ai/claude-agent-sdk';
 import { STATE, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
+import { PLUGIN_OFF_MAX } from '../api.ts';
 import type { McpInput, PluginItem, PluginStatus, PluginsView } from '../api.ts';
 
 const STATE_FILE = process.env.CLAUDEOS_PLUGINS_STATE_FILE || path.join(STATE, 'plugins-state.json');   // a test sets CLAUDEOS_PLUGINS_STATE_FILE
@@ -25,7 +26,7 @@ const CLAUDE_JSON = path.join(HOME, '.claude.json');
 const MARKETPLACES = path.join(CLAUDE_DIR, 'plugins', 'marketplaces');
 const PROBE_MS = 25e3;
 const PROBE_TTL_MS = 10 * 60e3;
-const MAX_OFF = 500;
+const MAX_OFF = PLUGIN_OFF_MAX;
 
 // ---------- the ClaudeOS state (plugins-state.json) ----------
 interface CustomMcp {

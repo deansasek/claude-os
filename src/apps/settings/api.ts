@@ -76,6 +76,17 @@ export interface PluginsView {
   probe: { at: number; error: string | null; pending: boolean } | null;   // when the live check ran
 }
 
+// Switches (POST /api/settings/plugins/toggle): {ok: true} when saved, else {ok: false, error}. The PC keeps at most
+// PLUGIN_OFF_MAX items switched off; past that it answers error 'too_many'.
+export const PLUGIN_OFF_MAX = 500;
+
+/** The words for a switch the PC refused. A refusal is not a connection problem, so it never says to check the PC. */
+export function toggleRefusal(error: string): string {
+  return error === 'too_many'
+    ? `ClaudeOS keeps up to ${PLUGIN_OFF_MAX} switched off. Switch one back on first.`
+    : 'Couldn’t save that switch.';
+}
+
 // Discover (Settings → Plugins → Discover): the Anthropic plugin marketplace, installed through the Claude Code CLI.
 //   GET  /api/settings/plugins/market             MarketView: the plugins the marketplace lists
 //   POST /api/settings/plugins/market/install     {name, marketplace}: MarketResult (installs for the user, all sessions)

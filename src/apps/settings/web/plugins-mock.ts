@@ -11,11 +11,11 @@ const NO_CLI: MarketResult = { ok: false, error: 'no_cli', output: '' };
 
 defineMock({
   'GET /api/settings/plugins': (): PluginsView => view(),
-  'POST /api/settings/plugins/toggle': ({ body }): PluginsView => {
+  'POST /api/settings/plugins/toggle': ({ body }): { ok: true } => {
     const b = body as { key?: unknown; on?: unknown } | null;
     const it = items.find(i => i.key === b?.key);
     if (it) it.on = b?.on === true;
-    return view();
+    return { ok: true };
   },
   'POST /api/settings/plugins/mcp': ({ body }): { ok: boolean; error?: string } => {
     const b = body as { name?: unknown; type?: unknown; command?: unknown; url?: unknown } | null;
