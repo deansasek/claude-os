@@ -219,6 +219,7 @@ function play(s: Station): void {
 
 function toggle(): void {
   if (state === 'playing' || state === 'buffering') {
+    playSeq++;   // a play still waiting on the stream is over: its rejection (the pause) is not a failure
     audio?.pause();
     setState('paused');
     return;
