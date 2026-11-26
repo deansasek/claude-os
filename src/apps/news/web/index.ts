@@ -11,7 +11,7 @@ import type { NewsFeedResponse, NewsItem, NewsTopicsResponse } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { FEEDS } from './feeds.ts';
 import { activeFeeds, isOn, type TopicChoices } from './topics.ts';
-import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, storiesById, type NewsScreen, type Shelf } from './screen.ts';
+import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
 import { feedSource, tabletFeed, type KeyValue } from './tablet.ts';
 
 let ctx: AppContext;
@@ -57,7 +57,7 @@ function sourceCredit(item: NewsItem): HTMLElement {
 
 function hero(item: NewsItem): HTMLElement {
   const b = el('div', 'nw-hero');
-  b.dataset.id = item.id;
+  b.dataset.id = storyKey(item);
   const body = el('span', 'nw-hero-body');
   const m = el('span', 'nw-meta');
   m.append(sourceCredit(item));
@@ -71,7 +71,7 @@ function hero(item: NewsItem): HTMLElement {
 // A tile opens the reader sheet. Its source name opens the original story.
 function tile(item: NewsItem): HTMLElement {
   const b = el('div', 'nw-tile');
-  b.dataset.id = item.id;
+  b.dataset.id = storyKey(item);
   const top = el('span', 'nw-tile-top');
   top.append(media(item, 'nw-tile-media'), sourceCredit(item));
   b.append(top, el('span', 'nw-tile-title', item.title), el('span', 'nw-tile-when', ago(item.published, Date.now())));
