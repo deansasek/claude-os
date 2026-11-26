@@ -38,7 +38,7 @@ import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay, weatherTrouble } from './voice-weather.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
-import { readLists, writeList } from '../../apps/lists/web/readers.ts';
+import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 import { matchOpenApp } from './voice-open.ts';
@@ -429,7 +429,13 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
   const name = c.list === 'shopping' ? 'the shopping list' : c.list === 'todo' ? 'the to-do list' : `the ${(customName ?? 'list').toLowerCase()} list`;
   try {
     if (c.op === 'add') {
-      const r = await writeList('add', { list: c.list, text: c.text });
+      let r: ListsResult;
+      try { r = await writeList('add', { list: c.list, text: c.text }); }
+      catch (e) {
+        // queued on the tablet (the PC is not answering): the same words as the comma form
+        if (isQueued(e)) return { say: addManyReply([c.text], 0, 1, name), react: 'hop' };
+        throw e;
+      }
       if (!r?.ok) return { say: r?.error ?? `I couldn’t add that to ${name}.` };
       return { say: `Added ${c.text.replace(/^./, ch => ch.toLowerCase())} to ${name}.`, react: 'hop' };
     }
@@ -446,11 +452,12 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
     }
     if (c.op === 'addMany') {
       // one add per item, the same route the Lists app uses; the reply says what went on
-      // a write the PC cannot take is queued on the tablet by writeList (and throws): the rest still go, and it is said
+      // a write the PC cannot take is queued on the tablet by writeList (and throws queued): the rest still go, and it is said.
+      // Only a queued write counts as waiting; any other failure is neither added nor waiting.
       let ok = 0, waiting = 0;
       for (const text of c.texts) {
         try { const r = await writeList('add', { list: c.list, text }); if (r?.ok) ok++; }
-        catch { waiting++; }
+        catch (e) { if (isQueued(e)) waiting++; }
       }
       if (!ok && !waiting) return { say: `I couldn’t add those to ${name}.` };
       return { say: addManyReply(c.texts, ok, waiting, name), react: 'hop' };

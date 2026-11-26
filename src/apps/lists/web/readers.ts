@@ -21,20 +21,28 @@ function tabletCopy(): FamilyList[] | null {
 export const readLists = (): Promise<FamilyList[]> =>
   pickLists(tabletCopy(), () => getJson<ListsResult>('/api/lists/lists'));
 
+/** True when a write threw because the PC could not take it and the tablet queued it (writeList). The caller says the
+ *  change will be added when the PC is back. A write with no tablet copy (the Nest Hub) is never queued: no flag. */
+export const isQueued = (e: unknown): boolean => (e as { queued?: boolean } | null)?.queued === true;
+
 /** One change to the PC (the same route the Lists page uses), then the tablet's copy. When the PC cannot take it, the
  *  change waits in the queue the Lists page sends (once the tablet has a copy). Throws when the PC cannot be reached,
- *  as postJson does, so the caller's message stays the same. */
+ *  as postJson does, so the caller's message stays the same; a queued change throws with queued: true (isQueued). */
 export async function writeList(path: OpPath, body: Record<string, unknown>): Promise<ListsResult> {
   const op: Op = { path, body: { ...body } };
   let r: ListsResult | null = null;
   let err: unknown = null;
+  let queued = false;
   try { r = await postJson<ListsResult>(`/api/lists/${path}`, body); } catch (e) { err = e; }
   const copy = tabletCopy();
   if (copy) {
     const next = afterWrite(copy, op, r);
     if (next.lists !== copy) store.set(COPY_KEY, JSON.stringify(next.lists));
-    if (next.queue) appendOp({ path, body });
+    if (next.queue) { appendOp({ path, body }); queued = true; }
   }
-  if (err) throw err;
+  if (err) {
+    if (queued) throw Object.assign(err instanceof Error ? err : new Error(String(err)), { queued: true });
+    throw err;
+  }
   return r as ListsResult;
 }
