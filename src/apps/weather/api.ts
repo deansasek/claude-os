@@ -60,7 +60,7 @@ export type Weather =
   | WeatherOk
   | { status: 'no_location' }
   | { status: 'not_found'; city: string }
-  | { status: 'error'; error?: string }
+  | { status: 'error'; error?: string; saved?: boolean }   // saved: false when the PC did not save the place or units
   | { status: 'loading' };
 
 export interface Place {

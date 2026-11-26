@@ -1255,6 +1255,7 @@ async function saveWeatherPlace(p: Place): Promise<void> {
   try {
     const w = await postJson<Weather>('/api/weather/location', { lat: p.lat, lon: p.lon, place: p.name });
     report('settings:privacy:weather');
+    if (w.status === 'error' && w.saved === false) { confirmSheet('Couldn’t save', w.error ?? 'The PC couldn’t save the place.', 'OK', () => {}); void paintWeatherPlace(); return; }
     // The city is saved. A forecast that did not load still names it, and the repaint is skipped so this text stays.
     if (w.status !== 'ok') { $('stWxNote').innerHTML = `The weather is for ${esc(p.name)}.`; return; }
   } catch { confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
