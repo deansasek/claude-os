@@ -32,6 +32,7 @@ import { matchHome, matchScene, onOffReply, parseOnOff, parseScene, sayName, typ
 import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
+import { sceneFailText } from '../../apps/home/web/scene-words.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
@@ -365,9 +366,10 @@ async function sceneCommand(raw: string): Promise<CommandResult | null> {
   if (list?.status !== 'ok' || !Array.isArray(list.scenes)) return null;
   const m = matchScene(raw, list.scenes.filter(s => s.dashboard || s.home));
   if (!m) return null;
-  let r: HaResult;
-  try { r = await postJson<HaResult>('/api/home-assistant/scene', { entity_id: m.entity_id }); } catch { r = { ok: false }; }
-  return r?.ok ? { say: `${m.name} is on.`, react: 'hop' } : { say: `Couldn’t set ${m.name}.` };
+  // r stays null when the PC does not answer, so the say line can tell "no answer" from "the PC refused"
+  let r: HaResult | null = null;
+  try { r = await postJson<HaResult>('/api/home-assistant/scene', { entity_id: m.entity_id }); } catch { r = null; }
+  return r?.ok ? { say: `${m.name} is on.`, react: 'hop' } : { say: sceneFailText(m.name, r) };
 }
 
 // ---------- Calendar: "what's on today", "what's on my calendar" ----------
