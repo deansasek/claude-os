@@ -168,8 +168,6 @@ function render(): void {
     return `<button class="ls-tab${x.id === l?.id ? ' on' : ''}" role="tab" aria-selected="${x.id === l?.id}" data-list="${esc(x.id)}">`
       + `${esc(x.name)}${n ? `<span class="ls-tab-n">${n}</span>` : ''}</button>`;
   }).join('');
-  $('lsNew').hidden = lists.length >= MAX_LISTS;
-
   const n = $('lsNote');
   n.hidden = !note;
   n.textContent = note;
@@ -307,7 +305,7 @@ function openAdd(): void {
 }
 
 function newList(): void {
-  if (lists.length >= MAX_LISTS) return;
+  if (lists.length >= MAX_LISTS) { note = `There are already ${MAX_LISTS} lists. Delete one first.`; render(); return; }
   Keyboard.open({
     placeholder: 'Name the new list', done: 'Make list', autoCap: true, max: MAX_LIST_NAME,
     onDone: text => {
