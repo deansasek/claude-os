@@ -16,6 +16,13 @@ test('loadStatus sets the status-failed flag when the read fails', () => {
   assert.match(body, /statusFailed = false;/);
 });
 
+test('the Status row tests statusFailed alone, without the !s guard', () => {
+  const start = src.indexOf("id: 'mode'");
+  const row = src.slice(start, src.indexOf("id: 'address'", start));
+  assert.match(row, /statusFailed\s*\?\s*'Couldn/);
+  assert.doesNotMatch(row, /!s && statusFailed/);
+});
+
 test('settingRows checks the status-failed flag before it shows Not set', () => {
   const start = src.indexOf('function settingRows(');
   const body = src.slice(start, src.indexOf('\n}\n', start));
