@@ -33,7 +33,11 @@ export function score(query: string, text: string): number {
   if (!q || !t) return 0;
   if (t.startsWith(q)) return 3;
   if (t.split(' ').some(w => w.startsWith(q))) return 2;
-  return t.includes(q) ? 1 : 0;
+  if (t.includes(q)) return 1;
+  // Compare without spaces too, so "wifi" finds "Wi-Fi" (normalized to "wi fi").
+  const qj = q.replace(/ /g, ''), tj = t.replace(/ /g, '');
+  if (tj.startsWith(qj)) return 3;
+  return tj.includes(qj) ? 1 : 0;
 }
 
 const KIND_ORDER: Record<HitKind, number> = { app: 0, setting: 1, list: 2, item: 3, session: 4 };
