@@ -1,7 +1,7 @@
 // Voice parsing for durations, times of day and day lists (src/core/web/voice-parse.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { daysText, durationAndLabel, morningDays, parseDays, parseDuration, parseTime, resolveHour, sayDuration } from '../src/core/web/voice-parse.ts';
+import { daysText, durationAndLabel, morningDays, namedTimerReply, parseDays, parseDuration, parseTime, resolveHour, sayDuration } from '../src/core/web/voice-parse.ts';
 
 test('a duration phrase becomes milliseconds', () => {
   assert.equal(parseDuration('10 minutes'), 600_000);
@@ -68,6 +68,10 @@ test('a day list is said back in words', () => {
   assert.equal(daysText([0, 6]), ' at weekends');
   assert.equal(daysText([0, 1, 2, 3, 4, 5, 6]), ' every day');
   assert.equal(daysText([1]), ' on Mondays');
+});
+
+test('a named timer reply starts with a capital letter', () => {
+  assert.equal(namedTimerReply('pasta', 600_000), 'Pasta timer set for 10 minutes.');
 });
 
 test('a duration with a name after it keeps the name', () => {

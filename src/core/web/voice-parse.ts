@@ -84,6 +84,11 @@ export function sayDuration(ms: number): string {
   return [part(h, 'hour'), part(m, 'minute'), part(sec, 'second')].filter(Boolean).join(' and ') || 'no time';
 }
 
+/** The reply for a named timer: the label with a capital first letter, then the duration. The stored label keeps the case heard. */
+export function namedTimerReply(label: string, ms: number): string {
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)} timer set for ${sayDuration(ms)}.`;
+}
+
 /** Turn a spoken time into 24-hour h:m: with no am/pm, a wake-up or a repeating alarm is in the morning,
  *  otherwise it's the next time that comes round. The answer always says which ("6:30 AM"). */
 export function resolveHour(t: TimeOfDay, wakeUp: boolean): { h: number; m: number } {
