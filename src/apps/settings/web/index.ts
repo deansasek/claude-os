@@ -457,9 +457,19 @@ async function usePhoto(url: string): Promise<void> {
   report('settings:profile:photo');
 }
 
+/** Remove the profile photo. The PC answers with the full profile; anything else keeps the profile as it is. */
 async function removePhoto(): Promise<void> {
-  try { applyProfile(await postJson<Profile>('/api/settings/photo/remove', {})); report('settings:profile:photo:remove'); }
-  catch { confirmSheet('Couldn’t remove it', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
+  let r: (Partial<Profile> & { error?: unknown }) | null;
+  try { r = await postJson<(Partial<Profile> & { error?: unknown }) | null>('/api/settings/photo/remove', {}); }
+  catch { confirmSheet('Couldn’t remove it', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
+  // the PC answered without a profile: say why, and do not apply anything
+  if (!r || typeof r.name !== 'string') {
+    const why = r && typeof r.error === 'string' && r.error ? r.error : 'The PC did not remove the photo. Try again.';
+    confirmSheet('Couldn’t remove it', why, 'OK', () => {});
+    return;
+  }
+  applyProfile(r as Profile);
+  report('settings:profile:photo:remove');
 }
 
 // ---------- Usage: the plan's limits, as bars ----------

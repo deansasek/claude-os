@@ -46,5 +46,5 @@ defineMock({
   },
   'POST /api/settings/photo': () => ({ ok: false, error: 'A profile photo can’t be saved on the mock page.' }),
   'GET /api/settings/photo': () => ({ status: 404, body: { ok: false, error: 'No profile photo.' } }),
-  'POST /api/settings/photo/remove': () => ({ ok: true }),
+  'POST /api/settings/photo/remove': (): Profile => { profile.photoAt = 0; return { ...profile }; },
 });
