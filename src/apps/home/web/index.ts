@@ -19,7 +19,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { ago, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
-import { weatherAfterRead } from './weather-read.ts';
+import { emptyTileText, weatherAfterRead } from './weather-read.ts';
 import { busyOf, needsYou, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
@@ -154,8 +154,9 @@ function paintWeather(): void {
     $('hmWxKick').textContent = 'Weather';
     $('hmWxIc').innerHTML = I.cloud;
     $('hmWxTemp').className = 'quiet';
-    $('hmWxTemp').textContent = f?.status === 'no_location' ? 'Set your city' : wxFailed ? 'Offline' : f ? 'Not yet' : '–';
-    $('hmWxSub').textContent = f?.status === 'no_location' ? 'Tap to choose where you live' : wxFailed ? 'Can’t reach the forecast' : 'Checking the sky…';
+    const empty = emptyTileText(f?.status, wxFailed);
+    $('hmWxTemp').textContent = empty.temp;
+    $('hmWxSub').textContent = empty.sub;
     setSky(null);
     return;
   }
