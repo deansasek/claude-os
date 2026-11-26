@@ -19,6 +19,19 @@ test('loadSearchData resets loadedAt and sets searchReadFailed when the sessions
   assert.match(body, /searchReadFailed = true;/);
 });
 
+test('loadSearchData resets loadedAt and sets listsReadFailed when the lists read fails', () => {
+  const body = fn('loadSearchData');
+  assert.match(body, /catch \{\s*lists = \[\];\s*loadedAt = 0;[^\n]*\n\s*listsReadFailed = true;\s*\}/);
+});
+
+test('loadSearchData clears listsReadFailed when the lists read succeeds', () => {
+  assert.match(fn('loadSearchData'), /lists = \(await readLists\(\)\)[^\n]*\n\s*listsReadFailed = false;/);
+});
+
 test('paintResults uses searchReadFailed in the empty message', () => {
   assert.match(fn('paintResults'), /searchReadFailed/);
+});
+
+test('paintResults uses listsReadFailed in the empty message', () => {
+  assert.match(fn('paintResults'), /listsReadFailed/);
 });
