@@ -27,6 +27,7 @@ const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let wx: Weather = { status: 'loading' };
 let wxAt = 0;
 let offline = false;                 // the last refresh failed; still showing the forecast we had
+let pcDown = false;                  // the tablet could not reach the PC on the last refresh
 let sel: Selection = { t: 'now' };
 let selTimer: number | undefined, retryTimer: number | undefined;
 let tipIndex = 0;
@@ -170,11 +171,11 @@ function paintEmpty(): void {
   $('wPillText').textContent = st === 'loading' ? 'Loading' : st === 'error' ? 'Offline' : st === 'not_found' ? 'City not found' : 'Not set up';
   $('wEmptyTitle').textContent = st === 'loading' ? 'Checking the sky…'
     : st === 'not_found' ? 'Hmm, where’s that?'
-    : st === 'error' ? 'Can’t reach the forecast'
+    : st === 'error' ? (pcDown ? 'Can’t reach your PC' : 'Can’t reach the forecast')
     : 'Where are you?';
   $('wEmptyText').textContent = wx.status === 'not_found' ? `ClaudeOS couldn’t find “${wx.city}” on the map. Pick your city again and it’ll take it from there.`
     : st === 'loading' ? 'Getting the latest forecast. One moment.'
-    : st === 'error' ? 'The forecast service didn’t answer. Check that the computer running ClaudeOS is connected to the internet. It keeps trying every minute, or tap Try again.'
+    : st === 'error' ? (pcDown ? 'The tablet can’t reach the computer running ClaudeOS. Check that it’s on and on the same network. It keeps trying every minute, or tap Try again.' : 'The forecast service didn’t answer. Check that the computer running ClaudeOS is connected to the internet. It keeps trying every minute, or tap Try again.')
     : 'Pick your city and ClaudeOS will keep an eye on the sky for you. Only the city is sent to the forecast service.';
   $('wChoose').hidden = st === 'loading' || st === 'error';
   $('wRetry').hidden = st !== 'error';
@@ -340,6 +341,7 @@ async function loadWx(): Promise<void> {
   try {
     const loc = params.get('lat') ? `?${new URLSearchParams({ lat: params.get('lat')!, lon: params.get('lon') || '0', place: params.get('place') || 'Preview' })}` : '';
     const next = await getJson<Weather>(`/api/weather/forecast${loc}`);
+    pcDown = false;
     if (next.status === 'error' && isOk(wx)) offline = true;   // keep the forecast we have
     else { wx = next; offline = false; }
     // design previews: ?wxdemo=<WMO code>[&night][&windy], ?wxstate=loading|error|offline|not_found|no_location
@@ -353,6 +355,7 @@ async function loadWx(): Promise<void> {
     else if (st === 'not_found') wx = { status: 'not_found', city: 'Atlantis' };
     else if (st === 'loading' || st === 'error' || st === 'no_location') wx = { status: st };
   } catch {
+    pcDown = true;
     if (isOk(wx)) offline = true; else wx = { status: 'error' };
   }
   wxAt = Date.now();
