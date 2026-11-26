@@ -567,7 +567,14 @@ function stop(): void {
   const t = activeTurn();
   if (!t) return;
   if (openId === NATIVE_ID) { nativeStop(); report('stop-native'); return; }
-  void withPin(async () => { await call('stop', { turn: t.id }); report('stop'); void refresh(); });
+  void withPin(async () => {
+    let r: { ok: boolean; error?: string };
+    try { r = await call<{ ok: boolean; error?: string }>('stop', { turn: t.id }); }
+    catch { r = { ok: false, error: 'unreachable' }; }
+    if (r.error === 'unreachable') sendNote = 'Couldn’t reach the PC to stop Claude. Try again.';
+    report(r.ok ? 'stop' : 'stop-failed');
+    void refresh();
+  });
 }
 
 // ---------- for voice (voice.ts) ----------
