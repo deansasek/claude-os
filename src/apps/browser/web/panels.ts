@@ -11,6 +11,7 @@ import { askWithText } from '../../claude/web/reply.ts';
 import { askAboutPage } from './claude-panel.ts';
 import { articleOf } from './reader.ts';
 import { restoreLater } from './later.ts';
+import { runningMeta } from './downloads.ts';
 import { thumbUrl } from '../../photos/api.ts';
 import type { PhotoList } from '../../photos/api.ts';
 import {
@@ -364,8 +365,9 @@ function renderDownloads(): void {
   const list = S.downloads.map((d, i) => {
     let meta = '', actions = '';
     if (d.state === 'running') {
-      const pct = d.total > 0 ? Math.min(100, Math.round(d.bytes * 100 / d.total)) : 0;
-      meta = `<div class="br-progressbar"><i style="width:${Math.max(4, pct)}%"></i></div><small>${esc(size(d.bytes))}${d.total > 0 ? ` of ${esc(size(d.total))}` : ''}</small>`;
+      const run = runningMeta(d.bytes, d.total);
+      const bar = run.pct == null ? '' : `<div class="br-progressbar"><i style="width:${Math.max(4, run.pct)}%"></i></div>`;
+      meta = `${bar}<small>${esc(run.text)}</small>`;
     } else if (d.state === 'done') {
       meta = `<small>${esc(size(d.total || d.bytes) || 'Saved')} · ${esc(ago(d.at))}</small>`;
       actions = `<button class="br-mini" data-dopen="${i}">Open</button>`;
