@@ -22,6 +22,7 @@ import { notesRow } from './notes-row.ts';
 import { listsRow } from './lists-row.ts';
 import { calendarRow } from './calendar-row.ts';
 import { emptyTileText, weatherAfterRead } from './weather-read.ts';
+import { isOffHome, sceneFailText } from './scene-words.ts';
 import { busyOf, liveSessions, needsYou, pillText, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
@@ -648,9 +649,10 @@ async function setScene(id: string): Promise<void> {
   sceneBusy.set(id, r?.ok ? 'done' : 'fail');
   paintActs();
   if (r?.ok) act('hop', true);
-  else if (!r) say(`The PC isn’t answering, so ${s.name} can’t be set.`);
-  else if (r.error && /on Home/i.test(r.error)) { say(`${s.name} isn’t on Home any more.`); void loadScenes(); }
-  else say(`Couldn’t set ${s.name}.`);
+  else {
+    say(sceneFailText(s.name, r));
+    if (isOffHome(r)) void loadScenes();
+  }
   setTimeout(() => { if (sceneBusy.get(id) !== 'busy') { sceneBusy.delete(id); paintActs(); } }, 2400);
 }
 
