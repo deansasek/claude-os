@@ -572,6 +572,7 @@ const MODE_CHOICES: Choice[] = [
 ];
 const MODE_NAME: Record<string, string> = Object.fromEntries(MODE_CHOICES.map(c => [c.id, c.label]));
 let projects: Project[] | null = null;
+let foldersFailed = false;   // the last folder read did not reach the PC (not: the PC has none)
 
 async function paintSessions(): Promise<void> {
   const mid = newPref('model'), mode = newPref('mode') || 'default', fid = newFolderPref();
@@ -581,8 +582,8 @@ async function paintSessions(): Promise<void> {
   await loadModels();   // the models this PC's Claude offers (cached on the tablet)
   if (section === 'sessions') $('stNewModelV').textContent = mid ? (modelChoices().find(m => m.id === mid)?.label ?? mid) : 'Automatic';
   if (!projects) {
-    try { projects = await getJson<Project[]>('/api/claude/projects'); } catch { projects = []; }
-    if (section === 'sessions') $('stNewFolderV').textContent = projects.find(p => p.id === newFolderPref())?.name ?? (newFolderPref() ? 'Unavailable' : 'Most recent');
+    try { projects = await getJson<Project[]>('/api/claude/projects'); foldersFailed = false; } catch { foldersFailed = true; }
+    if (section === 'sessions') $('stNewFolderV').textContent = projects?.find(p => p.id === newFolderPref())?.name ?? (newFolderPref() ? 'Unavailable' : 'Most recent');
   }
 }
 
@@ -598,7 +599,7 @@ function pickMode(): void {
 }
 function pickFolder(): void {
   const list = projects ?? [];
-  openChooser('Default folder', 'The folder a new session opens in.',
+  openChooser('Default folder', foldersFailed ? 'Can’t reach your PC just now. Open Sessions again to retry.' : 'The folder a new session opens in.',
     [{ id: '', label: 'Most recent', sub: 'The folder you used last' }, ...list.map(p => ({ id: p.id, label: p.name }))],
     newFolderPref(), id => { setNewFolderPref(id); report('settings:sessions:folder'); void paintSessions(); });
 }
