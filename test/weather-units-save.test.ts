@@ -53,6 +53,19 @@ test('setUnits marks the PC down before it names the PC in the notice', () => {
   assert.ok(notified > marked, 'pcDown = true comes before notify(');
 });
 
+// saveLocation writes meter-config.json, so it must read it with readJsonOrSetAside: a broken file is kept as
+// .corrupt instead of being overwritten by the { units } save. The config path has no seam, so this reads the source.
+const weatherFile = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/apps/weather/server/weather.ts');
+const weatherSrc = readFileSync(weatherFile, 'utf8').replace(/\r\n/g, '\n');
+const saveStart = weatherSrc.indexOf('export async function saveLocation(');
+const saveBody = weatherSrc.slice(saveStart, weatherSrc.indexOf('\n}\n', saveStart));
+
+test('saveLocation reads meter-config.json with readJsonOrSetAside, not readConfig', () => {
+  assert.ok(saveStart > 0, 'saveLocation exists');
+  assert.match(saveBody, /readJsonOrSetAside<Config>\(CONFIG_FILE\) \?\? \{\}/);
+  assert.doesNotMatch(saveBody, /readConfig\(\)/);
+});
+
 test('openPicker keeps the saved unit when no forecast is loaded', () => {
   const pickStart = src.indexOf('function openPicker(): void {');
   const pickBody = src.slice(pickStart, src.indexOf('\n}\n', pickStart));

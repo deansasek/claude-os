@@ -2,7 +2,7 @@
 // which the Hub's city picker writes through POST /api/location.
 import fs from 'node:fs';
 import type { LocationUpdate, Place, Units, Weather, WeatherOk, WxAir } from '../api.ts';
-import { CONFIG_FILE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { CONFIG_FILE, readJson, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 
 interface Config { lat?: number; lon?: number; place?: string; city?: string; units?: Units }
 
@@ -106,7 +106,7 @@ export async function searchPlaces(q: string): Promise<Place[]> {
 
 /** Called by the Hub's city picker. Merges into meter-config.json. */
 export async function saveLocation(body: LocationUpdate): Promise<Weather> {
-  const cfg = readConfig();
+  const cfg = readJsonOrSetAside<Config>(CONFIG_FILE) ?? {};   // a bad file is set aside, not saved over
   if (body.lat != null && body.lon != null) {
     const lat = Number(body.lat), lon = Number(body.lon);
     if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) throw new Error('bad coordinates');
