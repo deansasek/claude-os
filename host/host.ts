@@ -33,13 +33,16 @@ const HEALTHY_MS = 60_000;           // a run this long resets the backoff
 
 /** Append text to the log, moving the log to server.log.1 when it passes the cap. */
 function log(text: string): void {
-  mkdirSync(LOG_DIR, { recursive: true });
-  if (existsSync(LOG) && statSync(LOG).size > MAX_LOG) renameSync(LOG, `${LOG}.1`);
   const stamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
   const lines = text.split('\n').filter(l => l.length > 0);
   for (const line of lines) {
     const out = `${stamp} ${line}\n`;
-    appendFileSync(LOG, out);
+    // a log that cannot be written (it is held open, the disk is full) must not stop the host: the console still gets the line
+    try {
+      mkdirSync(LOG_DIR, { recursive: true });
+      if (existsSync(LOG) && statSync(LOG).size > MAX_LOG) renameSync(LOG, `${LOG}.1`);
+      appendFileSync(LOG, out);
+    } catch { /* the console below still has it */ }
     process.stdout.write(out);
   }
 }
