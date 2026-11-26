@@ -20,16 +20,29 @@ interface Stored {
   lockedUntil: number;   // ms epoch; 0 when not in a cooldown
 }
 
-function load(): Stored | null {
+type Loaded = { state: 'none' } | { state: 'unreadable' } | { state: 'set'; s: Stored };
+
+/**
+ * Read the PIN file. A missing file means no PIN. A file that is there but can't be read or parsed is unreadable:
+ * it counts as a PIN that is set, and it is left exactly as it is (never set aside, never rewritten).
+ */
+function load(): Loaded {
+  if (!fs.existsSync(FILE)) return { state: 'none' };
   const s = readJson<Partial<Stored>>(FILE);
-  if (!s || typeof s.salt !== 'string' || typeof s.hash !== 'string') return null;
+  if (!s || typeof s.salt !== 'string' || typeof s.hash !== 'string') return { state: 'unreadable' };
   return {
-    salt: s.salt,
-    hash: s.hash,
-    fails: typeof s.fails === 'number' && s.fails > 0 ? Math.floor(s.fails) : 0,
-    lockedUntil: typeof s.lockedUntil === 'number' ? s.lockedUntil : 0,
+    state: 'set',
+    s: {
+      salt: s.salt,
+      hash: s.hash,
+      fails: typeof s.fails === 'number' && s.fails > 0 ? Math.floor(s.fails) : 0,
+      lockedUntil: typeof s.lockedUntil === 'number' ? s.lockedUntil : 0,
+    },
   };
 }
+
+const unreadable = (): PinResult => ({ ok: false, error: 'save_failed', lockedFor: 0 });
+const fingerprintOf = (s: Stored): string => crypto.createHash('sha256').update(s.salt).update(s.hash).digest('hex').slice(0, 16);
 
 function save(s: Stored): boolean {
   try {
@@ -78,31 +91,35 @@ function guess(s: Stored, pin: unknown): PinResult {
   return { ok: false, error: 'wrong', left: MAX_TRIES - s.fails, lockedFor: 0 };
 }
 
-/** Is a PIN set, and how many seconds of cooldown are left. */
+/** Is a PIN set, and how many seconds of cooldown are left. An unreadable PIN file counts as set, with no fingerprint. */
 export function pinStatus(): PinStatus {
-  const s = load();
-  return s ? { set: true, lockedFor: secondsLeft(s.lockedUntil), fingerprint: pinFingerprint() } : { set: false, lockedFor: 0, fingerprint: null };
+  const r = load();
+  if (r.state === 'none') return { set: false, lockedFor: 0, fingerprint: null };
+  if (r.state === 'unreadable') return { set: true, lockedFor: 0, fingerprint: null };
+  return { set: true, lockedFor: secondsLeft(r.s.lockedUntil), fingerprint: fingerprintOf(r.s) };
 }
 
-/** A short fingerprint of the PIN as it is stored now: it changes when the PIN is set, changed or removed. Null if none. */
+/** A short fingerprint of the PIN as it is stored now: it changes when the PIN is set, changed or removed. Null if none or unreadable. */
 export function pinFingerprint(): string | null {
-  const s = load();
-  return s ? crypto.createHash('sha256').update(s.salt).update(s.hash).digest('hex').slice(0, 16) : null;
+  const r = load();
+  return r.state === 'set' ? fingerprintOf(r.s) : null;
 }
 
 /** Try the PIN (the tablet's lock). */
 export function checkPin(pin: unknown): PinResult {
-  const s = load();
-  if (!s) return { ok: false, error: 'no_pin', lockedFor: 0 };
-  return guess(s, pin);
+  const r = load();
+  if (r.state === 'none') return { ok: false, error: 'no_pin', lockedFor: 0 };
+  if (r.state === 'unreadable') return unreadable();
+  return guess(r.s, pin);
 }
 
 /** Set the PIN, or change it: when one is set, `current` must be right (a wrong one counts as a failed try). */
 export function setPin(pin: unknown, current: unknown): PinResult {
   if (typeof pin !== 'string' || !PIN_RE.test(pin)) return { ok: false, error: 'bad_pin', lockedFor: 0 };
   const old = load();
-  if (old) {
-    const r = guess(old, current);
+  if (old.state === 'unreadable') return unreadable();
+  if (old.state === 'set') {
+    const r = guess(old.s, current);
     if (!r.ok) return r;
   }
   const salt = crypto.randomBytes(16).toString('hex');
@@ -113,9 +130,10 @@ export function setPin(pin: unknown, current: unknown): PinResult {
 
 /** Remove the PIN. The current one must be right. */
 export function removePin(pin: unknown): PinResult {
-  const s = load();
-  if (!s) return { ok: false, error: 'no_pin', lockedFor: 0 };
-  const r = guess(s, pin);
+  const loaded = load();
+  if (loaded.state === 'none') return { ok: false, error: 'no_pin', lockedFor: 0 };
+  if (loaded.state === 'unreadable') return unreadable();
+  const r = guess(loaded.s, pin);
   if (!r.ok) return r;
   try { fs.rmSync(FILE, { force: true }); } catch { return { ok: false, error: 'save_failed', lockedFor: 0 }; }
   console.log('settings: ClaudeOS PIN removed');
