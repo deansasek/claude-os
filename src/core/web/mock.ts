@@ -27,7 +27,7 @@ if (/[?&]device=mock\b/.test(location.search)) {
     try { res = await real(input, init); } catch { res = null; }   // no hub: the request could not connect
     if (res?.ok) return res;
     if (res && !hasMock(method, url.pathname)) return res;         // the hub's own answer, and no mock for it
-    const reply = answerMock(method, url.pathname, bodyOf(init?.body));
+    const reply = answerMock(method, url.pathname, bodyOf(init?.body), url.search);
     return new Response(JSON.stringify(reply.body), { status: reply.status, headers: { 'Content-Type': 'application/json' } });
   };
 }

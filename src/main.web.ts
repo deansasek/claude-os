@@ -1,6 +1,7 @@
 import './core/web/mock.ts';
 import './apps/weather/web/mock.ts';
 import './apps/news/web/mock.ts';
+import './apps/radio/web/mock.ts';
 // Page entry point: the core shell plus the list of apps, in rail order.
 import home from './apps/home/web/index.ts';
 import launcher from './apps/launcher/web/index.ts';
