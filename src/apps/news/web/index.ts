@@ -12,7 +12,7 @@ import type { NewsFeedResponse, NewsItem, NewsTopicsResponse } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { FEEDS } from './feeds.ts';
 import { activeFeeds, topicRows, type TopicChoices } from './topics.ts';
-import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
+import { ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, staleNotes, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
 import { feedSource, tabletFeed, type KeyValue } from './tablet.ts';
 
 let ctx: AppContext;
@@ -124,6 +124,7 @@ const savedStore: KeyValue = {
 };
 
 async function load(): Promise<void> {
+  const wasDirty = topicsDirty;
   topicsDirty = false;
   let res: NewsFeedResponse | null = null;
   try {
@@ -137,8 +138,16 @@ async function load(): Promise<void> {
     }
   } catch { res = null; }
   loadedAt = Date.now();
-  // a failed request keeps the stories already on screen; only an empty screen shows the error
-  if (!res && hasStories) return;
+  // a failed request keeps the stories already on screen, with a note that they may be out of date.
+  // loadedAt = 0 and the restored topicsDirty make the next show read the feed again.
+  if (!res && hasStories) {
+    const notes = staleNotes();
+    $('nwNotes').replaceChildren(...notes.map(n => el('p', 'nw-note', n.text)));
+    $('nwNotes').hidden = !notes.length;
+    if (wasDirty) topicsDirty = true;
+    loadedAt = 0;
+    return;
+  }
   const s = screenFor(res);
   if (s.state === 'error') paintError(s.text);
   else paintStories(s);
