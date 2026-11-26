@@ -5,7 +5,7 @@ import { backupKey, backupValues } from '../src/apps/settings/web/backup-keys.ts
 
 // backup.ts imports core/web/dom.ts, which reads the page's location when it loads; node has none, so give it one first.
 Object.assign(globalThis, { location: { search: '' } });
-const { backupNote } = await import('../src/apps/settings/web/backup.ts');
+const { backupNote, restoreOutcome } = await import('../src/apps/settings/web/backup.ts');
 
 test('backupKey keeps the os.* settings and the sidebar pins', () => {
   assert.equal(backupKey('os.brightness'), true);
@@ -45,6 +45,18 @@ test('backupNote says the PC cannot be reached when there is no answer', () => {
 
 test('backupNote says not saved yet when the PC has no backup', () => {
   assert.equal(backupNote({ saved: null, values: {} }), 'Not saved yet');
+});
+
+test('restoreOutcome shows the can’t-reach status and the note when the PC is down', () => {
+  assert.deepEqual(restoreOutcome(-1), { msg: 'Can’t reach your PC. Try again when it’s back.', note: 'Can’t reach your PC' });
+});
+
+test('restoreOutcome shows the nothing-saved status and keeps the note when the PC has no backup', () => {
+  assert.deepEqual(restoreOutcome(0), { msg: 'Nothing is saved on your PC yet. Tap Save to PC first.', note: null });
+});
+
+test('restoreOutcome leaves the note alone when settings were restored', () => {
+  assert.deepEqual(restoreOutcome(3), { msg: '', note: null });
 });
 
 test('backupNote gives the saved time and the setting count', () => {

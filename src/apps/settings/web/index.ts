@@ -19,7 +19,7 @@ import { monitorLines, uptimeText } from './monitor.ts';
 import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, railEdgesFor, setTileOrder, sleep, swipeNotices, tileOrder, toggleMuteApp } from '../../../core/web/system.ts';
 import { appLabel } from '../../../core/web/notes-group.ts';
 import { moveTile, TILE_NAMES } from '../../../core/web/quick-order.ts';
-import { backupNote, loadSettings, restoreSettings, saveSettings, savedNote } from './backup.ts';
+import { backupNote, loadSettings, restoreOutcome, restoreSettings, saveSettings, savedNote } from './backup.ts';
 import { resultText, updateStatus, type UpdateAvailable, type UpdateStart } from './update.ts';
 import type { QuietHours, RailDir, RailEdge } from '../../../core/web/system.ts';
 import { clock, untilText, whenText } from '../../../core/web/format.ts';
@@ -1114,9 +1114,10 @@ function initBackup(): void {
   $('stBkRestore').addEventListener('click', () => {
     confirmSheet('Restore settings from your PC?', 'The settings on this tablet are replaced with the ones saved on your PC. The page then reloads.', 'Restore', async () => {
       const n = await restoreSettings();
-      if (n < 0) { $('stBkMsg').textContent = 'Can’t reach your PC. Try again when it’s back.'; return; }
-      if (n === 0) { $('stBkMsg').textContent = 'Nothing is saved on your PC yet. Tap Save to PC first.'; return; }
-      location.reload();
+      const outcome = restoreOutcome(n);
+      $('stBkMsg').textContent = outcome.msg;
+      if (outcome.note !== null) $('stBkNote').textContent = outcome.note;
+      if (n > 0) location.reload();
     });
   });
 }

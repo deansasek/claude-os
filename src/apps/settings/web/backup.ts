@@ -51,3 +51,10 @@ export async function restoreSettings(): Promise<number> {
   for (const [k, v] of Object.entries(values)) store.set(k, v);
   return Object.keys(values).length;
 }
+
+/** The status line and the note under Save for a restore that wrote `n` settings (see restoreSettings). */
+export function restoreOutcome(n: number): { msg: string; note: string | null } {
+  if (n < 0) return { msg: 'Can’t reach your PC. Try again when it’s back.', note: backupNote(null) };
+  if (n === 0) return { msg: 'Nothing is saved on your PC yet. Tap Save to PC first.', note: null };
+  return { msg: '', note: null };
+}
