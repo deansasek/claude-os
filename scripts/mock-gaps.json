@@ -40,8 +40,6 @@
     "GET /api/settings/plugins/market",
     "GET /api/settings/profile",
     "GET /api/settings/storage",
-    "GET /api/weather/forecast",
-    "GET /api/weather/places",
     "POST /api/calendar/calendar-shown",
     "POST /api/calendar/config",
     "POST /api/calendar/local-add",
@@ -102,8 +100,7 @@
     "POST /api/settings/plugins/test",
     "POST /api/settings/plugins/toggle",
     "POST /api/settings/profile",
-    "POST /api/settings/welcome",
-    "POST /api/weather/location"
+    "POST /api/settings/welcome"
   ],
   "bridge": [
     "allowedApps",
