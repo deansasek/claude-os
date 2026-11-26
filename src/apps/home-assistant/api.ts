@@ -53,6 +53,16 @@ export function climateLabel(state: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+/** Turn a technical error into one plain sentence. The raw text is never shown. */
+export function plain(error?: string): string {
+  const t = (error ?? '').toLowerCase();
+  if (/reach the pc/i.test(t)) return 'Can’t reach the PC right now.';
+  if (/401|403|unauthori[sz]ed|forbidden|token/.test(t)) return 'The access token was refused. Replace it in Settings, then Apps, then Home Assistant.';
+  if (/timeout|timed out|abort|5 seconds/.test(t)) return 'Home Assistant took too long to answer. Check that it is switched on.';
+  if (/econn|enotfound|refused|network|fetch|dns|unreachable|socket|host|reach|address/.test(t)) return 'Couldn’t reach Home Assistant. Check the address in Settings, and that it is on the same network.';
+  return 'Something went wrong. Try again in a moment.';
+}
+
 export interface HaEntity {
   entity_id: string;            // "light.kitchen"
   domain: string;               // a control domain, or a read-only one (cover, sensor, binary_sensor)
