@@ -502,10 +502,12 @@ function renderLaps(): void {
   if (sw.running || t > (sw.laps[sw.laps.length - 1] || 0)) {
     rows.push(`<div class="ck-lap ck-cur" id="ckLapLive"><span>Lap ${sw.laps.length + 1}</span><b class="num">${tenths(t - (sw.laps[sw.laps.length - 1] || 0))}</b><em>${sw.running ? 'now' : 'paused'}</em></div>`);
   }
+  const drawn = Math.min(sw.laps.length, 9 - rows.length);   // laps drawn; the live lap takes a row but is not a lap
   splits.map((s, i) => ({ s, i })).reverse().slice(0, 9 - rows.length).forEach(({ s, i }) => {
     const tag = s === best ? '<em class="best">fastest</em>' : s === worst ? '<em class="worst">slowest</em>' : `<em>at ${dur(sw.laps[i], false)}</em>`;
     rows.push(`<div class="ck-lap${s === best ? ' best' : s === worst ? ' worst' : ''}"><span>Lap ${i + 1}</span><b class="num">${tenths(s)}</b>${tag}</div>`);
   });
+  if (drawn < sw.laps.length) $('ckLapCount').textContent += `, newest ${drawn} shown`;
   box.innerHTML = rows.join('');
 }
 
