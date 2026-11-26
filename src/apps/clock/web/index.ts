@@ -417,13 +417,14 @@ function renderTimer(): void {
   setDigit(set, 'm', pad(Math.floor(s / 60) % 60));
   setDigit(set, 's', pad(s % 60));
   $('ckTimerHint').textContent = setting ? (timer.dur ? `drag the numbers · done at ${hm(new Date(Date.now() + offset + timer.dur))}` : 'drag the numbers or tap the arrows') : '';
+  const full = timers.length >= MAX_TIMERS;
   const go = $<HTMLButtonElement>('ckTimerGo');
   go.textContent = running ? 'Pause' : paused ? 'Resume' : 'Start';
   go.classList.toggle('pause', running);
-  go.disabled = setting && timer.dur < 1e3;
+  go.disabled = setting && (timer.dur < 1e3 || full);
   ctx.root.classList.toggle('ck-timing', running);
   ctx.root.style.setProperty('--sand', String(Math.max(0, Math.min(1, left / (timer.dur || 1)))));
-  $('ckPresets').querySelectorAll<HTMLElement>('.ck-chip').forEach(c => c.classList.toggle('on', +c.dataset.min! * 60e3 === timer.dur));
+  $('ckPresets').querySelectorAll<HTMLButtonElement>('.ck-chip').forEach(c => { c.classList.toggle('on', +c.dataset.min! * 60e3 === timer.dur); c.disabled = full; });
   tabDot('timer', timers.length > 0);
   renderTimerList();
   renderStatus();
