@@ -363,12 +363,15 @@ async function loadWx(): Promise<void> {
   renderWx();
 }
 
+/** The PC answered but did not save the place or unit (the PC is up; this is not a network failure). */
+class NotSaved extends Error {}
+
 async function sendLocation(body: LocationUpdate): Promise<void> {
   const d = await postJson<Weather>('/api/weather/location', body);
   // the PC answered, so it is up; an error below comes from the forecast service, not the PC
   pcDown = false;
   // the PC did not save it: throw, so the caller reverts the unit and says so
-  if (d.status === 'error' && d.saved === false) throw new Error(d.error ?? 'not saved');
+  if (d.status === 'error' && d.saved === false) throw new NotSaved(d.error ?? 'not saved');
   if (d.status === 'ok' || d.status === 'no_location') { wx = d; wxAt = Date.now(); offline = false; }
   // the place or units were saved, but the forecast failed: show that, and read it again soon (as loadWx does)
   else if (d.status === 'error') { wx = d; wxAt = Date.now(); offline = false; clearTimeout(retryTimer); retryTimer = window.setTimeout(loadWx, RETRY_MS); }
@@ -411,7 +414,8 @@ async function choosePlace(p: Place): Promise<void> {
   try {
     await sendLocation({ lat: p.lat, lon: p.lon, place: p.name, units: pickUnits });
     report('location');
-  } catch {
+  } catch (err) {
+    if (err instanceof NotSaved) { paintPlaces(`Your PC couldn’t save <em>${esc(p.name)}</em>. Try again.`, () => void choosePlace(p)); return; }
     pcDown = true;
     paintPlaces(`Couldn’t reach your PC, so <em>${esc(p.name)}</em> isn’t saved. Try again.`, () => void choosePlace(p));
     return;
@@ -449,7 +453,14 @@ async function setUnits(u: Units): Promise<void> {
   paintUnits();
   // Save the unit even when no forecast is loaded (no city yet, or an error): the PC keeps it in meter-config.json.
   try { await sendLocation({ units: u }); }
-  catch { pcDown = true; notify({ title: 'Couldn’t reach your PC', body: 'The new temperature unit isn’t saved. Try again.', app: 'weather' }, false); report('wx-units-failed'); pickUnits = prev; paintUnits(); }
+  catch (err) {
+    const notSaved = err instanceof NotSaved;
+    if (!notSaved) pcDown = true;
+    notify(notSaved
+      ? { title: 'Couldn’t save', body: 'Your PC couldn’t save the new temperature unit. Try again.', app: 'weather' }
+      : { title: 'Couldn’t reach your PC', body: 'The new temperature unit isn’t saved. Try again.', app: 'weather' }, false);
+    report('wx-units-failed'); pickUnits = prev; paintUnits();
+  }
   renderWx();
   appSettingsChanged();   // Settings → Apps → Weather shows the new units
 }

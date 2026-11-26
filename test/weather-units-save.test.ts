@@ -13,13 +13,13 @@ const body = src.slice(start, src.indexOf('\n}\n', start));
 
 test('setUnits sends the unit to the PC without a loaded forecast as a condition', () => {
   assert.ok(start > 0, 'setUnits exists');
-  assert.match(body, /try \{ await sendLocation\(\{ units: u \}\); \}\s*catch \{ (?:pcDown = true; )?notify\(/);
+  assert.match(body, /try \{ await sendLocation\(\{ units: u \}\); \}\s*catch \(err\) \{/);
   assert.doesNotMatch(body, /isOk\(wx\)/);
 });
 
 test('setUnits restores the saved unit and repaints when the save fails', () => {
   assert.match(body, /const prev = pickUnits;/);
-  assert.match(body, /catch \{ (?:pcDown = true; )?notify\([^]*?report\('wx-units-failed'\); pickUnits = prev; paintUnits\(\); \}/);
+  assert.match(body, /catch \(err\) \{[^]*?report\('wx-units-failed'\); pickUnits = prev; paintUnits\(\);\s*\}/);
 });
 
 test('sendLocation clears pcDown once the PC answers, before reading the status', () => {
@@ -38,14 +38,14 @@ test('choosePlace names the PC and marks it down when the save fails', () => {
   const pickStart = src.indexOf('async function choosePlace(p: Place)');
   const pickBody = src.slice(pickStart, src.indexOf('\n}\n', pickStart));
   assert.ok(pickStart > 0, 'choosePlace exists');
-  const catchBody = pickBody.slice(pickBody.indexOf('catch {'));
+  const catchBody = pickBody.slice(pickBody.indexOf('catch (err)'));
   assert.match(catchBody, /pcDown = true;/);
   assert.match(catchBody, /Couldn’t reach your PC, so <em>\$\{esc\(p\.name\)\}<\/em> isn’t saved\. Try again\./);
   assert.doesNotMatch(pickBody, /Couldn’t save that\./);
 });
 
 test('setUnits marks the PC down before it names the PC in the notice', () => {
-  const catchBody = body.slice(body.indexOf('catch {'));
+  const catchBody = body.slice(body.indexOf('catch (err)'));
   const marked = catchBody.indexOf('pcDown = true;');
   const notified = catchBody.indexOf('notify(');
   assert.match(catchBody, /pcDown = true;/);
@@ -72,4 +72,13 @@ test('openPicker keeps the saved unit when no forecast is loaded', () => {
   assert.ok(pickStart > 0, 'openPicker exists');
   assert.doesNotMatch(pickBody, /: 'fahrenheit'/);
   assert.match(pickBody, /isOk\(wx\) \? wx\.units : pickUnits/);
+});
+
+test('a place or unit the PC answers but cannot save is not reported as the PC being unreachable', () => {
+  const src = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+  assert.match(src, /class NotSaved extends Error \{\}/);
+  assert.match(src, /throw new NotSaved\(/);
+  assert.match(src, /Your PC couldn’t save <em>/);
+  assert.match(src, /Your PC couldn’t save the new temperature unit/);
+  assert.match(src, /if \(!notSaved\) pcDown = true;/);
 });
