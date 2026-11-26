@@ -22,7 +22,7 @@ import { notesRow } from './notes-row.ts';
 import { listsRow } from './lists-row.ts';
 import { calendarRow } from './calendar-row.ts';
 import { emptyTileText, weatherAfterRead } from './weather-read.ts';
-import { isOffHome, sceneFailText } from './scene-words.ts';
+import { isOffHome, sceneActsAfterRead, sceneFailText, type SceneAct } from './scene-words.ts';
 import { busyOf, liveSessions, needsYou, pillText, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
@@ -570,16 +570,14 @@ const ACTIONS: QuickAction[] = [
 // ---------- Home Assistant scenes: up to three, chosen in Settings > Apps > Home Assistant ----------
 // GET /api/home-assistant/scenes gives the picks; a tap posts /scene, which the PC
 // checks again (only domain "scene", only a scene on Home). No scenes, or no answer: no scene buttons.
-interface SceneAct { id: string; name: string }
 let sceneActs: SceneAct[] = [];
 const sceneBusy = new Map<string, 'busy' | 'done' | 'fail'>();
 
 async function loadScenes(): Promise<void> {
-  let next: SceneAct[] = [];
+  let next: SceneAct[];
   try {
     const r = await getJson<HaScenes>('/api/home-assistant/scenes');
-    if (r?.status === 'ok') next = r.home.map(id => r.scenes.find(s => s.entity_id === id)).filter((s): s is NonNullable<typeof s> => !!s)
-      .map(s => ({ id: s.entity_id, name: s.name })).slice(0, 3);
+    next = sceneActsAfterRead(sceneActs, r);
   } catch { /* the PC is away: keep what is shown */ return; }
   if (JSON.stringify(next) === JSON.stringify(sceneActs)) return;
   sceneActs = next;

@@ -2,7 +2,7 @@
 // Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { isOffHome, sceneFailText } from '../src/apps/home/web/scene-words.ts';
+import { isOffHome, sceneActsAfterRead, sceneFailText } from '../src/apps/home/web/scene-words.ts';
 
 test('no answer from the PC says the PC is not answering', () => {
   assert.equal(sceneFailText('Movie night', null), 'The PC isn’t answering, so Movie night didn’t change.');
@@ -48,4 +48,32 @@ test('voice: a refusal with a reason gives the reason in plain words', () => {
 test('the reason text never carries raw HTML', () => {
   const out = sceneFailText('Movie night', { error: '<img src=x onerror=alert(1)>' });
   assert.equal(/[<>]/.test(out), false);
+});
+
+// Home's scene buttons after a read (loadScenes): an error answer keeps what is shown; a good answer replaces it.
+const shown = [{ id: 'scene.movie', name: 'Movie night' }];
+const scenesAnswer = {
+  demo: false,
+  scenes: [
+    { entity_id: 'scene.reading', name: 'Reading', dashboard: false, home: true },
+    { entity_id: 'scene.movie', name: 'Movie night', dashboard: false, home: true },
+  ],
+};
+
+test('an error answer from the PC keeps the scene buttons already shown', () => {
+  const r = { status: 'error' as const, home: [], scenes: [], demo: false, error: 'request timed out' };
+  assert.deepEqual(sceneActsAfterRead(shown, r), shown);
+});
+
+test('an ok answer replaces the buttons with its picks, in order', () => {
+  const r = { ...scenesAnswer, status: 'ok' as const, home: ['scene.reading', 'scene.movie'] };
+  assert.deepEqual(sceneActsAfterRead(shown, r), [
+    { id: 'scene.reading', name: 'Reading' },
+    { id: 'scene.movie', name: 'Movie night' },
+  ]);
+});
+
+test('a not_set_up answer clears the scene buttons', () => {
+  const r = { status: 'not_set_up' as const, home: [], scenes: [], demo: false };
+  assert.deepEqual(sceneActsAfterRead(shown, r), []);
 });
