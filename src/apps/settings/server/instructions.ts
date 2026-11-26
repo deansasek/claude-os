@@ -44,5 +44,7 @@ export function setInstructions(v: unknown): string {
 
 /** The line for a new Claude session's system prompt; "" when none are set. */
 export function instructionsForPrompt(): string {
-  return text ? `The user's instructions: ${text}` : '';
+  // Reads again while the last read failed, so a new session gets the text once the file is readable.
+  const t = getInstructions();
+  return t ? `The user's instructions: ${t}` : '';
 }
