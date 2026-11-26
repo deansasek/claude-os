@@ -15,6 +15,7 @@ export const NO_FEED_TEXT = 'ClaudeOS could not read the news from the computer.
 export const NO_SUMMARY_TEXT = 'The feed gave no summary for this story.';
 export const NO_TOPIC_TEXT = 'Every News topic is off. Turn one on in Settings, then tap Try again.';
 export const STALE_TEXT = 'ClaudeOS could not reach the computer. These stories may be out of date.';
+export const FEED_ERROR_TEXT = 'The news feeds did not answer, so these stories may be out of date.';
 
 // Feed terms (#357): no feed picture is shown until the owner confirms the BBC image licence. The code path stays.
 export const SHOW_IMAGES = false;
@@ -40,8 +41,16 @@ export function screenFor(res: NewsFeedResponse | null): NewsScreen {
 }
 
 /** The notes to show when a refresh fails while stories are on screen: the old stories stay, and this note says they may be old. */
-export function staleNotes(): Note[] {
-  return [{ sourceId: '', text: STALE_TEXT }];
+export function staleNotes(text: string = STALE_TEXT): Note[] {
+  return [{ sourceId: '', text }];
+}
+
+/**
+ * True when the page keeps its stories after an answer with status 'error' (the feeds did not answer).
+ * Only when stories are on screen and the user has not changed the topics since the last load.
+ */
+export function keepStoriesOnError(res: NewsFeedResponse | null, hasStories: boolean, wasDirty: boolean): boolean {
+  return res !== null && res.status === 'error' && hasStories && !wasDirty;
 }
 
 /** The key for one story: its feed and its id. Two feeds can carry the same story under the same id. */
