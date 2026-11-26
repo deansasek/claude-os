@@ -110,3 +110,12 @@ test('recent searches keep six at most, newest first, with no repeats', () => {
   assert.equal(list.filter(x => x.toLowerCase() === 'soul').length, 1);
   assert.deepEqual(addSearch(list, '   '), list);
 });
+
+test('More like this uses the first tag the directory accepts, not a refused first tag', async () => {
+  const { moreLikeTag } = await import('../src/apps/radio/web/catalogue.ts');
+  assert.equal(moreLikeTag(['pop/rock', 'jazz']), 'jazz', 'a tag with a slash is refused, so the next one is used');
+  assert.equal(moreLikeTag(['100% hits', '#fun', 'rock']), 'rock');
+  assert.equal(moreLikeTag(['pop/rock', '50%']), null, 'every tag refused gives none');
+  assert.equal(moreLikeTag([]), null);
+  assert.equal(moreLikeTag(undefined), null);
+});

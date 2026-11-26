@@ -39,6 +39,13 @@ export function cataloguePath(raw: unknown): CataloguePath | null {
   return { kind: 'stations', path: `stations/${by[1]}/${encodeURIComponent(name)}` };
 }
 
+/** The first of a station's tags the directory can be asked for (a tag with / or % is refused), or null. */
+export function moreLikeTag(tags: unknown): string | null {
+  if (!Array.isArray(tags)) return null;
+  for (const t of tags) if (typeof t === 'string' && cataloguePath(`stations/bytag/${t}`)) return t;
+  return null;
+}
+
 /** Radio Browser's tag, country or language records as facets: named, with stations, the biggest first, at most 150. */
 export function facetsFrom(records: unknown[], kind: FacetKind): Facet[] {
   const out: Facet[] = [];

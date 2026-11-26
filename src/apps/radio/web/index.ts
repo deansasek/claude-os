@@ -14,7 +14,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
-import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, addSearch, browsePick, nextChoice, noMatchText } from './catalogue.ts';
+import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, addSearch, browsePick, moreLikeTag, nextChoice, noMatchText } from './catalogue.ts';
 import {
   type PlayState, SLEEP_CHOICES, barModel, failMessage, initial, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
   volumeFromDevice,
@@ -136,7 +136,7 @@ function moreStation(id: string): Station | undefined {
 
 /** The More like this shelf for a station: its first genre's stations, without the station. Hidden on error or when empty. */
 function moreHtml(s: Station): string {
-  const tag = s.tags?.[0];
+  const tag = moreLikeTag(s.tags);   // the first tag the directory accepts, so a bad first tag does not hide the shelf
   if (!tag) return '';
   ensureMoreLike(tag);
   const got = byTag.get(tag);
