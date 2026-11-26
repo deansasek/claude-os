@@ -45,3 +45,16 @@ test('refresh() clears only its own failure note on success, and keeps the Run n
   assert.match(body, /if \(note === refreshNote\) note = ''; refreshNote = '';/);
   assert.match(routines, /'That routine is gone\.'/);
 });
+
+test('loadScenes records the scenes status, and its catch marks a failed read as error', () => {
+  const body = between(routines, 'async function loadScenes(', 'async function save(');
+  assert.match(body, /scenesWhy = r\?\.status \?\? 'error';/);
+  assert.match(body, /\} catch \{ scenesWhy = 'error'; \/\* keep the last list \*\/ \}/);
+});
+
+test('pickScene says why there are no scenes: not set up, cannot be read, or none yet', () => {
+  const body = between(routines, 'function pickScene(', 'function addStep(');
+  assert.match(body, /scenesWhy === 'not_set_up' \? 'Home Assistant isn’t set up yet\. Set it up in the Home Assistant app first\.'/);
+  assert.match(body, /scenesWhy === 'error' \? 'Your scenes can’t be read just now\. Try again in a moment\.'/);
+  assert.match(body, /No scenes are on the Home screen or the Home Assistant dashboard yet\. Add one in Home Assistant first; then it can go in a routine\./);
+});
