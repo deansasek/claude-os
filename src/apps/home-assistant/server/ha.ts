@@ -16,7 +16,7 @@
 //     real scene may include locks or covers); Claude's calls also go through the approval card.
 import fs from 'node:fs';
 import path from 'node:path';
-import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import {
   ENTITY_ID, isControlDomain, isDeniedDomain, isOn, isReadOnlyDomain, isSceneDomain, isShownDomain, isVoiceDomain, type ControlDomain, type HaConfigUpdate,
   type HaDashboard, type HaDevice, type HaDevices, type HaEntities, type HaEntity, type HaHomeScenesResult, type HaLayoutResult, type HaResult,
@@ -40,20 +40,15 @@ interface Config {
 function load(): Config {
   const empty: Config = { address: '', token: '', allow: [] };
   if (!fs.existsSync(FILE)) return empty;
-  const c = readJson<Partial<Config>>(FILE);
-  if (!c) {
-    // a config that can't be read is moved aside, not kept as the next save's base: the token in it is not lost
-    try {
-      fs.renameSync(FILE, `${FILE}.corrupt`);
-      console.log(`home-assistant: the config could not be read; it was kept as ${path.basename(FILE)}.corrupt`);
-    } catch { /* nothing more to do */ }
-    return empty;
-  }
+  // a config that can't be read is kept aside as a .corrupt copy (never over an earlier copy), so the token in it is not lost
+  const c = readJsonOrSetAside<unknown>(FILE);
+  if (!c || typeof c !== 'object' || Array.isArray(c)) return empty;
+  const cfgRaw = c as Partial<Config>;
   return {
-    address: typeof c.address === 'string' ? c.address : '',
-    token: typeof c.token === 'string' ? c.token : '',
-    allow: Array.isArray(c.allow) ? c.allow.filter(x => typeof x === 'string') : [],
-    allowDemo: Array.isArray(c.allowDemo) ? c.allowDemo.filter(x => typeof x === 'string') : undefined,
+    address: typeof cfgRaw.address === 'string' ? cfgRaw.address : '',
+    token: typeof cfgRaw.token === 'string' ? cfgRaw.token : '',
+    allow: Array.isArray(cfgRaw.allow) ? cfgRaw.allow.filter(x => typeof x === 'string') : [],
+    allowDemo: Array.isArray(cfgRaw.allowDemo) ? cfgRaw.allowDemo.filter(x => typeof x === 'string') : undefined,
   };
 }
 let cfg = load();
