@@ -13,7 +13,7 @@ const { backupNote, restoreOutcome } = await import('../src/apps/settings/web/ba
 // The server reads its backup file named by CLAUDEOS_BACKUP_FILE when it loads, so point it at a temp folder first.
 const backupDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-backup-'));
 process.env.CLAUDEOS_BACKUP_FILE = path.join(backupDir, 'claudeos-settings-backup.json');
-const { readBackup } = await import('../src/apps/settings/server/backup.ts');
+const { readBackup, saveBackup } = await import('../src/apps/settings/server/backup.ts');
 
 test('backupKey keeps the os.* settings and the sidebar pins', () => {
   assert.equal(backupKey('os.brightness'), true);
@@ -91,4 +91,19 @@ test('backupNote gives the saved time and the setting count', () => {
   const saved = '2026-11-26T09:30:00.000Z';
   const when = new Date(saved).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
   assert.equal(backupNote({ saved, values: { 'os.brightness': '0.8', 'os.dnd': '1' } }), `${when} · 2 settings`);
+});
+
+test('saving a backup over an unreadable file keeps the old bytes as .corrupt', () => {
+  const file = process.env.CLAUDEOS_BACKUP_FILE as string;
+  fs.mkdirSync(path.dirname(file), { recursive: true });   // an earlier test removes this folder
+  try {
+    fs.writeFileSync(file, '{ "saved": broken');
+    const res = saveBackup({ values: { 'os.quiet': '1' } });
+    assert.equal(res.ok, true, 'the new backup saves');
+    assert.equal(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{ "saved": broken', 'the unreadable copy is kept');
+    assert.deepEqual(readBackup().values, { 'os.quiet': '1' });
+  } finally {
+    fs.rmSync(file, { force: true });
+    fs.rmSync(`${file}.corrupt`, { force: true });
+  }
 });
