@@ -21,7 +21,7 @@ import { readLists } from '../../lists/web/readers.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
 import { prefs, setFocus, sleep as showScreenSaver } from '../../../core/web/system.ts';
 import type { HaResult } from '../../home-assistant/api.ts';
-import { AT_WINDOW_MIN, STEP_MAX_MS, dayKey, dueRoutines, type Routine, type RoutinesResult, type Step } from '../api.ts';
+import { AT_WINDOW_MIN, STEP_MAX_MS, dayKey, dueRoutines, parseRanDays, type Routine, type RoutinesResult, type Step } from '../api.ts';
 import { sceneStepWords } from './local.ts';
 import { copyAge, hasCopy, localRoutines, pull } from './sync.ts';
 
@@ -162,11 +162,16 @@ export function stopRoutine(): void { if (state) { token++; setState(null); } }
 // ---------- routines with a time: run by themselves, once a day, within AT_WINDOW_MIN of the time ----------
 // The tablet keeps the day each one last ran (this device's memory only), so a restart does not run it twice.
 const RAN_KEY = 'routines.ran';
+// Kept in memory as well as saved, so a save that fails does not let a routine run again and again today. A restart can
+// still run one again if its save failed.
+let ranMem: Record<string, string> | null = null;
 function ranDays(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(RAN_KEY) || '{}') as Record<string, string>; } catch { return {}; }
+  if (!ranMem) { try { ranMem = parseRanDays(JSON.parse(localStorage.getItem(RAN_KEY) || '{}')); } catch { ranMem = {}; } }
+  return ranMem;
 }
 function markRan(id: string, day: string): void {
-  try { localStorage.setItem(RAN_KEY, JSON.stringify({ ...ranDays(), [id]: day })); } catch { /* not kept: it may run once more today */ }
+  ranMem = { ...ranDays(), [id]: day };
+  try { localStorage.setItem(RAN_KEY, JSON.stringify(ranMem)); } catch { /* kept in memory for this session */ }
 }
 
 async function schedulerTick(): Promise<void> {
