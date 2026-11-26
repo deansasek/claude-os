@@ -82,6 +82,7 @@ let status: HaStatus | null = null;
 let statusFailed = false;   // the last status read threw: the PC could not be reached, so the saved settings are unknown
 let dash: HaDashboard | null = null;
 let devices: HaDevices | null = null, devicesAt = 0, devicesBusy = false;
+let devicesFailed = false;    // the last device read threw: `devices` may be the last good list, kept on screen
 let testMsg = '';
 let note = '';
 let editing = false;
@@ -90,6 +91,7 @@ let addTo = OTHER;            // the room "Add device" puts new devices in
 const busy = new Set<string>();
 let timer: number | undefined;
 let sceneList: HaScenes | null = null;    // every scene, and the Home screen's picks (Settings)
+let scenesFailed = false;     // the last scene read threw: `sceneList` may be the last good list, kept on screen
 let sceneMsg = '';
 /** A scene tile's brief answer after a tap: "Done" or "Couldn’t set". */
 const flash = new Map<string, boolean>();
@@ -230,8 +232,8 @@ async function refresh(keepNote = false): Promise<void> {
 async function loadDevices(): Promise<void> {
   if (devicesBusy) return;
   devicesBusy = true;
-  try { devices = await getJson<HaDevices>(`${API}/devices`); devicesAt = Date.now(); }
-  catch { devices = { status: 'error', demo: false, devices: [], error: 'Can’t reach the PC right now.' }; devicesAt = Date.now(); }
+  try { devices = await getJson<HaDevices>(`${API}/devices`); devicesFailed = false; devicesAt = Date.now(); }
+  catch { devicesFailed = true; if (!devices) devices = { status: 'error', demo: false, devices: [], error: 'Can’t reach the PC right now.' }; devicesAt = Date.now(); /* keep the last good list */ }
   finally { devicesBusy = false; }
   await loadScenes();
   await loadStatus();
@@ -329,8 +331,8 @@ async function runTest(): Promise<void> {
 }
 
 async function loadScenes(): Promise<void> {
-  try { sceneList = await getJson<HaScenes>(`${API}/scenes`); }
-  catch { sceneList = { status: 'error', demo: false, scenes: [], home: [], error: 'Can’t reach the PC right now.' }; }
+  try { sceneList = await getJson<HaScenes>(`${API}/scenes`); scenesFailed = false; }
+  catch { scenesFailed = true; if (!sceneList) sceneList = { status: 'error', demo: false, scenes: [], home: [], error: 'Can’t reach the PC right now.' }; /* keep the last good list */ }
 }
 
 /** Put a scene on the Home screen's quick actions, or take it off. The Home screen picks it up when it next shows. */
@@ -708,7 +710,8 @@ function settingRows(): SettingRow[] {
   const dev = devices;
   const allowable = (dev?.devices ?? []).filter(d => d.controllable);
   rows.push({ kind: 'info', id: 'allowHead', title: 'Devices Claude can control',
-    detail: 'Claude can switch only the devices turned on here, and asks first. Adding a device to Home doesn’t allow it. Locks, alarms, doors and scripts are never offered.',
+    detail: devicesFailed && dev?.status === 'ok' ? 'Can’t reach the PC right now, so this may be out of date.'
+      : 'Claude can switch only the devices turned on here, and asks first. Adding a device to Home doesn’t allow it. Locks, alarms, doors and scripts are never offered.',
     value: () => (!dev ? 'Loading…' : dev.status === 'error' ? 'Couldn’t load' : `${allowable.filter(d => d.allowed).length} of ${allowable.length}`) });
   if (dev?.status === 'error') rows.push({ kind: 'info', id: 'allowErr', title: 'Couldn’t list your devices', detail: plain(dev.error), value: () => '' });
   for (const d of allowable) {
@@ -719,7 +722,8 @@ function settingRows(): SettingRow[] {
   // the Home screen's quick actions: up to three scenes
   const sl = sceneList;
   rows.push({ kind: 'info', id: 'scenesHead', title: 'Scenes on the Home screen',
-    detail: sceneMsg || `Up to ${MAX_HOME_SCENES} scenes show as one-tap buttons on the Home screen.`,
+    detail: scenesFailed && sl?.status === 'ok' ? 'Can’t reach the PC right now, so this may be out of date.'
+      : sceneMsg || `Up to ${MAX_HOME_SCENES} scenes show as one-tap buttons on the Home screen.`,
     value: () => (!sl ? 'Loading…' : sl.status === 'error' ? 'Couldn’t load' : `${sl.home.length} of ${MAX_HOME_SCENES}`) });
   if (sl?.status === 'error') rows.push({ kind: 'info', id: 'scenesErr', title: 'Couldn’t list your scenes', detail: plain(sl.error), value: () => '' });
   if (sl?.status === 'ok' && !sl.scenes.length) rows.push({ kind: 'info', id: 'scenesNone', title: 'No scenes yet', detail: 'Make scenes in Home Assistant, and they show up here.', value: () => '' });
