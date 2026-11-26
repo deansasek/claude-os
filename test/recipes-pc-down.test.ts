@@ -8,17 +8,28 @@ import { readFileSync } from 'node:fs';
 const src = readFileSync(new URL('../src/apps/recipes/web/index.ts', import.meta.url), 'utf8');
 const PC_DOWN = 'Can’t reach your PC just now. Try again.';
 
+const catchOf = (start: string, end: string): string => {
+  const body = src.slice(src.indexOf(start), src.indexOf(end));
+  return body.slice(body.indexOf('} catch {'));
+};
+
+test('the PC text is one shared constant', () => {
+  assert.equal(src.split(PC_DOWN).length - 1, 1);
+  assert.ok(src.includes(`const PC_DOWN = '${PC_DOWN}';`));
+});
+
 test('search() catch shows the PC text, not the TheMealDB text', () => {
-  const body = src.slice(src.indexOf('async function search('), src.indexOf('function keep('));
-  const catchBlock = body.slice(body.indexOf('} catch {'));
-  assert.ok(catchBlock.includes(PC_DOWN));
+  assert.ok(catchOf('async function search(', 'function keep(').includes('resultsError = PC_DOWN;'));
 });
 
 test('findPantry() catch shows the PC text, not the shared fail() text', () => {
-  const body = src.slice(src.indexOf('async function findPantry('), src.indexOf('const missingNote'));
-  const catchBlock = body.slice(body.indexOf('} catch {'));
-  assert.ok(catchBlock.includes(PC_DOWN));
+  const catchBlock = catchOf('async function findPantry(', 'const missingNote');
+  assert.ok(catchBlock.includes('foundError = PC_DOWN;'));
   assert.ok(!catchBlock.includes('fail()'));
+});
+
+test('loadNames() catch shows the PC text', () => {
+  assert.ok(catchOf('async function loadNames(', '/** The shelf:').includes('namesError = PC_DOWN;'));
 });
 
 test('the TheMealDB connection text is gone', () => {

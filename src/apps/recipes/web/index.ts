@@ -32,6 +32,7 @@ const TIMER_MINUTES = [5, 10, 15, 30];
 const TONIGHT_TIMES = ['20 minutes', '40 minutes', '1 hour', ''];   // '' is no limit
 const ICON = appIcon('recipes');
 const NATIVE_OFF = 'Turn on “Run Claude chats on this tablet” under Settings, Apps, Claude, then try again.';
+const PC_DOWN = 'Can’t reach your PC just now. Try again.';   // the shared text when the PC cannot be reached
 
 const HEART = (on: boolean) => `<svg viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/></svg>`;
 const LENS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>';
@@ -75,6 +76,7 @@ let sheetOpen = false;                  // the shelf sheet: every ingredient The
 let shelfQuery = '';                    // the sheet's search text
 let names: string[] = [];
 let namesState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
+let namesError = '';                    // the sheet's text when the ingredient names did not load
 let found: Recipe[] = [];               // the ranked recipes, and the names each one lacks (foundMissing, in step)
 let foundMissing: string[][] = [];
 let foundState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
@@ -173,7 +175,7 @@ async function search(q: string): Promise<void> {
     if (mine !== seq) return;
     results = [];
     resultsState = 'error';
-    resultsError = 'Can’t reach your PC just now. Try again.';
+    resultsError = PC_DOWN;
   }
   render();
 }
@@ -315,9 +317,11 @@ async function loadNames(): Promise<void> {
     const r = await getJson<IngredientsResult>(`${API}/ingredients`);
     names = r.status === 'ok' ? r.names : [];
     namesState = r.status === 'ok' ? 'ok' : 'error';
+    namesError = r.status === 'ok' ? '' : 'Ingredients are not available. Try again.';
   } catch {
     names = [];
     namesState = 'error';
+    namesError = PC_DOWN;
   }
   paintSheet();
 }
@@ -360,7 +364,8 @@ function paintSheet(): void {
   const picked = pantry.map(c => `<button class="rc-chip have" data-act="pick" data-name="${esc(c.name)}">${esc(c.name)} ×</button>`).join('');
   const full = pantry.length >= PANTRY_MAX;
   const status = namesState === 'loading' ? '<p class="rc-empty">Loading ingredients…</p>'
-    : namesState === 'error' ? '<p class="rc-empty">Ingredients are not available. Try again.</p>' : '';
+    : namesState === 'error' ? `<p class="rc-empty">${esc(namesError)}</p>`
+      + '<div class="rc-actions"><button class="rc-btn" data-act="names-retry">Try again</button></div>' : '';
   const shelf = shelfNames().map(n => {
     const on = pantry.some(c => nameKey(c.name) === nameKey(n));
     return `<li><button class="rc-shelf-b${on ? ' on' : ''}" data-act="pick" data-name="${esc(n)}" aria-pressed="${on}">${esc(n)}</button></li>`;
@@ -398,6 +403,7 @@ function onSheetClick(ev: Event): void {
     case 'pick': togglePick(b.dataset.name ?? ''); return;
     case 'sheet-close': closeSheet(); return;
     case 'pantry-find': closeSheet(); void findPantry(); return;
+    case 'names-retry': void loadNames(); paintSheet(); return;   // loadNames() sets 'loading' before it awaits
   }
 }
 
@@ -427,7 +433,7 @@ async function findPantry(): Promise<void> {
     found = [];
     foundMissing = [];
     foundState = 'error';
-    foundError = 'Can’t reach your PC just now. Try again.';
+    foundError = PC_DOWN;
   }
   paintPicker();
 }
