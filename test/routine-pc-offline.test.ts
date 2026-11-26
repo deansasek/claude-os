@@ -21,8 +21,24 @@ test('startRoutine reports offline when the PC does not answer and no copy is re
   assert.match(body, /if \(!r\.steps\.length\) return 'empty';/);
 });
 
-test('runRoutine keeps its yes-or-no answer', () => {
-  assert.match(run, /return \(await startRoutine\(id\)\) === 'started';/);
+test('provideRoutines passes startRoutine\'s reason through, and runRoutine is gone', () => {
+  assert.match(run, /run: id => startRoutine\(id\),/);
+  assert.doesNotMatch(run, /runRoutine/);
+});
+
+test('routineCommand says why a spoken routine did not start, and keeps "gone" for Claude', () => {
+  const body = between(voice, 'async function routineCommand(', '// ---------- Home Assistant scenes');
+  assert.match(body, /const res = await routines\.run\(hit\.id\);/);
+  assert.match(body, /if \(res === 'started'\) return \{ say: '', react: 'hop' \};/);
+  assert.match(body, /if \(res === 'empty'\) return \{ say: 'That routine has no steps yet\.' \};/);
+  assert.match(body, /if \(res === 'offline'\) return \{ say: 'The PC isn’t answering, so that routine can’t start\.' \};/);
+  assert.match(body, /return null;   \/\/ gone: the phrase goes on to Claude as before/);
+});
+
+test('the Claude run_routine tool says the same reasons for empty and offline routines', () => {
+  const body = between(read('claude/web/browser-relay.ts'), 'async function runRoutine(', '/** One browser job');
+  assert.match(body, /if \(res === 'empty'\) return \{ ok: false, data: 'That routine has no steps yet\.' \};/);
+  assert.match(body, /if \(res === 'offline'\) return \{ ok: false, data: 'The PC isn’t answering, so that routine can’t start\.' \};/);
 });
 
 test('the Routines app Run button says why a routine did not start, and refreshes when it is gone', () => {
