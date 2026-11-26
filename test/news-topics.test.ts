@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
 import { FEEDS } from '../src/apps/news/web/feeds.ts';
-import { activeFeeds, cleanChoices, topicRows, topicsFor } from '../src/apps/news/web/topics.ts';
+import { activeFeeds, cleanChoices, topicRows, topicSaveError, topicsFor } from '../src/apps/news/web/topics.ts';
 import { newsFeed } from '../src/apps/news/server/news.ts';
 import { setTopic, topicChoices, topicsView } from '../src/apps/news/server/topics.ts';
 
@@ -80,6 +80,16 @@ test('topic rows: loading shows an info row, not switches', () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0].kind, 'info');
   assert.equal(rows[0].kind === 'info' && rows[0].value(), 'Loading…');
+});
+
+test('a topic not saved with no PC answer says the PC cannot be reached', () => {
+  assert.equal(topicSaveError(null), 'Can’t reach your PC. Check it’s on, then try again.');
+});
+
+test('a topic the PC answers without saving says the PC could not save it, not the connection', () => {
+  const msg = topicSaveError({ ok: false });
+  assert.equal(msg, 'The PC couldn’t save that topic. Try again.');
+  assert.doesNotMatch(msg, /connect|reach|check/i);
 });
 
 test('topic rows: failed shows an info row with the PC detail, not switches', () => {
