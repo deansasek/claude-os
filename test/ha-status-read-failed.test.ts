@@ -32,6 +32,36 @@ test('settingRows checks the status-failed flag before it shows Not set', () => 
   assert.ok(notSet > flag, 'the Not set text comes after the statusFailed check');
 });
 
+test('loadDevices keeps the last good device list when the read fails', () => {
+  const start = src.indexOf('async function loadDevices(');
+  const body = src.slice(start, src.indexOf('\n}\n', start));
+  assert.match(body, /catch \{ devicesFailed = true; if \(!devices\) devices = \{ status: 'error'/);
+  assert.match(body, /devicesFailed = false;/);
+  assert.doesNotMatch(body, /catch \{ devices = \{ status: 'error'/);
+});
+
+test('loadScenes keeps the last good scene list when the read fails', () => {
+  const start = src.indexOf('async function loadScenes(');
+  const body = src.slice(start, src.indexOf('\n}\n', start));
+  assert.match(body, /catch \{ scenesFailed = true; if \(!sceneList\) sceneList = \{ status: 'error'/);
+  assert.match(body, /scenesFailed = false;/);
+  assert.doesNotMatch(body, /catch \{ sceneList = \{ status: 'error'/);
+});
+
+test('settingRows shows the out-of-date detail on allowHead and scenesHead when a kept list is stale', () => {
+  const start = src.indexOf('function settingRows(');
+  const body = src.slice(start, src.indexOf('\n}\n', start));
+  const stale = 'Can’t reach the PC right now, so this may be out of date.';
+  const allow = body.indexOf("id: 'allowHead'");
+  const scenes = body.indexOf("id: 'scenesHead'");
+  assert.ok(allow > 0 && scenes > 0, 'settingRows has the allowHead and scenesHead rows');
+  assert.match(body, /devicesFailed && dev\?\.status === 'ok'/);
+  assert.match(body, /scenesFailed && sl\?\.status === 'ok'/);
+  assert.ok(body.split(stale).length - 1 === 2, 'the out-of-date detail appears once for each head row');
+  assert.ok(body.indexOf(stale) > allow, 'the devices out-of-date detail sits on the allowHead row');
+  assert.ok(body.lastIndexOf(stale) > scenes, 'the scenes out-of-date detail sits on the scenesHead row');
+});
+
 test('settingRows adds a scenesErr row with the scene read reason when the scene list fails', () => {
   const start = src.indexOf('function settingRows(');
   const body = src.slice(start, src.indexOf('\n}\n', start));
