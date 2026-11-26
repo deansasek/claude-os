@@ -128,6 +128,7 @@ async function finish(call: () => Promise<PinResult>, tag: string, pin?: string)
 async function done(): Promise<void> {
   if (busy || cooling() || typed.length < PAD_MIN) return;
   const pin = typed;
+  if (step === 'new' && mode === 'change' && pin === current) { typed = ''; msg = 'That’s your current PIN. Choose a different one.'; paintSheet(); return; }
   if (step === 'new') { firstNew = pin; step = 'confirm'; typed = ''; msg = ''; paintSheet(); return; }
   if (step === 'confirm') {
     if (pin !== firstNew) { step = 'new'; firstNew = ''; typed = ''; msg = 'Those don’t match. Start again.'; paintSheet(); return; }
