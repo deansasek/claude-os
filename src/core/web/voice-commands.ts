@@ -38,7 +38,7 @@ import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay } from './voice-weather.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { readLists, writeList } from '../../apps/lists/web/readers.ts';
-import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
+import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 import { matchOpenApp } from './voice-open.ts';
 
@@ -254,7 +254,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (dl) {
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
     clock.startTimer(dl.ms, dl.label);
-    return { say: `${dl.label} timer set for ${sayDuration(dl.ms)}.`, react: 'hop' };
+    return { say: namedTimerReply(dl.label, dl.ms), react: 'hop' };
   }
   // timer: pause, resume, add or take off minutes (core/web/voice-alarm.ts)
   const tw = timerWord(t);
