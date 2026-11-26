@@ -12,7 +12,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-cal-edit-'));
 process.env.CLAUDEOS_CALENDAR_LOCAL_FILE = path.join(dir, 'calendar-local.json');
 const L = await import('../src/apps/calendar/server/local.ts');
 const { mergeRange } = await import('../src/apps/calendar/server/range-merge.ts');
-const { editable, formCanShow, ownEvent } = await import('../src/apps/calendar/web/edit.ts');
+const { afterWriteNote, editable, formCanShow, ownEvent } = await import('../src/apps/calendar/web/edit.ts');
 
 after(() => fs.rmSync(dir, { recursive: true, force: true }));
 beforeEach(() => fs.rmSync(L.FILE, { force: true }));
@@ -102,4 +102,26 @@ test('a merged range keeps the id of a ClaudeOS event and marks only it as edita
   assert.equal(mine?.id, local.id);
   assert.equal(ownEvent(mine!), true);
   assert.equal(ownEvent(theirs!), false);
+});
+
+test('afterWriteNote gives the done text alone when the reload has no note', () => {
+  assert.equal(afterWriteNote('Added “Dentist” to ClaudeOS.', ''), 'Added “Dentist” to ClaudeOS.');
+});
+
+test('afterWriteNote keeps the connection note after the done text', () => {
+  const done = 'Added “Dentist” to ClaudeOS.';
+  const note = 'Couldn’t reach the PC, so this may be out of date. Trying again…';
+  assert.equal(afterWriteNote(done, note), `${done} ${note}`);
+});
+
+test('afterWriteNote keeps the stale note after the done text', () => {
+  const done = 'Saved “Dentist” in ClaudeOS.';
+  const note = 'Couldn’t read the calendar just now, so this may be out of date. Calendar timed out';
+  assert.equal(afterWriteNote(done, note), `${done} ${note}`);
+});
+
+test('afterWriteNote keeps the error note after the done text', () => {
+  const done = 'Deleted “Dentist” from ClaudeOS.';
+  const note = 'Couldn’t read the calendar.';
+  assert.equal(afterWriteNote(done, note), `${done} ${note}`);
 });
