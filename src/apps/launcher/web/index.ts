@@ -439,6 +439,7 @@ let hits: Hit[] = [];
 let lists: SearchSources['lists'] = [];
 let sessions: SearchSources['sessions'] = [];
 let loadedAt = 0;
+let searchReadFailed = false;
 
 async function loadSearchData(): Promise<void> {
   if (Date.now() - loadedAt < 60e3) return;   // read again at most once a minute
@@ -449,7 +450,12 @@ async function loadSearchData(): Promise<void> {
   try {
     const u = await getJson<{ sessions?: { id: string | null; title: string; folder: string }[] }>('/api/claude/usage');
     sessions = (u.sessions ?? []).filter(s => !!s.id).map(s => ({ id: s.id!, title: s.title, folder: s.folder }));
-  } catch { sessions = []; }
+    searchReadFailed = false;
+  } catch {
+    sessions = [];
+    loadedAt = 0;   // read again on the next search open
+    searchReadFailed = true;
+  }
   if (query) paintResults();
 }
 
@@ -465,7 +471,7 @@ function paintResults(): void {
   $('lnResults').hidden = !on;
   $('lnResults').innerHTML = !on ? '' : hits.length
     ? hits.map((h, i) => `<button class="ln-result hit" data-hit="${i}"><b>${esc(h.label)}</b><span>${esc(h.sub)}</span></button>`).join('')
-    : `<p class="ln-empty">Nothing matches “${esc(query)}”.</p>`;
+    : `<p class="ln-empty">Nothing matches “${esc(query)}”.${searchReadFailed ? ' Claude sessions couldn’t be read from your PC.' : ''}</p>`;
   $('lnSearchText').textContent = query || 'Search';
   $('lnSearch').classList.toggle('has', on);
   $('lnSearchClear').hidden = !on;
