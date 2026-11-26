@@ -13,6 +13,12 @@ test('a list read that fails with a TypeError marks the PC as down', () => {
   assert.match(catchBlock, /pcDown = e instanceof TypeError;/);
 });
 
+test('loadHome asks for Top stations again only when the Top shelf is not ok', () => {
+  const body = src.slice(src.indexOf('async function loadHome('), src.indexOf('const isFiltering'));
+  assert.match(body, /const keepTop = home\.topState === 'ok';/);
+  assert.match(body, /const top = keepTop \? Promise\.resolve\(keptTop\)\s+: getJson<StationsResult>\(/);
+});
+
 test('retryHtml shows the PC text when the PC is down, and Radio Browser text otherwise', () => {
   const line = src.split('\n').find(l => l.startsWith('function retryHtml()')) ?? '';
   assert.match(line, /esc\(pcDown \? PC_DOWN : RADIO_DOWN\)/);

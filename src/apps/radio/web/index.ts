@@ -389,10 +389,19 @@ async function facetsOf(facet: FacetKind): Promise<Facet[]> {
 async function loadHome(force = false): Promise<void> {
   if (homeDone && !force) { render(); return; }
   homeDone = true;
-  home = { ...home, topState: 'loading', genresState: 'loading', countriesState: 'loading' };
+  // Keep a shelf that already loaded: its Top stations are not asked again, and its skeleton does not show.
+  const keepTop = home.topState === 'ok';
+  const keptTop = home.top;
+  home = {
+    ...home,
+    topState: keepTop ? 'ok' : 'loading',
+    genresState: home.genresState === 'ok' ? 'ok' : 'loading',
+    countriesState: home.countriesState === 'ok' ? 'ok' : 'loading',
+  };
   render();
-  const top = getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent('stations/topvote/100')}`)
-    .then(r => { if (r.status !== 'ok') throw new Error(r.error); return playableStations(r.stations); });
+  const top = keepTop ? Promise.resolve(keptTop)
+    : getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent('stations/topvote/100')}`)
+      .then(r => { if (r.status !== 'ok') throw new Error(r.error); return playableStations(r.stations); });
   const [t, g, c] = await Promise.allSettled([top, facetsOf('tags'), facetsOf('countries')]);
   pcDown = [t, g, c].some(unreachable);
   home = {
