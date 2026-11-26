@@ -370,16 +370,18 @@ async function sendLocation(body: LocationUpdate): Promise<void> {
 // ---------- city picker (uses the shared keyboard) ----------
 let pickUnits: Units = 'fahrenheit';
 let places: Place[] = [];
+let retryPick: (() => void) | null = null;
 let searchTimer: number | undefined, searchSeq = 0;
 
 function paintUnits(): void {
   $('wUnits').querySelectorAll<HTMLElement>('button').forEach(b => b.classList.toggle('on', b.dataset.u === pickUnits));
 }
 
-function paintPlaces(hint = ''): void {
+function paintPlaces(hint = '', retry: (() => void) | null = null): void {
+  retryPick = retry;
   $('wRes').innerHTML = places.length
     ? places.slice(0, 6).map((p, i) => `<button data-i="${i}">${esc(p.name)}<span>${esc([p.region, p.country].filter(Boolean).join(', '))}</span></button>`).join('')
-    : `<div class="hint">${hint}</div>`;
+    : `<div class="hint">${hint}</div>${retry ? '<button data-retry="1">Try again</button>' : ''}`;
 }
 
 async function searchPlaces(q: string): Promise<void> {
@@ -390,9 +392,9 @@ async function searchPlaces(q: string): Promise<void> {
     places = res.results || [];
     paintPlaces(res.status === 'ok'
       ? `Nothing called <em>${esc(q)}</em> yet. Check the spelling, or try a bigger town nearby.`
-      : 'City search can’t reach the forecast service right now. Try again in a moment.');
+      : 'City search can’t reach the forecast service right now. Try again in a moment.', res.status === 'ok' ? null : () => void searchPlaces(q));
   } catch {
-    if (seq === searchSeq) { places = []; paintPlaces('City search can’t reach ClaudeOS’s server right now. Try again in a moment.'); }
+    if (seq === searchSeq) { places = []; paintPlaces('City search can’t reach ClaudeOS’s server right now. Try again in a moment.', () => void searchPlaces(q)); }
   }
 }
 
@@ -403,7 +405,7 @@ async function choosePlace(p: Place): Promise<void> {
     await sendLocation({ lat: p.lat, lon: p.lon, place: p.name, units: pickUnits });
     report('location');
   } catch {
-    paintPlaces('Couldn’t save that. Try again.');
+    paintPlaces('Couldn’t save that.', () => void choosePlace(p));
     return;
   }
   sel = { t: 'now' };
@@ -502,6 +504,7 @@ function mount(context: AppContext): void {
   });
   $('wRes').addEventListener('click', e => {
     const b = (e.target as Element).closest<HTMLElement>('button');
+    if (b?.dataset.retry) { retryPick?.(); return; }
     if (b) void choosePlace(places[+b.dataset.i!]);
   });
   $('wUnits').addEventListener('click', e => {
