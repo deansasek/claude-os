@@ -7,12 +7,12 @@
 // last good copy (up to 12 hours old) is shown, marked stale.
 import fs from 'node:fs';
 import path from 'node:path';
-import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
+import { STATE, readJsonOrSetAside, writeJsonFile } from '../../../core/server/paths.ts';
 import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts';
 import { occurrences, parseIcs, type RawEvent } from './ics.ts';
 import { tagCalendar } from '../web/calendars.ts';
 
-const FILE = path.join(STATE, '.calendar-config.json');
+const FILE = process.env.CLAUDEOS_CALENDAR_CONFIG || path.join(STATE, '.calendar-config.json');
 const TIMEOUT_MS = 10_000;
 const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
@@ -24,7 +24,7 @@ const MAX_SHOWN = 200;
 interface Config { address: string }
 
 function load(): Config {
-  const c = readJson<Partial<Config>>(FILE);   // null for a missing or bad file: no address
+  const c = readJsonOrSetAside<Partial<Config>>(FILE);   // null for a missing file: no address; a bad file is kept as .corrupt
   return { address: typeof c?.address === 'string' ? c.address : '' };
 }
 let cfg = load();
