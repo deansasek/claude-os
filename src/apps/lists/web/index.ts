@@ -108,7 +108,8 @@ function paintSuggest(): void {
   box.innerHTML = suggest.map(t => `<button class="ls-hbtn" data-sug="${esc(t)}">+ ${esc(t)}</button>`).join('');
 }
 
-async function refresh(): Promise<void> {
+// keepNote: a message the caller just set (the PC could not take a change) stays on screen through the reload
+async function refresh(keepNote = false): Promise<void> {
   if (local() && readQueue().length) { await flush(); render(); return; }   // flush takes the PC's lists once the queue is sent
   const g = gen;
   try {
@@ -116,8 +117,8 @@ async function refresh(): Promise<void> {
     if (g !== gen || swipe || readQueue().length) return;
     if (local() && r.ok && r.stored === false) take(await postJson<ListsResult>(`${API}/restore`, { lists }));
     else take(r);
-    note = r.ok ? '' : r.error ?? '';
-  } catch { if (g === gen) note = loaded ? '' : 'Couldn’t reach the PC. Trying again…'; }
+    if (!keepNote) note = r.ok ? '' : r.error ?? '';
+  } catch { if (g === gen && !keepNote) note = loaded ? '' : 'Couldn’t reach the PC. Trying again…'; }
   render();
   void loadSuggest();
 }
@@ -140,7 +141,7 @@ async function send(path: OpPath, body: Record<string, unknown>): Promise<ListsR
     return r;
   } catch {
     note = 'Couldn’t reach the PC. Try again in a moment.';
-    void refresh();
+    void refresh(true);
     return null;
   }
 }
@@ -218,7 +219,8 @@ function tick(id: string): void {
   it.done = !it.done;             // at once on screen; the PC's answer replaces it
   busy.add(id);
   render();
-  void send('tick', { list: l.id, id, done: it.done }).finally(() => { busy.delete(id); render(); });
+  // the PC did not take the tick (no local copy to keep it): put the item back as it was, with the message
+  void send('tick', { list: l.id, id, done: it.done }).then(r => { if (!r || !r.ok) it.done = !it.done; }).finally(() => { busy.delete(id); render(); });
 }
 
 function showUndo(u: NonNullable<typeof undo>): void {
