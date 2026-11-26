@@ -2,7 +2,7 @@
 // The tablet's copy (web/local.ts applyOp) and the PC's rule (api.ts restoreItemAt) are checked here. Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { restoreItemAt, type FamilyList } from '../src/apps/lists/api.ts';
+import { restoreItemAt, tickedPlaces, type FamilyList } from '../src/apps/lists/api.ts';
 import { applyOp, type Op } from '../src/apps/lists/web/local.ts';
 
 const at = '2026-01-02T03:04:05.000Z';
@@ -58,7 +58,25 @@ test('a bad id or an empty text is refused', () => {
   assert.equal(l.items.length, 3);
 });
 
-test('the Clear ticked undo still adds by text (add op unchanged)', () => {
+test('Undo after Clear ticked puts each item back in its place, id, tick and time', () => {
+  const l = shopping();
+  l.items[0].done = true;
+  l.items[1].done = false;
+  l.items[2].done = true;
+  const before = l.items.map(i => ({ ...i }));
+  const back = tickedPlaces(l);
+  const copy: FamilyList = { ...l, items: l.items.filter(i => !i.done) };
+  for (const entry of [...back].sort((a, b) => a.index - b.index)) {
+    assert.equal(typeof restoreItemAt(copy, entry.item, entry.index), 'object');
+  }
+  assert.deepEqual(ids(copy), before.map(i => i.id));
+  copy.items.forEach((item, n) => {
+    assert.equal(item.done, before[n].done);
+    assert.equal(item.at, before[n].at);
+  });
+});
+
+test('the add op still adds by text at the end (Lists add is unchanged)', () => {
   const r = applyOp([shopping()], { path: 'add', body: { list: 'shopping', text: 'Bread' } });
   assert.equal(r.ok, true);
   assert.equal(r.lists[0].items[3].text, 'Bread');

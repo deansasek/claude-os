@@ -19,7 +19,7 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack } from '../../../core/web/system.ts';
-import { MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, isBuiltIn, type FamilyList, type ListItem, type ListsResult } from '../api.ts';
+import { MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, isBuiltIn, tickedPlaces, type FamilyList, type ListItem, type ListsResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { COPY_KEY, applyOp, type Op, type OpPath } from './local.ts';
 import { appendOp, readQueue, remapQueue, removeOp } from './queue.ts';
@@ -47,8 +47,8 @@ let timer: number | undefined;
 let sheetOpen = false;
 const busy = new Set<string>();
 
-/** What Undo puts back: the items of a clear (added again), or one removed item at its old place (restore). */
-let undo: { list: string; items: { text: string; done: boolean }[]; label: string; restore?: { item: ListItem; index: number } } | null = null;
+/** What Undo puts back: the items removed, each at its old place with its id, tick and time (restore-item). */
+let undo: { list: string; label: string; restore: { item: ListItem; index: number }[] } | null = null;
 let undoT: number | undefined;
 
 const listNow = (): FamilyList | undefined => lists.find(l => l.id === current) ?? lists[0];
@@ -236,11 +236,10 @@ async function runUndo(): Promise<void> {
   const u = undo;
   hideUndo();
   if (!u) return;
-  if (u.restore) { await send('restore-item', { list: u.list, item: u.restore.item, index: u.restore.index }); return; }
-  for (const it of u.items) {
-    const r = await send('add', { list: u.list, text: it.text });
-    if (!r?.ok) break;
-    if (it.done && r.item) await send('tick', { list: u.list, id: r.item.id, done: true });
+  const back = [...u.restore].sort((a, b) => a.index - b.index);
+  for (const r of back) {
+    const a = await send('restore-item', { list: u.list, item: r.item, index: r.index });
+    if (!a?.ok) break;
   }
 }
 
@@ -252,8 +251,8 @@ function remove(id: string): void {
   l.items = l.items.filter(i => i.id !== id);
   render();
   showUndo({
-    list: l.id, items: [{ text: it.text, done: it.done }], label: `Removed ${it.text}`,
-    restore: { item: { ...it }, index },
+    list: l.id, label: `Removed ${it.text}`,
+    restore: [{ item: { ...it }, index }],
   });
   void send('remove', { list: l.id, id });
 }
@@ -281,9 +280,10 @@ function clearTicked(): void {
   if (!l) return;
   const done = l.items.filter(i => i.done);
   if (!done.length) return;
+  const back = tickedPlaces(l);
   l.items = l.items.filter(i => !i.done);
   render();
-  showUndo({ list: l.id, items: done.map(i => ({ text: i.text, done: true })), label: `Cleared ${done.length} ticked` });
+  showUndo({ list: l.id, label: `Cleared ${back.length} ticked`, restore: back });
   void send('clear-done', { list: l.id });
 }
 
