@@ -7,7 +7,7 @@ import { prefs, quietNow } from '../../../core/web/system.ts';
 type Facing = 'back' | 'front';
 /** A short code for a camera failure: busy (another app has it), no_camera (not on this side), denied (not allowed), failed. */
 type CamCode = 'busy' | 'no_camera' | 'denied' | 'failed';
-type Shot = { ok: true; id: string; url: string } | { ok: false; code: CamCode };
+type Shot = { ok: true; id: string; url: string } | { ok: false; code: CamCode; message?: string };
 export type CamState = 'open' | 'asking' | 'closed' | 'error';
 
 const CODES: readonly CamCode[] = ['busy', 'no_camera', 'denied', 'failed'];
@@ -106,8 +106,9 @@ camera.on(e => {
       break;
     }
     case 'error': {
-      isOn = false;
-      if (e.id) { const w = waiters.get(e.id); waiters.delete(e.id); w?.({ ok: false, code: camCode(e.code) }); }
+      // a photo that did not reach the PC leaves the preview open: the next shutter tap still works
+      if (!e.id) isOn = false;
+      if (e.id) { const w = waiters.get(e.id); waiters.delete(e.id); w?.({ ok: false, code: camCode(e.code), message: e.message }); }
       else emit('error', camError(e.code));
       break;
     }
