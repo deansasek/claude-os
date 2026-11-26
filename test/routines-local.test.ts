@@ -102,6 +102,17 @@ test('queued changes replay on the PC over its newer routine, and none is lost',
   assert.equal((await R.readRoutines()).routines.length, 3);
 });
 
+// The Routines screen is DOM code with no unit seam, so this reads the source of refresh().
+test('a failed refresh warns that the routines may be out of date only when the PC copy is shown', () => {
+  const src = fs.readFileSync(new URL('../src/apps/routines/web/index.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const start = src.indexOf('async function refresh(');
+  assert.ok(start > 0, 'refresh() exists');
+  const body = src.slice(start, src.indexOf('\n}\n', start));
+  const catchBody = body.slice(body.lastIndexOf('} catch {'));
+  assert.match(catchBody, /!hasCopy\(\) && \(note === '' \|\| note === refreshNote\)/);
+  assert.match(catchBody, /note = refreshNote = 'Couldn’t reach the PC, so these may be out of date\. Trying again when you come back\.'/);
+});
+
 test('the tablet copy is restored only when the PC has no routines file', async () => {
   fs.rmSync(file, { force: true });
   const r = R.restoreRoutines([morning, night]);
