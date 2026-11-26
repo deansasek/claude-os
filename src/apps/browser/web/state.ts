@@ -140,23 +140,27 @@ export function resolveInput(text: string, eng: Engine = S.engine): string {
   return reading(text, eng).url;
 }
 
-export function ago(at: number): string {
-  const m = Math.round((Date.now() - at) / 60e3);
+/** A relative time: minutes, then hours, then a date. The date gets the year when it is not this year. */
+export function ago(at: number, now: number = Date.now()): string {
+  const m = Math.round((now - at) / 60e3);
   if (m < 1) return 'just now';
   if (m < 60) return `${m} min ago`;
   const h = Math.round(m / 60);
   if (h < 24) return `${h} h ago`;
-  return new Date(at).toLocaleDateString([], { day: 'numeric', month: 'short' });
+  const d = new Date(at);
+  const otherYear = d.getFullYear() !== new Date(now).getFullYear();
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: otherYear ? 'numeric' : undefined });
 }
 
-/** A day heading for lists: Today, Yesterday, or a date. */
-export function dayOf(at: number): string {
-  const d = new Date(at), n = new Date();
+/** A day heading for lists: Today, Yesterday, or a date. The date gets the year when it is not this year. */
+export function dayOf(at: number, now: number = Date.now()): string {
+  const d = new Date(at), n = new Date(now);
   const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   if (same(d, n)) return 'Today';
   const y = new Date(n); y.setDate(n.getDate() - 1);
   if (same(d, y)) return 'Yesterday';
-  return d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+  const otherYear = d.getFullYear() !== n.getFullYear();
+  return d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: otherYear ? 'numeric' : undefined });
 }
 
 export function size(bytes: number): string {
