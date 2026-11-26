@@ -337,9 +337,10 @@ function bindApps(): void {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-tabapp]');
     if (!b) return;
     const id = b.dataset.tabapp!;
+    const before = new Set(tabAllowed);
     tabAllowed.has(id) ? tabAllowed.delete(id) : tabAllowed.add(id);
     try { androidApps.setAllowed([...tabAllowed]); report('settings:apps:launcher'); }
-    catch { confirmSheet('Couldn’t change it', 'Check the tablet app is up to date, then try again.', 'OK', () => {}); }
+    catch { tabAllowed = before; confirmSheet('Couldn’t change it', 'Check the tablet app is up to date, then try again.', 'OK', () => {}); }
     paintTabApps();
   });
   onAppSettingsChange(() => { if (section === 'apps') paintApps(); else if (section === 'usage' && onTablet) paintUsage(); });
