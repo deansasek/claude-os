@@ -21,7 +21,7 @@ import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
 import { listsRow } from './lists-row.ts';
 import { emptyTileText, weatherAfterRead } from './weather-read.ts';
-import { busyOf, liveSessions, needsYou, type NeedTurn } from './needs.ts';
+import { busyOf, liveSessions, needsYou, pillText, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
 import { readLists } from '../../lists/web/readers.ts';
@@ -241,11 +241,9 @@ function paintClaude(): void {
   ctx.root.classList.toggle('hm-working', busy.length > 0);
 
   // header pill
-  const pill = $('hmPill'), pillText = $('hmPillText');
-  if (!usage || usageFailed) { pill.className = 'live'; pillText.textContent = usageFailed ? 'Claude offline' : 'Loading'; }
-  else if (waiting.length) { pill.className = 'live wait'; pillText.textContent = waiting.length > 1 ? `${waiting.length} sessions need you` : 'A session needs you'; }
-  else if (busy.length) { pill.className = 'live work'; pillText.textContent = busy.length > 1 ? `Claude is working on ${busy.length}` : 'Claude is working'; }
-  else { pill.className = 'live ok'; pillText.textContent = 'All quiet'; }
+  const pill = $('hmPill'), pillLabel = $('hmPillText');
+  const p = pillText(usage, usageFailed, waiting, busy);
+  pill.className = p.cls; pillLabel.textContent = p.text;
 
   // the tile
   const val = $('hmClVal'), sub = $('hmClSub');
@@ -256,7 +254,7 @@ function paintClaude(): void {
   const s = tab ? tab.s : pcS, w = tab ? tab.w : pcW;
   if (s == null && w == null) {
     val.className = 'quiet';
-    if (!usage || usageFailed) { val.textContent = usageFailed ? 'Offline' : '–'; sub.textContent = usageFailed ? 'Can’t reach the usage meter' : 'Loading usage…'; }
+    if (!usage || usageFailed) { val.textContent = usageFailed ? 'Offline' : '–'; sub.textContent = usageFailed ? 'Can’t reach the PC' : 'Loading usage…'; }
     else { val.textContent = 'Not connected'; sub.textContent = 'Plan limits aren’t connected yet'; }
   }
   else {

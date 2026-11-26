@@ -23,3 +23,11 @@ export function liveSessions<T extends NeedSession>(usage: { sessions?: T[]; tur
   if (failed) return { sessions: [], turns: [] };
   return { sessions: usage?.sessions || [], turns: usage?.turns || [] };
 }
+
+/** The Home header pill: its class and text. A failed read says the PC cannot be reached, not that Claude is offline. */
+export function pillText(usage: unknown, failed: boolean, waiting: unknown[], busy: unknown[]): { cls: string; text: string } {
+  if (!usage || failed) return { cls: 'live', text: failed ? 'Can’t reach your PC' : 'Loading' };
+  if (waiting.length) return { cls: 'live wait', text: waiting.length > 1 ? `${waiting.length} sessions need you` : 'A session needs you' };
+  if (busy.length) return { cls: 'live work', text: busy.length > 1 ? `Claude is working on ${busy.length}` : 'Claude is working' };
+  return { cls: 'live ok', text: 'All quiet' };
+}
