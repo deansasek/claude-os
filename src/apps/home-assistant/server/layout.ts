@@ -108,9 +108,9 @@ function load(): Store {
 }
 let store = load();
 
-function persist(): boolean {
+function persist(next: Store): boolean {
   try {
-    writeJsonFile(FILE, store, { indent: 2, mode: 0o600 });
+    writeJsonFile(FILE, next, { indent: 2, mode: 0o600 });
     return true;
   } catch (e) {
     console.log('home-assistant: could not save the layout:', (e as NodeJS.ErrnoException).code ?? 'error');
@@ -130,9 +130,10 @@ export const dashboardIds = (demo: boolean): string[] => {
 export const onDashboard = (demo: boolean, id: string): boolean => dashboardIds(demo).includes(id);
 
 function put(demo: boolean, l: HaLayout): { ok: boolean; layout: HaLayout; error?: string } {
-  if (demo) store.demo = l; else store.real = l;
-  const ok = persist();
-  return ok ? { ok: true, layout: clone(l) } : { ok: false, layout: getLayout(demo), error: 'The PC couldn’t save the layout.' };
+  const next: Store = { ...store, [demo ? 'demo' : 'real']: l };
+  if (!persist(next)) return { ok: false, layout: getLayout(demo), error: 'The PC couldn’t save the layout.' };
+  store = next;
+  return { ok: true, layout: clone(l) };
 }
 
 /** Replace the whole layout (what the page sends after a drag, a rename, a new room...). */
