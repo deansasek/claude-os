@@ -97,6 +97,7 @@ function renderNtp(): void {
   const h = new Date().getHours();
   $('brGreet').textContent = h < 5 ? 'Up late? Where to?' : h < 12 ? 'Good morning. Where to?' : h < 18 ? 'Where to?' : 'Good evening. Where to?';
   $('brEdit').textContent = editQuick ? 'Done' : 'Edit';
+  $('brEdit').hidden = !editQuick && !S.quick.length;
   $('brQuick').innerHTML = S.quick.map((q, i) => `<div class="br-q" role="button" data-q="${i}">`
     + `<span class="br-fav">${esc((q.title || host(q.url))[0]?.toUpperCase() || '?')}</span><span class="br-qn">${esc(q.title || host(q.url))}</span>`
     + (editQuick ? `<span class="br-qx" role="button" data-qx="${i}" aria-label="Remove">${I.xSm}</span>` : '') + '</div>').join('')
