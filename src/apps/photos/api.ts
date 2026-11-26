@@ -15,6 +15,11 @@ export const thumbUrl = (id: string): string => `/api/photos/file?id=${encodeURI
 export interface PhotoItem { id: string; at: string; url: string; hasThumb: boolean }
 export interface PhotoDay { day: string; photos: PhotoItem[] }
 export interface PhotoList { ok: boolean; days: PhotoDay[]; more?: boolean; error?: string }   // more: photos past the list's limit; error: the PC could not read its folder
+/** The photo days to show after a list read: the new days when the PC read its folder, else the days already shown (a failed read keeps the grid). */
+export function nextPhotoDays(prev: PhotoDay[], list: { ok?: boolean; days?: unknown }): PhotoDay[] {
+  return list.ok !== false && Array.isArray(list.days) ? (list.days as PhotoDay[]) : prev;
+}
+
 export interface UploadResult { ok: boolean; id?: string; url?: string; error?: string }
 export interface PhotoDeleteResult { ok: boolean; error?: string; deleted?: string[]; missing?: string[]; failed?: string[] }
 /** The most ids one delete request carries. The PC refuses more (server/store.ts MAX_PER_DELETE: keep them equal). */
