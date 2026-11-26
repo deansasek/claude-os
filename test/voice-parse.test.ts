@@ -68,3 +68,9 @@ test('a duration with a name after it keeps the name', () => {
   assert.equal(durationAndLabel('pasta'), null);
   assert.equal(durationAndLabel('10 minutes'), null);   // a duration with no name
 });
+
+test('"12 tonight" and "12 at night" are midnight, and "8 tonight" is 8 pm', () => {
+  assert.deepEqual(resolveHour(parseTime('12 tonight')!, false), { h: 0, m: 0 });
+  assert.deepEqual(resolveHour(parseTime('half past 12 at night')!, false), { h: 0, m: 30 });
+  assert.deepEqual(resolveHour(parseTime('8 tonight')!, false), { h: 20, m: 0 });
+});
