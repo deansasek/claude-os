@@ -135,12 +135,13 @@ export function paintPlugins(): void {
     || `<div class="st-empty">${q || tab !== 'all' ? 'Nothing matches that.' : 'Nothing here yet. Connectors, servers, skills and plugins show up here once Claude Code has them on this PC.'}</div>`;
 }
 
+const PLUGINS_TIMEOUT_MS = 60_000;   // the PC's own check gives up after about 35 s (server/plugins.ts, PROBE_MS)
 /** Fetch the list. `fresh` asks the PC to check the connectors and servers again first (slower). */
 export async function loadPlugins(fresh = false): Promise<void> {
   if (loading) return;
   loading = true;
   paintPlugins();
-  try { view = await getJson<PluginsView>(`/api/settings/plugins${fresh ? '?fresh=1' : ''}`); }
+  try { view = await getJson<PluginsView>(`/api/settings/plugins${fresh ? '?fresh=1' : ''}`, PLUGINS_TIMEOUT_MS); }
   catch { /* keep what we had */ }
   finally { loading = false; }
   paintPlugins();
