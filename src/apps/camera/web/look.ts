@@ -145,10 +145,22 @@ async function send(text: string, photoIds: string[]): Promise<{ sessionId: stri
 /** Follow the turn until Claude has answered, then say it (and show it). */
 async function follow(id: string, turnId: string | null): Promise<void> {
   const until = Date.now() + 3 * 60e3;
+  const offline = 'I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.';
+  let misses = 0;   // failed reads in a row: a failed read is not a finished session
   while (Date.now() < until && on) {
     await new Promise(r => setTimeout(r, 1500));
     let v: SessionView;
-    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`); } catch { continue; }
+    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`); }
+    catch {
+      // four failed reads in a row (about 6 s): say the PC could not be reached
+      if (++misses < 4) continue;
+      if (!on) return;
+      parts.answer.textContent = offline;
+      parts.answer.hidden = false;
+      say(offline);
+      return;
+    }
+    misses = 0;
     const t = v.turn;
     if (!t || (turnId && t.id !== turnId)) continue;
     if (!turnId) turnId = t.id;
@@ -177,8 +189,9 @@ async function follow(id: string, turnId: string | null): Promise<void> {
     return;   // stopped: say nothing
   }
   // The three minutes ran out with no answer: say so, and say where the answer will be.
+  // If the last read failed, the PC is the problem: say that instead.
   if (!on) return;
-  const line = 'Claude is still working on it. Open ClaudeOS to see the answer.';
+  const line = misses ? offline : 'Claude is still working on it. Open ClaudeOS to see the answer.';
   parts.answer.textContent = line;
   parts.answer.hidden = false;
   say(line);
