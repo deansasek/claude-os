@@ -210,16 +210,21 @@ export function editItem(listRef: unknown, id: unknown, rawText: unknown): Lists
 
 /** Remove every ticked item from a list. */
 export function clearDone(listRef: unknown): ListsResult {
-  return change(lists => {
+  let bought: string[] = [];
+  const r = change(lists => {
     const l = findList(lists, listRef);
     if (!l) return NO_LIST;
     const done = l.items.filter(i => i.done);
-    const n = done.length;
-    try { recordBought(done.map(i => i.text)); }   // ticked means bought: counted for the suggestions
-    catch (e) { console.log('lists: the bought history was not counted:', e); }   // a history error never blocks the clear
+    bought = done.map(i => i.text);
     l.items = l.items.filter(i => !i.done);
-    return { removed: n };
+    return { removed: done.length };
   });
+  // counted only once the clear is saved: a failed save leaves the items on the list, and they are not bought yet
+  if (r.ok) {
+    try { recordBought(bought); }   // ticked means bought: counted for the suggestions
+    catch (e) { console.log('lists: the bought history was not counted:', e); }   // a history error never blocks the clear
+  }
+  return r;
 }
 
 /** Make a new (tick-off) list. wantId: the id the tablet gave it, kept when it is free. */

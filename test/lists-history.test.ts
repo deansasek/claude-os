@@ -78,3 +78,21 @@ test('a history with bad entries still clears ticked items and suggests only the
   assert.equal(L.readLists().lists.find(l => l.id === 'shopping')!.items.some(i => i.text === 'Tea'), false, 'the ticked item is removed');
   assert.deepEqual(H.suggestions([]), ['Eggs']);
 });
+
+test('a clear whose save fails does not count the ticked items as bought, and a retry counts each once', () => {
+  L.addItem('shopping', 'Jam');
+  const item = L.readLists().lists.find(l => l.id === 'shopping')!.items.find(i => i.text === 'Jam')!;
+  L.tickItem('shopping', { id: item.id }, true);
+  const before = JSON.stringify(H.suggestions([]));
+  const file = process.env.CLAUDEOS_LISTS_FILE as string;
+  // the lists file cannot be written: a directory in its place makes the save fail
+  fs.rmSync(file, { force: true });
+  fs.mkdirSync(file);
+  try {
+    assert.equal(L.clearDone('shopping').ok, false, 'the clear fails');
+  } finally {
+    fs.rmSync(file, { recursive: true, force: true });
+  }
+  assert.equal(JSON.stringify(H.suggestions([])), before, 'the history is not changed by the failed clear');
+  assert.equal(L.clearDone('shopping').ok, true, 'a retry clears it');
+});
