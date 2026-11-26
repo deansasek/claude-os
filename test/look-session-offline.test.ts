@@ -16,3 +16,15 @@ test('a Look follow-up that cannot reach the PC says so', () => {
   assert.match(body, offline);
   assert.ok(body.search(offline) < body.indexOf('v.canReply'), 'the offline catch comes before the canReply check');
 });
+
+test('a Look new session reads projects on its own and says when Scratch space is missing', () => {
+  // (a) a failed projects read must not turn into an empty list
+  const read = body.indexOf("'/api/claude/projects'");
+  assert.ok(read > 0, 'send() reads the projects');
+  assert.doesNotMatch(body.slice(read, read + 80), /\.catch\(\(\) => \[\] as Project\[\]\)/);
+  // (b) a missing Scratch space is not an offline PC
+  const missing = body.match(/if \(!scratch\) \{[^\n]*\}/);
+  assert.ok(missing, 'send() has a !scratch branch');
+  assert.match(missing[0], /I need a Scratch space project on your PC first\./);
+  assert.doesNotMatch(missing[0], /can’t reach your PC/);
+});

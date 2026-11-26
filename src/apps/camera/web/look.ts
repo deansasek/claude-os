@@ -134,9 +134,12 @@ async function send(text: string, photoIds: string[]): Promise<{ sessionId: stri
     if (v.reason === 'running') { say('Claude is still working on the last one.'); return null; }
     sessionId = null;   // the session has gone on: start a fresh one below
   }
-  const projects = await getJson<Project[]>('/api/claude/projects').catch(() => [] as Project[]);
+  // a failed read is not an empty list: only a read that worked can say there is no Scratch space
+  let projects: Project[];
+  try { projects = await getJson<Project[]>('/api/claude/projects'); }
+  catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
   const scratch = projects.find(p => p.name === 'Scratch space');
-  if (!scratch) { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
+  if (!scratch) { say('I need a Scratch space project on your PC first.'); return null; }
   let r: NewSessionResult | null;
   try { r = await unlocked(() => apiCall<NewSessionResult>('new', { project: scratch.id, text, photoIds, voice: true, ...voiceDefaults() })); }
   catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
