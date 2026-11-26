@@ -33,3 +33,6 @@ export function moveTile(order: readonly string[], id: string, step: -1 | 1): st
   [next[i], next[j]] = [next[j], next[i]];
   return next;
 }
+
+/** Whether Keep awake was on when it was saved. Only the text 1 is on; anything else (or nothing saved) is off. */
+export const keepAwakeWanted = (raw: string | null | undefined): boolean => raw === '1';

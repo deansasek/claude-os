@@ -19,7 +19,7 @@ import { esc, getJson, report, store } from './dom.ts';
 import { parseClockAlarms } from './clock-alarms.ts';
 import { parseQuiet, type QuietHours } from './quiet-hours.ts';
 import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
-import { orderTiles, TILE_IDS } from './quick-order.ts';
+import { keepAwakeWanted, orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
 import { device, hasTopBand, onTablet, onVolume, setTopBand, topInsets, voice } from './device.ts';
 import { mediaActions, mediaState, nowPlaying, onNowPlaying, pauseMedia, playMedia, skipMedia, stopMedia } from './media.ts';
@@ -548,8 +548,9 @@ export function setFocus(id: string | null): void {
 }
 /** Keep awake: on or off, kept in the store and set on the tablet (the tile shows it). */
 function keepAwakeToggle(): void {
-  const on = store.get('os.keepAwake') !== '1';
-  try { device.keepAwake(on); } catch { /* the tablet app is busy */ }
+  const on = !keepAwakeWanted(store.get('os.keepAwake'));
+  // saved only when the tablet took the change, so the tile never shows a state the screen does not have
+  try { device.keepAwake(on); } catch { return; }
   store.set('os.keepAwake', on ? '1' : '0');
 }
 
@@ -766,7 +767,8 @@ function bindCC(stage: HTMLElement): void {
   // a long press (about half a second, still under 10 px) opens the tile's Settings section; the lift that follows is not a tap
   const ccTiles = $s('ccTiles');
   applyTileOrder();
-  if (onTablet && store.get('os.keepAwake') === '1') { try { device.keepAwake(true); } catch { /* the tablet app is busy */ } }
+  // always sent on the tablet: the tablet app starts with the screen kept on, so a saved Off must clear it
+  if (onTablet) { try { device.keepAwake(keepAwakeWanted(store.get('os.keepAwake'))); } catch { /* the tablet app is busy */ } }
   let holdT: number | undefined, held = false, hx = 0, hy = 0;
   const cancelHold = () => { clearTimeout(holdT); holdT = undefined; };
   ccTiles.addEventListener('pointerdown', e => {
