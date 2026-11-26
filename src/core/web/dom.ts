@@ -40,8 +40,9 @@ export function replay(el: Element, cls: string): void {
   el.classList.add(cls);
 }
 
-export async function getJson<T>(url: string): Promise<T> {
-  const r = await fetch(url, { cache: 'no-store' });
+/** A GET that parses JSON. With a timeout, it gives up after that many milliseconds (a sleeping PC can leave a connection that never answers). */
+export async function getJson<T>(url: string, timeoutMs?: number): Promise<T> {
+  const r = await fetch(url, { cache: 'no-store', ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
   return r.json() as Promise<T>;
 }
 
