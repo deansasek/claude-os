@@ -44,6 +44,8 @@ for (const e of entries) {
 }
 const manifest = { files: entries.map(({ path: p, size, sha256 }) => ({ path: p, size, sha256 })) };
 fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+// The marker a page reads to know it runs from this bundle (shell.ts). Not in the manifest: the PC does not serve it.
+fs.writeFileSync(path.join(OUT, 'bundle.json'), JSON.stringify({ bundled: true }) + '\n');
 
 const total = entries.reduce((sum, e) => sum + e.size, 0);
 console.log(`page bundle: ${entries.length} files, ${total} bytes -> ${path.relative(ROOT, OUT) || '.'}`);

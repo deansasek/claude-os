@@ -398,15 +398,26 @@ function contextFor(app: HubApp, root: HTMLElement, header: AppHeader, rail: HTM
   };
 }
 
+/** Does this page come from the APK's bundle (build-page.ts writes bundle.json; the PC does not serve it)? */
+async function runsFromBundle(): Promise<boolean> {
+  try {
+    const r = await fetch('/bundle.json', { cache: 'no-store' });
+    return r.ok && (await r.json() as { bundled?: unknown }).bundled === true;
+  } catch { return false; }
+}
+
 /** Reload open pages when the server says the page's files have changed. */
 function watchVersion(): void {
   let seen: number | null = null;
+  // a bundled page keeps its own files: a change on the PC must not reload it into the same old bundle
+  let bundled = false;
+  void runsFromBundle().then(v => { bundled = v; });
   const check = async (): Promise<void> => {
     try {
       const { version } = await getJson<{ version: number }>('/api/core/version');
       reportHubCheck(true);
       if (seen === null) seen = version;
-      else if (version !== seen) location.reload();
+      else if (version !== seen && !bundled) location.reload();
     } catch { reportHubCheck(false); /* server restarting; try again */ }
     // every 10 seconds on screen; once a minute with the page hidden or in low power
     setTimeout(check, document.hidden || document.documentElement.classList.contains('low-power') ? 60e3 : 10e3);
