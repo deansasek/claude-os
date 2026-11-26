@@ -1089,7 +1089,12 @@ function mount(context: AppContext): void {
 // ---------- for voice commands ("set a timer for 10 minutes", "wake me up at 7") ----------
 // Registered with core/web/voice-commands.ts when the Clock mounts; nothing else changes here.
 const clockApi: ClockApi = {
-  startTimer(ms: number, label?: string): void { timerStart(Math.max(1e3, Math.min(24 * 3600e3, ms)), label?.trim().slice(0, LABEL_MAX) || undefined); },
+  // false when the list is full: the caller says so, rather than promising a timer that never runs
+  startTimer(ms: number, label?: string): boolean {
+    if (timers.length >= MAX_TIMERS) return false;
+    timerStart(Math.max(1e3, Math.min(24 * 3600e3, ms)), label?.trim().slice(0, LABEL_MAX) || undefined);
+    return true;
+  },
   addLabelled(h: number, m: number, label: string, days: number[] = []): { when: string; at: number } | null {
     unlockAudio();
     const lbl = label.trim().slice(0, LABEL_MAX);

@@ -92,7 +92,7 @@ function runTablet(op: 'timer' | 'alarm' | 'reminder' | 'notify', a: Record<stri
   if (op === 'timer') {
     const ms = num(a.ms);
     if (!(ms >= 60e3 && ms <= 720 * 60e3)) return { ok: false, data: 'A timer can be from 1 to 720 minutes.' };
-    clock.startTimer(ms, label);
+    if (!clock.startTimer(ms, label)) return { ok: false, data: 'The timer list is full. Stop a timer first.' };
     const ends = new Date(Date.now() + ms);
     return { ok: true, data: `Timer set for ${str(a.words) || `${Math.round(ms / 60e3)} minutes`}${label ? ` (${label})` : ''}. It rings at ${hhmm(ends.getHours(), ends.getMinutes())}.` };
   }
