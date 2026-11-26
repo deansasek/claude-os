@@ -404,11 +404,16 @@ async function openPhotoSheet(): Promise<void> {
   $('stPhotoEmpty').hidden = true;
   grid.innerHTML = '<div class="st-empty">Loading your photos…</div>';
   let photos: { id: string; url: string }[] = [];
+  let failed: string | null = null;
   try {
-    const r = await getJson<{ ok: boolean; days?: { photos: { id: string; url: string }[] }[] }>('/api/photos/list?limit=120');
-    photos = (r.days ?? []).flatMap(d => d.photos).slice(0, 120);
-  } catch { /* no photos to show: the empty note says so */ }
-  $('stPhotoEmpty').hidden = photos.length > 0;
+    const r = await getJson<{ ok: boolean; days?: { photos: { id: string; url: string }[] }[]; error?: string }>('/api/photos/list?limit=120');
+    if (r.ok !== true) failed = typeof r.error === 'string' && r.error ? r.error : 'Your photos didn’t load. ClaudeOS can’t reach the PC.';
+    else photos = (r.days ?? []).flatMap(d => d.photos).slice(0, 120);
+  } catch { failed = 'Your photos didn’t load. ClaudeOS can’t reach the PC.'; }
+  // the note says "no photos" only when the list loaded and is empty
+  const empty = $('stPhotoEmpty');
+  empty.textContent = failed ?? 'No photos yet. Take one with the Camera or add one in Photos.';
+  empty.hidden = failed === null && photos.length > 0;
   // a thumbnail to choose from; usePhoto crops from the same thumbnail (400 px is enough for the 256 px profile photo)
   grid.innerHTML = photos.map(p => `<button class="st-photo-thumb hit" data-photo="${esc(thumbUrl(p.id))}" aria-label="Use this photo"><img src="${esc(thumbUrl(p.id))}" alt="" loading="lazy"></button>`).join('');
 }
