@@ -20,6 +20,7 @@ import { registerAppSettings } from '../../../core/web/app-settings.ts';
 import { alertFor, critterSpeak, onBack, openApp } from '../../../core/web/system.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import { daysAhead, dayName, dur, lengthWords, whenWord, words } from './timer-text.ts';
+import { parseStopwatch, type SwState } from './stopwatch.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, nextTimerName, parseClockTimers, runningLeftMs, type ClockTimer } from '../../../core/web/clock-timer.ts';
 
 type Mode = 'clock' | 'timer' | 'stopwatch' | 'alarm';
@@ -448,8 +449,7 @@ function renderTimerList(): void {
 }
 
 // ---------- stopwatch ----------
-interface SwState { running: boolean; start: number; acc: number; laps: number[] }   // laps: split times (ms since start)
-const sw: SwState = { running: false, start: 0, acc: 0, laps: [], ...readJson<SwState>(K.sw) };
+const sw: SwState = parseStopwatch(store.get(K.sw));
 const saveSw = () => store.set(K.sw, JSON.stringify(sw));
 let swFrame: number | undefined;
 const swTime = (): number => sw.acc + (sw.running ? Date.now() - sw.start : 0);
