@@ -284,6 +284,9 @@ function openHistory(): void { historyQ = ''; clearArmed = false; renderHistory(
 
 function renderHistory(): void {
   el('brHistoryQ').textContent = historyQ || 'Search your history';
+  // no history: no Clear button, and no armed state left over from before
+  el('brHistoryClear').hidden = S.history.length === 0;
+  if (!S.history.length) clearArmed = false;
   const q = historyQ.trim().toLowerCase();
   const rows = S.history.filter(v => !q || v.url.toLowerCase().includes(q) || v.title.toLowerCase().includes(q));
   let html = '';
