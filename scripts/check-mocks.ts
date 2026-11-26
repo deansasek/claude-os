@@ -3,6 +3,9 @@
 //     defineMock table (src/apps/<id>/web/mock.ts or src/core/web/mock.ts).
 //   - Bridge: every @JavascriptInterface method in android/src/hub/kiosk/Bridge.java needs a key in the HubDevice
 //     object of src/core/web/mock-device.ts.
+// A bridge method that only the tablet has (the camera, the browser, app launch) stays listed on purpose. device.ts
+// turns a feature on when its method exists (for example typeof api.cameraOpen === 'function'), so a mock for it
+// would switch that feature on in the mock page and break the fallback there. Keep those listed.
 // Gaps that exist today are listed in scripts/mock-gaps.json. A new gap fails the check. A gap that is now mocked
 // also fails, so the list shrinks with each mock. Run with: npm run check:mocks. Refresh the list after a mock lands
 // (not for a new gap): npm run check:mocks -- --update
