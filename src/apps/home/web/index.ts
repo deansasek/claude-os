@@ -661,11 +661,14 @@ async function setScene(id: string): Promise<void> {
   if (!s || sceneBusy.get(id) === 'busy') return;
   sceneBusy.set(id, 'busy');
   paintActs();
-  let r: HaResult;
-  try { r = await postJson<HaResult>('/api/home-assistant/scene', { entity_id: id }); } catch { r = { ok: false }; }
+  let r: HaResult | null;
+  try { r = await postJson<HaResult>('/api/home-assistant/scene', { entity_id: id }); } catch { r = null; }
   sceneBusy.set(id, r?.ok ? 'done' : 'fail');
   paintActs();
-  if (r?.ok) act('hop', true); else say(`Couldn’t set ${s.name}.`);
+  if (r?.ok) act('hop', true);
+  else if (!r) say(`The PC isn’t answering, so ${s.name} can’t be set.`);
+  else if (r.error && /on Home/i.test(r.error)) { say(`${s.name} isn’t on Home any more.`); void loadScenes(); }
+  else say(`Couldn’t set ${s.name}.`);
   setTimeout(() => { if (sceneBusy.get(id) !== 'busy') { sceneBusy.delete(id); paintActs(); } }, 2400);
 }
 
