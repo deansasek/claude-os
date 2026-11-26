@@ -1,11 +1,20 @@
 // Number, time and wording helpers shared by every app.
 import { store } from './dom.ts';
 
-export const fmt = (n: number): string =>
-  n >= 1e9 ? (n / 1e9).toFixed(n >= 1e10 ? 0 : 1) + 'B'
-  : n >= 1e6 ? (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + 'M'
-  : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e5 ? 0 : 1) + 'K'
-  : String(Math.round(n));
+/** The units, largest first. `whole`: from this many of the unit, no decimal place (9.5M is shown, 120M is not). */
+const SCALES = [{ div: 1e9, suffix: 'B', whole: 10 }, { div: 1e6, suffix: 'M', whole: 100 }, { div: 1e3, suffix: 'K', whole: 100 }] as const;
+
+export const fmt = (n: number): string => {
+  for (let i = 0; i < SCALES.length; i++) {
+    const { div, suffix, whole } = SCALES[i];
+    if (n < div) continue;
+    const text = (n / div).toFixed(n / div >= whole ? 0 : 1);
+    // rounding can reach the next unit (999.96K would read 1000K): show that unit instead, as 1.0M
+    if (i > 0 && Number(text) >= 1000) return fmt(SCALES[i - 1].div);
+    return text + suffix;
+  }
+  return String(Math.round(n));
+};
 
 /** "claude-opus-5-5" → "Opus 5.5" */
 export const prettyModel = (m: string): string =>
