@@ -2,7 +2,7 @@
 // The tile is narrow: the value is the next event, and the detail sits under it.
 
 export interface RowEvent { title: string; start: string; end: string; allDay: boolean; day: 'today' | 'tomorrow'; location?: string }
-export interface RowCal { status: 'ok' | 'not_set' | 'error' | string; events: RowEvent[] }
+export interface RowCal { status: 'ok' | 'not_set' | 'error' | string; events: RowEvent[]; stale?: boolean }
 
 export interface CalRow { cls: string; val: string; sub: string }
 
@@ -24,7 +24,8 @@ const calLine = (e: RowEvent): string => (e.allDay ? `${e.title} (all day)` : `$
  * Without events, a failed read wins over a miss: "Can’t read it" + "Can’t reach the PC".
  * A miss (nothing cached yet): "Not read yet" + "Open Calendar to read it".
  * When the last read failed and events were read before, the detail starts with "Offline · ",
- * so old events never look current.
+ * so old events never look current. When the PC sends its last good copy (stale), the detail
+ * starts with "May be out of date · " instead.
  */
 export function calendarRow(cal: RowCal | null, failed: boolean, miss: boolean, now: number): CalRow {
   if (!cal || cal.status !== 'ok') {
@@ -35,7 +36,7 @@ export function calendarRow(cal: RowCal | null, failed: boolean, miss: boolean, 
       sub: cal?.status === 'not_set' ? 'Tap to add yours' : failed ? 'Can’t reach the PC' : cal?.status === 'error' ? 'Tap to see why' : 'Reading the calendar…',
     };
   }
-  const off = failed ? 'Offline · ' : '';
+  const off = failed ? 'Offline · ' : cal.stale ? 'May be out of date · ' : '';
   const next = cal.events.filter(e => e.day === 'today' && Date.parse(e.end) > now).slice(0, 3);
   if (!next.length) {
     const tmr = cal.events.find(e => e.day === 'tomorrow');

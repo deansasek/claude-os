@@ -38,6 +38,26 @@ test('a failed read with old events says Offline before the events', () => {
   assert.equal(row.sub, 'Offline · Nothing else today');
 });
 
+test('a stale PC copy says May be out of date before the events', () => {
+  const cal = { status: 'ok', stale: true, events: [{ title: 'Review', start: '2026-11-26T14:00:00', end: '2026-11-26T15:00:00', allDay: true, day: 'today' as const }] };
+  const row = calendarRow(cal, false, false, NOW);
+  assert.equal(row.val, 'Review (all day)');
+  assert.equal(row.sub, 'May be out of date · Nothing else today');
+});
+
+test('a stale PC copy with nothing left today keeps the prefix on the tomorrow line', () => {
+  const cal = { status: 'ok', stale: true, events: [{ title: 'Standup', start: '2026-11-27T09:00:00', end: '2026-11-27T09:30:00', allDay: false, day: 'tomorrow' as const }] };
+  const row = calendarRow(cal, false, false, NOW);
+  assert.equal(row.val, 'A free day');
+  assert.ok(row.sub.startsWith('May be out of date · Tomorrow: '), row.sub);
+});
+
+test('a failed read with no events still says Offline, not May be out of date', () => {
+  const cal = { status: 'ok', stale: true, events: [{ title: 'Review', start: '2026-11-26T14:00:00', end: '2026-11-26T15:00:00', allDay: true, day: 'today' as const }] };
+  const row = calendarRow(cal, true, false, NOW);
+  assert.equal(row.sub, 'Offline · Nothing else today');
+});
+
 test('cal null with failed false and miss false still reads', () => {
   assert.deepEqual(calendarRow(null, false, false, NOW), { cls: 'quiet', val: '–', sub: 'Reading the calendar…' });
 });
