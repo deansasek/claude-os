@@ -10,6 +10,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import { askWithText } from '../../claude/web/reply.ts';
 import { askAboutPage } from './claude-panel.ts';
 import { articleOf } from './reader.ts';
+import { restoreLater } from './later.ts';
 import { thumbUrl } from '../../photos/api.ts';
 import type { PhotoList } from '../../photos/api.ts';
 import {
@@ -773,7 +774,15 @@ export function initPanels(deps: PanelDeps): void {
   el('brLaterList').addEventListener('click', e => {
     const t = e.target as Element;
     const d = t.closest<HTMLElement>('[data-later-del]');
-    if (d) { const list = laterList(); list.splice(+d.dataset.laterDel!, 1); saveLater(list); renderReadingList(); return; }
+    if (d) {
+      const i = +d.dataset.laterDel!, list = laterList(), gone = list[i];
+      if (!gone) return;
+      list.splice(i, 1); saveLater(list); renderReadingList();
+      showUndo(`Removed ${gone.title || host(gone.url)}`, () => {
+        const now = laterList(); saveLater(restoreLater(now, gone, i)); renderReadingList();
+      });
+      return;
+    }
     const o = t.closest<HTMLElement>('[data-later-open]');
     if (o) {
       const x = laterList()[+o.dataset.laterOpen!];
