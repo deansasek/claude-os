@@ -88,6 +88,7 @@ let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 
 let status: HaStatus | null = null;
+let statusFailed = false;   // the last status read threw: the PC could not be reached, so the saved settings are unknown
 let dash: HaDashboard | null = null;
 let devices: HaDevices | null = null, devicesAt = 0, devicesBusy = false;
 let testMsg = '';
@@ -223,7 +224,7 @@ function render(): void {
 
 // ---------- talking to the PC ----------
 async function loadStatus(): Promise<void> {
-  try { status = await getJson<HaStatus>(`${API}/status`); } catch { /* keep the last one */ }
+  try { status = await getJson<HaStatus>(`${API}/status`); statusFailed = false; } catch { statusFailed = true; /* keep the last one */ }
 }
 
 // keepNote: the caller's message (a save that failed) stays on screen after the reload
@@ -689,19 +690,26 @@ function setEditing(on: boolean): void {
 function settingRows(): SettingRow[] {
   if (Date.now() - devicesAt > DEVICES_STALE_MS) void loadDevices();
   const s = status;
+  const unreachable = !s && statusFailed;   // no answer from the PC: the saved address and token are unknown
   const rows: SettingRow[] = [
-    { kind: 'info', id: 'mode', title: 'Status', detail: s?.error ? plain(s.error) : s?.configured ? undefined : 'Add the address and the access token to connect.',
-      value: () => (!s?.configured ? 'Not set up' : s.connected ? 'Connected' : s.connected === false ? 'Not connected' : 'Not tested yet') },
-    { kind: 'action', id: 'address', title: 'Address', detail: 'For example http://homeassistant.local:8123',
-      value: () => s?.address || 'Not set', label: s?.address ? 'Change' : 'Add',
-      run: () => Keyboard.open({ value: s?.address ?? '', placeholder: 'http://homeassistant.local:8123', done: 'Save', max: 200,
-        onDone: v => { void saveConfig({ address: v }); } }) },
+    { kind: 'info', id: 'mode', title: 'Status', detail: s?.error ? plain(s.error) : unreachable ? 'Can’t reach the PC right now.' : s?.configured ? undefined : 'Add the address and the access token to connect.',
+      value: () => (unreachable ? 'Couldn’t load' : !s?.configured ? 'Not set up' : s.connected ? 'Connected' : s.connected === false ? 'Not connected' : 'Not tested yet') },
+    // with no answer from the PC, the Add button is hidden: an info row has no button
+    unreachable
+      ? { kind: 'info', id: 'address', title: 'Address', detail: 'For example http://homeassistant.local:8123', value: () => 'Couldn’t load' }
+      : { kind: 'action', id: 'address', title: 'Address', detail: 'For example http://homeassistant.local:8123',
+        value: () => s?.address || 'Not set', label: s?.address ? 'Change' : 'Add',
+        run: () => Keyboard.open({ value: s?.address ?? '', placeholder: 'http://homeassistant.local:8123', done: 'Save', max: 200,
+          onDone: v => { void saveConfig({ address: v }); } }) },
     // the token is never shown: only whether one is saved
-    { kind: 'action', id: 'token', title: 'Access token',
-      detail: 'From your Home Assistant profile. Kept only on the PC. Save it empty to remove it.',
-      value: () => (s?.token ? 'Saved' : 'Not set'), label: s?.token ? 'Replace' : 'Add',
-      run: () => Keyboard.open({ placeholder: 'Type the access token', done: 'Save', max: 400, mask: true,
-        onDone: v => { void saveConfig({ token: v }); } }) },
+    unreachable
+      ? { kind: 'info', id: 'token', title: 'Access token',
+        detail: 'From your Home Assistant profile. Kept only on the PC. Save it empty to remove it.', value: () => 'Couldn’t load' }
+      : { kind: 'action', id: 'token', title: 'Access token',
+        detail: 'From your Home Assistant profile. Kept only on the PC. Save it empty to remove it.',
+        value: () => (s?.token ? 'Saved' : 'Not set'), label: s?.token ? 'Replace' : 'Add',
+        run: () => Keyboard.open({ placeholder: 'Type the access token', done: 'Save', max: 400, mask: true,
+          onDone: v => { void saveConfig({ token: v }); } }) },
     { kind: 'action', id: 'test', title: 'Test connection', detail: testMsg || 'Checks the address and the token.', label: 'Test', run: () => { void runTest(); } },
   ];
   const dev = devices;
