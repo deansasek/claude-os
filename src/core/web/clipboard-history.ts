@@ -20,6 +20,16 @@ export function pruneClips(list: readonly Clip[], now: number, max = CLIP_MAX, t
 }
 
 /**
+ * Milliseconds until the oldest clip runs out (plus a little, so it is gone when the timer fires), or null when there are
+ * no clips. The chips repaint then, so a clip leaves the keyboard on time, not when the newest copy's timer runs out.
+ */
+export function nextExpiry(list: readonly Clip[], now: number, ttl = CLIP_TTL_MS): number | null {
+  if (!list.length) return null;
+  const oldest = Math.min(...list.map(c => c.at));
+  return Math.max(0, oldest + ttl + 50 - now);
+}
+
+/**
  * True when the text looks like a secret: an API key or token prefix, a Bearer header, a JWT, or one long word with
  * both letters and digits. A web address is not a secret, even when it is long.
  */
@@ -38,8 +48,15 @@ let ticking = 0;
 /** The clips now (pruned as they are read, so a clip is gone on time even when nothing else happens). */
 export function clips(): readonly Clip[] {
   const kept = pruneClips(history, Date.now());
-  if (kept.length !== history.length) { history = kept; emit(); }
+  if (kept.length !== history.length) { history = kept; emit(); scheduleRepaint(); }
   return history;
+}
+
+/** Repaint when the oldest clip runs out: one timer, set for that clip only. */
+function scheduleRepaint(now = Date.now()): void {
+  clearTimeout(ticking);
+  const wait = nextExpiry(history, now);
+  if (wait !== null) ticking = window.setTimeout(() => { clips(); }, wait);
 }
 
 function emit(): void { listeners.forEach(f => { try { f(); } catch { /* ignore */ } }); }
@@ -53,12 +70,8 @@ export function recordClip(text: string): boolean {
   if (!t || t.length > CLIP_CHARS || isTokenLike(t)) return false;
   const now = Date.now();
   history = pruneClips([{ text: t, at: now }, ...history.filter(c => c.text !== t)], now);
-  // a timer repaints when the oldest clip runs out, so it leaves the chips on time
-  clearTimeout(ticking);
-  ticking = window.setTimeout(() => { clips(); }, CLIP_TTL_MS + 50);
+  scheduleRepaint(now);
   emit();
   return true;
 }
 
-/** Forget every clip (for example when the person signs out). */
-export function clearClips(): void { history = []; emit(); }
