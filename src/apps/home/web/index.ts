@@ -391,17 +391,18 @@ function paintCalendar(): void {
     return;
   }
   const t = now().getTime();
+  const off = calFailed ? 'Offline · ' : '';   // the last read failed: these are the old events, so the tile says so (as the weather tile does)
   const next = c.events.filter(e => e.day === 'today' && Date.parse(e.end) > t).slice(0, 3);
   if (!next.length) {
     const tmr = c.events.find(e => e.day === 'tomorrow');
     val.className = 'quiet';
     val.textContent = c.events.some(e => e.day === 'today') ? 'Nothing more' : 'A free day';
-    sub.textContent = tmr ? `Tomorrow: ${calLine(tmr)}` : 'Nothing tomorrow either';
+    sub.textContent = off + (tmr ? `Tomorrow: ${calLine(tmr)}` : 'Nothing tomorrow either');
     return;
   }
   val.className = 'hm-ntitle';
   val.textContent = calLine(next[0]);
-  sub.innerHTML = next.slice(1).map(e => esc(calLine(e))).join(' · ') || esc(next[0].location ?? 'Nothing else today');   // one line under the title
+  sub.innerHTML = off + (next.slice(1).map(e => esc(calLine(e))).join(' · ') || esc(next[0].location ?? 'Nothing else today'));   // one line under the title
 }
 
 // ---------- notifications ----------
