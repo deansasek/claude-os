@@ -36,7 +36,7 @@ export async function loadHistory(): Promise<void> {
   const my = ++gen, q = query;
   loading = true;
   let fresh: History;
-  try { fresh = await getJson<History>(url({ q, ...scope() })); } catch { failed = true; loading = false; return; } finally { fetchedAt = Date.now(); }
+  try { fresh = await getJson<History>(url({ q, ...scope() })); } catch { failed = true; loading = false; onChange(); return; } finally { fetchedAt = Date.now(); }
   failed = false;
   if (my !== gen) return;   // a newer search went out meanwhile
   loading = false;
