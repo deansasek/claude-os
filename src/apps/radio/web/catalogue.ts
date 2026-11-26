@@ -58,6 +58,14 @@ export const NO_FILTERS: SearchFilters = { country: '', codec: '', bitrate: 0 };
 export const CODECS = ['', 'MP3', 'AAC', 'OGG'] as const;
 export const BITRATES = [0, 64, 128, 192] as const;
 
+/** The empty-result line for a search: names the words, the filters or both that can be narrowed. */
+export function noMatchText(query: string, filters: SearchFilters): string {
+  const filtered = !!(filters.country || filters.codec || filters.bitrate);
+  if (!filtered) return 'No stations match. Try fewer words.';
+  if (!query) return 'No stations match these filters. Try Any country, Any format or Any quality.';
+  return 'No stations match. Try fewer words or fewer filters.';
+}
+
 /** The filters from the hub's query string, each one checked: an unknown value means "any". */
 export function filtersFrom(q: URLSearchParams): SearchFilters {
   const country = (q.get('country') || '').toUpperCase();

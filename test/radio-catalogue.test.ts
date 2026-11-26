@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { addSearch, browsePick } from '../src/apps/radio/web/catalogue.ts';
 import { test } from 'node:test';
 import type { Station } from '../src/apps/radio/api.ts';
-import { RECENT_MAX, addRecent, cataloguePath, facetsFrom, filtersFrom, mirrorOrder, nextChoice } from '../src/apps/radio/web/catalogue.ts';
+import { RECENT_MAX, addRecent, cataloguePath, facetsFrom, filtersFrom, mirrorOrder, nextChoice, noMatchText } from '../src/apps/radio/web/catalogue.ts';
 import { failMessage, icyTitle, sleepEnd, sleepLeft } from '../src/apps/radio/web/player.ts';
 
 const st = (id: string): Station => ({ id, name: `Station ${id}`, url: `https://${id}.example/s`, country: '', codec: '', bitrate: 0 });
@@ -72,6 +72,13 @@ test('search filters accept only known values', () => {
   assert.deepEqual(filtersFrom(new URLSearchParams('country=Germany&codec=wav&bitrate=100')), { country: '', codec: '', bitrate: 0 });
   assert.equal(nextChoice([0, 64, 128], 128), 0);
   assert.equal(nextChoice(['', 'MP3'], ''), 'MP3');
+});
+
+test('an empty search says whether the words, the filters or both to change', () => {
+  const none = { country: '', codec: '', bitrate: 0 };
+  assert.equal(noMatchText('jazz', none), 'No stations match. Try fewer words.');
+  assert.equal(noMatchText('', { ...none, codec: 'AAC' }), 'No stations match these filters. Try Any country, Any format or Any quality.');
+  assert.equal(noMatchText('jazz', { ...none, bitrate: 128 }), 'No stations match. Try fewer words or fewer filters.');
 });
 
 test('genre and country lists drop empty and unsafe names, biggest first', () => {

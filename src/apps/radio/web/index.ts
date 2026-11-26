@@ -14,7 +14,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
-import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, addSearch, browsePick, nextChoice } from './catalogue.ts';
+import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, addSearch, browsePick, nextChoice, noMatchText } from './catalogue.ts';
 import {
   type PlayState, SLEEP_CHOICES, barModel, failMessage, initial, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
   volumeFromDevice,
@@ -714,7 +714,7 @@ function renderCatalogue(): void {
     if (!facets.length) emptyText = 'The directory sent no list.';
   } else {
     html = list.length ? `${view.kind === 'search' ? topResult(list[0]) : ''}<div class="rd-grid rd-station-grid">${list.map(tile).join('')}</div>` : '';
-    if (!list.length) emptyText = view.kind === 'search' ? 'No stations match. Try fewer words.' : 'No stations found.';
+    if (!list.length) emptyText = view.kind === 'search' ? noMatchText(query, filters) : 'No stations found.';
   }
   setHtml($('rdRes'), html);
   $('rdResEmpty').textContent = emptyText;
