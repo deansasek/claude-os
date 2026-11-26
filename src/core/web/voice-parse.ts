@@ -31,7 +31,7 @@ export function parseTime(phrase: string): TimeOfDay | null {
   if ((r = s.match(/^(half|quarter|\d+)(?: minutes?)? (past|after|to|before) (\d+)$/))) {
     const by = r[1] === 'half' ? 30 : r[1] === 'quarter' ? 15 : +r[1];
     h = +r[3]; m = r[2] === 'to' || r[2] === 'before' ? 60 - by : by;
-    if (r[2] === 'to' || r[2] === 'before') h -= 1;
+    if (r[2] === 'to' || r[2] === 'before') { h -= 1; if (h === 0) h = 12; }   // "quarter to 1" is 12:45, not midnight
     if (by >= 60 || h < 0) return null;
   } else if ((r = s.match(/^(\d{1,2})(?: (?:oh )?(\d{1,2}))?$/))) {
     h = +r[1]; m = r[2] ? +r[2] : 0;
