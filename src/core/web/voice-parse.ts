@@ -41,6 +41,8 @@ export function parseTime(phrase: string): TimeOfDay | null {
   } else return null;
   if (m > 59 || h > 23) return null;
   if (mer && h > 12) return null;
+  // "12 tonight" and "12 at night" are midnight, not noon: the night words make 12 the small hour
+  if (mer === 'pm' && h === 12 && /(^| )(tonight|at night)( |$)/.test(phrase.toLowerCase())) return { h, m, meridiem: 'am' };
   return { h, m, meridiem: mer };
 }
 
