@@ -22,13 +22,13 @@ export type ConnectorAnswer = { status: 'ok'; events: ConnEvent[]; cached: boole
 
 /** The cached events for a day, with no Claude turn: a miss when nothing fresh is cached. Timed routines use this. */
 export function cachedConnectorEvents(day: 'today' | 'tomorrow'): ConnectorAnswer | { status: 'miss' } {
-  const hit = cache.get(day);
+  const hit = cache.get(dateFor(day));
   if (hit && Date.now() - hit.at < TTL_MS) return { status: 'ok', events: hit.events, cached: true };
   return { status: 'miss' };
 }
 
 export async function connectorEvents(day: 'today' | 'tomorrow'): Promise<ConnectorAnswer> {
-  const hit = cache.get(day);
+  const hit = cache.get(dateFor(day));
   if (hit && Date.now() - hit.at < TTL_MS) return { status: 'ok', events: hit.events, cached: true };
   const date = dateFor(day);
   const prompt = `List my Google Calendar events for ${date} (my local day) using the Google Calendar connector. Read only. ` +
@@ -48,6 +48,6 @@ export async function connectorEvents(day: 'today' | 'tomorrow'): Promise<Connec
   } catch (e) { return { status: 'error', error: String((e as Error).message || e).slice(0, 200) }; }
   const events = parseConnectorEvents(text);
   if (!events) return { status: 'error', error: 'The connector answer had no event list.' };
-  cache.set(day, { at: Date.now(), events });
+  cache.set(dateFor(day), { at: Date.now(), events });
   return { status: 'ok', events, cached: false };
 }
