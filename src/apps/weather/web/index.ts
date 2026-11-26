@@ -447,7 +447,7 @@ async function setUnits(u: Units): Promise<void> {
   paintUnits();
   // Save the unit even when no forecast is loaded (no city yet, or an error): the PC keeps it in meter-config.json.
   try { await sendLocation({ units: u }); }
-  catch { notify({ title: 'Couldn’t reach your PC', body: 'The new temperature unit isn’t saved. Try again.', app: 'weather' }, false); report('wx-units-failed'); pickUnits = prev; paintUnits(); }
+  catch { pcDown = true; notify({ title: 'Couldn’t reach your PC', body: 'The new temperature unit isn’t saved. Try again.', app: 'weather' }, false); report('wx-units-failed'); pickUnits = prev; paintUnits(); }
   renderWx();
   appSettingsChanged();   // Settings → Apps → Weather shows the new units
 }
