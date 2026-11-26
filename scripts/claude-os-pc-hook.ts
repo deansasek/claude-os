@@ -13,9 +13,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PERMISSION_HOOK_TIMEOUT_S, STOP_HOOK_TIMEOUT_S, permissionOutput, withBridgeHooks, withoutBridgeHooks, type WaitAnswer } from '../src/apps/claude/server/pclink.ts';
+import { STATE } from '../src/core/server/paths.ts';
 
 const SCRIPT = fileURLToPath(import.meta.url);
-const LINK_FILE = path.join(path.dirname(SCRIPT), '..', '.pc-bridge.json');
+// The hub writes the link to its state folder (CLAUDEOS_STATE_DIR, or the project). The install command names that
+// file (--link), because Claude Code runs the hooks without the hub's environment.
+const linkArg = (): string | null => { const i = process.argv.indexOf('--link'); return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : null; };
+const LINK_FILE = linkArg() ?? path.join(STATE, '.pc-bridge.json');
 const SETTINGS = path.join(os.homedir(), '.claude', 'settings.json');
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -96,7 +100,8 @@ function writeSettings(next: Record<string, any>): void {
 }
 
 async function main(): Promise<number> {
-  const cmd = process.argv[2];
+  // the command word can come after --link and its path (the hook command is "<node> <script> --link <path> stop")
+  const cmd = process.argv.slice(2).find(x => ['install', 'uninstall', 'stop', 'permission'].includes(x));
   if (cmd === 'stop' || cmd === 'permission') {
     if (process.env.CLAUDEOS_HOST_TURN === '1') return 0;   // the hub runs this turn and answers it itself
     return cmd === 'stop' ? stopHook() : permissionHook();
@@ -104,7 +109,7 @@ async function main(): Promise<number> {
   if (cmd === 'install') {
     // forward slashes work in both shells Claude Code may run hooks with (cmd and Git Bash)
     const q = (p: string) => `"${p.replace(/\\/g, '/')}"`;
-    const command = `${q(process.execPath)} --disable-warning=ExperimentalWarning ${q(SCRIPT)}`;
+    const command = `${q(process.execPath)} --disable-warning=ExperimentalWarning ${q(SCRIPT)} --link ${q(path.join(STATE, '.pc-bridge.json'))}`;
     writeSettings(withBridgeHooks(readSettings(), command));
     console.log(`PC link hooks added to ${SETTINGS} (backup: settings.json.claude-os-pc-hook-backup).`);
     console.log('Reopen any Claude Code session that is already open so it loads them.');
