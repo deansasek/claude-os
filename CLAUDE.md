@@ -109,6 +109,10 @@ When building a feature:
 
 The only allowed exception is the deliberate recovery path to Android Settings (`maintenance()`), so the device can't be bricked.
 
+## Rule: every feature is mockable
+
+Each app ships `web/mock.ts`. It answers every `/api/<id>/` route the app calls, and every `HubDevice` method or native callback it uses. A new route, bridge method or callback lands in the same PR as its mock. `npm run check:mocks` checks this against `scripts/mock-gaps.json`, the list of gaps that exist today. Shrink the list with each mock; a new gap fails the check.
+
 ## Code rules
 
 - The Host serves browser code only from paths matching `WEB_FILE` in `src/core/server/index.ts`: `src/main.web.ts`, `src/core/web/**`, and per app `web/**`, `view.html`, `app.css`, `manifest.ts`, `api.ts`. Any module the page imports must live there. A web import from anywhere else 404s and the whole tablet page fails to boot. Shared code used by both server and web goes in the app's `web/` folder (the server may import from it).
