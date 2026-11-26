@@ -8,7 +8,7 @@ import { $, esc, report, store } from '../../../../core/web/dom.ts';
 import { Keyboard } from '../../../../core/web/keyboard.ts';
 import type { LiveSession } from '../../api.ts';
 import { archiveEmpty, emptyText, folded, folderLive, groups, isLive, searchEmpty, stateOf, when, type Row } from './sidebar-groups.ts';
-import { historyArchivedView, historyFailed, historyLoading, historyNow, historyQuery, historyTick, loadOlder, onHistoryChange, setQuery } from './history.ts';
+import { historyArchivedView, historyFailed, historyLoading, historyNow, historyOlderFailed, historyQuery, historyTick, loadOlder, onHistoryChange, setQuery } from './history.ts';
 
 export { historyTitle } from './history.ts';
 
@@ -79,7 +79,9 @@ export function sidebarHtml(list: LiveSession[], openId: string | null, waitingO
     }
     if (g.more && g.id && rows < MAX_ROWS) {
       const left = g.count - g.rows.length;
-      html += `<button class="sb-older" data-older="${esc(g.id)}">Show older${left > 0 ? ` <em>${left}</em>` : ''}</button>`;
+      const words = historyOlderFailed() === g.id ? 'Couldn’t reach your PC. Try again.'
+        : `Show older${left > 0 ? ` <em>${left}</em>` : ''}`;
+      html += `<button class="sb-older" data-older="${esc(g.id)}">${words}</button>`;
     }
   }
   return html;
