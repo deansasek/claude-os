@@ -102,5 +102,12 @@ export function resolveHour(t: TimeOfDay, wakeUp: boolean): { h: number; m: numb
   return next[0] <= next[1] ? { h: t.h % 12, m: t.m } : { h: (t.h % 12) + 12, m: t.m };
 }
 
-export const daysText = (d: number[]) => d.length === 7 ? ' every day' : d.join() === '1,2,3,4,5' ? ' on weekdays' : d.join() === '0,6' ? ' at weekends'
-  : d.length ? ` on ${d.map(x => Object.keys(DAY_WORDS)[x].replace(/^./, c => c.toUpperCase()) + 's').join(' and ')}` : '';
+export const daysText = (d: number[]) => {
+  const uniq = [...new Set(d)], key = uniq.slice().sort((a, b) => a - b).join();
+  // Monday first: Sunday (0) comes last, so the sort key shifts 0 to 6
+  const names = uniq.slice().sort((a, b) => (a + 6) % 7 - (b + 6) % 7)
+    .map(x => Object.keys(DAY_WORDS)[x].replace(/^./, c => c.toUpperCase()) + 's');
+  const list = names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return uniq.length === 7 ? ' every day' : key === '1,2,3,4,5' ? ' on weekdays' : key === '0,6' ? ' at weekends'
+    : uniq.length ? ` on ${list}` : '';
+};

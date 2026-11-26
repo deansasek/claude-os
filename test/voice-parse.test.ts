@@ -68,6 +68,11 @@ test('a day list is said back in words', () => {
   assert.equal(daysText([0, 6]), ' at weekends');
   assert.equal(daysText([0, 1, 2, 3, 4, 5, 6]), ' every day');
   assert.equal(daysText([1]), ' on Mondays');
+  assert.equal(daysText([1, 3, 5]), ' on Mondays, Wednesdays and Fridays');
+  assert.equal(daysText([5, 1]), ' on Mondays and Fridays');
+  assert.equal(daysText([6, 0]), ' at weekends');
+  assert.equal(daysText([2, 1, 3, 4, 5]), ' on weekdays');
+  assert.equal(daysText([1, 1]), ' on Mondays');
 });
 
 test('a named timer reply starts with a capital letter', () => {
