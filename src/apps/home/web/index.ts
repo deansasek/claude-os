@@ -28,6 +28,7 @@ import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.t
 import { shortAge } from '../../../core/web/format.ts';
 import { readLists } from '../../lists/web/readers.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, readClockTimers } from '../../../core/web/clock-timer.ts';
+import { parseClockAlarms } from '../../../core/web/clock-alarms.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -280,8 +281,7 @@ interface SavedTimer { dur: number; end: number | null; left: number | null }
 const readJson = <T>(k: string): T | null => { try { return JSON.parse(store.get(k) || 'null') as T; } catch { return null; } };
 
 function nextAlarm(d: Date = now()): number | null {
-  let list = readJson<SavedAlarm[]>('clock.alarms');
-  if (!Array.isArray(list)) { const one = readJson<SavedAlarm>('clock.alarm'); list = one ? [{ ...one, days: [0, 1, 2, 3, 4, 5, 6] }] : []; }
+  const list: SavedAlarm[] = parseClockAlarms(store.get('clock.alarms'), store.get('clock.alarm'));   // bad entries are left out
   let best: number | null = null;
   for (const a of list) {
     let t: number | null = null;

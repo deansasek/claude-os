@@ -16,6 +16,7 @@
 //
 // Preferences are per screen (localStorage), so the Nest Hub and the tablet can differ.
 import { esc, getJson, report, store } from './dom.ts';
+import { parseClockAlarms } from './clock-alarms.ts';
 import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
@@ -358,8 +359,7 @@ const labelText = (a: SavedAlarm): string => (typeof a.label === 'string' ? a.la
 interface NextAlarm { text: string; label: string }
 export function nextAlarm(): NextAlarm | null {
   try {
-    let list = JSON.parse(store.get('clock.alarms') || 'null') as SavedAlarm[] | null;
-    if (!Array.isArray(list)) { const one = JSON.parse(store.get('clock.alarm') || 'null') as SavedAlarm | null; list = one ? [one] : []; }
+    const list = parseClockAlarms(store.get('clock.alarms'), store.get('clock.alarm')) as SavedAlarm[];   // bad entries are left out
     const now = new Date();
     const snoozed = list.filter(a => a.snooze && a.snooze > now.getTime() - 60e3).sort((a, b) => a.snooze! - b.snooze!)[0];
     if (snoozed) return { text: `Snoozed until ${timeText(new Date(snoozed.snooze!))}`, label: labelText(snoozed) };
