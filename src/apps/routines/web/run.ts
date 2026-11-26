@@ -156,11 +156,6 @@ export async function startRoutine(id: string): Promise<StartResult> {
   return 'started';
 }
 
-/** Start a routine by id. False when it does not start (see startRoutine for why). */
-export async function runRoutine(id: string): Promise<boolean> {
-  return (await startRoutine(id)) === 'started';
-}
-
 /** End the routine that is running, if any (the speech it started is left to finish). */
 export function stopRoutine(): void { if (state) { token++; setState(null); } }
 
@@ -196,5 +191,5 @@ startScheduler();
 
 provideRoutines({
   list: () => loadRoutines(),
-  run: id => runRoutine(id),
+  run: id => startRoutine(id),
 });

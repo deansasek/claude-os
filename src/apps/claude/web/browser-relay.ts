@@ -114,7 +114,11 @@ async function runRoutine(a: Record<string, unknown>): Promise<Answer> {
   const id = str(r.id), name = str(r.name).slice(0, 40);
   const api = getRoutines();
   if (!api) return { ok: false, data: 'Routines aren’t ready on the tablet. Try again in a moment.' };
-  if (!id || !(await api.run(id))) return { ok: false, data: `The tablet couldn’t find the routine ${name || id}.` };
+  if (!id) return { ok: false, data: `The tablet couldn’t find the routine ${name || id}.` };
+  const res = await api.run(id);
+  if (res === 'empty') return { ok: false, data: 'That routine has no steps yet.' };
+  if (res === 'offline') return { ok: false, data: 'The PC isn’t answering, so that routine can’t start.' };
+  if (res !== 'started') return { ok: false, data: `The tablet couldn’t find the routine ${name || id}.` };
   return { ok: true, data: `Started ${name || 'the routine'} on the tablet.` };
 }
 

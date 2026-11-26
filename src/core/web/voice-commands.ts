@@ -84,8 +84,9 @@ export const getClock = (): ClockApi | null => clock;
 export interface RoutineRef { id: string; name: string; phrases: string[] }
 export interface RoutinesApi {
   list(): Promise<RoutineRef[]>;
-  /** Start a routine by id; false if there is no such routine. Returns at once: the steps run on their own. */
-  run(id: string): Promise<boolean>;
+  /** Start a routine by id, or say why not: 'gone' (no such routine), 'empty' (no steps), 'offline' (the PC did
+   *  not answer and no copy is recent). Returns at once: the steps run on their own. */
+  run(id: string): Promise<'started' | 'gone' | 'empty' | 'offline'>;
 }
 let routines: RoutinesApi | null = null;
 export function provideRoutines(api: RoutinesApi): void { routines = api; }
@@ -353,8 +354,12 @@ async function routineCommand(t: string): Promise<CommandResult | null> {
     if (m) hit = list.find(x => key(x.name) === m[1]);
   }
   if (!hit) return null;
-  if (!(await routines.run(hit.id))) return null;
-  return { say: '', react: 'hop' };   // the routine speaks each step itself
+  const res = await routines.run(hit.id);
+  if (res === 'started') return { say: '', react: 'hop' };   // the routine speaks each step itself
+  // the same words as the Routines app's Run button (run.ts StartResult)
+  if (res === 'empty') return { say: 'That routine has no steps yet.' };
+  if (res === 'offline') return { say: 'The PC isn’t answering, so that routine can’t start.' };
+  return null;   // gone: the phrase goes on to Claude as before
 }
 
 // ---------- Home Assistant scenes: "set movie night", "activate good morning" ----------
