@@ -242,6 +242,22 @@ export function newList(rawName: unknown, wantId?: unknown): ListsResult {
   });
 }
 
+/** Rename a list the family made. Its id stays, so the tablet's queued changes still find it. */
+export function renameList(listRef: unknown, rawName: unknown): ListsResult {
+  return change(lists => {
+    const l = findList(lists, listRef);
+    if (!l) return NO_LIST;
+    if (isBuiltIn(l.id)) return `${l.name} is one of the built-in lists and can’t be renamed.`;
+    const name = cleanText(rawName);
+    if (!name) return 'Give the list a name.';
+    if (name.length > MAX_LIST_NAME) return `That name is too long: ${MAX_LIST_NAME} characters at most.`;
+    const other = findList(lists, name);
+    if (other && other !== l) return `There’s already a list called ${name}.`;
+    l.name = name;
+    return { list: l.id };
+  });
+}
+
 /** Delete a list the family made (Shopping, To-do and Notes stay). */
 export function deleteList(listRef: unknown): ListsResult {
   return change(lists => {

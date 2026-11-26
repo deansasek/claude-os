@@ -12,7 +12,7 @@ export const COPY_KEY = 'lists.copy';
 /** The changes the PC does not have yet, oldest first. Sent by the Lists page (index.ts flush). */
 export const QUEUE_KEY = 'lists.queue';
 
-export type OpPath = 'add' | 'tick' | 'remove' | 'restore-item' | 'edit' | 'clear-done' | 'new-list' | 'delete-list';
+export type OpPath = 'add' | 'tick' | 'remove' | 'restore-item' | 'edit' | 'clear-done' | 'new-list' | 'delete-list' | 'rename-list';
 /** One change, as the route and body the PC takes (server/index.ts). */
 export interface Op { path: OpPath; body: Record<string, unknown>; key?: string }   // key: this entry in lists.queue (queue.ts)
 
@@ -76,6 +76,16 @@ export function applyOp(lists: FamilyList[], op: Op): ListsResult {
       const n = l.items.length;
       l.items = l.items.filter(i => !i.done);
       return { ok: true, lists: next, removed: n - l.items.length };
+    }
+    case 'rename-list': {
+      if (isBuiltIn(l.id)) return fail(`${l.name} is one of the built-in lists and can’t be renamed.`);
+      const name = cleanText(b.name);
+      if (!name) return fail('Give the list a name.');
+      if (name.length > MAX_LIST_NAME) return fail(`That name is too long: ${MAX_LIST_NAME} characters at most.`);
+      const other = findList(next, name);
+      if (other && other !== l) return fail(`There’s already a list called ${name}.`);
+      l.name = name;
+      return { ok: true, lists: next, list: l.id };
     }
     case 'delete-list':
       if (isBuiltIn(l.id)) return fail(`${l.name} is one of the built-in lists and can’t be deleted.`);

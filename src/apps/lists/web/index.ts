@@ -194,6 +194,7 @@ function render(): void {
   $('lsCount').textContent = notes ? (l.items.length ? `${l.items.length} ${l.items.length === 1 ? 'note' : 'notes'}` : '')
     : l.items.length ? (open.length ? `${open.length} left` : 'All done') : '';
   $('lsDelete').hidden = isBuiltIn(l.id);
+  $('lsRename').hidden = isBuiltIn(l.id);
   $('lsClear').hidden = notes || !done.length;
   $('lsClear').textContent = `Clear ticked (${done.length})`;
   $('lsAddText').textContent = l.items.length >= MAX_ITEMS ? `${l.name} is full` : notes ? 'Write a note' : `Add to ${l.name}`;
@@ -311,6 +312,20 @@ function openAdd(): void {
   });
 }
 
+/** Rename the open list: the keyboard takes the new name, and the change waits in the queue like any other. */
+function renameNow(): void {
+  const l = listNow();
+  if (!l || isBuiltIn(l.id)) return;
+  Keyboard.open({
+    placeholder: `Rename ${l.name}`, done: 'Rename', autoCap: true, max: MAX_LIST_NAME,
+    onDone: text => {
+      const name = cleanText(text);
+      if (!name) return;
+      void send('rename-list', { list: l.id, name }).then(r => { if (r && !r.ok) { note = r.error ?? 'That name can’t be used.'; render(); } });
+    },
+  });
+}
+
 function newList(): void {
   if (lists.length >= MAX_LISTS) { note = `There are already ${MAX_LISTS} lists. Delete one first.`; render(); return; }
   Keyboard.open({
@@ -423,6 +438,7 @@ const app: HubApp = {
     $('lsNew').addEventListener('click', newList);
     $('lsClear').addEventListener('click', clearTicked);
     $('lsDelete').addEventListener('click', askDelete);
+    $('lsRename').addEventListener('click', renameNow);
     $('lsUndoBtn').addEventListener('click', () => { void runUndo(); });
     $('lsSuggest').addEventListener('click', ev => {
       const t = (ev.target as Element).closest<HTMLElement>('[data-sug]')?.dataset.sug;
