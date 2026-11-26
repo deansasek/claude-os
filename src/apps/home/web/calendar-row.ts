@@ -27,6 +27,11 @@ const calLine = (e: RowEvent): string => (e.allDay ? `${e.title} (all day)` : `$
  * so old events never look current. When the PC sends its last good copy (stale), the detail
  * starts with "May be out of date · " instead.
  */
+/** The local day (YYYY-MM-DD) for a date: the key a calendar read is kept under. */
+export function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function calendarRow(cal: RowCal | null, failed: boolean, miss: boolean, now: number): CalRow {
   if (!cal || cal.status !== 'ok') {
     if (miss && !failed) return { cls: 'quiet', val: 'Not read yet', sub: 'Open Calendar to read it' };

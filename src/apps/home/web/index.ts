@@ -20,7 +20,7 @@ import { ago, critterSpeak, notifications, onNotificationsChange, openApp, openC
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
 import { listsRow } from './lists-row.ts';
-import { calendarRow, connectorCalAfterRead, type ConnAnswer, type ConnRead, type RowCal } from './calendar-row.ts';
+import { calendarRow, connectorCalAfterRead, dayKey, type ConnAnswer, type ConnRead, type RowCal } from './calendar-row.ts';
 import { emptyTileText, weatherAfterRead } from './weather-read.ts';
 import { isOffHome, sceneActsAfterRead, sceneFailText, type SceneAct } from './scene-words.ts';
 import { busyOf, liveSessions, needsYou, pillText, type NeedTurn } from './needs.ts';
@@ -339,20 +339,25 @@ let cal: RowCal | null = null, calAt = 0, calFailed = false;
 let calMiss = false;
 // The local day (YYYY-MM-DD) the connector events in cal were read on: a later miss on the same day keeps them, marked stale.
 let calDay: string | null = null;
+// The local day the last good read happened on. Events read on an earlier day have ended: a failed read after midnight shows none.
+let calReadDay: string | null = null;
 async function loadCalendar(force = false): Promise<void> {
   if (!force && Date.now() - calAt < CAL_EVERY_MS) return;
   calAt = Date.now();
   try {
     const r = await getJson<CalEvents>('/api/calendar/events');
     if (r.status === 'not_set') {
-      const d = now();
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const key = dayKey(now());
       const c = await cachedConnectorCal(cal, calDay, key);
       cal = c.cal; calMiss = c.miss; calFailed = c.failed; calDay = c.day;
+      calReadDay = key;
     }
-    else { cal = r; calMiss = false; calFailed = false; calDay = null; }
+    else { cal = r; calMiss = false; calFailed = false; calDay = null; calReadDay = dayKey(now()); }
   }
-  catch { calFailed = true; }
+  catch {
+    calFailed = true;
+    if (calReadDay !== dayKey(now())) cal = null;   // a read from an earlier day: its events have ended
+  }
   paintCalendar();
 }
 

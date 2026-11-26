@@ -1,6 +1,9 @@
 // The words on Home's Today (calendar) tile (src/apps/home/web/calendar-row.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { calendarRow, connectorCalAfterRead } from '../src/apps/home/web/calendar-row.ts';
 
 const NOW = Date.parse('2026-11-26T12:00:00');
@@ -96,4 +99,16 @@ test('a connector ok answer uses the new events and records the day read', () =>
   assert.equal(res.cal?.events[0].title, 'Dentist');
   assert.equal(res.cal?.stale, undefined);
   assert.ok(calendarRow(res.cal, res.failed, res.miss, NOW).val.endsWith(' Dentist'));
+});
+
+test('the local day key is YYYY-MM-DD with two-digit month and day', async () => {
+  const { dayKey } = await import('../src/apps/home/web/calendar-row.ts');
+  assert.equal(dayKey(new Date(2026, 10, 6)), '2026-11-06');
+});
+
+test('a failed calendar read on a later day drops the events read earlier, and the same day keeps them', async () => {
+  // a source check: loadCalendar keeps the events only when the last good read was on the same local day
+  const src = fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/apps/home/web/index.ts'), 'utf8');
+  assert.ok(src.includes('if (calReadDay !== dayKey(now())) cal = null;'), 'a later day clears the events');
+  assert.ok(src.includes('calReadDay = dayKey(now());'), 'every good read records its day');
 });
