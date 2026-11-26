@@ -31,6 +31,20 @@ test('a failure with no reason still gives a plain sentence', () => {
     'Couldn’t set Movie night. Something went wrong. Try again in a moment.');
 });
 
+// Voice ("set movie night") says the same sentence as Home's button. sceneCommand in voice-commands.ts is not
+// importable in node (it pulls in dom.ts), so these cases pin sceneFailText, the function it now calls with the
+// null (no answer) or refused result.
+test('voice: no answer from the PC gives the PC sentence, not "Couldn’t set"', () => {
+  const say = sceneFailText('Movie night', null);
+  assert.equal(say, 'The PC isn’t answering, so Movie night didn’t change.');
+  assert.equal(say.startsWith('Couldn’t set'), false);
+});
+
+test('voice: a refusal with a reason gives the reason in plain words', () => {
+  assert.equal(sceneFailText('Movie night', { ok: false, error: 'request timed out' } as { error?: string }),
+    'Couldn’t set Movie night. Home Assistant took too long to answer. Check that it is switched on.');
+});
+
 test('the reason text never carries raw HTML', () => {
   const out = sceneFailText('Movie night', { error: '<img src=x onerror=alert(1)>' });
   assert.equal(/[<>]/.test(out), false);
