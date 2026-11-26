@@ -3,7 +3,7 @@
 
 export interface RowNotice { title: string; app?: string; at: number }
 
-const APP_NAMES: Record<string, string> = { claude: 'Claude', weather: 'Weather', clock: 'Clock', settings: 'Settings', home: 'Home' };
+const APP_NAMES: Record<string, string> = { claude: 'Claude', weather: 'Weather', clock: 'Clock', settings: 'Settings', home: 'Home', browser: 'Browser', calendar: 'Calendar', recipes: 'Recipes', lists: 'Lists', news: 'News', routines: 'Routines', photos: 'Photos', radio: 'Radio', camera: 'Camera' };
 
 /**
  * The row's value and detail, from the last day's notifications (newest first):

@@ -17,6 +17,14 @@ test('a title without the app name keeps it, and the time stays on one line', ()
   assert.deepEqual(notesRow([{ title: 'Timer done', app: 'clock', at: 0 }], ago), { val: 'Timer done', sub: 'Clock · 11 hr' });
 });
 
+test('a browser notice names the Browser app', () => {
+  assert.deepEqual(notesRow([{ title: 'Download finished', app: 'browser', at: 0 }], ago), { val: 'Download finished', sub: 'Browser · 11 hr' });
+});
+
+test('a calendar notice names the Calendar app', () => {
+  assert.deepEqual(notesRow([{ title: 'Meeting soon', app: 'calendar', at: 0 }], ago), { val: 'Meeting soon', sub: 'Calendar · 11 hr' });
+});
+
 test('an unknown app or none shows only the time', () => {
   assert.deepEqual(notesRow([{ title: 'Hello', app: 'zzz', at: 0 }], ago), { val: 'Hello', sub: '11 hr' });
   assert.deepEqual(notesRow([{ title: 'Hello', at: 0 }], ago), { val: 'Hello', sub: '11 hr' });
