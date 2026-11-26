@@ -260,12 +260,12 @@ function watch(): void {
     if (!sessionId) { finish(); return; }
     let v: SessionView;
     try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(sessionId)}`); }
-    catch { timer = window.setTimeout(tick, 2000); return; }
+    catch { statusHtml = `<span class="cl-step">Can’t reach your PC. Still trying…</span>`; paint(); timer = window.setTimeout(tick, 2000); return; }
     const t = v.turn;
     contextUse = v.context ?? null;   // the ring follows the session's context as it grows
     canReply = v.canReply;
     repaintControls();
-    if (!t || (turnId && t.id !== turnId)) { timer = window.setTimeout(tick, 1200); return; }
+    if (!t || (turnId && t.id !== turnId)) { statusHtml = null; paint(); timer = window.setTimeout(tick, 1200); return; }
     turnId ??= t.id;
     if (t.status === 'approval' && t.approval) {
       statusHtml = approvalCard(t.id, t.approval);
