@@ -75,7 +75,11 @@ async function refresh(): Promise<void> {
       const cur = draft.id ? routines.find(x => x.id === draft.id) : null;
       if (cur) edit(cur); else if (!draft.id && !draft.name && !draft.steps.length && routines[0]) edit(routines[0]);
     }
-  } catch { if (!loaded) note = refreshNote = 'Couldn’t reach the PC. Trying again when you come back.'; }
+  } catch {
+    if (!loaded) note = refreshNote = 'Couldn’t reach the PC. Trying again when you come back.';
+    // No local copy: the routines shown are the PC's, so say they may be old. A save or delete error stays on screen.
+    else if (!hasCopy() && (note === '' || note === refreshNote)) note = refreshNote = 'Couldn’t reach the PC, so these may be out of date. Trying again when you come back.';
+  }
   render();
 }
 
