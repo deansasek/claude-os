@@ -451,9 +451,10 @@ async function removePhoto(): Promise<void> {
 // Off the tablet (a browser on the PC): the hub's usage check (apps/claude/server/limits.ts).
 const USAGE_MAX_AGE = 10 * 60e3;
 let usage: Usage | null = null;
+let usageFailed = false;   // the last PC read failed; `usage` then holds the last good read, if any
 async function loadUsage(): Promise<void> {
   if (onTablet) { checkUsage(USAGE_MAX_AGE); if (section === 'usage') paintUsage(); return; }
-  try { usage = await getJson<Usage>('/api/claude/usage'); } catch { usage = null; }
+  try { usage = await getJson<Usage>('/api/claude/usage'); usageFailed = false; } catch { usageFailed = true; }
   if (section === 'usage') paintUsage();
 }
 
@@ -500,7 +501,11 @@ function paintTabletUsage(): void {
 function paintUsage(): void {
   if (onTablet) { paintTabletUsage(); return; }
   const box = $('stUsageRows'), note = $('stUsageNote');
-  if (!usage) { box.innerHTML = '<div class="st-empty">Couldn’t reach your PC to check your usage.</div>'; note.textContent = ''; return; }
+  if (!usage) {   // no read has finished yet: say so, unless the read failed
+    box.innerHTML = usageFailed ? '<div class="st-empty">Couldn’t reach your PC to check your usage.</div>'
+      : '<div class="st-empty">Checking your usage…</div>';
+    note.textContent = ''; return;
+  }
   const L: Limits = usage.limits;
   const rows: [string, LimitWindow | undefined][] = [['Current session', L.limits.five_hour], ['Weekly, all models', L.limits.seven_day]];
   for (const e of L.list.filter(x => x.kind === 'weekly_scoped' && x.model)) rows.push([`Weekly · ${e.model}`, { used: e.percent, resets_at: e.resets_at }]);
@@ -521,6 +526,7 @@ function paintUsage(): void {
       </div>`;
     }).join('');
   }
+  if (usageFailed) { note.textContent = 'Couldn’t reach your PC. Usage may be out of date.'; return; }
   note.textContent = L.updated ? `Updated ${whenText(new Date(L.updated))}${L.error ? ` · ${L.error}` : ''}` : (L.error || '');
 }
 
