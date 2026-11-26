@@ -45,6 +45,7 @@ let refreshNote = '';            // the note a failed refresh set; a later good 
 let busy = false;
 let sheetOpen = false;
 let scenes: { entity_id: string; name: string }[] = [];   // the ones a routine may set (on the dashboard or the Home screen)
+let scenesWhy: 'ok' | 'not_set_up' | 'error' | null = null;   // the status of the last scenes read, to say why the list is empty
 
 function blank(): Draft { return { id: null, name: '', phrases: [], steps: [], at: null }; }
 const snap = (d: Draft) => JSON.stringify({ n: d.name, p: d.phrases, s: d.steps, a: d.at });
@@ -80,8 +81,9 @@ async function refresh(): Promise<void> {
 async function loadScenes(): Promise<void> {
   try {
     const r = await getJson<HaScenes>('/api/home-assistant/scenes');
+    scenesWhy = r?.status ?? 'error';
     if (r?.status === 'ok') scenes = r.scenes.filter(s => s.dashboard || s.home).map(s => ({ entity_id: s.entity_id, name: s.name }));
-  } catch { /* keep the last list */ }
+  } catch { scenesWhy = 'error'; /* keep the last list */ }
   render();
 }
 
@@ -259,9 +261,12 @@ function editSay(i: number | null): void {
 
 function pickScene(i: number | null): void {
   void loadScenes();
+  const why = scenesWhy === 'not_set_up' ? 'Home Assistant isn’t set up yet. Set it up in the Home Assistant app first.'
+    : scenesWhy === 'error' ? 'Your scenes can’t be read just now. Try again in a moment.'
+    : 'No scenes are on the Home screen or the Home Assistant dashboard yet. Add one in Home Assistant first; then it can go in a routine.';
   const list = scenes.length
     ? `<div class="rt-pick">${scenes.map(s => `<button class="rt-btn" data-scene="${esc(s.entity_id)}">${esc(s.name)}</button>`).join('')}</div>`
-    : '<p>No scenes are on the Home screen or the Home Assistant dashboard yet. Add one in Home Assistant first; then it can go in a routine.</p>';
+    : `<p>${why}</p>`;
   openSheet(`<h3>Pick a scene</h3><p>Only scenes on the Home screen or the dashboard can be set by a routine.</p>${list}`
     + '<div class="rt-sheet-btns"><button class="rt-btn" data-act="cancel">Cancel</button></div>', b => {
     const id = b.dataset.scene;
