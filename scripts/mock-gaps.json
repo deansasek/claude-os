@@ -1,18 +1,8 @@
 {
   "routes": [
-    "GET /api/launcher/layout",
-    "GET /api/routines/list",
-    "GET /api/settings/backup",
     "GET /api/settings/photo",
     "GET /api/settings/plugins",
     "GET /api/settings/plugins/market",
-    "POST /api/launcher/layout",
-    "POST /api/routines/delete",
-    "POST /api/routines/restore",
-    "POST /api/routines/save",
-    "POST /api/settings/backup",
-    "POST /api/settings/photo",
-    "POST /api/settings/photo/remove",
     "POST /api/settings/plugins/folder",
     "POST /api/settings/plugins/folder/remove",
     "POST /api/settings/plugins/market/install",

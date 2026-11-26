@@ -32,3 +32,18 @@ defineMock({
   'POST /api/settings/pin': (): PinResult => ({ ok: false, error: 'save_failed', lockedFor: 0 }),
   'POST /api/settings/pin/remove': (): PinResult => ({ ok: false, error: 'no_pin', lockedFor: 0 }),
 });
+
+// The backup of the settings, and the profile photo (no photo can be saved here).
+let backup: { saved: string; values: Record<string, string> } | null = null;
+defineMock({
+  'GET /api/settings/backup': () => ({ ok: true, saved: backup?.saved ?? null, values: backup?.values ?? {} }),
+  'POST /api/settings/backup': ({ body }) => {
+    const raw = (body as { values?: unknown } | null)?.values;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ok: false, error: 'That isn’t a settings backup.' };
+    const values = Object.fromEntries(Object.entries(raw as Record<string, unknown>).map(([k, v]) => [k, String(v)]));
+    backup = { saved: new Date().toISOString(), values };
+    return { ok: true, count: Object.keys(values).length, saved: backup.saved };
+  },
+  'POST /api/settings/photo': () => ({ ok: false, error: 'A profile photo can’t be saved on the mock page.' }),
+  'POST /api/settings/photo/remove': () => ({ ok: true }),
+});
