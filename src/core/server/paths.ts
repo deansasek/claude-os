@@ -54,9 +54,12 @@ export function readJsonOrSetAside<T>(file: string): T | null {
   if (!fs.existsSync(file)) return null;
   const v = readJson<T>(file);
   if (v !== null) return v;
+  // Never replace an earlier .corrupt copy: take the first free name (.corrupt, .2.corrupt, .3.corrupt, ...).
+  let dest = `${file}.corrupt`;
+  for (let n = 2; fs.existsSync(dest); n++) dest = `${file}.${n}.corrupt`;
   try {
-    fs.renameSync(file, `${file}.corrupt`);
-    console.log(`${path.basename(file)} could not be read; it was kept as ${path.basename(file)}.corrupt`);
+    fs.renameSync(file, dest);
+    console.log(`${path.basename(file)} could not be read; it was kept as ${path.basename(dest)}`);
   } catch { /* nothing more to do */ }
   return null;
 }

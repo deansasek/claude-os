@@ -27,3 +27,11 @@ test('a broken file gives null, is moved aside intact, and nothing is written ov
   assert.equal(fs.existsSync(file), false);
   assert.equal(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{ broken');
 });
+
+test('a second broken file is kept as .2.corrupt and the first .corrupt copy is unchanged', () => {
+  fs.rmSync(file, { force: true });
+  fs.writeFileSync(file, '{ second broken');
+  assert.equal(readJsonOrSetAside(file), null);
+  assert.equal(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{ broken', 'the first copy is not replaced');
+  assert.equal(fs.readFileSync(`${file}.2.corrupt`, 'utf8'), '{ second broken');
+});
