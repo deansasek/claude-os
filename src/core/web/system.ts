@@ -340,7 +340,9 @@ async function loadWeather(force = false): Promise<void> {
   try {
     const r = await getJson<{ status: string; place?: string | null; current?: { temperature_2m: number; weather_code: number; is_day: number };
       daily?: { temperature_2m_max: number[]; temperature_2m_min: number[] } }>('/api/weather/forecast');
-    if (r.status !== 'ok' || !r.current) { wx = null; return; }
+    // The hub answers status 'error' when a route throws: a failed read keeps the last chip and retries in two minutes.
+    if (r.status === 'error') { wxAt = Date.now() - 13 * 60e3; return; }
+    if (r.status !== 'ok' || !r.current) { wx = null; if (ambientOn) paintAmbient(); return; }
     wx = { temp: r.current.temperature_2m, code: r.current.weather_code, day: !!r.current.is_day, place: r.place ?? null,
       hi: r.daily?.temperature_2m_max?.[0], lo: r.daily?.temperature_2m_min?.[0] };
     if (ambientOn) paintAmbient();
