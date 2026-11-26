@@ -22,6 +22,12 @@ test('score ranks a prefix above a word start above a plain contains', () => {
   assert.equal(score('', 'Photos'), 0);
 });
 
+test('a query without spaces finds a dashed name', () => {
+  assert.equal(score('wifi', 'Wi-Fi'), 3);
+  const wifi = searchAll('wifi', src).map(h => [h.kind, h.label]);
+  assert.deepEqual(wifi, [['setting', 'Wi-Fi'], ['item', 'Wi-Fi router batteries']]);
+});
+
 test('an empty query finds nothing', () => {
   assert.deepEqual(searchAll('   ', src), []);
 });
