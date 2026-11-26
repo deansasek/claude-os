@@ -39,6 +39,20 @@ export function isOn(domain: string, state: string): boolean {
   return state === 'on';
 }
 
+/** A climate mode in plain words. Unknown modes get their own name, spaced and capitalised, never a raw domain name. */
+export function climateLabel(state: string): string {
+  switch (state) {
+    case 'heat': return 'Heating';
+    case 'cool': return 'Cooling';
+    case 'auto':
+    case 'heat_cool': return 'Auto';
+    case 'dry': return 'Drying';
+    case 'fan_only': return 'Fan only';
+  }
+  const words = state.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export interface HaEntity {
   entity_id: string;            // "light.kitchen"
   domain: string;               // a control domain, or a read-only one (cover, sensor, binary_sensor)
