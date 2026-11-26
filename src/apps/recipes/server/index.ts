@@ -29,7 +29,12 @@ async function meals(path: string): Promise<unknown[]> {
   return Array.isArray(body?.meals) ? body.meals : [];
 }
 
-const errorText = (e: unknown): string => String((e as Error)?.message ?? e).slice(0, 120);
+const NO_ANSWER = 'TheMealDB did not answer. Try again.';
+/** Log the raw error on the hub; the page only ever sees NO_ANSWER. */
+const errorText = (e: unknown): string => {
+  console.log('recipes: TheMealDB request failed', e);
+  return NO_ANSWER;
+};
 const failed = (e: unknown): MealsResult => ({ status: 'error', recipes: [], error: errorText(e) });
 
 async function random(): Promise<MealsResult> {
