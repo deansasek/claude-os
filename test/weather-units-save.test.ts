@@ -13,6 +13,6 @@ const body = src.slice(start, src.indexOf('\n}\n', start));
 
 test('setUnits sends the unit to the PC without a loaded forecast as a condition', () => {
   assert.ok(start > 0, 'setUnits exists');
-  assert.match(body, /try \{ await sendLocation\(\{ units: u \}\); \} catch/);
+  assert.match(body, /try \{ await sendLocation\(\{ units: u \}\); \}\s*catch \{ notify\(/);
   assert.doesNotMatch(body, /isOk\(wx\)/);
 });
