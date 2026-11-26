@@ -35,3 +35,23 @@ test('installApps shows the Play-failed message when the launch fails or throws'
 test('openSheet removes the old sheet note before the sheet opens', () => {
   assert.match(fn('openSheet'), /querySelector\('\.ln-sheet-note'\)\?\.remove\(\)/);
 });
+
+// A save writes the whole allowed list. When the read failed, tabApps is [], so a save would drop every app.
+// Each saving function must reload the list, check tabOk, and return before setAllowed when the read failed.
+const assertReadGuardBeforeSave = (body: string) => {
+  const reload = body.indexOf('loadTablet()');
+  const guard = body.indexOf('if (!tabOk)');
+  const save = body.indexOf('setAllowed(');
+  assert.ok(reload >= 0 && reload < guard, 'loadTablet() runs before the tabOk check');
+  assert.ok(guard >= 0 && guard < save, 'the tabOk check runs before setAllowed');
+  assert.match(body.slice(guard, save), /return; \}/, 'the failed-read branch returns before setAllowed');
+  assert.match(body.slice(guard, save), /showSheetNote\('Couldn’t read the tablet’s apps, so nothing changed\. Try again\.'\)/);
+};
+
+test('installApps reloads the allowed apps and returns before setAllowed when the read failed', () => {
+  assertReadGuardBeforeSave(fn('installApps'));
+});
+
+test('toggleAllowed reloads the allowed apps and returns before setAllowed when the read failed', () => {
+  assertReadGuardBeforeSave(fn('toggleAllowed'));
+});

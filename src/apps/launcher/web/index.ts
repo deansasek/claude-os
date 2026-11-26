@@ -393,6 +393,9 @@ function closeSheet(): void {
 const PLAY = 'com.android.vending';
 function installApps(): void {
   document.querySelector('.ln-sheet-note')?.remove();   // a new try clears the last failure note
+  loadTablet();
+  // no read, no save: tabApps is empty then, and saving it would drop every allowed app
+  if (!tabOk) { showSheetNote('Couldn’t read the tablet’s apps, so nothing changed. Try again.'); return; }
   try {
     const ids = tabApps.map(a => a.id);
     if (!ids.includes(PLAY)) { androidApps.setAllowed([...ids, PLAY]); loadTablet(); paint(); }
@@ -418,10 +421,13 @@ function showSheetNote(text: string): void {
   note.textContent = text;
 }
 function toggleAllowed(pkg: string): void {
+  document.querySelector('.ln-sheet-note')?.remove();   // a new try clears the last failure note
+  loadTablet();
+  // no read, no save: tabApps is empty then, and saving it would drop every allowed app
+  if (!tabOk) { showSheetNote('Couldn’t read the tablet’s apps, so nothing changed. Try again.'); return; }
   const ids = tabApps.map(a => a.id);
   const removing = ids.includes(pkg);
   const next = removing ? ids.filter(x => x !== pkg) : [...ids, pkg];
-  document.querySelector('.ln-sheet-note')?.remove();   // a new try clears the last failure note
   try { androidApps.setAllowed(next); } catch (e) {
     console.warn('launcher: setAllowed', e);
     showSheetNote('Couldn’t change it. Check the tablet app is up to date, then try again.');
