@@ -11,6 +11,7 @@
 //   POST calendar-shown    {id, shown} stores one calendar's shown flag on the PC (calendar-shown.json)
 // The local routes write only calendar-local.json on the PC. The external routes never write to the calendar.
 import type { ServerApp } from '../../../core/server/app.ts';
+import type { CalEvents } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { events, eventsBetween, saveConfig, status } from './calendar.ts';
 import { rangeBounds } from './range.ts';
@@ -18,7 +19,7 @@ import { cachedConnectorEvents, connectorEvents } from './connector.ts';
 import { addLocalEvent, deleteLocalEvent, localEventsIfReadable, updateLocalEvent } from './local.ts';
 import { loadFlags, setShown } from './calendar-shown.ts';
 import { calendarsFor } from '../web/calendars.ts';
-import { connectorForRange, mergeRange, type ConnectorRead, type RangeAnswer } from './range-merge.ts';
+import { connectorForRange, mergeRange, withLocalDays, type ConnectorRead, type RangeAnswer } from './range-merge.ts';
 
 /** The connector's read for a range that is exactly today or tomorrow, the only days it reads. null for any other range.
  * auto: the page's timer. It takes only a fresh cached read and never a Claude turn (range-merge.ts). */
@@ -30,6 +31,17 @@ async function connectorFor(b: { from: number; to: number }, auto: boolean): Pro
     cached: d => { const hit = cachedConnectorEvents(d); return hit.status === 'ok' ? hit : null; },
     read: connectorEvents,
   });
+}
+
+/** Today's and tomorrow's events: the ICS events, with the ClaudeOS calendar's events added (Home, voice and routines read this). */
+async function eventsWithLocal(force: boolean): Promise<CalEvents> {
+  const ans = await events(force);
+  if (ans.status === 'not_set') return ans;   // no address: the connector path is used, as before
+  const n = new Date();
+  const at = (add: number): number => new Date(n.getFullYear(), n.getMonth(), n.getDate() + add).getTime();
+  const local = localEventsIfReadable(at(0), at(2));
+  if (local === null) return { ...ans, error: ans.error ?? LOCAL_UNREADABLE, stale: true };
+  return withLocalDays(ans, local, at(0), at(1), at(2));
 }
 
 /** The range from every calendar: the local events, the ICS events when there is an address, and with no address the connector's (mergeRange). */
@@ -48,7 +60,7 @@ const app: ServerApp = {
   routes: [
     { method: 'GET', path: 'status', handle: () => status() },
     { method: 'POST', path: 'config', handle: ({ body }) => saveConfig((body as Record<string, unknown> | null)?.address) },
-    { method: 'GET', path: 'events', handle: ({ query }) => events(query.get('refresh') === '1') },
+    { method: 'GET', path: 'events', handle: ({ query }) => eventsWithLocal(query.get('refresh') === '1') },
     // the events from one day (inclusive) to another (exclusive), for the Day, Week, Month and Year views:
     // the local calendar's events with the external ones (rangeWithLocal).
     // auto=1: the page's 5-minute timer. It never reads the connector (only a fresh cached read is used).
