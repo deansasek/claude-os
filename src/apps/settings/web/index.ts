@@ -1057,6 +1057,7 @@ function initBackup(): void {
     confirmSheet('Restore settings from your PC?', 'The settings on this tablet are replaced with the ones saved on your PC. The page then reloads.', 'Restore', async () => {
       const n = await restoreSettings();
       if (n < 0) { $('stBkMsg').textContent = 'Can’t reach your PC. Try again when it’s back.'; return; }
+      if (n === 0) { $('stBkMsg').textContent = 'Nothing is saved on your PC yet. Tap Save to PC first.'; return; }
       location.reload();
     });
   });
