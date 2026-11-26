@@ -2,7 +2,7 @@
 // Pure (no DOM, no fetch) so it can be tested in Node. core/web/voice-commands.ts feeds it the devices on the Home
 // dashboard and calls POST /api/home-assistant/toggle with {voice: true}, which checks everything again on the PC.
 // It never guesses: anything that isn't clearly one dashboard device (or "the lights") returns null and goes to Claude.
-import { VOICE_DOMAINS } from '../api.ts';
+import { plain, VOICE_DOMAINS, type HaResult } from '../api.ts';
 
 export interface VoiceDevice { entity_id: string; domain: string; name: string }
 export interface VoiceMatch { on: boolean; targets: VoiceDevice[]; all: boolean; label: string }
@@ -42,6 +42,21 @@ export function sayName(d: VoiceDevice): string {
   const kind = d.domain === 'light' ? 'light' : d.domain === 'fan' ? 'fan' : '';
   const has = (KIND_WORDS[d.domain] ?? []).some(w => words.includes(w));
   return kind && !has ? `${n} ${kind}` : n;
+}
+
+export interface OnOffReply { say: string; react?: 'hop' | 'look' }
+
+/** The reply for an on/off command. `results` has one entry per target: the PC's answer, or null when the PC
+ *  could not be reached. All-null failures say the PC can't be reached; a refusal says its plain reason. */
+export function onOffReply(m: VoiceMatch, results: (HaResult | null)[]): OnOffReply {
+  const failed = m.targets.map((d, i) => ({ d, r: results[i] })).filter(x => !x.r?.ok);
+  if (!failed.length) return { say: `${m.label}.`, react: m.on ? 'hop' : 'look' };
+  if (m.all && failed.length < m.targets.length) return { say: `Couldn’t reach ${failed.length} of the lights.` };
+  if (failed.every(x => x.r == null)) return { say: 'I can’t reach the PC right now.' };
+  const verb = m.on ? 'turn on' : 'turn off';
+  const subject = m.all ? 'the lights' : `the ${sayName(m.targets[0]).replace(/^./, c => c.toLowerCase())}`;
+  const reason = failed.find(x => x.r)?.r?.error;
+  return { say: `Couldn’t ${verb} ${subject}. ${plain(reason)}` };
 }
 
 // ---------- scenes: "set movie night", "activate the good morning scene" ----------

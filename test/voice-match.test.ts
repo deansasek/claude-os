@@ -1,7 +1,7 @@
 // Voice matching for Home (on and off, scenes) and for the lists: it must never guess. Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { matchHome, matchScene, parseOnOff, sayName, type VoiceDevice } from '../src/apps/home-assistant/web/voice-match.ts';
+import { matchHome, matchScene, onOffReply, parseOnOff, sayName, type VoiceDevice } from '../src/apps/home-assistant/web/voice-match.ts';
 import { matchList } from '../src/apps/lists/web/voice-match.ts';
 
 const kitchen: VoiceDevice = { entity_id: 'light.kitchen', domain: 'light', name: 'Kitchen' };
@@ -29,6 +29,30 @@ test('"lights off" means every light on the dashboard, and says so', () => {
   assert.ok(m);
   assert.equal(m?.all, true);
   assert.deepEqual(m?.targets.map(d => d.entity_id), ['light.kitchen']);
+});
+
+test('when the PC cannot be reached for a device, the reply says so and gives no device fault', () => {
+  const m = matchHome('turn off the kitchen light', dashboard);
+  assert.ok(m);
+  assert.deepEqual(onOffReply(m!, [null]), { say: 'I can’t reach the PC right now.' });
+});
+
+test('a refusal from the PC gives its plain reason, not a generic device failure', () => {
+  const m = matchHome('turn off the kitchen light', dashboard);
+  assert.ok(m);
+  assert.deepEqual(onOffReply(m!, [{ ok: false, error: 'HTTP 401 unauthorized' }]),
+    { say: 'Couldn’t turn off the kitchen light. The access token was refused. Replace it in Settings, then Apps, then Home Assistant.' });
+});
+
+test('a partial all-lights failure keeps the count of lights that were not reached', () => {
+  const lights = [
+    { entity_id: 'light.kitchen', domain: 'light', name: 'Kitchen' },
+    { entity_id: 'light.hall', domain: 'light', name: 'Hall' },
+  ];
+  const m = matchHome('lights off', lights);
+  assert.ok(m);
+  assert.deepEqual(onOffReply(m!, [{ ok: true }, null]), { say: 'Couldn’t reach 1 of the lights.' });
+  assert.deepEqual(onOffReply(m!, [{ ok: true }, { ok: true }]), { say: 'Lights off.', react: 'look' });
 });
 
 test('a bare "turn on" matches nothing', () => {
