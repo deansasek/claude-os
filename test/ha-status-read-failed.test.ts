@@ -31,3 +31,12 @@ test('settingRows checks the status-failed flag before it shows Not set', () => 
   assert.ok(flag > 0, 'settingRows reads statusFailed');
   assert.ok(notSet > flag, 'the Not set text comes after the statusFailed check');
 });
+
+test('settingRows adds a scenesErr row with the scene read reason when the scene list fails', () => {
+  const start = src.indexOf('function settingRows(');
+  const body = src.slice(start, src.indexOf('\n}\n', start));
+  const head = body.indexOf("id: 'scenesHead'");
+  const err = body.indexOf("id: 'scenesErr'");
+  assert.ok(err > head, 'the scenesErr row comes after the scenesHead row');
+  assert.match(body, /if \(sl\?\.status === 'error'\) rows\.push\(\{ kind: 'info', id: 'scenesErr', title: 'Couldn’t list your scenes', detail: plain\(sl\.error\)/);
+});
