@@ -76,3 +76,18 @@ test('a taken HTTPS port goes to onError, and the Host keeps running', { skip: !
     fs.rmSync(state, { recursive: true, force: true });
   }
 });
+
+test('the server certificate is remade when it is within 30 days of expiry', { skip: !hasOpenssl }, () => {
+  const state = fs.mkdtempSync(path.join(os.tmpdir(), 'https-test-'));
+  try {
+    const first = ensureCertificates(state, ['127.0.0.1']);
+    const before = fs.readFileSync(first.cert, 'utf8');
+    const day = 86_400_000;
+    ensureCertificates(state, ['127.0.0.1'], undefined, new Date(Date.now() + 300 * day));
+    assert.equal(fs.readFileSync(first.cert, 'utf8'), before, 'about 98 days left: the same certificate');
+    ensureCertificates(state, ['127.0.0.1'], undefined, new Date(Date.now() + 380 * day));
+    assert.notEqual(fs.readFileSync(first.cert, 'utf8'), before, 'about 18 days left: a new certificate');
+  } finally {
+    fs.rmSync(state, { recursive: true, force: true });
+  }
+});
