@@ -63,8 +63,13 @@ export function savePhoto(raw: Buffer | null): { ok: true; profile: Profile } | 
   return { ok: true, profile: getProfile() };
 }
 
-export function removePhoto(): Profile {
-  try { fs.rmSync(PHOTO, { force: true }); } catch { /* already gone */ }
+/** Delete the profile photo. A missing file is already gone; any other failure keeps the photo and the profile as they were. */
+export function removePhoto(): Profile | { ok: false; error: string } {
+  try { fs.rmSync(PHOTO, { force: true }); }
+  catch (e) {
+    console.log(`profile photo could not be removed (${(e as NodeJS.ErrnoException).code})`);
+    return { ok: false, error: 'The PC could not delete the photo. Try again.' };
+  }
   const next: Profile = { ...state, photoAt: 0 };
   save(next);
   state = next;

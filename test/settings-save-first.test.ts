@@ -71,3 +71,19 @@ test('instructions that cannot be read are reported as an error, not as none sav
     fs.rmSync(INSTRUCTIONS, { recursive: true, force: true });
   }
 });
+
+test('a profile photo the PC cannot delete is kept, and the removal reports an error', () => {
+  Profile.savePhoto(Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]));
+  const before = Profile.getProfile().photoAt;
+  assert.notEqual(before, 0);
+  const photo = process.env.CLAUDEOS_PROFILE_PHOTO as string;
+  fs.rmSync(photo, { force: true });
+  fs.mkdirSync(photo);
+  try {
+    const r = Profile.removePhoto();
+    assert.equal('ok' in r && r.ok, false, 'the removal reports a failure');
+  } finally {
+    fs.rmdirSync(photo);
+  }
+  assert.equal(Profile.getProfile().photoAt, before, 'the profile still shows the photo');
+});
