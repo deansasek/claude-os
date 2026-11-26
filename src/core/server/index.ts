@@ -199,7 +199,6 @@ export function startServer(apps: ServerApp[]): void {
   });
   for (const app of apps) {
     for (const r of app.routes) add(app.id, r);
-    app.start?.();
   }
 
   const lastSeen = new Map<string, number>();   // when each screen last asked us for anything
@@ -287,7 +286,11 @@ export function startServer(apps: ServerApp[]): void {
     console.error(`cannot listen on ${args.host}:${args.port}: ${(e as NodeJS.ErrnoException).code ?? e.message}. Check the address in config.json.`);
     process.exit(EXIT_CANNOT_LISTEN);
   });
-  server.listen(args.port, args.host, () => console.log(`serving ${pageUrl} with apps: ${apps.map(a => a.id).join(', ')}`));
+  server.listen(args.port, args.host, () => {
+    console.log(`serving ${pageUrl} with apps: ${apps.map(a => a.id).join(', ')}`);
+    // apps start only once the port is ours, so a port clash exits before any app does its work
+    for (const app of apps) app.start?.();
+  });
 
   // ---------- HTTPS for the camera and microphone on other devices (--https): port + 1, with a certificate this PC makes once ----------
   if (args.https) {
