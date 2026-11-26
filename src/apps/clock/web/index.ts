@@ -496,7 +496,7 @@ function renderSw(): void {
 function renderLaps(): void {
   const box = $('ckLaps'), t = swTime();
   $('ckLapCount').textContent = sw.laps.length ? `· ${sw.laps.length} lap${sw.laps.length > 1 ? 's' : ''}` : '';
-  if (!sw.laps.length && !sw.running) { box.innerHTML = '<div class="ck-empty">No laps yet. Start, then tap Lap.</div>'; return; }
+  if (!sw.laps.length && !sw.running) { box.innerHTML = `<div class="ck-empty">No laps yet. ${t ? 'Resume' : 'Start'}, then tap Lap.</div>`; return; }
   const splits = sw.laps.map((x, i) => x - (sw.laps[i - 1] || 0));
   const best = splits.length > 1 ? Math.min(...splits) : -1, worst = splits.length > 1 ? Math.max(...splits) : -1;
   // the lap in progress first, then newest first; nine fit (three columns of three)
