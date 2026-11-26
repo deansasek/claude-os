@@ -55,6 +55,8 @@ async function shoot(): Promise<void> {
     const s = await cam.takePhoto();
     // the tablet's own words for a photo that did not reach the PC, when it gave them
     if (!s.ok) { $('caMsgText').textContent = s.message || cam.camError(s.code); $('caMsg').hidden = false; return; }
+    // a good photo clears the failure message of an earlier shot, so it does not stay over the live preview
+    $('caMsg').hidden = true;
     showShot(s.id, s.url);
     void refreshLast();
   } finally { shooting = false; }
