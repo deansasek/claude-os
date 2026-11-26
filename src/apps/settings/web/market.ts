@@ -4,7 +4,7 @@
 import { esc, getJson, postJson, report } from '../../../core/web/dom.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
-import { MARKETPLACE, type MarketError, type MarketPlugin, type MarketResult, type MarketView, type PluginKind } from '../api.ts';
+import { MARKETPLACE, markInstalled, type MarketError, type MarketPlugin, type MarketResult, type MarketView, type PluginKind } from '../api.ts';
 
 interface Deps { ctx: AppContext; glyph: Record<PluginKind, string>; onInstalled: () => void }
 type Ask = { kind: 'install' | 'remove'; name: string };
@@ -25,6 +25,7 @@ const ERRORS: Record<MarketError, string> = {
 
 let deps!: Deps;
 let mk: MarketView | null = null;
+let stale = false;             // the last read failed and the list on screen is the one we had before
 let loading = false;
 let checking = false;          // a "Check for updates" is running
 let busy: { kind: 'install' | 'remove'; name: string } | null = null;
@@ -83,7 +84,8 @@ export function paintMarket(): void {
       ? all.slice(0, LIST_MAX).map(row).join('') + (all.length > LIST_MAX ? `<p class="st-note-line">Showing ${LIST_MAX} of ${all.length}. Search to narrow it down.</p>` : '')
       : `<div class="st-empty">${q ? 'Nothing matches that.' : 'The marketplace has no plugins right now.'}</div>`;
     const when = whenText(mk.updatedAt);
-    note.textContent = `${when ? `Last updated ${when}. ` : ''}Installing adds a plugin to every Claude session on this PC.`;
+    const lead = stale ? 'Couldn’t reach your PC, so this list may be out of date. ' : '';
+    note.textContent = `${lead}${when ? `Last updated ${when}. ` : ''}Installing adds a plugin to every Claude session on this PC.`;
   }
   if (openName) paintSheet();
 }
@@ -136,15 +138,17 @@ function closeSheet(): void {
   $('stMkSheet').hidden = true;
 }
 
-/** Fetch the marketplace listing from the PC. */
-async function loadMarket(): Promise<void> {
-  if (loading) return;
+/** Fetch the marketplace listing from the PC. Returns true when the list was read. A failed read keeps the list we had, marked stale. */
+async function loadMarket(): Promise<boolean> {
+  if (loading) return false;
   loading = true;
   paintMarket();
-  try { mk = await getJson<MarketView>('/api/settings/plugins/market'); }
-  catch { /* keep what we had */ }
+  let read = false;
+  try { mk = await getJson<MarketView>('/api/settings/plugins/market'); stale = false; read = true; }
+  catch { stale = mk !== null; }   // keep what we had
   finally { loading = false; }
   paintMarket();
+  return read;
 }
 
 /** Entering the Discover tab: fetch once, then show what we have. */
@@ -176,6 +180,7 @@ async function runChange(kind: 'install' | 'remove', name: string): Promise<void
   banner = { ok: r.ok, text };
   sheetNote = { ok: r.ok, text };
   if (r.ok) report(`settings:plugins:market:${kind}`);
+  if (r.ok && mk) mk = markInstalled(mk, name, kind === 'install');   // the badge and buttons follow the result, even if the reload fails
   await loadMarket();   // the installed badge and the sheet's buttons follow the PC
   if (r.ok) deps.onInstalled();
 }
@@ -199,10 +204,13 @@ async function checkForUpdates(): Promise<void> {
   paintMarket();
   const r = await post('refresh', {});
   checking = false;
-  banner = r.ok
-    ? { ok: true, text: 'Checked for updates.' }
-    : { ok: false, text: `Couldn’t check for updates. ${ERRORS[r.error ?? 'failed']}` };
-  await loadMarket();
+  const reloaded = await loadMarket();
+  banner = !r.ok
+    ? { ok: false, text: `Couldn’t check for updates. ${ERRORS[r.error ?? 'failed']}` }
+    : reloaded
+      ? { ok: true, text: 'Checked for updates.' }
+      : { ok: false, text: 'Checked, but couldn’t reload the list. Check the connection, then try again.' };
+  paintMarket();
 }
 
 /** Wiring: the Discover list, its search, the detail sheet, and the confirm sheet. */
