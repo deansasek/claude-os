@@ -18,7 +18,30 @@ const HOST_SESSION_CAP = 500;
 
 export interface HostSessionRecord { id: string; cwd: string; title: string; createdAt: string }
 
-let records: HostSessionRecord[] = readJsonOrSetAside<{ sessions: HostSessionRecord[] }>(FILE)?.sessions || [];   // a bad file is set aside
+// Entries that are not a valid record. They are kept on disk, so a save never deletes them silently.
+let unreadable: unknown[] = [];
+
+/** Keep the valid records, de-duplicated and capped. A list that is not an array gives none. Bad entries go to `unreadable`. */
+function cleanRecords(raw: unknown): HostSessionRecord[] {
+  if (!Array.isArray(raw)) {
+    if (raw !== undefined) console.log(`${path.basename(FILE)} has no session list; starting with none`);
+    return [];
+  }
+  const seen = new Set<string>();
+  const good: HostSessionRecord[] = [];
+  for (const v of raw) {
+    const r = v as Partial<HostSessionRecord> | null;
+    if (r && typeof r === 'object' && typeof r.id === 'string' && typeof r.cwd === 'string' && typeof r.title === 'string' && typeof r.createdAt === 'string') {
+      if (!seen.has(r.id) && good.length < HOST_SESSION_CAP) { seen.add(r.id); good.push({ id: r.id, cwd: r.cwd, title: r.title, createdAt: r.createdAt }); }
+    } else {
+      unreadable.push(v);
+    }
+  }
+  if (unreadable.length) console.log(`${path.basename(FILE)}: ${unreadable.length} entries could not be read and are kept`);
+  return good;
+}
+
+let records: HostSessionRecord[] = cleanRecords(readJsonOrSetAside<{ sessions?: unknown }>(FILE)?.sessions);   // a bad file is set aside
 
 export const hostSessionIds = (): Set<string> => new Set(records.map(r => r.id));
 export const hostSession = (id: string): HostSessionRecord | undefined => records.find(r => r.id === id);
@@ -26,7 +49,7 @@ export const hostSession = (id: string): HostSessionRecord | undefined => record
 /** Save the list to hub-sessions.json. Returns false (and logs the error code) when the write fails; never throws. */
 function persist(): boolean {
   try {
-    writeJsonFile(FILE, { sessions: records }, { indent: 2 });
+    writeJsonFile(FILE, { sessions: [...records, ...unreadable] }, { indent: 2 });
     return true;
   } catch (e) {
     console.log(`${path.basename(FILE)} could not be saved:`, (e as NodeJS.ErrnoException).code ?? 'error');
