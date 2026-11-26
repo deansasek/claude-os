@@ -520,7 +520,7 @@ function paintUsage(): void {
       </div>`;
     }).join('');
   }
-  note.textContent = L.updated ? `Updated ${clock(new Date(L.updated))}${L.error ? ` · ${L.error}` : ''}` : (L.error || '');
+  note.textContent = L.updated ? `Updated ${whenText(new Date(L.updated))}${L.error ? ` · ${L.error}` : ''}` : (L.error || '');
 }
 
 // ---------- Your Claude: instructions for every new session (kept on the PC) ----------
