@@ -8,12 +8,13 @@
 //   POST clear-done   {list}                 removes the ticked items
 //   POST new-list     {name, id?}            a new tick-off list (12 lists at most); id: the tablet's, if free
 //   POST delete-list  {list}                 a list the family made (Shopping, To-do and Notes stay)
+//   POST rename-list  {list, name}           a list the family made gets a new name (its id stays)
 //   POST restore      {lists}                the tablet's copy, only when the PC has no lists file
 // The tablet keeps the lists and sends its changes here (web/local.ts); Claude's tools change them here too.
 // Kept in .lists.json on the PC (server/store.ts), where everything is checked again.
 import type { ServerApp } from '../../../core/server/app.ts';
 import { manifest } from '../manifest.ts';
-import { addItem, clearDone, deleteList, editItem, newList, readLists, removeItem, restoreItem, restoreLists, tickItem } from './store.ts';
+import { addItem, clearDone, deleteList, editItem, newList, readLists, removeItem, renameList, restoreItem, restoreLists, tickItem } from './store.ts';
 import { suggestions } from './history.ts';
 import { findList } from '../api.ts';
 
@@ -37,6 +38,7 @@ const app: ServerApp = {
     } },
     { method: 'POST', path: 'new-list', handle: ({ body }) => newList(b(body).name, b(body).id) },
     { method: 'POST', path: 'delete-list', handle: ({ body }) => deleteList(b(body).list) },
+    { method: 'POST', path: 'rename-list', handle: ({ body }) => renameList(b(body).list, b(body).name) },
     { method: 'POST', path: 'restore', handle: ({ body }) => restoreLists(b(body).lists) },
   ],
 };

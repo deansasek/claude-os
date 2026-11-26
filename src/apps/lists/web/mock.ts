@@ -77,6 +77,17 @@ defineMock({
     lists.push({ id, name, kind: 'check', items: [] });
     return reply({ list: id });
   },
+  'POST /api/lists/rename-list': ({ body }): ListsResult => {
+    const { list, name } = (body ?? {}) as { list?: string; name?: string };
+    const l = lists.find(x => x.id === list);
+    if (!l) return fail('That list isn’t here.');
+    if ((BUILT_IN as readonly string[]).includes(l.id)) return fail('That list can’t be renamed.');
+    const clean = (name ?? '').trim();
+    if (!clean) return fail('Give the list a name.');
+    if (lists.some(x => x !== l && x.name.toLowerCase() === clean.toLowerCase())) return fail(`There’s already a list called ${clean}.`);
+    l.name = clean;
+    return reply({ list: l.id });
+  },
   'POST /api/lists/delete-list': ({ body }): ListsResult => {
     const id = (body as { list?: unknown } | null)?.list;
     if (typeof id === 'string' && (BUILT_IN as readonly string[]).includes(id)) return fail('That list can’t be deleted.');
