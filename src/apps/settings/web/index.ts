@@ -15,7 +15,7 @@ import { applyProfile, initials, onProfile, profile, refreshProfile } from '../.
 import type { Profile } from '../../../core/web/profile.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { closeApp, failedApps, openedApps, restartApp } from '../../../core/web/shell.ts';
-import { monitorLines } from './monitor.ts';
+import { monitorLines, uptimeText } from './monitor.ts';
 import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, railEdgesFor, setTileOrder, sleep, swipeNotices, tileOrder, toggleMuteApp } from '../../../core/web/system.ts';
 import { appLabel } from '../../../core/web/notes-group.ts';
 import { moveTile, TILE_NAMES } from '../../../core/web/quick-order.ts';
@@ -1335,8 +1335,7 @@ function paintAbout(): void {
   $('stServer').textContent = `Your PC · ${location.host}`;
   // the Hub's own status: how long it has run (a page that can't reach it keeps the address line alone)
   getJson<{ uptimeSeconds: number }>('/api/core/status').then(s => {
-    const h = Math.floor(s.uptimeSeconds / 3600), m = Math.floor((s.uptimeSeconds % 3600) / 60);
-    $('stServer').textContent = `Your PC · ${location.host} · running ${h ? `${h} h ${m} min` : `${m} min`}`;
+    $('stServer').textContent = `Your PC · ${location.host} · running ${uptimeText(s.uptimeSeconds)}`;
   }).catch(() => { /* not reachable now: keep the address line */ });
   try {
     const w = device.wifi();
