@@ -145,13 +145,15 @@ async function handle(raw: string): Promise<void> {
   if (open && v?.reason === 'running') { say('Claude is still working on that one.'); return; }
 
   // otherwise a new session
-  let projects: Project[] = [];
-  try { projects = await getJson<Project[]>('/api/claude/projects'); } catch { /* fall back to scratch below */ }
+  // a failed read is not an empty list: only a read that worked can say there is no Scratch space
+  let projects: Project[];
+  try { projects = await getJson<Project[]>('/api/claude/projects'); }
+  catch { voiceUi.notice('Can’t reach your PC', 'ClaudeOS runs there; is it on?', 4000); say('I can’t reach your PC right now.'); return; }
   const { project, rest } = folderFrom(text, projects);
   // the folder you named, else the one the mic / new-session screen points at, else Scratch space
   const pickedId = micFolder || chosenFolder()?.id || null;
   const where = project || (pickedId && projects.find(p => p.id === pickedId)) || projects.find(p => p.name === 'Scratch space') || null;
-  if (!where) { voiceUi.notice('Can’t reach your PC', 'ClaudeOS runs there; is it on?', 4000); say('I can’t reach your PC right now.'); return; }
+  if (!where) { voiceUi.notice('Scratch space missing', 'Add a Scratch space project on your PC', 4000); say('I need a Scratch space project on your PC first.'); return; }
   sayLine(where.name !== 'Scratch space' ? `in ${where.name}…` : 'on it!');
   voiceUi.setBase({ kind: 'thinking', title: 'Starting…', sub: `New session in ${where.name}`, onTap: openHere });
   const mine = ++token;
