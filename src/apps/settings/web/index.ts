@@ -1493,7 +1493,12 @@ function mount(context: AppContext): void {
 
   // Network (Wi-Fi)
   const forget = (ssid: string) => confirmSheet(`Forget ${ssid}?`, 'The tablet disconnects and stops joining it. If it’s the only Wi-Fi here, ClaudeOS goes offline until you join another network.',
-    'Forget', () => { try { device.wifiForget(ssid); } catch { /* ignore */ } paintWifi(); paintNetworks(); });
+    'Forget', () => {
+      let ok = false;
+      try { ok = device.wifiForget(ssid).ok; } catch { ok = false; }
+      paintWifi(); paintNetworks();
+      if (!ok) $('stWifiNow').textContent = 'Couldn’t forget ' + ssid + '. Try again.';
+    });
   $('stWifiCurrent').addEventListener('click', e => {
     const f = (e.target as HTMLElement).closest<HTMLElement>('[data-forget]');
     if (f) forget(f.dataset.forget!);
