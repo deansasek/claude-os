@@ -53,7 +53,8 @@ async function shoot(): Promise<void> {
     report('camera:shot');
     flash();
     const s = await cam.takePhoto();
-    if (!s.ok) { $('caMsgText').textContent = cam.camError(s.code); $('caMsg').hidden = false; return; }
+    // the tablet's own words for a photo that did not reach the PC, when it gave them
+    if (!s.ok) { $('caMsgText').textContent = s.message || cam.camError(s.code); $('caMsg').hidden = false; return; }
     showShot(s.id, s.url);
     void refreshLast();
   } finally { shooting = false; }
