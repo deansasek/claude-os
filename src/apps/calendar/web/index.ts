@@ -428,7 +428,7 @@ function pickStep(unit: 'h' | 'm', d: number): void {
 
 /** The draft as a start and an end in ms, or why it is not ready. */
 function draftEvent(): { ok: true; start: number; end: number } | { ok: false; error: string } {
-  if (!draft.title) return { ok: false, error: 'Give the event a name.' };
+  if (!draft.title) return { ok: false, error: 'Tap Name to give the event a name.' };
   const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(draft.date);
   if (!d) return { ok: false, error: 'The day should look like 2026-11-24.' };
   const day = new Date(+d[1], +d[2] - 1, +d[3]);
@@ -438,7 +438,7 @@ function draftEvent(): { ok: true; start: number; end: number } | { ok: false; e
   if (!clock(s) || !clock(e)) return { ok: false, error: 'The times should look like 09:00.' };
   const at = (m: RegExpExecArray): number => new Date(day.getFullYear(), day.getMonth(), day.getDate(), +m[1], +m[2]).getTime();
   const start = at(s!), end = at(e!);
-  if (end <= start) return { ok: false, error: 'The end must be after the start.' };
+  if (end <= start) return { ok: false, error: 'The end must be after the start. Tap Ends to pick a later time.' };
   return { ok: true, start, end };
 }
 
