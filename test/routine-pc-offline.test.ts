@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/apps');
 const read = (f: string) => readFileSync(path.join(root, f), 'utf8').replace(/\r\n/g, '\n');
 const run = read('routines/web/run.ts');
+const routines = read('routines/web/index.ts');
 const home = read('home/web/index.ts');
 const between = (src: string, start: string, end: string) => src.slice(src.indexOf(start), src.indexOf(end, src.indexOf(start)));
 
@@ -21,6 +22,15 @@ test('startRoutine reports offline when the PC does not answer and no copy is re
 
 test('runRoutine keeps its yes-or-no answer', () => {
   assert.match(run, /return \(await startRoutine\(id\)\) === 'started';/);
+});
+
+test('the Routines app Run button says why a routine did not start, and refreshes when it is gone', () => {
+  const body = between(routines, 'function runNow(): void {', '// ---------- the app ----------');
+  assert.match(body, /void startRoutine\(draft\.id\)\.then\(res => \{/);
+  assert.match(body, /res === 'gone'\) \{ note = 'That routine is gone\.'; void refresh\(\); return; \}/);
+  assert.match(body, /res === 'empty'\) \{ note = 'That routine has no steps yet\.'; render\(\); return; \}/);
+  assert.match(body, /res === 'offline'\) \{ note = 'The PC isn’t answering, so that routine can’t start\.'; render\(\); return; \}/);
+  assert.match(body, /note = 'That routine couldn’t start\. Try again in a moment\.'; render\(\);/);
 });
 
 test('a Home tap on an offline PC says the PC is not answering, not that the routine is gone', () => {
