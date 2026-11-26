@@ -94,6 +94,8 @@ async function pantry(haveText: string, wantText: string): Promise<PantryResult>
   }
   const top = [...count.values()].sort((a, b) => b.n - a.n).slice(0, PANTRY_TOP);
   const full = await Promise.allSettled(top.map(c => meals(`lookup.php?i=${encodeURIComponent(String(c.meal.idMeal))}`)));
+  // every full recipe failed to load (the network dropped after the ingredient lists were kept): say so, not "no recipes"
+  if (top.length && full.every(f => f.status === 'rejected')) return { status: 'error', recipes: [], error: errorText((full[0] as PromiseRejectedResult).reason) };
   const list: { recipe: Recipe; matched: number }[] = [];
   full.forEach((f, k) => {
     if (f.status !== 'fulfilled') return;
