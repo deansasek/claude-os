@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
-import { cookStep, keepPhoto, parseRecipe, pantryPrompt, textRecipe, type Recipe } from '../src/apps/recipes/web/recipe.ts';
+import { cookStep, countWord, keepPhoto, parseRecipe, pantryPrompt, textRecipe, type Recipe } from '../src/apps/recipes/web/recipe.ts';
 
 const JSON_RECIPE = {
   name: 'Lemon pasta',
@@ -44,6 +44,20 @@ test('a reply that is not a recipe is saved as text, one step', () => {
   assert.deepEqual(r.steps, ['# Tomato soup\nSimmer the tomatoes, then blend.']);
   assert.deepEqual(r.ingredients, []);
   assert.equal(textRecipe('   ').name, 'Saved reply');
+});
+
+test('a text recipe has one step, so its card reads "1 step"', () => {
+  const r = textRecipe('Simmer the tomatoes, then blend.');
+  assert.equal(r.steps.length, 1);
+  assert.equal(countWord(r.steps.length, 'step'), '1 step');
+});
+
+test('countWord uses the singular for 1 and adds s otherwise', () => {
+  assert.equal(countWord(0, 'step'), '0 steps');
+  assert.equal(countWord(1, 'step'), '1 step');
+  assert.equal(countWord(2, 'step'), '2 steps');
+  assert.equal(countWord(1, 'ingredient'), '1 ingredient');
+  assert.equal(countWord(0, 'ingredient'), '0 ingredients');
 });
 
 test('a cook-mode step shows its number and clamps to the steps', () => {
