@@ -425,6 +425,7 @@ const app: HubApp = {
       void send('add', { list: 'shopping', text: t }).then(() => loadSuggest());
     });
     $('lsSheet').addEventListener('click', onSheetClick);
+    addEventListener('hub:open-list', e => { const id = (e as CustomEvent<string>).detail; if (id) choose(id); });   // a launcher result names the list
     onHubReachable(() => { if (hubReachable()) void flush(); });   // the PC is back: send what waited
     onBack(() => {
       if (!ctx.isVisible() || Keyboard.isOpen || !sheetOpen) return false;
