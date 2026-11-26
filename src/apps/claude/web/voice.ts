@@ -111,8 +111,14 @@ async function handle(raw: string): Promise<void> {
     if (r.ok) {
       convo = null; voiceUi.setBase({ kind: 'idle' });
       voiceUi.notice('Stopped Claude', 'It won’t finish that one');
-    } else {
+    } else if (r.error === 'not_running') {
+      // the turn finished before the stop reached the PC: the answer is already on screen
+      convo = null; voiceUi.setBase({ kind: 'idle' });
+      voiceUi.notice('Claude already finished', 'Nothing to stop.');
+    } else if (r.error === 'unreachable') {
       voiceUi.notice('Couldn’t stop Claude', 'Can’t reach your PC. Try again.');
+    } else {
+      voiceUi.notice('Couldn’t stop Claude', 'Try again in a moment.');
     }
     return;
   }

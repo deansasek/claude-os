@@ -60,6 +60,28 @@ test('voice.ts stop command says "Stopped Claude" only after an ok result', () =
   assert.match(branch, /if \(r === null\) \{ needPin\(\); return; \}/, 'a PIN pad with no stop shows no stopped notice');
 });
 
+test('voice.ts stop command gives not_running its own notice and clears the conversation', () => {
+  const branch = between(voice, "if (CANCEL.test(t) && convo?.turnId", "  if (CANCEL.test(t)) { sayLine");
+  const notRunningAt = branch.indexOf("r.error === 'not_running'");
+  assert.ok(notRunningAt > branch.indexOf('if (r.ok) {'), 'the not_running branch follows the ok branch');
+  const notRunning = branch.slice(notRunningAt, branch.indexOf("r.error === 'unreachable'"));
+  assert.match(notRunning, /notice\('Claude already finished', 'Nothing to stop\.'\)/, 'not_running says Claude already finished');
+  assert.match(notRunning, /convo = null; voiceUi\.setBase\(\{ kind: 'idle' \}\);/, 'not_running clears the conversation and goes idle');
+  assert.doesNotMatch(notRunning, /try again/i, 'not_running does not ask the user to try again');
+});
+
+test('voice.ts stop command shows "Can’t reach your PC" only for the unreachable case', () => {
+  const branch = between(voice, "if (CANCEL.test(t) && convo?.turnId", "  if (CANCEL.test(t)) { sayLine");
+  const unreachableAt = branch.indexOf("r.error === 'unreachable'");
+  const otherAt = branch.indexOf("notice('Couldn’t stop Claude', 'Try again in a moment.')");
+  assert.ok(unreachableAt > 0, 'the unreachable branch exists');
+  assert.ok(otherAt > unreachableAt, 'other errors get their own notice after the unreachable branch');
+  const reach = branch.indexOf('Can’t reach your PC');
+  assert.ok(reach > unreachableAt && reach < otherAt, '"Can’t reach your PC" appears only in the unreachable branch');
+  assert.equal(branch.split('Can’t reach your PC').length - 1, 1, 'the reach message appears once in the stop branch');
+  assert.match(branch, /catch \{ r = \{ ok: false, error: 'unreachable' \}; \}/, 'a thrown stop call is treated as unreachable');
+});
+
 test('voice.ts new session says a failed projects read is offline, and a missing Scratch space is not', () => {
   const start = voice.indexOf("let projects: Project[];");
   assert.ok(start > 0, 'the new-session path reads the projects');
