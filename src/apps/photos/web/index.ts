@@ -7,7 +7,7 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithPhoto } from '../../claude/web/reply.ts';
-import { ASK_MAX_PHOTOS, deleteBatches, thumbUrl } from '../api.ts';
+import { ASK_MAX_PHOTOS, deleteBatches, nextPhotoDays, thumbUrl } from '../api.ts';
 import type { PhotoDay, PhotoDeleteResult, PhotoItem, PhotoList } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { backfillActive, backfillThumb } from './thumb.ts';
@@ -135,8 +135,9 @@ function selectAll(): void {
 async function load(): Promise<void> {
   try {
     const l = await getJson<PhotoList>('/api/photos/list');
-    days = l.days || [];
-    more = l.more === true;
+    // a list the PC could not read keeps the photos already in the grid
+    days = nextPhotoDays(days, l);
+    more = l.ok !== false ? l.more === true : more;
     listFailed = l.ok === false;
     // the PC answered but could not read its folder: say so, rather than an empty gallery
     $('phNote').hidden = l.ok !== false;
