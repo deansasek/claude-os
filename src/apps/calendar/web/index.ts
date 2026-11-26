@@ -17,7 +17,7 @@ import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, pcAnswer, prun
 import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 import { flagsOf, tagCalendar, visibleEvents, type CalendarInfo } from './calendars.ts';
-import { editable, formCanShow, ownEvent } from './edit.ts';
+import { afterWriteNote, editable, formCanShow, ownEvent } from './edit.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 5 * 60e3;
@@ -489,8 +489,10 @@ async function addEvent(): Promise<void> {
   addSending = false;
   if (answer?.status === 'ok') {
     closeAdd();
+    msg = '';   // clear the old note, so only the reload's note is kept
     await load();   // the range again, so the new event is drawn at once
-    msg = id ? `Saved “${draft.title}” in ClaudeOS.` : `Added “${draft.title}” to ClaudeOS.`;
+    const done = id ? `Saved “${draft.title}” in ClaudeOS.` : `Added “${draft.title}” to ClaudeOS.`;
+    msg = afterWriteNote(done, msg);
     render();
   } else {
     backToForm();
@@ -558,8 +560,9 @@ async function deleteDetail(): Promise<void> {
   addSending = false;
   if (answer?.status === 'ok') {
     closeDetail();
+    msg = '';   // clear the old note, so only the reload's note is kept
     await load();
-    msg = `Deleted “${e.title}” from ClaudeOS.`;
+    msg = afterWriteNote(`Deleted “${e.title}” from ClaudeOS.`, msg);
     render();
   } else {
     deleteArmed = false;

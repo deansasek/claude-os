@@ -19,3 +19,8 @@ export function formCanShow(e: EditableEvent): boolean {
 export function editable(e: EditableEvent): boolean {
   return ownEvent(e) && formCanShow(e);
 }
+
+/** The note after a saved, added or deleted event: the done text, then the note from the reload (a failed reload says so). */
+export function afterWriteNote(done: string, readNote: string): string {
+  return readNote ? `${done} ${readNote}` : done;
+}
