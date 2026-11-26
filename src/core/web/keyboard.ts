@@ -109,6 +109,8 @@ function stopRepeat(): void {
 
 export const Keyboard = {
   open(o: KeyboardOptions): void {
+    // a keyboard already open is closed first, so its onClose runs (a typed reply is kept, not dropped)
+    if (opts) Keyboard.close('nav');
     opts = { placeholder: '', done: 'Done', autoCap: false, max: 60, ...o };
     val = o.value || ''; layout = 'alpha'; shift = false;
     $('kbDone').textContent = opts.done || 'Done';
@@ -139,6 +141,7 @@ export function initKeyboard(): void {
     click();
     press(b.dataset.k!);
     if (b.dataset.k === '⌫') {   // hold to keep deleting
+      stopRepeat();   // a second ⌫ press must not leave the first timer running
       repeatTimer = window.setTimeout(() => { repeatTimer = window.setInterval(() => press('⌫'), 70); }, 450);
     }
   });
