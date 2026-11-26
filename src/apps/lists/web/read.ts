@@ -5,10 +5,12 @@
 import { applyOp, type Op } from './local.ts';
 import type { FamilyList, ListsResult } from '../api.ts';
 
-/** The copy when the tablet has one; otherwise the PC's lists. A PC answer without lists reads as none. */
+/** The copy when the tablet has one; otherwise the PC's lists. A PC answer without lists reads as none.
+ *  A PC answer with ok: false (the PC could not read its file) throws, so the caller can say so instead of showing empty lists. */
 export async function pickLists(copy: FamilyList[] | null, fromPc: () => Promise<ListsResult>): Promise<FamilyList[]> {
   if (copy) return copy;
   const r = await fromPc();
+  if (r?.ok === false) throw new Error(r.error ?? 'The PC couldn’t read its lists.');
   return Array.isArray(r?.lists) ? r.lists : [];
 }
 
