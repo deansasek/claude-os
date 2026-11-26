@@ -143,8 +143,8 @@ export interface RunOptions {
   input?: string | Buffer;
 }
 
-/** Runs a tool and returns its exit code. Batch files go through cmd.exe on Windows. */
-export function runStatus(exe: string, argv: string[], opts: RunOptions = {}): number | null {
+/** Runs a tool and returns how it ended: its exit code, or the error it could not start with (not found, no permission). Batch files go through cmd.exe on Windows. */
+export function runResult(exe: string, argv: string[], opts: RunOptions = {}): { status: number | null; signal: string | null; error?: Error } {
   const batch = isWindows && /\.(bat|cmd)$/i.test(exe);
   const result = batch
     ? runThroughCmd(exe, argv, opts)
@@ -154,13 +154,27 @@ export function runStatus(exe: string, argv: string[], opts: RunOptions = {}): n
       input: opts.input,
       encoding: opts.input !== undefined ? 'utf8' : undefined,
     });
-  return result.status;
+  return { status: result.status, signal: result.signal, error: result.error };
 }
 
-/** Runs a tool. Fails the build on a non-zero exit. */
+/** The exit code of a tool, or null when it did not run to an exit. */
+export function runStatus(exe: string, argv: string[], opts: RunOptions = {}): number | null {
+  return runResult(exe, argv, opts).status;
+}
+
+/** What to say when a tool could not start at all: the cause, and what to do when that is a missing tool. */
+export function startProblem(exe: string, error: NodeJS.ErrnoException): string {
+  const code = error.code ?? error.message;
+  const hint = code === 'ENOENT' ? ' Run node android/setup-tools.ts first.' : '';
+  return `could not start ${exe}: ${code}.${hint}`;
+}
+
+/** Runs a tool. Fails the build on a non-zero exit, and says why when the tool did not start. */
 export function run(exe: string, argv: string[], what: string, opts: RunOptions = {}): void {
-  const status = runStatus(exe, argv, opts);
-  if (status !== 0) fail(`${what} failed (exit ${status})`);
+  const r = runResult(exe, argv, opts);
+  if (r.status === 0) return;
+  if (r.error) fail(`${what} ${startProblem(exe, r.error as NodeJS.ErrnoException)}`);
+  fail(`${what} failed (exit ${r.status ?? r.signal})`);
 }
 
 // ---- unpacking ----
