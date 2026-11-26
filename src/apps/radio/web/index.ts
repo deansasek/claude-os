@@ -462,6 +462,7 @@ function onPageClick(ev: Event): void {
   const recent = d('q');
   if (recent) { search(recent); return; }
   if (d('clear') !== undefined) { searches = []; store.set(SEARCHES_KEY, '[]'); render(); return; }
+  if (d('retry') !== undefined) { if (browse === 'error') browse = 'loading'; listState = 'loading'; render(); void load(true); return; }
   const showAll = d('showall');
   if (showAll) { go(showAll === 'top' ? { kind: 'top' } : { kind: 'facets', facet: showAll as FacetKind }); return; }
   const shelfKind = d('kind');
@@ -702,12 +703,12 @@ function renderCatalogue(): void {
   if (view.kind === 'station') html = stationPage(view.station);
   else if (view.kind === 'search' && !isFiltering()) {
     if (browse === 'loading') emptyText = 'Looking for stations…';
-    else if (browse === 'error') emptyText = RADIO_DOWN;
+    else if (browse === 'error') html = retryHtml();
     else html = recentHtml() + browseHtml(browse);
   }
   else if (view.kind === 'search' && listState === 'loading') html = `<div class="rd-grid rd-station-grid">${'<div class="rd-sk-row"></div>'.repeat(6)}</div>`;
   else if (listState === 'loading' || listState === 'idle') emptyText = 'Looking for stations…';
-  else if (listState === 'error') emptyText = RADIO_DOWN;
+  else if (listState === 'error') html = retryHtml();
   else if (view.kind === 'facets') {
     html = facets.length ? `<div class="rd-grid rd-facet-grid">${facets.map(facetCard).join('')}</div>` : '';
     if (!facets.length) emptyText = 'The directory sent no list.';
@@ -763,6 +764,9 @@ function renderNow(): void {
     setHtml($('rdNpNextList'), next.map(upCard).join(''));
   }
 }
+
+/** The error text and a Try again button for a list Radio Browser did not send. */
+function retryHtml(): string { return `<p class="rd-empty">${esc(RADIO_DOWN)}</p><div class="rd-recent"><button class="rd-pill" data-retry="1">Try again</button></div>`; }
 
 function render(): void {
   const s = current;
