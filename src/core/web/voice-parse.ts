@@ -62,6 +62,11 @@ export function parseDays(phrase: string): number[] | null {
   return null;
 }
 
+/** True when the day phrase names tomorrow, so "7 tomorrow morning" is 7 am: "tomorrow", "tomorrow morning", "for tomorrow". */
+export function morningDays(daysPhrase: string): boolean {
+  return /^(for )?tomorrow/.test(daysPhrase.trim().toLowerCase());
+}
+
 /** A duration with a name after it: "10 minute pasta" is 10 minutes, named pasta. The longest duration at the front wins. */
 export function durationAndLabel(phrase: string): { ms: number; label: string } | null {
   const words = phrase.trim().split(/\s+/);

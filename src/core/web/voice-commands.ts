@@ -38,7 +38,7 @@ import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay } from './voice-weather.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { readLists, writeList } from '../../apps/lists/web/readers.ts';
-import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
+import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 import { matchOpenApp } from './voice-open.ts';
 
@@ -288,7 +288,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const time = parseTime(m[1]), days = parseDays(m[2] || '');
     if (!time || days == null) return null;   // not sure: let Claude sort it out
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
-    const { h, m: mins } = resolveHour(time, wakeUp || days.length > 0);
+    const { h, m: mins } = resolveHour(time, wakeUp || days.length > 0 || morningDays(m[2] || ''));
     const set = clock.addAlarm(h, mins, days);
     if (!set) return { say: 'You have too many alarms. Delete one in the Clock first.', app: 'clock' };
     return { say: `Alarm set for ${clockText(h, mins)}${days.length ? daysText(days) : ` ${set.when}`}.`, react: 'hop' };
