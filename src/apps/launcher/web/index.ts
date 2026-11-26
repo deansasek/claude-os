@@ -376,6 +376,7 @@ function paintList(failed = false): void {
     ? 'Couldn’t read the tablet’s apps. Close this and try again.' : 'No other apps found on the tablet.';
 }
 function openSheet(): void {
+  document.querySelector('.ln-sheet-note')?.remove();   // every opening starts without an old failure note
   let launchOk = true;
   try { launchable = androidApps.launchable(); } catch (e) { console.warn('launcher: launchable', e); launchable = []; launchOk = false; }
   launchable.sort((a, b) => a.name.localeCompare(b.name));
@@ -391,12 +392,19 @@ function closeSheet(): void {
  *  unticked again); it is a visible Android app, the one exception to the no-Android-UI rule for installs. */
 const PLAY = 'com.android.vending';
 function installApps(): void {
+  document.querySelector('.ln-sheet-note')?.remove();   // a new try clears the last failure note
   try {
     const ids = tabApps.map(a => a.id);
     if (!ids.includes(PLAY)) { androidApps.setAllowed([...ids, PLAY]); loadTablet(); paint(); }
     const r = androidApps.launch(PLAY);
-    if (!r?.ok) console.warn('launcher: Play did not open');
-  } catch (e) { console.warn('launcher: install apps', e); }
+    if (!r?.ok) {
+      console.warn('launcher: Play did not open');
+      showSheetNote('Couldn’t open Google Play. Try again.');
+    }
+  } catch (e) {
+    console.warn('launcher: install apps', e);
+    showSheetNote('Couldn’t open Google Play. Try again.');
+  }
 }
 /** Shows one status line under the Add apps subtitle. Sets text only, never markup. */
 function showSheetNote(text: string): void {
