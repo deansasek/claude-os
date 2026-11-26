@@ -2,8 +2,19 @@
 // so no photo files are read or written. Run with: npm test
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import fs from 'node:fs';
 import { test } from 'node:test';
-import { insidePhotos, PHOTOS, photoIdsFrom, safeId } from '../src/apps/photos/server/store.ts';
+import { insidePhotos, listPhotosPage, PHOTOS, photoIdsFrom, safeId } from '../src/apps/photos/server/store.ts';
+
+/** Run fn with one day folder holding these photo files. The folder reads are stubbed, so no photo files are touched. */
+function withDayFolder(names: string[], fn: () => void): void {
+  const realRead = fs.readdirSync, realStat = fs.statSync;
+  const day = '2026-11-26';
+  fs.readdirSync = ((p: fs.PathLike) => (String(p) === PHOTOS ? [day] : names)) as unknown as typeof fs.readdirSync;
+  fs.statSync = (() => ({ mtimeMs: 1000 })) as unknown as typeof fs.statSync;
+  try { fn(); } finally { fs.readdirSync = realRead; fs.statSync = realStat; }
+}
+const PHOTO_FILES = ['abcdefgh01.jpg', 'abcdefgh02.jpg', 'abcdefgh03.jpg'];
 
 test('a photo id is 8 to 64 safe characters', () => {
   assert.equal(safeId('abcdefgh12'), 'abcdefgh12');
@@ -29,4 +40,19 @@ test('a path counts only inside the photos folder', () => {
   assert.equal(insidePhotos(path.join(PHOTOS, '2026-11-01', 'abcdefgh12.jpg')), true);
   assert.equal(insidePhotos(path.join(PHOTOS, '..', 'config.json')), false);
   assert.equal(insidePhotos(PHOTOS), false);
+});
+
+test('a list cut at its limit reports more photos left out', () => {
+  withDayFolder(PHOTO_FILES, () => {
+    const page = listPhotosPage(2);
+    assert.equal(page.more, true);
+    assert.equal(page.days[0].photos.length, 2);
+  });
+});
+
+test('a list that holds every photo does not report more', () => {
+  withDayFolder(PHOTO_FILES.slice(0, 2), () => {
+    assert.equal(listPhotosPage(2).more, false);
+    assert.equal(listPhotosPage(5).more, false);
+  });
 });

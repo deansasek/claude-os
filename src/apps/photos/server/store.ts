@@ -115,14 +115,18 @@ export interface PhotoDay { day: string; photos: PhotoItem[] }
 /** A folder that is not there (ENOENT). */
 const missing = (e: unknown): boolean => (e as NodeJS.ErrnoException).code === 'ENOENT';
 
-/** Every photo, newest first, grouped by day. No folder yet means no photos; any other read error is thrown, so the caller can say so. */
-export function listPhotos(limit = 500): PhotoDay[] {
+/**
+ * Photos newest first, grouped by day, up to limit. more: true when photos were left out at the limit.
+ * No folder yet means no photos; any other read error is thrown, so the caller can say so.
+ */
+export function listPhotosPage(limit = 500): { days: PhotoDay[]; more: boolean } {
   const out: PhotoDay[] = [];
   let days: string[] = [];
-  try { days = fs.readdirSync(PHOTOS).filter(d => DAY.test(d)).sort().reverse(); } catch (e) { if (missing(e)) return out; throw e; }
+  try { days = fs.readdirSync(PHOTOS).filter(d => DAY.test(d)).sort().reverse(); } catch (e) { if (missing(e)) return { days: out, more: false }; throw e; }
   let left = limit;
+  let more = false;
   for (const day of days) {
-    if (left <= 0) break;
+    if (left <= 0) { more = true; break; }
     const names = new Set<string>();
     try { for (const f of fs.readdirSync(path.join(PHOTOS, day))) names.add(f); } catch (e) { if (missing(e)) continue; throw e; }
     const items: { id: string; mtime: number; hasThumb: boolean }[] = [];
@@ -136,7 +140,13 @@ export function listPhotos(limit = 500): PhotoDay[] {
     items.sort((a, b) => b.mtime - a.mtime);
     const kept = items.slice(0, left);
     left -= kept.length;
+    if (items.length > kept.length) more = true;
     if (kept.length) out.push({ day, photos: kept.map(p => ({ id: p.id, at: new Date(p.mtime).toISOString(), url: `/api/photos/file?id=${p.id}`, hasThumb: p.hasThumb })) });
   }
-  return out;
+  return { days: out, more };
+}
+
+/** Every photo, newest first, grouped by day, up to limit (see listPhotosPage). */
+export function listPhotos(limit = 500): PhotoDay[] {
+  return listPhotosPage(limit).days;
 }

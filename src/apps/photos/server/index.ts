@@ -2,7 +2,7 @@
 import type { Binary, ServerApp } from '../../../core/server/app.ts';
 import { manifest } from '../manifest.ts';
 import { THUMB_MAX_BYTES } from '../api.ts';
-import { deletePhotos, listPhotos, MAX_BYTES, MAX_PER_DELETE, photoIdsFrom, readPhoto, safeId, savePhoto, saveThumb } from './store.ts';
+import { deletePhotos, listPhotosPage, MAX_BYTES, MAX_PER_DELETE, photoIdsFrom, readPhoto, safeId, savePhoto, saveThumb } from './store.ts';
 
 const app: ServerApp = {
   id: manifest.id,
@@ -21,8 +21,8 @@ const app: ServerApp = {
     {
       method: 'GET', path: 'list', handle: ({ query }) => {
         const limit = Math.max(1, Math.min(2000, Number(query.get('limit')) || 500));
-        try { return { ok: true, days: listPhotos(limit) }; }
-        catch { return { ok: false, days: [], error: 'The PC couldn’t read its photos folder. Check that ClaudeOS can read it.' }; }
+        try { const page = listPhotosPage(limit); return { ok: true, days: page.days, more: page.more }; }
+        catch { return { ok: false, days: [], more: false, error: 'The PC couldn’t read its photos folder. Check that ClaudeOS can read it.' }; }
       },
     },
     {
