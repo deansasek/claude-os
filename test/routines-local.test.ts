@@ -5,8 +5,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import type { Routine } from '../src/apps/routines/api.ts';
-import { applyOp, remapIds, type Op } from '../src/apps/routines/web/local.ts';
+import { HOME_ROUTINES, applyOp, remapIds, type Op } from '../src/apps/routines/web/local.ts';
 
 // The store reads its file path when it loads, so the scratch file is set before the import.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-routines-local-'));
@@ -45,6 +46,15 @@ test('a phrase another routine already uses is refused on the tablet too', () =>
   assert.equal(clash.error, '“morning” already runs Morning.');
   const own = applyOp([morning, night], save({ id: 'morning', name: 'Morning', phrases: ['morning'], steps: [{ kind: 'weather' }] }));
   assert.equal(own.ok, true);
+});
+
+test('the Home screen shows two routines, and the Routines app says so', () => {
+  assert.equal(HOME_ROUTINES, 2);
+  const root = fileURLToPath(new URL('../', import.meta.url));
+  const appSource = fs.readFileSync(path.join(root, 'src/apps/routines/web/index.ts'), 'utf8');
+  const view = fs.readFileSync(path.join(root, 'src/apps/routines/view.html'), 'utf8');
+  assert.equal(appSource.includes('ON HOME'), false);
+  assert.equal(view.includes('first four'), false);
 });
 
 test('remapIds points later changes at the id the PC gave', () => {

@@ -10,6 +10,9 @@ export type OpPath = 'save' | 'delete';
 export interface Op { path: OpPath; body: Record<string, unknown> }
 export interface OpResult { ok: boolean; routines: Routine[]; error?: string }
 
+/** How many routines, from the top of the list, show as tiles on the Home screen. */
+export const HOME_ROUTINES = 2;
+
 /** A new routine's id, made on the tablet from its name; the PC keeps it when it is free (server/store.ts saveRoutine). */
 export function newRoutineId(name: string): string {
   const slug = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 20).replace(/-+$/, '');

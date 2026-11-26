@@ -4,7 +4,7 @@
 // the steps, and that a scene is on the Home Assistant dashboard or the Home screen. Running happens in web/run.ts
 // (voice, the Home screen's tiles, Claude's run_routine, and Run now here all use it).
 //
-// Left, every routine (the first four are the Home screen's tiles). Right, the one being edited: tap the name or
+// Left, every routine (the first two are the Home screen's tiles). Right, the one being edited: tap the name or
 // "+ Phrase" for ClaudeOS's keyboard; steps are added with the chips, moved with the arrows, and timers and pauses
 // set with − and +. Nothing is saved until Save. A change here sends hub:routines, so Home and voice read them again.
 import { esc, getJson, postJson } from '../../../core/web/dom.ts';
@@ -18,6 +18,7 @@ import {
   type Routine, type RoutineTime, type RoutinesResult, type Step, type StepKind,
 } from '../api.ts';
 import { manifest } from '../manifest.ts';
+import { HOME_ROUTINES } from './local.ts';
 import { onRunState, runState, startRoutine, stopRoutine } from './run.ts';
 import { apply, hasCopy, localRoutines, onCopyChange, pull } from './sync.ts';
 
@@ -131,7 +132,7 @@ function cardHtml(r: Routine, i: number): string {
   const sub = on ? `Running · step ${run.step} of ${run.of}`
     : [`${r.steps.length} step${r.steps.length === 1 ? '' : 's'}`, ...r.phrases.slice(0, 2).map(p => `“${p}”`)].join(' · ');
   return `<li><button class="rt-card${r.id === draft.id ? ' on' : ''}${on ? ' running' : ''}" data-id="${esc(r.id)}">`
-    + `<b>${esc(r.name)}</b><span class="rt-sub">${esc(sub)}</span>${i < 4 ? '<span class="rt-home">ON HOME</span>' : ''}</button></li>`;
+    + `<b>${esc(r.name)}</b><span class="rt-sub">${esc(sub)}</span>${i < HOME_ROUTINES ? '<span class="rt-home">On Home</span>' : ''}</button></li>`;
 }
 
 function stepHtml(s: Step, i: number, n: number): string {
