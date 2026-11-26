@@ -36,7 +36,7 @@ import { sceneFailText } from '../../apps/home/web/scene-words.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
-import { temperatureDay } from './voice-weather.ts';
+import { temperatureDay, weatherTrouble } from './voice-weather.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
@@ -122,7 +122,7 @@ const clockText = (h: number, m: number) => new Date(2000, 0, 1, h, m).toLocaleT
 
 // ---------- weather ----------
 interface Wx {
-  status: string; units?: string; place?: string | null;
+  status: string; units?: string; place?: string | null; city?: string;
   current?: { temperature_2m: number; weather_code: number };
   daily?: { weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[] };
 }
@@ -145,9 +145,9 @@ export const weatherToday = (): Promise<CommandResult> => weather(0, null);
 
 async function weather(day: 0 | 1, rainOnly: 'rain' | 'snow' | null): Promise<CommandResult> {
   let w: Wx;
-  try { w = await getJson<Wx>('/api/weather/forecast'); } catch { return { say: 'I can’t get the weather right now.' }; }
+  try { w = await getJson<Wx>('/api/weather/forecast'); } catch { return weatherTrouble(null)!; }
   if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
-  if (w.status !== 'ok' || !w.daily) return { say: 'I can’t get the weather right now.' };
+  if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
   const d = w.daily, when = day ? 'tomorrow' : 'today';
   const chance = d.precipitation_probability_max[day] ?? 0, code = d.weather_code[day];
   if (rainOnly) {
