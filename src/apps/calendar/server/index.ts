@@ -15,7 +15,7 @@ import { manifest } from '../manifest.ts';
 import { events, eventsBetween, saveConfig, status } from './calendar.ts';
 import { rangeBounds } from './range.ts';
 import { cachedConnectorEvents, connectorEvents } from './connector.ts';
-import { addLocalEvent, deleteLocalEvent, localEventsBetween, updateLocalEvent } from './local.ts';
+import { addLocalEvent, deleteLocalEvent, localEventsIfReadable, updateLocalEvent } from './local.ts';
 import { loadFlags, setShown } from './calendar-shown.ts';
 import { calendarsFor } from '../web/calendars.ts';
 import { connectorForRange, mergeRange, type ConnectorRead, type RangeAnswer } from './range-merge.ts';
@@ -34,10 +34,14 @@ async function connectorFor(b: { from: number; to: number }, auto: boolean): Pro
 
 /** The range from every calendar: the local events, the ICS events when there is an address, and with no address the connector's (mergeRange). */
 async function rangeWithLocal(b: { from: number; to: number }, refresh: boolean, auto: boolean): Promise<RangeAnswer> {
-  const local = localEventsBetween(b.from, b.to);
+  const localRead = localEventsIfReadable(b.from, b.to);
   const ext = await eventsBetween(b.from, b.to, 3000, refresh);
-  return mergeRange(ext, local, ext.status === 'not_set' ? await connectorFor(b, auto) : null);
+  const merged = mergeRange(ext, localRead ?? [], ext.status === 'not_set' ? await connectorFor(b, auto) : null);
+  // the ClaudeOS events could not be read: the other events still show, and the page is told why
+  return localRead ? merged : { ...merged, error: merged.error ?? LOCAL_UNREADABLE, stale: true };
 }
+
+const LOCAL_UNREADABLE = 'The ClaudeOS calendar on the PC couldn’t be read, so its events are not shown.';
 
 const app: ServerApp = {
   id: manifest.id,
@@ -55,7 +59,9 @@ const app: ServerApp = {
     // the ClaudeOS calendar on its own: no account, no Claude turn. Each change is checked on the PC (local.ts).
     { method: 'GET', path: 'local', handle: ({ query }) => {
       const b = rangeBounds(query.get('from') ?? '', query.get('to') ?? '');
-      return b ? { status: 'ok', events: localEventsBetween(b.from, b.to) } : { status: 'error', events: [], error: 'That range is not valid.' };
+      if (!b) return { status: 'error', events: [], error: 'That range is not valid.' };
+      const ev = localEventsIfReadable(b.from, b.to);
+      return ev ? { status: 'ok', events: ev } : { status: 'error', events: [], error: LOCAL_UNREADABLE };
     } },
     { method: 'POST', path: 'local-add', handle: ({ body }) => addLocalEvent(body) },
     { method: 'POST', path: 'local-update', handle: ({ body }) => updateLocalEvent(body) },

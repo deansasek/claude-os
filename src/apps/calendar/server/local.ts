@@ -84,11 +84,17 @@ function change(fn: (events: LocalEvent[]) => Change): LocalResult {
 
 const sorted = (events: LocalEvent[]): LocalEvent[] => [...events].sort((a, b) => a.start - b.start || a.end - b.end || a.title.localeCompare(b.title));
 
-/** The local events that overlap [from, to) (ms), in order. An event over midnight is listed on each day it touches. */
-export function localEventsBetween(from: number, to: number): LocalEvent[] {
+/** The local events that overlap [from, to) (ms), in order. An event over midnight is listed on each day it touches.
+ *  null when the file is there but cannot be read (an empty list would look like a calendar with nothing in it). */
+export function localEventsIfReadable(from: number, to: number): LocalEvent[] | null {
   const all = load();
-  if (!all) return [];
+  if (!all) return null;
   return sorted(all).filter(e => e.start < to && (e.end > from || (e.end === e.start && e.start >= from)));
+}
+
+/** The local events that overlap [from, to) (ms), in order; [] when the file cannot be read. */
+export function localEventsBetween(from: number, to: number): LocalEvent[] {
+  return localEventsIfReadable(from, to) ?? [];
 }
 
 /** Add one event. Its id is made here; the page never picks it. */

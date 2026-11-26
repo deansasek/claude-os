@@ -99,3 +99,14 @@ test('a calendar file that cannot be read refuses changes and is not overwritten
   assert.equal(fs.readFileSync(L.FILE, 'utf8'), '{ not json');
   assert.deepEqual(L.localEventsBetween(at(10), at(11)), []);
 });
+
+test('a ClaudeOS calendar file that cannot be read is not an empty calendar', async () => {
+  const bad = path.join(dir, 'corrupt', 'calendar-local.json');
+  fs.mkdirSync(path.dirname(bad), { recursive: true });
+  fs.writeFileSync(bad, '{ not json');
+  process.env.CLAUDEOS_CALENDAR_LOCAL_FILE = bad;
+  const fresh = await import(`../src/apps/calendar/server/local.ts?unreadable=${Date.now()}`);
+  assert.equal(fresh.localEventsIfReadable(0, Date.now() + 1e9), null);
+  assert.deepEqual(fresh.localEventsBetween(0, Date.now() + 1e9), []);
+  process.env.CLAUDEOS_CALENDAR_LOCAL_FILE = path.join(dir, 'calendar-local.json');
+});
