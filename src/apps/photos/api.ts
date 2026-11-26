@@ -14,7 +14,7 @@ export const THUMB_MAX_BYTES = 200 * 1024;
 export const thumbUrl = (id: string): string => `/api/photos/file?id=${encodeURIComponent(id)}&size=thumb`;
 export interface PhotoItem { id: string; at: string; url: string; hasThumb: boolean }
 export interface PhotoDay { day: string; photos: PhotoItem[] }
-export interface PhotoList { ok: boolean; days: PhotoDay[] }
+export interface PhotoList { ok: boolean; days: PhotoDay[]; error?: string }   // error: the PC could not read its folder
 export interface UploadResult { ok: boolean; id?: string; url?: string; error?: string }
 export interface PhotoDeleteResult { ok: boolean; error?: string; deleted?: string[]; missing?: string[]; failed?: string[] }
 /** The most ids one delete request carries. The PC refuses more (server/store.ts MAX_PER_DELETE: keep them equal). */

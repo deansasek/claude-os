@@ -112,16 +112,19 @@ export function deletePhotos(ids: string[]): { deleted: string[]; missing: strin
 export interface PhotoItem { id: string; at: string; url: string; hasThumb: boolean }
 export interface PhotoDay { day: string; photos: PhotoItem[] }
 
-/** Every photo, newest first, grouped by day. */
+/** A folder that is not there (ENOENT). */
+const missing = (e: unknown): boolean => (e as NodeJS.ErrnoException).code === 'ENOENT';
+
+/** Every photo, newest first, grouped by day. No folder yet means no photos; any other read error is thrown, so the caller can say so. */
 export function listPhotos(limit = 500): PhotoDay[] {
   const out: PhotoDay[] = [];
   let days: string[] = [];
-  try { days = fs.readdirSync(PHOTOS).filter(d => DAY.test(d)).sort().reverse(); } catch { return out; }
+  try { days = fs.readdirSync(PHOTOS).filter(d => DAY.test(d)).sort().reverse(); } catch (e) { if (missing(e)) return out; throw e; }
   let left = limit;
   for (const day of days) {
     if (left <= 0) break;
     const names = new Set<string>();
-    try { for (const f of fs.readdirSync(path.join(PHOTOS, day))) names.add(f); } catch { continue; }
+    try { for (const f of fs.readdirSync(path.join(PHOTOS, day))) names.add(f); } catch (e) { if (missing(e)) continue; throw e; }
     const items: { id: string; mtime: number; hasThumb: boolean }[] = [];
     for (const f of names) {
       // a thumbnail is named <id>_thumb.jpg: it is not a photo of its own

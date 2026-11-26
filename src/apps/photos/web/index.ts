@@ -134,7 +134,9 @@ async function load(): Promise<void> {
   try {
     const l = await getJson<PhotoList>('/api/photos/list');
     days = l.days || [];
-    $('phNote').hidden = true;
+    // the PC answered but could not read its folder: say so, rather than an empty gallery
+    $('phNote').hidden = l.ok !== false;
+    if (l.ok === false) $('phNote').textContent = l.error || 'The PC couldn’t read its photos folder.';
   } catch {
     $('phNote').hidden = false;
     $('phNote').textContent = 'Can’t reach your PC just now. The photos will show when it answers.';
