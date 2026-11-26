@@ -731,11 +731,15 @@ function togglePin(e: { id?: string; pinned?: boolean }): void {
   const id = openId;
   if (!id || !e.id) return;
   const on = !e.pinned, message = e.id;
-  e.pinned = on;
-  repaintLog(); paintPins();
-  report(on ? 'pin' : 'unpin');
+  // the change is shown only once the PC has saved it: a failed save, or Cancel on the PIN pad, leaves the message as it was
   void withPin(async () => {
-    await call<{ ok: boolean; error?: string }>('pin', { session: id, message, on });
+    let ok = false;
+    try { ok = (await call<{ ok: boolean; error?: string }>('pin', { session: id, message, on })).ok; }
+    catch (err) { if ((err as Error).message === 'locked_out') throw err; }
+    if (!ok) { report('pin-failed'); flashSub('Couldn’t pin that. Try again.'); return; }
+    e.pinned = on;
+    repaintLog(); paintPins();
+    report(on ? 'pin' : 'unpin');
     void refresh();
   });
 }
