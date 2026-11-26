@@ -50,7 +50,15 @@ const readJson = <T>(k: string, fallback: T): T => {
   try { return (JSON.parse(store.get(k) || 'null') as T | null) ?? fallback; } catch { return fallback; }
 };
 
-let recipes: Recipe[] = readJson<unknown[]>(LIST_KEY, []).map(fromStored).filter((r): r is Recipe => r !== null);
+// A stored list that is not an array reads as empty, and an entry that is not an object is left out. Nothing is written back on load.
+const readList = <T>(k: string): T[] => {
+  const v = readJson<unknown>(k, null);
+  return Array.isArray(v) ? (v as T[]) : [];
+};
+const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object';
+const isTimer = (t: unknown): t is CookTimer => isObj(t) && typeof t.id === 'string' && typeof t.name === 'string' && typeof t.end === 'number' && Number.isFinite(t.end);
+
+let recipes: Recipe[] = readList<unknown>(LIST_KEY).filter(isObj).map(fromStored).filter((r): r is Recipe => r !== null);
 let screen: Screen = { t: 'discover' };
 let pending: string | null = store.get(PENDING_KEY);
 let pendingKind: PendingKind = (store.get(PENDING_KIND_KEY) as PendingKind | null) ?? 'create';
@@ -59,7 +67,7 @@ let draft: Draft | null = null;          // a reply waiting for Save or Discard
 let msg = '';
 let askTime = false;                     // Suggest for tonight: the time choice is open
 let confirmDelete = false;
-let timers: CookTimer[] = readJson<CookTimer[]>(TIMERS_KEY, []);
+let timers: CookTimer[] = readList<unknown>(TIMERS_KEY).filter(isTimer);
 let tick: number | undefined;
 
 // the Discover results: TheMealDB random meals, or the matches for the search
@@ -70,7 +78,7 @@ let resultsError = '';
 let seq = 0;                             // the latest search wins
 
 // What do you have: the chips (kept), the Want to buy switch, the field's text, the ingredient names from the hub, and the results
-let pantry: Chip[] = readJson<Chip[]>(PANTRY_KEY, [])
+let pantry: Chip[] = readList<Chip>(PANTRY_KEY)
   .filter(c => !!c && typeof c.name === 'string').map(c => ({ name: c.name, kind: 'have' as const })).slice(0, PANTRY_MAX);
 let sheetOpen = false;                  // the shelf sheet: every ingredient TheMealDB knows, tap to pick
 let shelfQuery = '';                    // the sheet's search text
