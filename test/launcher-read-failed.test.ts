@@ -19,6 +19,10 @@ test('paintEmpty reads tabOk and shows the read-failed message', () => {
   assert.match(body, /Couldn’t read the tablet’s apps\. Open Apps again to retry\./);
 });
 
+test('toggleAllowed shows the change-failed message when setAllowed throws', () => {
+  assert.match(fn('toggleAllowed'), /showSheetNote\('Couldn’t change it\. Check the tablet app is up to date, then try again\.'\)/);
+});
+
 test('openSheet tracks a failed read and paintList shows the read-failed message', () => {
   assert.match(fn('openSheet'), /launchOk = false/);
   assert.match(fn('paintList'), /Couldn’t read the tablet’s apps\. Close this and try again\./);
