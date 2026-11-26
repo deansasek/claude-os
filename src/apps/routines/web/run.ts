@@ -90,7 +90,8 @@ async function doStep(s: Step, deadline: number): Promise<string> {
     // cachedOnly: a timed routine never starts a Claude read of the connector (only the Calendar app and voice do)
     case 'calendar': return (await until(calendarCommand('today', true), deadline, null))?.say ?? 'The calendar didn’t answer in time.';
     case 'scene': {
-      const r = await until(postJson<HaResult & { name?: string }>('/api/home-assistant/scene', { entity_id: s.entity_id }), deadline, null);
+      const r = await until(postJson<HaResult & { name?: string }>('/api/home-assistant/scene', { entity_id: s.entity_id }).catch(() => 'offline' as const), deadline, null);
+      if (r === 'offline') return 'The PC isn’t answering, so the scene didn’t change.';
       if (r?.ok) return '';   // the lights changing say it
       return r ? `Couldn’t set the scene ${r.name || 'for this routine'}.` : 'The scene didn’t answer in time.';
     }
@@ -114,7 +115,8 @@ async function doStep(s: Step, deadline: number): Promise<string> {
     }
     case 'lists': {
       // the open items of one list, read aloud (the same lists the Lists app and voice use)
-      const all = await until(readLists(), deadline, null);
+      const all = await until(readLists().catch(() => 'offline' as const), deadline, null);
+      if (all === 'offline') return 'The PC isn’t answering, so the list can’t be read.';
       if (!all) return 'The lists didn’t answer in time.';
       const l = all.find(x => x.id === s.list);
       if (!l) return 'That list isn’t there.';

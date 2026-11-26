@@ -40,6 +40,17 @@ test('a Home tap on an offline PC says the PC is not answering, not that the rou
   assert.doesNotMatch(body.slice(0, body.indexOf("res === 'gone'")), /That routine is gone/);
 });
 
+test('the scene and lists steps report a failed read as offline, and a real timeout as late', () => {
+  const scene = between(run, "case 'scene': {", "case 'timer': {");
+  assert.match(scene, /\.catch\(\(\) => 'offline' as const\), deadline, null\);/);
+  assert.match(scene, /if \(r === 'offline'\) return 'The PC isn’t answering, so the scene didn’t change\.';/);
+  assert.match(scene, /'The scene didn’t answer in time\.'/);
+  const lists = between(run, "case 'lists': {", 'const l = all.find');
+  assert.match(lists, /readLists\(\)\.catch\(\(\) => 'offline' as const\), deadline, null\);/);
+  assert.match(lists, /if \(all === 'offline'\) return 'The PC isn’t answering, so the list can’t be read\.';/);
+  assert.match(lists, /'The lists didn’t answer in time\.'/);
+});
+
 test('refresh() clears only its own failure note on success, and keeps the Run now "gone" note', () => {
   const body = between(routines, 'async function refresh(): Promise<void> {', 'async function loadScenes(');
   assert.match(body, /if \(note === refreshNote\) note = ''; refreshNote = '';/);
