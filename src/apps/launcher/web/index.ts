@@ -441,6 +441,8 @@ let sessions: SearchSources['sessions'] = [];
 let loadedAt = 0;
 let searchReadFailed = false;
 let listsReadFailed = false;
+let listsRead = false;      // true once a lists read has succeeded
+let sessionsRead = false;   // true once a Claude sessions read has succeeded
 
 async function loadSearchData(): Promise<void> {
   if (Date.now() - loadedAt < 60e3) return;   // read again at most once a minute
@@ -448,18 +450,18 @@ async function loadSearchData(): Promise<void> {
   try {
     lists = (await readLists()).map(l => ({ id: l.id, name: l.name, items: l.items.map(i => i.text) }));
     listsReadFailed = false;
+    listsRead = true;
   } catch {
-    lists = [];
-    loadedAt = 0;   // read again on the next search open
+    loadedAt = 0;   // read again on the next search open; keep the last good lists
     listsReadFailed = true;
   }
   try {
     const u = await getJson<{ sessions?: { id: string | null; title: string; folder: string }[] }>('/api/claude/usage');
     sessions = (u.sessions ?? []).filter(s => !!s.id).map(s => ({ id: s.id!, title: s.title, folder: s.folder }));
     searchReadFailed = false;
+    sessionsRead = true;
   } catch {
-    sessions = [];
-    loadedAt = 0;   // read again on the next search open
+    loadedAt = 0;   // read again on the next search open; keep the last good sessions
     searchReadFailed = true;
   }
   if (query) paintResults();
@@ -467,6 +469,19 @@ async function loadSearchData(): Promise<void> {
 
 function sources(): SearchSources {
   return { apps: allTiles().map(t => ({ key: t.key, name: t.name })), lists, sessions };
+}
+
+/** Say what could not be read. A source never read says "couldn't be read"; a source with kept data says it may be out of date. */
+function emptyReadNote(): string {
+  const listsNever = listsReadFailed && !listsRead;
+  const sessionsNever = searchReadFailed && !sessionsRead;
+  const kept = (listsReadFailed && listsRead) || (searchReadFailed && sessionsRead);
+  let note = '';
+  if (listsNever && sessionsNever) note = ' Lists and Claude sessions couldn’t be read from your PC.';
+  else if (listsNever) note = ' Lists couldn’t be read from your PC.';
+  else if (sessionsNever) note = ' Claude sessions couldn’t be read from your PC.';
+  if (kept) note += ' The results may be out of date.';
+  return note;
 }
 
 /** The results replace the grid while a search has words in it. */
@@ -477,7 +492,7 @@ function paintResults(): void {
   $('lnResults').hidden = !on;
   $('lnResults').innerHTML = !on ? '' : hits.length
     ? hits.map((h, i) => `<button class="ln-result hit" data-hit="${i}"><b>${esc(h.label)}</b><span>${esc(h.sub)}</span></button>`).join('')
-    : `<p class="ln-empty">Nothing matches “${esc(query)}”.${listsReadFailed && searchReadFailed ? ' Lists and Claude sessions couldn’t be read from your PC.' : listsReadFailed ? ' Lists couldn’t be read from your PC.' : searchReadFailed ? ' Claude sessions couldn’t be read from your PC.' : ''}</p>`;
+    : `<p class="ln-empty">Nothing matches “${esc(query)}”.${emptyReadNote()}</p>`;
   $('lnSearchText').textContent = query || 'Search';
   $('lnSearch').classList.toggle('has', on);
   $('lnSearchClear').hidden = !on;

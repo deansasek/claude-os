@@ -21,7 +21,35 @@ test('loadSearchData resets loadedAt and sets searchReadFailed when the sessions
 
 test('loadSearchData resets loadedAt and sets listsReadFailed when the lists read fails', () => {
   const body = fn('loadSearchData');
-  assert.match(body, /catch \{\s*lists = \[\];\s*loadedAt = 0;[^\n]*\n\s*listsReadFailed = true;\s*\}/);
+  assert.match(body, /catch \{\s*loadedAt = 0;[^\n]*\n\s*listsReadFailed = true;\s*\}/);
+});
+
+test('loadSearchData keeps the last good lists and sessions when a read fails', () => {
+  const body = fn('loadSearchData');
+  assert.doesNotMatch(body, /lists = \[\];/);
+  assert.doesNotMatch(body, /sessions = \[\];/);
+});
+
+test('loadSearchData records a successful lists or sessions read', () => {
+  const body = fn('loadSearchData');
+  assert.match(body, /listsReadFailed = false;\s*\n\s*listsRead = true;/);
+  assert.match(body, /searchReadFailed = false;\s*\n\s*sessionsRead = true;/);
+});
+
+test('paintResults says the results may be out of date when old data is kept', () => {
+  const note = fn('emptyReadNote');
+  assert.match(src, /function emptyReadNote\(\)/);
+  assert.match(note, /may be out of date/);
+  assert.match(note, /listsRead/);
+  assert.match(note, /sessionsRead/);
+  assert.match(fn('paintResults'), /emptyReadNote\(\)/);
+});
+
+test('paintResults says couldn’t be read only for a source never read', () => {
+  const note = fn('emptyReadNote');
+  assert.match(note, /couldn’t be read from your PC/);
+  assert.match(note, /listsReadFailed && !listsRead/);
+  assert.match(note, /searchReadFailed && !sessionsRead/);
 });
 
 test('loadSearchData clears listsReadFailed when the lists read succeeds', () => {
@@ -29,9 +57,9 @@ test('loadSearchData clears listsReadFailed when the lists read succeeds', () =>
 });
 
 test('paintResults uses searchReadFailed in the empty message', () => {
-  assert.match(fn('paintResults'), /searchReadFailed/);
+  assert.match(fn('emptyReadNote'), /searchReadFailed/);
 });
 
 test('paintResults uses listsReadFailed in the empty message', () => {
-  assert.match(fn('paintResults'), /listsReadFailed/);
+  assert.match(fn('emptyReadNote'), /listsReadFailed/);
 });
