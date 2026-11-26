@@ -83,6 +83,8 @@ function paintFacing(): void {
 async function refreshLast(): Promise<void> {
   try {
     const l = await getJson<PhotoList>('/api/photos/list?limit=1');
+    // the PC could not read its folder, so keep the thumbnail
+    if (l.ok === false) return;
     const p = l.days[0]?.photos[0];
     const img = $<HTMLImageElement>('caLastImg');
     // the thumbnail, as Photos' grid does; a photo with no thumb yet (the native one is still uploading, or the web
