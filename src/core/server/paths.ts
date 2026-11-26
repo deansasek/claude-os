@@ -60,7 +60,16 @@ export function readJsonOrSetAside<T>(file: string): T | null {
   try {
     fs.renameSync(file, dest);
     console.log(`${path.basename(file)} could not be read; it was kept as ${path.basename(dest)}`);
-  } catch { /* nothing more to do */ }
+  } catch (e) {
+    // A rename can fail while another program holds the file (EBUSY, EPERM). Copy it instead, so the
+    // next save can replace the original without losing its bytes.
+    try {
+      fs.copyFileSync(file, dest);
+      console.log(`${path.basename(file)} could not be read; a copy was kept as ${path.basename(dest)} (${(e as NodeJS.ErrnoException).code})`);
+    } catch (e2) {
+      console.log(`${path.basename(file)} could not be read and could not be kept (${(e2 as NodeJS.ErrnoException).code})`);
+    }
+  }
   return null;
 }
 

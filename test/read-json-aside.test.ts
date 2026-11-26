@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import { readJsonOrSetAside } from '../src/core/server/paths.ts';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-aside-'));
@@ -34,4 +34,17 @@ test('a second broken file is kept as .2.corrupt and the first .corrupt copy is 
   assert.equal(readJsonOrSetAside(file), null);
   assert.equal(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{ broken', 'the first copy is not replaced');
   assert.equal(fs.readFileSync(`${file}.2.corrupt`, 'utf8'), '{ second broken');
+});
+
+test('a broken file that cannot be renamed is still copied to .corrupt, so its bytes are kept', () => {
+  const locked = path.join(dir, 'locked.json');
+  fs.writeFileSync(locked, '{ locked broken');
+  mock.method(fs, 'renameSync', () => { throw Object.assign(new Error('busy'), { code: 'EBUSY' }); });
+  try {
+    assert.equal(readJsonOrSetAside(locked), null);
+  } finally {
+    mock.restoreAll();
+  }
+  assert.equal(fs.readFileSync(`${locked}.corrupt`, 'utf8'), '{ locked broken', 'the copy holds the original bytes');
+  assert.equal(fs.readFileSync(locked, 'utf8'), '{ locked broken', 'the original is left in place');
 });
