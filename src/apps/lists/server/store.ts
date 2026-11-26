@@ -11,7 +11,7 @@ import path from 'node:path';
 import { STATE, writeJsonFile } from '../../../core/server/paths.ts';
 import { recordBought } from './history.ts';
 import {
-  BUILT_IN, ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, idFor, isBuiltIn, renameItem,
+  BUILT_IN, ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, fullText, idFor, isBuiltIn, renameItem,
   restoreItemAt,
   type FamilyList, type ListItem, type ListKind, type ListsResult,
 } from '../api.ts';
@@ -139,7 +139,7 @@ export function addItem(listRef: unknown, rawText: unknown, wantId?: unknown): L
     if ('error' in t) return t.error;
     const same = l.items.find(i => i.text.toLowerCase() === t.text.toLowerCase());
     if (same) { same.done = false; return { item: clone(same) }; }
-    if (l.items.length >= MAX_ITEMS) return `${l.name} is full (${MAX_ITEMS} items). Clear the ticked ones or remove some first.`;
+    if (l.items.length >= MAX_ITEMS) return fullText(l);
     const item: ListItem = { id: typeof wantId === 'string' && ITEM_ID.test(wantId) ? wantId : newItemId(), text: t.text, done: false, at: new Date().toISOString() };
     while (l.items.some(i => i.id === item.id)) item.id = newItemId();
     l.items.push(item);

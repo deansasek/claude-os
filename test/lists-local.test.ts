@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
-import type { FamilyList } from '../src/apps/lists/api.ts';
+import { MAX_ITEMS, type FamilyList } from '../src/apps/lists/api.ts';
 import { applyOp, remapIds, type Op } from '../src/apps/lists/web/local.ts';
 
 // The store reads its file path when it loads, so the scratch file is set before the import.
@@ -46,6 +46,15 @@ test('the same rules as the PC: duplicates, ticks, notes and the built-in lists'
   assert.equal(applyOp(lists, { path: 'edit', body: { list: 'shopping', id: 'i1', text: 'Oat milk' } }).item?.text, 'Oat milk');
   const ticked = applyOp(lists, { path: 'tick', body: { list: 'shopping', id: 'i1', done: true } }).lists;
   assert.equal(applyOp(ticked, { path: 'clear-done', body: { list: 'shopping' } }).removed, 1);
+});
+
+test('a full notes list says so, without the ticked advice (notes are never ticked)', () => {
+  const lists = start();
+  lists[2].items = Array.from({ length: MAX_ITEMS }, (_, n) => ({ id: `i${n}`, text: `Note ${n}`, done: false, at: '2026-01-01T00:00:00.000Z' }));
+  const r = applyOp(lists, { path: 'add', body: { list: 'notes', text: 'One more' } });
+  assert.equal(r.ok, false);
+  assert.equal(r.error, `Notes is full (${MAX_ITEMS} notes). Delete some first.`);
+  assert.equal(/ticked/.test(r.error ?? ''), false);
 });
 
 test('remapIds points later changes at the PC id', () => {

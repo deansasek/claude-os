@@ -45,6 +45,12 @@ export interface ListsResult {
   retry?: boolean;                     // the PC couldn't read or save its file: send the change again later
 }
 
+/** The message when a list is full: notes are never ticked, so only checklists are told to clear ticked items. */
+export function fullText(l: FamilyList): string {
+  if (l.kind === 'notes') return `${l.name} is full (${l.items.length} notes). Delete some first.`;
+  return `${l.name} is full (${MAX_ITEMS} items). Clear the ticked ones or remove some first.`;
+}
+
 /** Change one item's text on a list (in place; pure, no file): the changed item, or why not.
  *  The same text on another item is refused, so a list never holds the same thing twice. */
 export function renameItem(l: FamilyList, id: unknown, rawText: unknown): ListItem | string {
@@ -68,7 +74,7 @@ export function restoreItemAt(l: FamilyList, raw: unknown, index: unknown): List
   if (!text) return 'Type the item text.';
   if (text.length > MAX_TEXT) return `That’s too long: ${MAX_TEXT} characters at most.`;
   if (l.items.some(i => i.id === r.id || i.text.toLowerCase() === text.toLowerCase())) return `${text} is already on ${l.name}.`;
-  if (l.items.length >= MAX_ITEMS) return `${l.name} is full (${MAX_ITEMS} items). Clear the ticked ones or remove some first.`;
+  if (l.items.length >= MAX_ITEMS) return fullText(l);
   const at = typeof r.at === 'string' && !Number.isNaN(Date.parse(r.at)) ? r.at : new Date().toISOString();
   const item: ListItem = { id: r.id, text, done: l.kind === 'check' && r.done === true, at };
   const pos = typeof index === 'number' && Number.isInteger(index) ? Math.min(Math.max(index, 0), l.items.length) : l.items.length;

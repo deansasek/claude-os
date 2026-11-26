@@ -3,7 +3,7 @@
 // answers (web/index.ts flush), then takes the PC's lists, which also hold what Claude changed there meanwhile.
 // The rules match the PC's (server/store.ts), which checks every change again.
 import {
-  ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, idFor, isBuiltIn, renameItem,
+  ITEM_ID, LIST_ID, MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, findList, fullText, idFor, isBuiltIn, renameItem,
   restoreItemAt, type FamilyList, type ListItem, type ListsResult,
 } from '../api.ts';
 
@@ -45,7 +45,7 @@ export function applyOp(lists: FamilyList[], op: Op): ListsResult {
       if (text.length > MAX_TEXT) return fail(`That’s too long: ${MAX_TEXT} characters at most.`);
       const same = l.items.find(i => i.text.toLowerCase() === text.toLowerCase());
       if (same) { same.done = false; b.id = same.id; return { ok: true, lists: next, item: same }; }
-      if (l.items.length >= MAX_ITEMS) return fail(`${l.name} is full (${MAX_ITEMS} items). Clear the ticked ones or remove some first.`);
+      if (l.items.length >= MAX_ITEMS) return fail(fullText(l));
       const free = typeof b.id === 'string' && ITEM_ID.test(b.id) && !l.items.some(i => i.id === b.id);
       const item: ListItem = { id: free ? b.id as string : newItemId(), text, done: false, at: new Date().toISOString() };
       l.items.push(item);
