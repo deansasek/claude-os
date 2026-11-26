@@ -7,7 +7,7 @@
 import { $, esc, report, store } from '../../../../core/web/dom.ts';
 import { Keyboard } from '../../../../core/web/keyboard.ts';
 import type { LiveSession } from '../../api.ts';
-import { archiveEmpty, emptyText, folded, folderLive, groups, isLive, searchEmpty, stateOf, when, type Row } from './sidebar-groups.ts';
+import { archiveEmpty, emptyText, foldChoices, folded, folderLive, groups, isLive, searchEmpty, stateOf, when, type Row } from './sidebar-groups.ts';
 import { historyArchivedView, historyFailed, historyLoading, historyNow, historyOlderFailed, historyQuery, historyTick, loadOlder, onHistoryChange, setQuery } from './history.ts';
 
 export { historyTitle } from './history.ts';
@@ -17,13 +17,7 @@ const MAX_ROWS = 400;              // never draw more than this many rows
 
 // fold state: explicit choices per folder name (older builds kept a plain list of folded names)
 const KEY = 'claude.sb.fold';
-const choice = new Map<string, boolean>((() => {
-  try {
-    const v = JSON.parse(store.get(KEY) || 'null') as [string, boolean][] | null;
-    if (v) return v;
-    return (JSON.parse(store.get('claude.sb.folded') || '[]') as string[]).map(n => [n, true] as [string, boolean]);
-  } catch { return []; }
-})());
+const choice = new Map<string, boolean>(foldChoices(store.get(KEY), store.get('claude.sb.folded')));
 
 let shutNow = new Map<string, boolean>();   // as last drawn, so a tap flips what you see
 export function toggleFolder(key: string): void {

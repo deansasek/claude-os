@@ -145,3 +145,13 @@ test('a failed search says the PC cannot be reached; a search with no matches sa
   assert.equal(searchEmpty('x', true), 'Can’t reach your PC.');
   assert.equal(searchEmpty('x', false), 'No sessions match “x”.');
 });
+
+test('a saved fold state that is not a list of pairs is left out, and the old list of names is used', async () => {
+  const { foldChoices } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
+  assert.deepEqual(foldChoices('{}', null), []);
+  assert.deepEqual(foldChoices('["x"]', null), []);
+  assert.deepEqual(foldChoices('[["a",true],["b","yes"],[1,false],"c",["d",false]]', null), [['a', true], ['d', false]]);
+  assert.deepEqual(foldChoices('{ broken', null), []);
+  assert.deepEqual(foldChoices(null, '["Work","Home"]'), [['Work', true], ['Home', true]]);
+  assert.deepEqual(foldChoices(null, '{}'), []);
+});
