@@ -16,3 +16,7 @@ test('a known total gives the rounded pct, capped at 100', () => {
 test('zero bytes with an unknown total gives Starting', () => {
   assert.deepEqual(runningMeta(0, 0), { pct: null, text: 'Starting' });
 });
+
+test('zero bytes with a known total gives Starting and the total', () => {
+  assert.deepEqual(runningMeta(0, 2 * 1048576), { pct: 0, text: 'Starting · 2.0 MB' });
+});
