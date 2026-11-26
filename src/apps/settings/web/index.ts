@@ -574,13 +574,13 @@ function paintInstructions(): void {
   v.textContent = instructions || 'Add instructions, like “Keep answers short” or “I’m planning a trip to Lisbon”.';
   v.classList.toggle('st-unset', !instructions);
   $('stInstrNote').textContent = instructionsLoaded
-    ? 'Tap to write them. Claude follows them in sessions you start from now on.'
+    ? (instructionsFailed ? 'Couldn’t reach your PC, so these may be out of date.' : 'Tap to write them. Claude follows them in sessions you start from now on.')
     : instructionsFailed ? 'Couldn’t reach your PC. Your instructions show when it’s back.' : 'Checking your PC…';
 }
 async function editInstructions(): Promise<void> {
-  if (!instructionsLoaded) {
+  if (!instructionsLoaded || instructionsFailed) {
     await loadInstructions();
-    if (!instructionsLoaded) { confirmSheet('Couldn’t reach your PC', 'Try again when it is back on.', 'OK', () => {}); return; }
+    if (!instructionsLoaded || instructionsFailed) { confirmSheet('Couldn’t reach your PC', 'Try again when it is back on.', 'OK', () => {}); return; }
   }
   Keyboard.open({
     value: instructions, placeholder: 'How Claude should work with you', done: 'Save', autoCap: true, max: INSTRUCTIONS_MAX,
