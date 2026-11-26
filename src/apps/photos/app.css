@@ -39,6 +39,9 @@
 #app-photos .ph-stage img.instant { transition: none; }   /* while a finger moves it: no glide behind the finger */
 #app-photos .ph-stage img.swap { animation: ph-swap var(--dur-base) var(--ease-out); }
 @keyframes ph-swap { from { opacity: 0; transform: translateX(var(--from, 0)); } }
+/* a picture that cannot load: a short note in its place (index.ts sets the text) */
+#app-photos .ph-missing { margin: 0; padding: 0 24px; text-align: center; font: 400 18px var(--serif); line-height: 1.45; color: var(--t3); }
+#app-photos .ph-missing[hidden] { display: none; }
 /* previous / next: quiet round buttons at the picture's sides; faded (not hidden) at either end */
 #app-photos .ph-nav { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; top: 50%; margin-top: -24px; z-index: 1;
   width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; color: var(--t2);
@@ -53,6 +56,7 @@
 #app-photos .ph-selectbtn[hidden] { display: none; }
 #app-photos .ph-foot { display: flex; align-items: center; justify-content: center; gap: 16px; min-height: 52px; }
 #app-photos .ph-ask { all: unset; cursor: pointer; padding: 12px 24px; border-radius: 12px; background: var(--text); color: var(--bg); font: 500 16px var(--sans); }
+#app-photos .ph-ask:disabled { opacity: .45; cursor: default; }
 /* a photo whose file is gone (deleted on the PC, or the picture cannot load): a quiet card, not a broken image */
 #app-photos .ph-cell.gone img { display: none; }
 #app-photos .ph-cell.gone::after { content: 'Photo removed'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
