@@ -157,6 +157,12 @@ function setEditing(on: boolean): void {
   $('lnEdit').setAttribute('aria-pressed', String(on));
   $('lnHint').hidden = !on;
   $('lnAdd').hidden = !(on && tabletSection);
+  paintEmpty();
+}
+
+/** The empty message. Edit mode and a search with results hide it, unless the tablet has no apps. */
+function paintEmpty(): void {
+  const on = editing;
   const tiles = [...$('lnGrid').querySelectorAll<HTMLElement>('.ln-tile')];
   const empty = $('lnEmpty');
   if (tiles.length && !on && tiles.every(t => t.classList.contains('off'))) {
@@ -437,6 +443,7 @@ function paintResults(): void {
   $('lnSearch').classList.toggle('has', on);
   $('lnSearchClear').hidden = !on;
   if (on) $('lnEmpty').hidden = true;
+  else paintEmpty();
 }
 
 function clearSearch(): void {
