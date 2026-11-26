@@ -63,6 +63,8 @@ test('instructions that cannot be read are reported as an error, not as none sav
     assert.equal(Fresh.instructionsForPrompt(), '');
     fs.rmdirSync(INSTRUCTIONS);
     fs.writeFileSync(INSTRUCTIONS, 'Be brief.');
+    // A new session's prompt reads the file again, without Settings opening first.
+    assert.equal(Fresh.instructionsForPrompt(), "The user's instructions: Be brief.");
     // The next read succeeds, so the error goes away and the saved text comes back.
     assert.deepEqual(Fresh.instructionsView(), { text: 'Be brief.' });
   } finally {
