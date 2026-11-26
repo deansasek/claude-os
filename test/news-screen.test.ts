@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import type { NewsFeedResponse, NewsItem } from '../src/apps/news/api.ts';
 import { parseFeed } from '../src/apps/news/web/rss.ts';
 import {
-  ago, linkFor, pictureFor, POLL_MS, readerFor, screenFor, SHOW_IMAGES, staleNotes, STALE_TEXT, storiesById, storyKey, ERROR_TEXT, NO_FEED_TEXT, NO_SUMMARY_TEXT,
+  ago, FEED_ERROR_TEXT, keepStoriesOnError, linkFor, pictureFor, POLL_MS, readerFor, screenFor, SHOW_IMAGES, staleNotes, STALE_TEXT, storiesById, storyKey, ERROR_TEXT, NO_FEED_TEXT, NO_SUMMARY_TEXT,
 } from '../src/apps/news/web/screen.ts';
 
 const T = '2026-11-24T10:00:00Z';
@@ -171,15 +171,32 @@ test('a failed refresh with stories on screen gets the stale note, in the page c
   assert.deepEqual(staleNotes(), [{ sourceId: '', text: STALE_TEXT }]);
 });
 
-test('load(): the stale branch shows the note, restores topicsDirty and sets loadedAt to 0', () => {
+test('keepStoriesOnError: an error answer keeps the stories only when stories are on screen and topics are not dirty', () => {
+  const err: NewsFeedResponse = { status: 'error', updated: T, items: [], sources: [bbc(false, true), npr(false, true)] };
+  const ok: NewsFeedResponse = { status: 'ok', updated: T, items: [story('a', 'bbc')], sources: [bbc(), npr()] };
+  assert.equal(keepStoriesOnError(err, true, false), true);    // error with stories keeps them
+  assert.equal(keepStoriesOnError(err, false, false), false);  // error with no stories shows the error screen
+  assert.equal(keepStoriesOnError(ok, true, false), false);    // ok never takes this path
+  assert.equal(keepStoriesOnError(err, true, true), false);    // error after a topic change shows the error screen
+  assert.equal(keepStoriesOnError(null, true, false), false);  // a failed request has its own branch
+});
+
+test('the feed-error note says the feeds did not answer, and the unreachable-PC note keeps its own copy', () => {
+  assert.equal(FEED_ERROR_TEXT, 'The news feeds did not answer, so these stories may be out of date.');
+  assert.deepEqual(staleNotes(FEED_ERROR_TEXT), [{ sourceId: '', text: FEED_ERROR_TEXT }]);
+  assert.deepEqual(staleNotes(), [{ sourceId: '', text: STALE_TEXT }]);
+});
+
+test('load(): the keep branch shows the note, restores topicsDirty only for a failed request, and sets loadedAt to 0', () => {
   const src = fs.readFileSync(new URL('../src/apps/news/web/index.ts', import.meta.url), 'utf8');
   const start = src.indexOf('async function load()');
   const end = src.indexOf('// ---------- opening the original story');
   assert.ok(start >= 0 && end > start, 'load() is in index.ts');
   const body = src.slice(start, end);
   assert.match(body, /const wasDirty = topicsDirty;/);
-  const stale = body.slice(body.indexOf('if (!res && hasStories)'), body.indexOf('const s = screenFor(res)'));
-  assert.match(stale, /staleNotes\(\)/);
+  const stale = body.slice(body.indexOf('const keep ='), body.indexOf('const s = screenFor(res)'));
+  assert.match(stale, /keepStoriesOnError\(res, hasStories, wasDirty\)/);
+  assert.match(stale, /staleNotes\(res \? FEED_ERROR_TEXT : STALE_TEXT\)/);
   assert.match(stale, /if \(wasDirty\) topicsDirty = true;/);
   assert.match(stale, /loadedAt = 0;/);
   assert.match(stale, /return;/);
