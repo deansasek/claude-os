@@ -173,7 +173,7 @@ async function search(q: string): Promise<void> {
     if (mine !== seq) return;
     results = [];
     resultsState = 'error';
-    resultsError = 'No connection to TheMealDB.';
+    resultsError = 'Can’t reach your PC just now. Try again.';
   }
   render();
 }
@@ -424,7 +424,10 @@ async function findPantry(): Promise<void> {
     }
   } catch {
     if (mine !== foundSeq) return;
-    fail();
+    found = [];
+    foundMissing = [];
+    foundState = 'error';
+    foundError = 'Can’t reach your PC just now. Try again.';
   }
   paintPicker();
 }
