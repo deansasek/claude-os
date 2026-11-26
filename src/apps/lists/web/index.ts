@@ -23,6 +23,7 @@ import { MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, fullText, isB
 import { manifest } from '../manifest.ts';
 import { COPY_KEY, applyOp, type Op, type OpPath } from './local.ts';
 import { appendOp, readQueue, remapQueue, removeOp } from './queue.ts';
+import { keptSuggest } from './suggest.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 20e3;
@@ -99,7 +100,10 @@ async function flush(): Promise<void> {
 let suggest: string[] = [];
 async function loadSuggest(): Promise<void> {
   if (current !== 'shopping') { suggest = []; paintSuggest(); return; }
-  try { suggest = (await getJson<{ items: string[] }>(`${API}/suggest?list=shopping`)).items ?? []; } catch { suggest = []; }
+  let got: string[] | null = null;
+  try { got = (await getJson<{ items: string[] }>(`${API}/suggest?list=shopping`)).items ?? []; } catch { got = null; }
+  const open = (lists.find(l => l.id === 'shopping')?.items ?? []).map(i => i.text);
+  suggest = keptSuggest(suggest, got, open);
   paintSuggest();
 }
 function paintSuggest(): void {
