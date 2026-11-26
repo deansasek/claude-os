@@ -17,7 +17,7 @@ import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { PANTRY_MAX } from './pantry.ts';
 import {
-  RECIPE_PROMPT, adaptPrompt, cookStep, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, textRecipe, tonightPrompt, type Recipe,
+  RECIPE_PROMPT, adaptPrompt, cookStep, countWord, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, textRecipe, tonightPrompt, type Recipe,
 } from './recipe.ts';
 
 const API = `/api/${manifest.id}`;
@@ -256,7 +256,7 @@ function draftHtml(d: Draft): string {
   if (d.kind === 'recipe') {
     const r = d.recipe;
     return `<section class="rc-card"><span class="rc-kicker">Claude’s recipe</span><h2 class="rc-title">${esc(r.name)}</h2>`
-      + `<p class="rc-sub">${esc(meta(r)) || 'No serves or time given'} · ${r.ingredients.length} ingredients · ${r.steps.length} steps</p>`
+      + `<p class="rc-sub">${esc(meta(r)) || 'No serves or time given'} · ${countWord(r.ingredients.length, 'ingredient')} · ${countWord(r.steps.length, 'step')}</p>`
       + `<div class="rc-actions"><button class="rc-btn pri" data-act="open-draft">Open recipe</button>`
       + `<button class="rc-btn quiet" data-act="discard-draft">Not this one</button></div></section>`;
   }
@@ -485,7 +485,7 @@ function todayHtml(): string {
   const r = recipes[i];
   return `<button class="rc-today" data-act="open" data-src="saved" data-i="${i}">${photoHtml(r, 'rc-today-ph')}`
     + `<span class="rc-today-text"><span class="rc-kicker">Today, from your recipes</span>`
-    + `<span class="rc-today-name">${esc(r.name)}</span><span class="rc-sub">${esc(r.tag || meta(r) || `${r.steps.length} steps`)}</span></span></button>`;
+    + `<span class="rc-today-name">${esc(r.name)}</span><span class="rc-sub">${esc(r.tag || meta(r) || countWord(r.steps.length, 'step'))}</span></span></button>`;
 }
 
 function discoverHtml(): string {

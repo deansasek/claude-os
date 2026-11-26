@@ -94,6 +94,11 @@ export function textRecipe(reply: string): Recipe {
   };
 }
 
+/** A count with its noun: "1 step", "2 steps", "0 ingredients". `word` is the singular form. */
+export function countWord(n: number, word: string): string {
+  return `${n} ${n === 1 ? word : `${word}s`}`;
+}
+
 /** The text of one cook-mode step. The step number is clamped to the recipe's steps. */
 export function cookStep(r: Recipe, i: number): { heading: string; text: string; index: number; first: boolean; last: boolean } {
   const total = r.steps.length;
