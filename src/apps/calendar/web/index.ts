@@ -43,6 +43,7 @@ let viaConnector = false;   // the events are the connector's (today and tomorro
 let loading = false;
 let failed = false;
 let msg = '';               // a note that replaces the default one
+let addressMsg = '';        // the address row's note, kept apart from msg
 let timer: number | undefined;
 
 // Removing the calendar forgets its secret address on the PC, so it asks twice.
@@ -195,8 +196,8 @@ async function loadConnector(): Promise<void> {
 async function saveAddress(address: string): Promise<void> {
   let r: CalConfigResult | null = null;
   try { r = await postJson<CalConfigResult>(`${API}/config`, { address }); } catch { /* below */ }
-  if (r) { status = { configured: r.configured, address: r.address }; statusFailed = false; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
-  else msg = 'Couldn’t reach the PC. Try again in a moment.';
+  if (r) { status = { configured: r.configured, address: r.address }; statusFailed = false; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; addressMsg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
+  else { msg = 'Couldn’t reach the PC. Try again in a moment.'; addressMsg = 'Couldn’t reach the PC. Try again in a moment.'; }
   appSettingsChanged();
   await loadCalendars();
   await load(true);
@@ -561,7 +562,7 @@ function settingRows(): SettingRow[] {
   const unreachable = !s && statusFailed;   // no answer from the PC: the address may be saved there
   const rows: SettingRow[] = [
     { kind: 'action', id: 'address', title: 'Calendar address',
-      detail: msg || (unreachable ? 'The address shows when the PC is back.' : 'Your calendar’s secret address in iCal format (it ends in .ics). Kept only on the PC; ClaudeOS only reads the calendar.'),
+      detail: addressMsg || (unreachable ? 'The address shows when the PC is back.' : 'Your calendar’s secret address in iCal format (it ends in .ics). Kept only on the PC; ClaudeOS only reads the calendar.'),
       value: () => (unreachable ? 'Can’t reach the PC' : s?.configured ? s.address : 'Not set'), label: s?.configured ? 'Replace' : 'Add', run: editAddress },
   ];
   if (!s?.configured && !unreachable) {

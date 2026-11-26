@@ -23,6 +23,16 @@ test('saveAddress clears statusFailed when the PC answers', () => {
   assert.match(fn('saveAddress'), /statusFailed = false/);
 });
 
+test('saveAddress sets addressMsg for the address row', () => {
+  assert.match(fn('saveAddress'), /addressMsg = /);
+});
+
+test('settingRows reads addressMsg, not msg, in the Calendar address detail', () => {
+  const body = fn('settingRows');
+  assert.match(body, /detail: addressMsg \|\|/);
+  assert.doesNotMatch(body, /detail: msg \|\|/);
+});
+
 test('settingRows shows the can’t-reach text when status is null and statusFailed is true', () => {
   const body = fn('settingRows');
   assert.match(body, /const unreachable = !s && statusFailed/);
