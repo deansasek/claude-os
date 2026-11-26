@@ -109,13 +109,18 @@ export async function saveLocation(body: LocationUpdate): Promise<Weather> {
   const cfg = readJsonOrSetAside<Config>(CONFIG_FILE) ?? {};   // a bad file is set aside, not saved over
   if (body.lat != null && body.lon != null) {
     const lat = Number(body.lat), lon = Number(body.lon);
-    if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) throw new Error('bad coordinates');
+    if (!(lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)) return { status: 'error', saved: false, error: 'That place isn’t on the map.' };
     cfg.lat = Math.round(lat * 1e4) / 1e4; cfg.lon = Math.round(lon * 1e4) / 1e4;
     cfg.place = String(body.place || '').slice(0, 60);
     delete cfg.city;
   }
   if (body.units === 'fahrenheit' || body.units === 'celsius') cfg.units = body.units;
-  writeJsonFile(CONFIG_FILE, cfg, { indent: 2 });
+  // A failed write is said, not reported as a saved place: the caller reverts and shows it.
+  try { writeJsonFile(CONFIG_FILE, cfg, { indent: 2 }); }
+  catch (e) {
+    console.log('weather: could not save the place or units:', (e as NodeJS.ErrnoException).code ?? 'error');
+    return { status: 'error', saved: false, error: 'The PC couldn’t save the weather settings.' };
+  }
   wxCache = null;
   return weather();
 }
