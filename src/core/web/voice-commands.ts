@@ -36,7 +36,7 @@ import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay } from './voice-weather.ts';
-import { findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
+import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
@@ -444,15 +444,14 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
     }
     if (c.op === 'addMany') {
       // one add per item, the same route the Lists app uses; the reply says what went on
-      let ok = 0;
+      // a write the PC cannot take is queued on the tablet by writeList (and throws): the rest still go, and it is said
+      let ok = 0, waiting = 0;
       for (const text of c.texts) {
-        const r = await writeList('add', { list: c.list, text });
-        if (r?.ok) ok++;
+        try { const r = await writeList('add', { list: c.list, text }); if (r?.ok) ok++; }
+        catch { waiting++; }
       }
-      if (!ok) return { say: `I couldn’t add those to ${name}.` };
-      const words = c.texts.map(t => t.replace(/^./, ch => ch.toLowerCase()));
-      const said = words.length === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
-      return { say: ok === words.length ? `Added ${said} to ${name}.` : `Added ${ok} of ${words.length} to ${name}.`, react: 'hop' };
+      if (!ok && !waiting) return { say: `I couldn’t add those to ${name}.` };
+      return { say: addManyReply(c.texts, ok, waiting, name), react: 'hop' };
     }
     if (c.op === 'clear') {
       const r = await writeList('clear-done', { list: c.list });
