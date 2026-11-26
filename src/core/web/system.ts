@@ -17,6 +17,7 @@
 // Preferences are per screen (localStorage), so the Nest Hub and the tablet can differ.
 import { esc, getJson, report, store } from './dom.ts';
 import { parseClockAlarms } from './clock-alarms.ts';
+import { parseQuiet, type QuietHours } from './quiet-hours.ts';
 import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
@@ -38,7 +39,7 @@ interface SystemHooks { openApp(id: string): void; appIcon(id: string): string }
 let hooks: SystemHooks;
 
 /** Quiet hours: chimes and spoken alerts stop from `from` to `to` on the chosen days (0 = Sunday). */
-export interface QuietHours { on: boolean; days: number[]; from: string; to: string; pauseWake: boolean }
+export type { QuietHours } from './quiet-hours.ts';
 /** What happens when Claude finishes, asks for an OK, or a timer or alarm goes off. */
 type AlertKind ='done' | 'approval' | 'timer' | 'event';
 type AlertWay ='chime' | 'critter' | 'banner' | 'off';
@@ -84,9 +85,7 @@ export const prefs = {
   get dnd(): boolean { return flag('os.dnd', false); },
   set dnd(v: boolean) { setFlag('os.dnd', v); sysChanged(); },
   get quiet(): QuietHours {
-    let q: Partial<QuietHours> = {};
-    try { q = JSON.parse(store.get('os.quiet') || '{}') as Partial<QuietHours>; } catch { /* default */ }
-    return { on: !!q.on, days: Array.isArray(q.days) ? q.days : [1, 2, 3, 4, 5, 6, 0], from: q.from || '22:00', to: q.to || '07:00', pauseWake: q.pauseWake !== false };
+    return parseQuiet(store.get('os.quiet'));
   },
   set quiet(q: QuietHours) { store.set('os.quiet', JSON.stringify(q)); sysChanged(); },
   /** Break reminders: 0 (off), 30, 60 or 90 minutes of continuous use. */
