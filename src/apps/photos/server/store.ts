@@ -54,8 +54,17 @@ export function savePhoto(id: string, data: Buffer): { ok: true; day: string } |
   try { existing = locate(id); } catch { return { ok: false, error: 'read_failed' }; }
   if (existing) return { ok: false, error: 'exists' };
   const day = dayName(new Date());
-  fs.mkdirSync(path.join(PHOTOS, day), { recursive: true });
-  fs.writeFileSync(path.join(PHOTOS, day, `${id}.jpg`), data, { flag: 'wx' });
+  // written to a .part file first, then renamed: a failed write never leaves a truncated photo in the list
+  const file = path.join(PHOTOS, day, `${id}.jpg`), part = `${file}.part`;
+  try {
+    fs.mkdirSync(path.join(PHOTOS, day), { recursive: true });
+    fs.writeFileSync(part, data, { flag: 'wx' });
+    fs.renameSync(part, file);
+  } catch (e) {
+    console.log('photos: could not save a photo:', (e as NodeJS.ErrnoException).code ?? 'error');
+    try { fs.rmSync(part, { force: true }); } catch { /* nothing more to do */ }
+    return { ok: false, error: 'write_failed' };
+  }
   return { ok: true, day };
 }
 

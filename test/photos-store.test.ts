@@ -86,3 +86,22 @@ test('a photos folder that is not there (ENOENT) still reports the photo as miss
     fs.readdirSync = realRead;
   }
 });
+
+test('a photo the PC cannot write is reported as write_failed, with no path in the answer and no partial file left', async () => {
+  const { savePhoto } = await import('../src/apps/photos/server/store.ts');
+  const realWrite = fs.writeFileSync, realMkdir = fs.mkdirSync;
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xff, 0xd9]);
+  fs.writeFileSync = ((p: fs.PathOrFileDescriptor, ...rest: unknown[]) => {
+    if (String(p).endsWith('.part')) throw Object.assign(new Error('ENOSPC: no space'), { code: 'ENOSPC' });
+    return (realWrite as (...a: unknown[]) => void)(p, ...rest);
+  }) as typeof fs.writeFileSync;
+  fs.mkdirSync = (() => undefined) as unknown as typeof fs.mkdirSync;   // no folder is made in the real photos folder
+  try {
+    const r = savePhoto('a1b2c3d4e5f6', jpeg);
+    assert.deepEqual(r, { ok: false, error: 'write_failed' });
+    assert.equal(JSON.stringify(r).includes(PHOTOS), false, 'no folder path reaches the answer');
+  } finally {
+    fs.writeFileSync = realWrite;
+    fs.mkdirSync = realMkdir;
+  }
+});
