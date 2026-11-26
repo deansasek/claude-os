@@ -16,14 +16,24 @@ test('uptimeText reads 59 seconds as under a minute and 60 seconds as 1 min', ()
 });
 
 test('monitorLines reports a running hub, a connected PC, and the open and failed apps', () => {
-  const l = monitorLines({ uptimeSeconds: 3600, pcReachable: true, openNames: ['Claude', 'Photos'], failedNames: [] });
+  const l = monitorLines({ uptimeSeconds: 3600, openNames: ['Claude', 'Photos'], failedNames: [] });
   assert.deepEqual(l, { uptime: 'Running for 1 h 0 min', pc: 'Connected', open: '2 open: Claude, Photos', failed: 'No apps failed to start' });
 });
 
 test('monitorLines says what is down', () => {
-  const l = monitorLines({ uptimeSeconds: null, pcReachable: false, openNames: [], failedNames: ['Weather'] });
+  const l = monitorLines({ uptimeSeconds: null, openNames: [], failedNames: ['Weather'] });
   assert.equal(l.uptime, 'Not reachable right now');
-  assert.equal(l.pc, 'Can’t reach the PC');
+  assert.equal(l.pc, 'Can’t reach the PC right now');
   assert.equal(l.open, 'No apps open');
   assert.equal(l.failed, '1 didn’t start: Weather');
+});
+
+test('monitorLines does not say Connected when the uptime read is missing', () => {
+  const l = monitorLines({ uptimeSeconds: null, openNames: [], failedNames: [] });
+  assert.equal(l.pc, 'Can’t reach the PC right now');
+});
+
+test('monitorLines says Connected when the uptime read answers', () => {
+  const l = monitorLines({ uptimeSeconds: 120, openNames: [], failedNames: [] });
+  assert.equal(l.pc, 'Connected');
 });

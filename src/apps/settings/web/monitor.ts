@@ -1,8 +1,7 @@
 // The System monitor page's status words (Settings → System monitor). Pure: no DOM and no imports, so the test runs under node.
 
 export interface MonitorInput {
-  uptimeSeconds: number | null;   // from /api/core/status; null when the PC did not answer
-  pcReachable: boolean;           // the PC link state (hub-link.ts)
+  uptimeSeconds: number | null;   // from /api/core/status; null when the PC did not answer. Also the PC link state.
   openNames: string[];            // the open apps, by name
   failedNames: string[];          // the apps that did not start, by name
 }
@@ -21,7 +20,7 @@ export function uptimeText(seconds: number): string {
 /** The four lines the page shows. Each one is words only; the buttons are the page's own. */
 export function monitorLines(i: MonitorInput): MonitorLines {
   const uptime = i.uptimeSeconds == null ? 'Not reachable right now' : `Running for ${uptimeText(i.uptimeSeconds)}`;
-  const pc = i.pcReachable ? 'Connected' : 'Can’t reach the PC';
+  const pc = i.uptimeSeconds == null ? 'Can’t reach the PC right now' : 'Connected';
   const open = i.openNames.length
     ? `${i.openNames.length} open: ${i.openNames.join(', ')}`
     : 'No apps open';

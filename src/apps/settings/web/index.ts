@@ -1289,7 +1289,7 @@ async function paintMonitor(): Promise<void> {
   try { uptime = (await getJson<{ uptimeSeconds: number }>('/api/core/status')).uptimeSeconds; } catch { uptime = null; }
   const open = openedApps();
   const failed = failedApps();
-  const l = monitorLines({ uptimeSeconds: uptime, pcReachable: hubReachable(), openNames: open.map(a => a.name), failedNames: failed.map(a => a.name) });
+  const l = monitorLines({ uptimeSeconds: uptime, openNames: open.map(a => a.name), failedNames: failed.map(a => a.name) });
   $('stMonUptime').textContent = l.uptime;
   $('stMonPc').textContent = l.pc;
   $('stMonOpen').innerHTML = open.length
