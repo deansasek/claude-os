@@ -16,7 +16,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import { onBack, openSettings } from '../../../core/web/system.ts';
 import {
-  MAX_DEVICE_NAME, MAX_HOME_SCENES, MAX_ROOMS, MAX_ROOM_NAME, isSceneDomain,
+  MAX_DEVICE_NAME, MAX_HOME_SCENES, MAX_ROOMS, MAX_ROOM_NAME, climateLabel, isSceneDomain,
   type HaDashboard, type HaDevices, type HaEntity, type HaHomeScenesResult, type HaLayout, type HaLayoutResult, type HaResult,
   type HaScenes, type HaStatus, type HaTestResult,
 } from '../api.ts';
@@ -128,7 +128,7 @@ function stateLabel(e: HaEntity): string {
   switch (e.domain) {
     case 'climate': {
       if (!e.on) return 'Off';
-      const mode = e.state === 'heat' ? 'Heating' : e.state === 'cool' ? 'Cooling' : e.state === 'auto' || e.state === 'heat_cool' ? 'Auto' : e.state;
+      const mode = climateLabel(e.state);
       return e.target != null ? `${mode} to ${e.target}${e.unit ?? '°'}` : mode;
     }
     case 'media_player': {
