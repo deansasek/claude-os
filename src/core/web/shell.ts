@@ -414,7 +414,8 @@ function watchVersion(): void {
   void runsFromBundle().then(v => { bundled = v; });
   const check = async (): Promise<void> => {
     try {
-      const { version } = await getJson<{ version: number }>('/api/core/version');
+      // a timeout: a sleeping PC can leave a connection that never answers, and the status must then show it offline
+      const { version } = await getJson<{ version: number }>('/api/core/version', 5000);
       reportHubCheck(true);
       if (seen === null) seen = version;
       else if (version !== seen && !bundled) location.reload();
