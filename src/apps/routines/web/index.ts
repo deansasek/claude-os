@@ -41,6 +41,7 @@ let loaded = false;
 let draft: Draft = blank();
 let saved = '';                  // the draft as last loaded or saved, to tell whether it changed
 let note = '';
+let refreshNote = '';            // the note a failed refresh set; a later good refresh clears only that note
 let busy = false;
 let sheetOpen = false;
 let scenes: { entity_id: string; name: string }[] = [];   // the ones a routine may set (on the dashboard or the Home screen)
@@ -62,17 +63,17 @@ function edit(r: Routine | null): void {
 // ---------- talking to the PC ----------
 async function refresh(): Promise<void> {
   try {
-    if (hasCopy()) { await pull(); routines = localRoutines() ?? routines; loaded = true; }   // the copy, with Claude's edits
+    if (hasCopy()) { await pull(); routines = localRoutines() ?? routines; loaded = true; if (note === refreshNote) note = ''; refreshNote = ''; }   // the copy, with Claude's edits
     else {
       const r = await getJson<RoutinesResult>(`${API}/list`);   // the first run: the PC's routines, until the copy exists
-      if (Array.isArray(r?.routines)) { routines = r.routines; loaded = true; }
-      if (!r.ok && r.error) note = r.error;
+      if (Array.isArray(r?.routines)) { routines = r.routines; loaded = true; if (note === refreshNote) note = ''; refreshNote = ''; }
+      if (!r.ok && r.error) note = refreshNote = r.error;
     }
     if (!dirty()) {   // nothing typed yet: show the saved one (or the first)
       const cur = draft.id ? routines.find(x => x.id === draft.id) : null;
       if (cur) edit(cur); else if (!draft.id && !draft.name && !draft.steps.length && routines[0]) edit(routines[0]);
     }
-  } catch { if (!loaded) note = 'Couldn’t reach the PC. Trying again when you come back.'; }
+  } catch { if (!loaded) note = refreshNote = 'Couldn’t reach the PC. Trying again when you come back.'; }
   render();
 }
 
