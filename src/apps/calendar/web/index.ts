@@ -38,6 +38,7 @@ let statusFailed = false;   // the last status read threw: the PC could not be r
 let view: View = 'day';
 let anchor = startOfDay(new Date());
 let events: Ev[] = [];
+let eventsRange = '';      // the range key (see rangeKey) the events were read for; '' for the connector's events
 let calendars: CalendarInfo[] = [];   // the calendars and their shown flags, from the PC (the chips)
 let viaConnector = false;   // the events are the connector's (today and tomorrow only)
 let loading = false;
@@ -76,6 +77,9 @@ function firstShown(): Date {
   if (view === 'month') { const f = new Date(anchor.getFullYear(), anchor.getMonth(), 1); return addDays(f, -f.getDay()); }
   return new Date(anchor.getFullYear(), 0, 1);
 }
+
+/** The key of the days [from, to) a read covers. A late answer is kept only when its key matches the view. */
+function rangeKey(r: { from: Date; to: Date }): string { return `${keyOf(r.from)}|${keyOf(r.to)}`; }
 
 /** The days [from, to) to read for the view on screen. */
 function rangeFor(): { from: Date; to: Date } {
@@ -127,10 +131,12 @@ async function load(force = false, auto = false): Promise<void> {
     const r = await getJson<RangeAnswer>(`${API}/range?from=${keyOf(from)}&to=${keyOf(to)}${force ? '&refresh=1' : ''}${auto ? '&auto=1' : ''}`, RANGE_TIMEOUT_MS);
     if (r.status === 'ok') {
       events = r.events ?? [];
+      eventsRange = rangeKey({ from, to });
       viaConnector = false;
       msg = r.stale ? `Couldn’t read the calendar just now, so this may be out of date. ${r.error ?? ''}`.trim() : '';
     } else if (r.status === 'error') {
       events = [];
+      eventsRange = rangeKey({ from, to });
       viaConnector = false;
       msg = r.error ?? 'Couldn’t read the calendar.';
     } else if (!auto) {
@@ -138,9 +144,12 @@ async function load(force = false, auto = false): Promise<void> {
     }
   } catch {
     failed = true;
-    events = [];
-    viaConnector = false;
-    msg = 'Couldn’t reach the PC. Trying again…';
+    // Keep the events while the view still shows the range they were read for. Clear them only for a range never read.
+    const now = rangeKey(rangeFor());
+    if (eventsRange !== now) { events = []; viaConnector = false; }
+    msg = eventsRange === now
+      ? 'Couldn’t reach the PC, so this may be out of date. Trying again…'
+      : 'Couldn’t reach the PC. Trying again…';
   }
   loading = false;
   render();
@@ -175,6 +184,7 @@ async function loadConnector(): Promise<void> {
   const day = sameDay(anchor, today) ? 'today' : sameDay(anchor, tomorrow) ? 'tomorrow' : null;
   if (view !== 'day' || !day) {
     events = [];
+    eventsRange = '';
     viaConnector = false;
     msg = view === 'day'
       ? 'The claude.ai calendar reads today and tomorrow. Add a calendar address in Settings for other days.'
@@ -184,11 +194,13 @@ async function loadConnector(): Promise<void> {
   const r = await getJson<ConnAnswer>(`${API}/connector?day=${day}`);
   if (r.status !== 'ok' || !r.events) {
     events = [];
+    eventsRange = '';
     viaConnector = false;
     msg = r.error ?? 'Couldn’t read the claude.ai calendar connector.';
     return;
   }
   events = tagCalendar(r.events, 'connector');
+  eventsRange = '';
   viaConnector = true;
   msg = '';
 }
