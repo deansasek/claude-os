@@ -24,7 +24,7 @@ export function pinMessage(sessionId: string, messageId: string, on: boolean, fr
   if (!SESSION_ID.test(sessionId)) return { ok: false, error: 'bad_id' };
   if (!MESSAGE_ID.test(messageId)) return { ok: false, error: 'bad_message' };
   if (!lookupSession(sessionId)) return { ok: false, error: 'not_found' };
-  setPinned(sessionId, messageId, on);
+  if (!setPinned(sessionId, messageId, on)) return { ok: false, error: 'save_failed' };
   logAction(from, on ? 'pin' : 'unpin', { session: sessionId });
   return { ok: true };
 }
@@ -54,7 +54,7 @@ export async function forkFrom(sessionId: string, messageId: string, from: strin
 export function archiveSession(id: string, on: boolean, from: string): ManageResult {
   if (!SESSION_ID.test(id)) return { ok: false, error: 'bad_id' };
   if (!lookupSession(id)) return { ok: false, error: 'not_found' };
-  setArchived(id, on);
+  if (!setArchived(id, on)) return { ok: false, error: 'save_failed' };
   logAction(from, on ? 'archive' : 'unarchive', { session: id });
   return { ok: true };
 }
