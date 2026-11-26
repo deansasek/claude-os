@@ -44,3 +44,18 @@ test('voice.ts stop command handles a rejected unlocked call', () => {
   const handle = between(voice, 'async function handle(', '\nasync function send(');
   assert.match(handle, /unlocked\(\(\) => apiCall\('stop', \{ turn \}\)\)\.catch\(\(\) => \{\}\)/);
 });
+
+test('voice.ts new session says a failed projects read is offline, and a missing Scratch space is not', () => {
+  const start = voice.indexOf("let projects: Project[];");
+  assert.ok(start > 0, 'the new-session path reads the projects');
+  const body = voice.slice(start, voice.indexOf('\n  sayLine(', start));
+  // (a) the projects catch says the PC is unreachable and returns instead of falling through
+  const read = body.match(/catch \{ voiceUi\.notice\('Can’t reach your PC'[^\n]*\}/);
+  assert.ok(read, 'the projects read has a catch');
+  assert.match(read[0], /say\('I can’t reach your PC right now\.'\); return; \}$/);
+  // (b) a read that worked with no Scratch space says so, without blaming the PC
+  const missing = body.match(/if \(!where\) \{[^\n]*\}/);
+  assert.ok(missing, 'the new-session path has a !where branch');
+  assert.match(missing[0], /I need a Scratch space project on your PC first\./);
+  assert.doesNotMatch(missing[0], /can’t reach your PC/);
+});
