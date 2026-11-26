@@ -3,7 +3,8 @@
 //
 // The file is read again for every request and written whole (through a .tmp file). Everything that comes in is
 // checked here with new-event.ts: the page and Claude are never trusted. A file that is there but can't be read
-// refuses changes, so a bad file is never overwritten.
+// refuses changes, so a bad file is never overwritten. An entry that fails its check is not shown, but it is written
+// back unchanged on every save, so a change never deletes it.
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -28,7 +29,10 @@ export type LocalResult =
   | { status: 'ok'; event?: LocalEvent; removed?: number }
   | { status: 'error'; error: string };
 
-const UNREADABLE = 'The calendar on the PC couldn’t be read, so nothing was changed.';
+// Stored entries that failed their check (or were past the cap) on the last load. Kept as they are, and written back.
+let skippedRaw: unknown[] = [];
+
+const UNREADABLE ='The calendar on the PC couldn’t be read, so nothing was changed.';
 type Change = string | { event?: LocalEvent; removed?: number };
 
 /** The events in the file, [] when there is no file yet, null when the file is there but can't be read. */
@@ -42,11 +46,12 @@ function load(): LocalEvent[] | null {
     if (!raw || !Array.isArray(raw.events)) return null;
     const out: LocalEvent[] = [];
     const ids = new Set<string>();
+    const skipped: unknown[] = [];
     for (const x of raw.events) {
-      if (out.length >= MAX_EVENTS) break;
-      const c = storedEvent(x);
-      if (c && !ids.has(c.id)) { ids.add(c.id); out.push(c); }
+      const c = out.length < MAX_EVENTS ? storedEvent(x) : null;
+      if (c && !ids.has(c.id)) { ids.add(c.id); out.push(c); } else skipped.push(x);
     }
+    skippedRaw = skipped;
     return out;
   } catch { return null; }
 }
@@ -63,7 +68,7 @@ function storedEvent(raw: unknown): LocalEvent | null {
 
 function persist(events: LocalEvent[]): boolean {
   try {
-    writeJsonFile(FILE, { calendars: [DEFAULT_CALENDAR], events }, { indent: 1, mode: 0o600 });
+    writeJsonFile(FILE, { calendars: [DEFAULT_CALENDAR], events: [...events, ...skippedRaw] }, { indent: 1, mode: 0o600 });
     return true;
   } catch (e) {
     console.log('calendar: could not save the local events:', (e as NodeJS.ErrnoException).code ?? 'error');
