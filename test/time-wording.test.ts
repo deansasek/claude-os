@@ -57,3 +57,10 @@ test('whenText: a time today, "Tomorrow" and a time tomorrow, then a weekday', (
   later.setHours(9, 0, 0, 0);
   assert.equal(whenText(later), `${later.toLocaleDateString([], { weekday: 'short' })} ${clock(later)}`);
 });
+
+test('whenText: a time from yesterday shows the short weekday and the clock time', () => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(21, 30, 0, 0);
+  assert.equal(whenText(yesterday), `${yesterday.toLocaleDateString([], { weekday: 'short' })} ${clock(yesterday)}`);
+});
