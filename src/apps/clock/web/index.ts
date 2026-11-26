@@ -946,7 +946,7 @@ function mount(context: AppContext): void {
       { kind: 'switch', id: 'seconds', title: 'Show seconds', detail: 'On the big clock.',
         get: () => showSeconds, set: v => { showSeconds = v; store.set(K.secs, v ? '1' : '0'); tick(); } },
       { kind: 'action', id: 'alarms', title: 'Alarms', detail: 'Set, repeat and switch off alarms in the Clock app.',
-        value: () => { const n = alarms.filter(a => a.on).length; return n ? `${n} on` : 'None on'; }, label: 'Open',
+        value: () => { const n = alarms.filter(a => a.on || a.snooze).length; return n ? `${n} on` : 'None on'; }, label: 'Open',
         run: () => { openApp(manifest.id); setMode('alarm'); } },
       { kind: 'action', id: 'timer', title: 'Timer', detail: 'Presets and a dial for any length.',
         value: () => (soonestLeft() != null ? `${dur(soonestLeft()!)} left` : 'Not running'), label: 'Open',
