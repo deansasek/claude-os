@@ -16,7 +16,7 @@
 //
 // Preferences are per screen (localStorage), so the Nest Hub and the tablet can differ.
 import { esc, getJson, report, store } from './dom.ts';
-import { appLabel, groupNotices, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
+import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
 import { device, hasTopBand, onTablet, onVolume, setTopBand, topInsets, voice } from './device.ts';
@@ -942,7 +942,7 @@ function hideBanner(): void { clearTimeout(bannerTimer); $s('banner').classList.
 
 /** Show a banner (unless the sending app is already on screen) and keep it in the control center. */
 export function notify(n: Notice, appVisible = false): void {
-  notes = [{ ...n, at: Date.now() }, ...notes.filter(x => x.title !== n.title || x.app !== n.app)];
+  notes = [{ ...n, at: nextNoticeAt(notes, Date.now()) }, ...notes.filter(x => x.title !== n.title || x.app !== n.app)];
   saveNotes();
   if (appVisible || !prefs.banners || (n.app && mutedApps().includes(n.app))) return;
   wake();
