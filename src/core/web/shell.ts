@@ -1,6 +1,7 @@
 // The Hub shell: builds the rail from the app list, loads each app's view and styles,
 // switches between apps, drifts home when idle, and reloads when the page is updated.
 import { type AppHeader, renderAppHeader } from './app-header.ts';
+import { reorderPins } from './rail-order.ts';
 import { $, esc, fitStage, getJson, mockDevice, params, renderSparks, report, store } from './dom.ts';
 import { checkHitAreas } from './hit-guard.ts';
 import { Keyboard, initKeyboard } from './keyboard.ts';
@@ -145,7 +146,7 @@ function initRailReorder(): void {
       if (from >= 0 && to >= 0 && from !== to) {
         const next = keys.filter(key => key !== cur.id);
         next.splice(next.indexOf(over.dataset.app!) + (from < to ? 1 : 0), 0, cur.id);   // moving down: land after the item
-        pins = next;   // the saved order now covers every shown item
+        pins = reorderPins(pins, next);   // the saved order keeps the pins a focus mode hides
         store.set(PIN_KEY, JSON.stringify(pins));
         renderRail();
       }
