@@ -6,7 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { altNames, certFiles, certNames, ensureCertificates } from '../src/core/server/https.ts';
+import net from 'node:net';
+import { altNames, certFiles, certNames, ensureCertificates, serveHttps } from '../src/core/server/https.ts';
 
 const hasOpenssl = (() => { try { execFileSync('openssl', ['version'], { stdio: 'ignore' }); return true; } catch { return false; } })();
 
@@ -52,6 +53,26 @@ test('the server certificate is kept while the names stay the same, and remade w
     ensureCertificates(state, ['127.0.0.1', '10.0.0.9']);
     assert.notEqual(fs.readFileSync(first.cert, 'utf8'), before, 'new address: a new certificate');
   } finally {
+    fs.rmSync(state, { recursive: true, force: true });
+  }
+});
+
+test('a taken HTTPS port goes to onError, and the Host keeps running', { skip: !hasOpenssl }, async () => {
+  const state = fs.mkdtempSync(path.join(os.tmpdir(), 'https-test-'));
+  const blocker = net.createServer();
+  await new Promise<void>(res => blocker.listen(0, '127.0.0.1', res));
+  const port = (blocker.address() as net.AddressInfo).port;
+  try {
+    const f = ensureCertificates(state, ['127.0.0.1']);
+    const error = await new Promise<Error>(resolve => {
+      serveHttps({
+        key: fs.readFileSync(f.key), cert: fs.readFileSync(f.cert), handler: (_req, res) => res.end('ok'),
+        port, host: '127.0.0.1', onListening: () => resolve(new Error('listened on a taken port')), onError: resolve,
+      });
+    });
+    assert.equal((error as NodeJS.ErrnoException).code, 'EADDRINUSE');
+  } finally {
+    blocker.close();
     fs.rmSync(state, { recursive: true, force: true });
   }
 });

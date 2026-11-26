@@ -4,13 +4,12 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
-import https from 'node:https';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import type { Binary, Route, ServerApp } from './app.ts';
 import { config } from './config.ts';
 import { HOST_DIR, PUBLIC, SRC, STATE } from './paths.ts';
-import { certFiles, certNames, ensureCertificates } from './https.ts';
+import { certFiles, certNames, ensureCertificates, serveHttps } from './https.ts';
 import { servedBytes, WEB_FILE } from './served.ts';
 
 export { WEB_FILE };
@@ -290,11 +289,14 @@ export function startServer(apps: ServerApp[]): void {
     const names = certNames(args.host === '0.0.0.0' || args.host === '::' ? [] : [args.host]);
     try {
       const f = ensureCertificates(STATE, names);
-      https.createServer({ key: fs.readFileSync(f.key), cert: fs.readFileSync(f.cert) }, handler)
-        .listen(httpsPort, args.host, () => {
+      serveHttps({
+        key: fs.readFileSync(f.key), cert: fs.readFileSync(f.cert), handler, port: httpsPort, host: args.host,
+        onListening: () => {
           const lan = names.filter(n => n !== '127.0.0.1').map(n => `https://${n}:${httpsPort}`).join(', ');
           console.log(`serving ${lan} (https). On another device, trust the authority once from http://<this PC>:${args.port}/claudeos-ca.cer`);
-        });
+        },
+        onError: e => console.log(`https is off: ${e.message}. The plain address keeps working.`),
+      });
     } catch (e) {
       console.log(`https is off: ${(e as Error).message}`);
     }
