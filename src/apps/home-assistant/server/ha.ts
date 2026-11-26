@@ -58,9 +58,10 @@ function load(): Config {
 }
 let cfg = load();
 
-function save(): void {
-  try { writeJsonFile(FILE, cfg, { indent: 2, mode: 0o600 }); }
-  catch (e) { console.log('home-assistant: could not save the config:', (e as NodeJS.ErrnoException).code ?? 'error'); }
+/** Write the config to the PC. False when it could not be written: the change then lasts only until a restart. */
+function save(): boolean {
+  try { writeJsonFile(FILE, cfg, { indent: 2, mode: 0o600 }); return true; }
+  catch (e) { console.log('home-assistant: could not save the config:', (e as NodeJS.ErrnoException).code ?? 'error'); return false; }
 }
 
 // CLAUDEOS_HA_DEMO=1 is for the tests only: it shows the made-up house. A normal start never sets it, and no route
@@ -108,7 +109,7 @@ export function saveConfig(u: HaConfigUpdate): HaStatus & { ok: boolean; message
     if (t.length > 1000 || /\s/.test(t)) return { ...status(), ok: false, message: 'That token has spaces in it or is too long.' };
     if (t !== cfg.token) { cfg.token = t; lastOk = null; lastError = ''; }
   }
-  save();
+  if (!save()) return { ...status(), ok: false, message: 'The PC couldn’t save the address and token. They work until the PC restarts; save them again.' };
   console.log(`home-assistant: settings saved (address ${cfg.address ? 'set' : 'empty'}, token ${cfg.token ? 'set' : 'empty'})`);
   return { ...status(), ok: true };
 }
@@ -253,7 +254,7 @@ export function setAllowed(entityId: string, on: boolean): { ok: boolean; error?
   const list = allowList().filter(x => x !== id);
   if (on) list.push(id);
   if (isDemo()) cfg.allowDemo = list; else cfg.allow = list.slice(0, 500);
-  save();
+  if (!save()) return { ok: false, error: 'The PC couldn’t save that device. It works until the PC restarts; try again.' };
   return { ok: true };
 }
 

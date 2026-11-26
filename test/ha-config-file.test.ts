@@ -26,3 +26,12 @@ test('a broken config is moved aside as .corrupt, and nothing is saved over it',
   assert.equal(fs.existsSync(file), false, 'the broken file is no longer in place');
   assert.equal(fs.readFileSync(`${file}.corrupt`, 'utf8'), '{ "token": "keep-me", broken');
 });
+
+test('a config the PC cannot write is reported, not saved silently', async () => {
+  // a folder that does not exist: the write fails, and the save must say so
+  process.env.CLAUDEOS_HA_CONFIG = path.join(dir, 'no-such-folder', 'ha-config.json');
+  const ha = await import(`../src/apps/home-assistant/server/ha.ts?unwritable=${Date.now()}`);
+  const res = ha.saveConfig({ address: 'http://ha.local:8123' });
+  assert.equal(res.ok, false, 'a save that fails says so');
+  assert.match(res.message ?? '', /couldn’t save/);
+});
