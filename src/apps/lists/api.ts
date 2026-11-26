@@ -76,6 +76,9 @@ export function restoreItemAt(l: FamilyList, raw: unknown, index: unknown): List
   return item;
 }
 
+/** The ticked items of a list, each with its place (for Undo after Clear ticked). Copies, so later edits do not change them. */
+export const tickedPlaces = (l: FamilyList): { item: ListItem; index: number }[] => l.items.flatMap((item, index) => item.done ? [{ item: { ...item }, index }] : []);
+
 /** A list id from a name: "Garden jobs" → "garden-jobs"; a different one if that is taken. */
 export function idFor(name: string, lists: { id: string }[]): string {
   let base = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
