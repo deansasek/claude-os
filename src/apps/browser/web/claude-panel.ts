@@ -336,8 +336,16 @@ async function openSession(id: string): Promise<void> {
   turnId = null;
   statusHtml = null;
   busy = false;
+  let v: SessionView;
+  // no answer from the PC is not a bad answer: say the PC could not be reached
+  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`); }
+  catch {
+    rows = [{ kind: 'note', html: 'Can’t reach your PC, so that session didn’t open.' }];
+    sessionId = null;
+    paint();
+    return;
+  }
   try {
-    const v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`);
     settings = settingsFor(id, v.settings);
     canReply = v.canReply;
     contextUse = v.context ?? null;
@@ -353,8 +361,14 @@ async function openSession(id: string): Promise<void> {
 async function openRecent(): Promise<void> {
   el.clRecent.hidden = false;
   el.clList.innerHTML = '<div class="cl-muted">Loading…</div>';
+  let h: History;
+  // no answer from the PC is not a bad answer: say the PC could not be reached
+  try { h = await getJson<History>('/api/claude/history?limit=30'); }
+  catch {
+    el.clList.innerHTML = '<div class="cl-muted">Can’t reach your PC, so your sessions didn’t load.</div>';
+    return;
+  }
   try {
-    const h = await getJson<History>('/api/claude/history?limit=30');
     const items = h.groups.flatMap(g => g.items.map(i => ({ ...i, folder: g.name })));
     el.clList.innerHTML = items.length
       ? items.map(i => `<button class="cl-item" data-session="${esc(i.id)}"><span class="cl-item-t">${esc(i.title || 'Untitled')}</span><span class="cl-item-s">${esc(i.folder)}</span></button>`).join('')
