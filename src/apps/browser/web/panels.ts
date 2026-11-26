@@ -481,7 +481,8 @@ async function choosePhoto(id: string): Promise<void> {
   if (!c) return;
   const url = `/api/photos/file?id=${encodeURIComponent(id)}`;
   try {
-    const blob = await fetch(url).then(r => r.blob());
+    // a missing photo answers 404 with a plain-text body: that is not the picture, so it is an error, not a file
+    const blob = await fetch(url).then(r => { if (!r.ok) throw new Error(`photo ${r.status}`); return r.blob(); });
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const fr = new FileReader();
       fr.onload = () => resolve(String(fr.result));
