@@ -16,7 +16,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import { onBack, openSettings } from '../../../core/web/system.ts';
 import {
-  MAX_DEVICE_NAME, MAX_HOME_SCENES, MAX_ROOMS, MAX_ROOM_NAME, climateLabel, isSceneDomain,
+  MAX_DEVICE_NAME, MAX_HOME_SCENES, MAX_ROOMS, MAX_ROOM_NAME, climateLabel, isSceneDomain, plain,
   type HaDashboard, type HaDevices, type HaEntity, type HaHomeScenesResult, type HaLayout, type HaLayoutResult, type HaResult,
   type HaScenes, type HaStatus, type HaTestResult,
 } from '../api.ts';
@@ -74,15 +74,6 @@ const GROUPS: { domains: string[]; title: string }[] = [
   { domains: ['cover'], title: 'Doors and blinds · shown only' },
   { domains: ['sensor', 'binary_sensor'], title: 'Sensors · shown only' },
 ];
-
-// Turn a technical error into one plain sentence. The raw text is never shown.
-function plain(error?: string): string {
-  const t = (error ?? '').toLowerCase();
-  if (/401|403|unauthori[sz]ed|forbidden|token/.test(t)) return 'The access token was refused. Replace it in Settings, then Apps, then Home Assistant.';
-  if (/timeout|timed out|abort|5 seconds/.test(t)) return 'Home Assistant took too long to answer. Check that it is switched on.';
-  if (/econn|enotfound|refused|network|fetch|dns|unreachable|socket|host|reach|address/.test(t)) return 'Couldn’t reach Home Assistant. Check the address in Settings, and that it is on the same network.';
-  return 'Something went wrong. Try again in a moment.';
-}
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
