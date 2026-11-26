@@ -32,6 +32,18 @@ test('loadNames() catch shows the PC text', () => {
   assert.ok(catchOf('async function loadNames(', '/** The shelf:').includes('namesError = PC_DOWN;'));
 });
 
+test('loadNames() shows the server reason when the PC answers with an error', () => {
+  const body = src.slice(src.indexOf('async function loadNames('), src.indexOf('/** The shelf:'));
+  assert.ok(body.includes(`namesError = r.status === 'ok' ? '' : r.error || 'Ingredients are not available. Try again.';`));
+});
+
+test('findPantry() passes the server reason into fail()', () => {
+  const body = src.slice(src.indexOf('async function findPantry('), src.indexOf('const missingNote'));
+  assert.ok(body.includes('const fail = (why: string): void =>'));
+  assert.ok(body.includes("foundError = why || 'Recipes are not available. Try again.';"));
+  assert.ok(body.includes("if (r.status !== 'ok') { fail(r.error); }"));
+});
+
 test('the TheMealDB connection text is gone', () => {
   assert.ok(!src.includes('No connection to TheMealDB'));
 });
