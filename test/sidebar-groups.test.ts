@@ -6,7 +6,7 @@ import type { History, HistoryItem, LiveSession } from '../src/apps/claude/api.t
 
 // The modules read the page's location when they load (via dom.ts); node has none, so give it one first.
 Object.assign(globalThis, { location: { search: '' } });
-const { archiveEmpty, emptyText, folded, folderLive, groups, isLive, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
+const { archiveEmpty, emptyText, folded, folderLive, groups, isLive, searchEmpty, stateOf, when } = await import('../src/apps/claude/web/sessions/sidebar-groups.ts');
 
 const NOW = Date.parse('2026-11-23T12:00:00.000Z');
 const HOUR = 3600;
@@ -139,4 +139,9 @@ test('a session whose Hub turn waits for your OK reads Needs your OK; other sess
   assert.deepEqual(stateOf(session({ id: 'a', state: 'thinking' }), NOW, new Set(['a'])), { cls: 'yours', what: 'Needs your OK' });
   assert.deepEqual(stateOf(session({ id: 'a', state: 'thinking' }), NOW, new Set(['b'])), { cls: 'busy', what: 'Thinking' });
   assert.deepEqual(stateOf(session({ id: 'a', state: 'thinking' }), NOW), { cls: 'busy', what: 'Thinking' });
+});
+
+test('a failed search says the PC cannot be reached; a search with no matches says so', () => {
+  assert.equal(searchEmpty('x', true), 'Can’t reach your PC.');
+  assert.equal(searchEmpty('x', false), 'No sessions match “x”.');
 });

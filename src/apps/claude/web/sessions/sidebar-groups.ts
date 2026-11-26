@@ -107,3 +107,5 @@ export const archiveEmpty = (failed: boolean, loaded: boolean): { head: string; 
   if (loaded) return { head: 'Nothing archived.', tip: 'Archive a session from its ⋯ menu to tuck it away here.' };
   return { head: 'Loading…', tip: '' };
 };
+/** The search's empty line: a failed history fetch says so first, else no match. */
+export const searchEmpty = (q: string, failed: boolean): string => (failed ? `${emptyText(true)}.` : `No sessions match “${q}”.`);
