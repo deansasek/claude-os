@@ -40,9 +40,24 @@ test('voice.ts send() and the new-session path catch an unreachable PC', () => {
   assert.match(send, VOICE_CATCH, 'the send unlocked call has a catch');
 });
 
-test('voice.ts stop command handles a rejected unlocked call', () => {
-  const handle = between(voice, 'async function handle(', '\nasync function send(');
-  assert.match(handle, /unlocked\(\(\) => apiCall\('stop', \{ turn \}\)\)\.catch\(\(\) => \{\}\)/);
+test('voice.ts stop command awaits the stop call and does not swallow its failure', () => {
+  const branch = between(voice, "if (CANCEL.test(t) && convo?.turnId", "  if (CANCEL.test(t)) { sayLine");
+  assert.match(branch, /await unlocked\(\(\) => apiCall<[^>]*>\('stop', \{ turn \}\)\)/, 'the stop call is awaited');
+  assert.doesNotMatch(branch, /\.catch\(\(\) => \{\}\)/, 'no empty catch hides a failed stop');
+  assert.match(branch, /void refreshView\(\);/, 'the view repaints');
+});
+
+test('voice.ts stop command says "Stopped Claude" only after an ok result', () => {
+  const branch = between(voice, "if (CANCEL.test(t) && convo?.turnId", "  if (CANCEL.test(t)) { sayLine");
+  const stopped = "notice('Stopped Claude'";
+  assert.equal(branch.split(stopped).length - 1, 1, 'the stopped notice appears once');
+  const okAt = branch.indexOf('if (r.ok) {');
+  const failAt = branch.indexOf("notice('Couldn’t stop Claude'");
+  assert.ok(okAt > 0, 'the ok branch exists');
+  assert.ok(branch.indexOf(stopped) > okAt, 'the stopped notice is inside the ok branch');
+  assert.ok(failAt > branch.indexOf(stopped), 'the failure notice is in the else branch');
+  assert.match(branch, /Can’t reach your PC\. Try again\./, 'the failure says the PC cannot be reached');
+  assert.match(branch, /if \(r === null\) \{ needPin\(\); return; \}/, 'a PIN pad with no stop shows no stopped notice');
 });
 
 test('voice.ts new session says a failed projects read is offline, and a missing Scratch space is not', () => {
