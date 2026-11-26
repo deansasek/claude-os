@@ -87,6 +87,11 @@ export function toggleRefusal(error: string): string {
     : 'Couldn’t save that switch.';
 }
 
+/** The words for a remove the PC refused (its list no longer has the server or folder). Not a connection problem. */
+export function removeRefusal(): string {
+  return 'It isn’t on your PC any more.';
+}
+
 // Discover (Settings → Plugins → Discover): the Anthropic plugin marketplace, installed through the Claude Code CLI.
 //   GET  /api/settings/plugins/market             MarketView: the plugins the marketplace lists
 //   POST /api/settings/plugins/market/install     {name, marketplace}: MarketResult (installs for the user, all sessions)

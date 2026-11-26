@@ -4,7 +4,7 @@
 import { esc, getJson, postJson, report } from '../../../core/web/dom.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
-import { toggleRefusal, type PluginItem, type PluginKind, type PluginsView } from '../api.ts';
+import { removeRefusal, toggleRefusal, type PluginItem, type PluginKind, type PluginsView } from '../api.ts';
 import { enterMarket, initMarket, paintMarket } from './market.ts';
 
 type Tab = 'all' | PluginKind | 'discover';   // 'discover': the Anthropic marketplace (market.ts), in place of the list
@@ -230,16 +230,23 @@ function removeOpen(): void {
 }
 
 async function removeItem(it: PluginItem, isFolder: boolean): Promise<void> {
+  let r: { ok: boolean };
   try {
-    const r = isFolder
+    r = isFolder
       ? await postJson<{ ok: boolean }>('/api/settings/plugins/folder/remove', { path: it.key.slice('plugin:path:'.length) })
       : await postJson<{ ok: boolean }>('/api/settings/plugins/mcp/remove', { name: it.name });
-    if (!r.ok) throw new Error('not removed');
-    report('settings:plugins:remove');
-    await loadPlugins(true);
   } catch {
     deps.confirm('Couldn’t remove it', 'Check the connection to your PC, then try again.', 'OK', () => {});
+    return;
   }
+  if (!r.ok) {
+    // The PC no longer lists it: say so, and reload so the stale row goes.
+    deps.confirm('Couldn’t remove it', removeRefusal(), 'OK', () => {});
+    await loadPlugins(true);
+    return;
+  }
+  report('settings:plugins:remove');
+  await loadPlugins(true);
 }
 
 // ---------- the add sheet ----------

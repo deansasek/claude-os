@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { answerMock } from '../src/core/web/mock-api.ts';
 import '../src/apps/settings/web/plugins-mock.ts';
-import { MARKETPLACE, markInstalled, PLUGIN_OFF_MAX, toggleRefusal, type MarketPlugin, type MarketView } from '../src/apps/settings/api.ts';
+import { MARKETPLACE, markInstalled, PLUGIN_OFF_MAX, removeRefusal, toggleRefusal, type MarketPlugin, type MarketView } from '../src/apps/settings/api.ts';
 
 test('a custom MCP server is added, switched, and removed for the session', () => {
   assert.equal((answerMock('POST', '/api/settings/plugins/mcp', { name: 'demo', type: 'stdio', command: 'node' }).body as { ok: boolean }).ok, true);
@@ -21,6 +21,15 @@ test('a refused switch names the reason, and only a dropped connection blames th
   assert.equal(toggleRefusal('bad_key'), 'Couldn’t save that switch.');
   assert.equal(toggleRefusal('something_new'), 'Couldn’t save that switch.');
   assert.ok(!toggleRefusal('too_many').includes('PC'));
+});
+
+test('a remove the PC refuses names the server as gone, and never blames the connection', () => {
+  assert.equal(removeRefusal(), 'It isn’t on your PC any more.');
+  assert.ok(!removeRefusal().includes('connection'));
+  assert.ok(!removeRefusal().includes('Check'));
+  assert.equal((answerMock('POST', '/api/settings/plugins/mcp', { name: 'gone', type: 'stdio', command: 'node' }).body as { ok: boolean }).ok, true);
+  assert.equal((answerMock('POST', '/api/settings/plugins/mcp/remove', { name: 'gone' }).body as { ok: boolean }).ok, true);
+  assert.equal((answerMock('POST', '/api/settings/plugins/mcp/remove', { name: 'gone' }).body as { ok: boolean }).ok, false);
 });
 
 const plugin = (name: string, installed: boolean): MarketPlugin => ({
