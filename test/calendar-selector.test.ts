@@ -40,6 +40,21 @@ test('a shown flag is saved on the PC and read back; only known ids are kept', (
   assert.deepEqual(S.loadFlags(), { ics: false }, 'a refused change leaves the file as it was');
 });
 
+test('a shown file that cannot be read is not saved over', () => {
+  fs.writeFileSync(S.FILE, 'not json {{');
+  const before = fs.readFileSync(S.FILE);
+  const r = S.setShown('ics', false, true);
+  assert.equal(r.status, 'error');
+  assert.deepEqual(fs.readFileSync(S.FILE), before, 'the unreadable file keeps its bytes');
+});
+
+test('a missing shown file is created on the first save', () => {
+  assert.equal(fs.existsSync(S.FILE), false);
+  const r = S.setShown('ics', false, true);
+  assert.equal(r.status, 'ok');
+  assert.deepEqual(S.loadFlags(), { ics: false });
+});
+
 test('hiding a calendar removes its events from the drawn range', () => {
   const local = L.addLocalEvent({ title: 'Dentist', start: at(10, 9), end: at(10, 10), allDay: false });
   assert.equal(local.status, 'ok');
