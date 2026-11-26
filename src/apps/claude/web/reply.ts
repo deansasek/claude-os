@@ -358,6 +358,7 @@ function tickCountdown(): void {
 // ---------- a new session (like the desktop app: critter + folders in the middle, composer at the bottom) ----------
 let picking = false, starting = false;
 let projects: Project[] = [];
+let foldersFailed = false;   // the last read of the folder list did not reach the PC (not: the PC has none)
 let chosen: Project | null = null;
 const FOLDER_ICON = '<svg viewBox="0 0 16 16"><path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h3l1.5 1.5h4.5A1.5 1.5 0 0 1 14 6v5.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z"/></svg>';
 
@@ -365,7 +366,7 @@ function paintFolders(): void {
   const ago = (iso: string) => { if (!iso) return ''; const m = Math.round((Date.now() - Date.parse(iso)) / 60e3); return m < 60 ? `${Math.max(1, m)}m ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)}d ago`; };
   $('nsFolders').innerHTML = projects.map(p =>
     `<button class="ns-row${chosen?.id === p.id ? ' on' : ''}" data-project="${esc(p.id)}">${FOLDER_ICON}<span class="ns-name">${esc(p.name)}</span><span class="ns-when">${esc(p.lastUsed ? ago(p.lastUsed) : p.detail)}</span></button>`).join('')
-    || '<div class="ns-row empty">No recent folders found.</div>';
+    || (foldersFailed ? '<div class="ns-row empty">Can’t reach your PC just now. Open New session again to retry.</div>' : '<div class="ns-row empty">No recent folders found.</div>');
   $('nsHint').textContent = nativeOn() ? 'New chats run on this tablet (Settings → Apps → Claude). No folder needed.' : chosen ? `Claude will work in ${chosen.detail.startsWith('~') || chosen.detail.includes('/') ? chosen.detail : chosen.name}.` : 'Pick a folder, then tell Claude what to do.';
   paintNewComposer();
 }
@@ -423,7 +424,7 @@ export async function openNew(): Promise<void> {
   $('nsFolders').innerHTML = '<div class="ns-row empty">Loading folders…</div>';
   paintNewComposer();
   report('new-session-open');
-  try { projects = await getJson<Project[]>('/api/claude/projects'); } catch { projects = []; }
+  try { projects = await getJson<Project[]>('/api/claude/projects'); foldersFailed = false; } catch { projects = []; foldersFailed = true; }
   if (!picking || mode !== 'new') return;
   // Settings → Sessions: the default folder if one is set, else the most recent folder (like the desktop app)
   const dflt = newFolderPref();
