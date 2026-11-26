@@ -1,11 +1,5 @@
 {
   "routes": [
-    "GET /api/calendar/calendars",
-    "GET /api/calendar/connector",
-    "GET /api/calendar/events",
-    "GET /api/calendar/local",
-    "GET /api/calendar/range",
-    "GET /api/calendar/status",
     "GET /api/claude/history",
     "GET /api/claude/image",
     "GET /api/claude/models",
@@ -29,11 +23,6 @@
     "GET /api/settings/plugins/market",
     "GET /api/settings/profile",
     "GET /api/settings/storage",
-    "POST /api/calendar/calendar-shown",
-    "POST /api/calendar/config",
-    "POST /api/calendar/local-add",
-    "POST /api/calendar/local-delete",
-    "POST /api/calendar/local-update",
     "POST /api/claude/approve",
     "POST /api/claude/archive",
     "POST /api/claude/browser/next",
