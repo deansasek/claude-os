@@ -44,3 +44,10 @@ test('nextExpiry is null with no clips, and never negative for a clip already ou
   assert.equal(nextExpiry([], 5), null);
   assert.equal(nextExpiry([at('gone', 0)], CLIP_TTL_MS + 1000), 0);
 });
+
+test('a web address that carries a token, a fragment token or a password is treated as a secret', () => {
+  assert.equal(isTokenLike('https://site.example/reset?token=8f3a9c2b1e7d4f6a0b5c3e9d'), true);
+  assert.equal(isTokenLike('https://x.example/cb#access_token=8f3a9c2b1e7d4f6a0b5c3e9d'), true);
+  assert.equal(isTokenLike('https://user:hunter2@host.example/path'), true);
+  assert.equal(isTokenLike('https://site.example/reset?page=2'), false, 'a short query value is not a token');
+});

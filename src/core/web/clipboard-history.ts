@@ -38,7 +38,19 @@ export function isTokenLike(text: string): boolean {
   if (/\b(?:sk|pk|rk|ghp|gho|ghu|ghs|ghr|github_pat|xox[abprs]|AKIA|AIza|ya29)[-_][A-Za-z0-9_-]{8,}/.test(t)) return true;
   if (/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{4,}\./.test(t)) return true;
   if (/\bbearer\s+[A-Za-z0-9._~+/=-]{12,}/i.test(t)) return true;
-  return t.split(/\s+/).some(w => w.length >= 24 && !w.includes('://') && /[A-Za-z]/.test(w) && /\d/.test(w));
+  return t.split(/\s+/).some(w => (w.includes('://') ? urlHasSecret(w) : longMixed(w)));
+}
+
+/** A long word with both letters and digits: the shape of a key or token. */
+const longMixed = (w: string): boolean => w.length >= 24 && /[A-Za-z]/.test(w) && /\d/.test(w);
+
+/** A web address that carries a secret: a user or password, or a long mixed value in its query or fragment. Plain long addresses are kept. */
+function urlHasSecret(w: string): boolean {
+  let u: URL;
+  try { u = new URL(w); } catch { return false; }
+  if (u.username || u.password) return true;
+  const values = [...u.searchParams.values(), ...new URLSearchParams(u.hash.replace(/^#/, '')).values()];
+  return values.some(longMixed);
 }
 
 let history: Clip[] = [];
