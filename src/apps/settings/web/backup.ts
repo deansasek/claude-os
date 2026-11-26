@@ -31,6 +31,18 @@ export async function loadSettings(): Promise<BackupState | null> {
   try { return await getJson<BackupState>('/api/settings/backup'); } catch { return null; }
 }
 
+/** The note under the Save button: the saved time and the count, or a reason when there is no backup to show. */
+export function backupNote(b: BackupState | null): string {
+  if (!b) return 'Can’t reach your PC';
+  return b.saved ? savedNote(b.saved, Object.keys(b.values).length) : 'Not saved yet';
+}
+
+/** The note for a backup saved at `saved` (ISO time) holding `count` settings. */
+export function savedNote(saved: string, count: number): string {
+  const when = new Date(saved).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  return `${when} · ${count} settings`;
+}
+
 /** Write the PC's settings back to this tablet. Returns how many were written, or -1 when the PC cannot be reached. */
 export async function restoreSettings(): Promise<number> {
   const b = await loadSettings();

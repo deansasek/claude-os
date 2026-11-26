@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { backupKey, backupValues } from '../src/apps/settings/web/backup-keys.ts';
 
+// backup.ts imports core/web/dom.ts, which reads the page's location when it loads; node has none, so give it one first.
+Object.assign(globalThis, { location: { search: '' } });
+const { backupNote } = await import('../src/apps/settings/web/backup.ts');
+
 test('backupKey keeps the os.* settings and the sidebar pins', () => {
   assert.equal(backupKey('os.brightness'), true);
   assert.equal(backupKey('os.quiet'), true);
@@ -33,4 +37,18 @@ test('backupValues keeps only backup keys with short text values', () => {
     'os.apiToken': 'x', 'launcher.layout.tablet': '{}', 'os.big': 'y'.repeat(2001), 'os.num': 3,
   });
   assert.deepEqual(kept, { 'os.brightness': '0.8', 'os.dnd': '1', 'rail.pins': '["claude"]' });
+});
+
+test('backupNote says the PC cannot be reached when there is no answer', () => {
+  assert.equal(backupNote(null), 'Can’t reach your PC');
+});
+
+test('backupNote says not saved yet when the PC has no backup', () => {
+  assert.equal(backupNote({ saved: null, values: {} }), 'Not saved yet');
+});
+
+test('backupNote gives the saved time and the setting count', () => {
+  const saved = '2026-11-26T09:30:00.000Z';
+  const when = new Date(saved).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  assert.equal(backupNote({ saved, values: { 'os.brightness': '0.8', 'os.dnd': '1' } }), `${when} · 2 settings`);
 });

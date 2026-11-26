@@ -19,7 +19,7 @@ import { monitorLines, uptimeText } from './monitor.ts';
 import { autoBrightness, batteryGlyph, chime, clearNotifications, groupedNotesHtml, mutedApps, notifications, onBack, onNotificationsChange, onSystemChange, openApp, prefs, quietNow, railEdgesFor, setTileOrder, sleep, swipeNotices, tileOrder, toggleMuteApp } from '../../../core/web/system.ts';
 import { appLabel } from '../../../core/web/notes-group.ts';
 import { moveTile, TILE_NAMES } from '../../../core/web/quick-order.ts';
-import { loadSettings, restoreSettings, saveSettings } from './backup.ts';
+import { backupNote, loadSettings, restoreSettings, saveSettings, savedNote } from './backup.ts';
 import { resultText, updateStatus, type UpdateAvailable, type UpdateStart } from './update.ts';
 import type { QuietHours, RailDir, RailEdge } from '../../../core/web/system.ts';
 import { clock, untilText, whenText } from '../../../core/web/format.ts';
@@ -1073,17 +1073,16 @@ function paintKeyboard(): void {
 // ---------- Storage ----------
 // ---------- Settings backup (Storage): save to the PC, restore on request (backup.ts) ----------
 async function paintBackupNote(): Promise<void> {
-  const b = await loadSettings();
-  $('stBkNote').textContent = !b ? 'Can’t reach your PC' : b.saved
-    ? `${new Date(b.saved).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ${Object.keys(b.values).length} settings`
-    : 'Not saved yet';
+  $('stBkNote').textContent = backupNote(await loadSettings());
 }
 function initBackup(): void {
   $('stBkSave').addEventListener('click', async () => {
     $('stBkMsg').textContent = 'Saving…';
     const r = await saveSettings();
     $('stBkMsg').textContent = r.ok ? `Saved ${r.count} settings to your PC.` : (r.error ?? 'Couldn’t save.');
-    void paintBackupNote();
+    // A good save answers with its own time and count, so the note needs no second read.
+    if (r.ok && r.saved) $('stBkNote').textContent = savedNote(r.saved, r.count ?? 0);
+    else void paintBackupNote();
   });
   $('stBkRestore').addEventListener('click', () => {
     confirmSheet('Restore settings from your PC?', 'The settings on this tablet are replaced with the ones saved on your PC. The page then reloads.', 'Restore', async () => {
