@@ -16,6 +16,7 @@ let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let days: PhotoDay[] = [];
 let listFailed = false;                  // the last list could not be read: the empty panel must not claim the gallery is empty
+let more = false;                        // the last list stopped at its limit: older photos are not shown
 // the grid picture of a photo with no thumbnail on the PC yet: its thumbnail once made, or its full picture if the PC
 // could not make one. Kept across reloads of the list, which still say "no thumbnail" until the next one.
 const thumbSrc = new Map<string, string>();
@@ -55,7 +56,7 @@ const timeOf = (at: string): string => new Date(at).toLocaleTimeString([], { hou
 
 function paint(): void {
   const total = days.reduce((n, d) => n + d.photos.length, 0);
-  $('phCount').textContent = total ? `${total} ${total === 1 ? 'photo' : 'photos'}` : '';
+  $('phCount').textContent = more ? 'Newest 500 photos' : total ? `${total} ${total === 1 ? 'photo' : 'photos'}` : '';
   $('phEmpty').hidden = total > 0 || listFailed;
   // days that read the same ("Earlier this week") share one heading
   const groups: { label: string; photos: PhotoItem[] }[] = [];
@@ -135,6 +136,7 @@ async function load(): Promise<void> {
   try {
     const l = await getJson<PhotoList>('/api/photos/list');
     days = l.days || [];
+    more = l.more === true;
     listFailed = l.ok === false;
     // the PC answered but could not read its folder: say so, rather than an empty gallery
     $('phNote').hidden = l.ok !== false;
