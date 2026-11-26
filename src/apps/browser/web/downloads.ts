@@ -12,7 +12,7 @@ export function runningMeta(bytes: number, total: number): { pct: number | null;
   if (total > 0) {
     return {
       pct: Math.min(100, Math.round(bytes / total * 100)),
-      text: `${size(bytes)} of ${size(total)}`,
+      text: bytes < 1 ? `Starting · ${size(total)}` : `${size(bytes)} of ${size(total)}`,
     };
   }
   return { pct: null, text: bytes > 0 ? `${size(bytes)} so far` : 'Starting' };
