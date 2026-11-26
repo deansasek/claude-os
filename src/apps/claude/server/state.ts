@@ -12,26 +12,50 @@ interface State {
   pins: Record<string, string[]>;        // session id → pinned message ids
 }
 
+// Entries that could not be read (a non-string id, a pin value that is not a list). They are not used, but a save writes
+// them back, so a change never deletes them. Only forgetState drops a session's unread pins, when the session is deleted.
+interface Unread { archived: unknown[]; pins: Record<string, unknown> }
+let unread: Unread = { archived: [], pins: {} };
+
 function load(): State {
   const s = readJsonOrSetAside<Partial<State>>(FILE);
   const pins: Record<string, string[]> = {};
+  const bad: Unread = { archived: [], pins: {} };
   if (s?.pins && typeof s.pins === 'object') {
-    for (const [id, list] of Object.entries(s.pins)) if (Array.isArray(list)) pins[id] = list.filter(x => typeof x === 'string');
+    for (const [id, list] of Object.entries(s.pins)) {
+      if (!Array.isArray(list)) { bad.pins[id] = list; continue; }
+      pins[id] = list.filter(x => typeof x === 'string');
+      const rest = list.filter(x => typeof x !== 'string');
+      if (rest.length) bad.pins[id] = rest;
+    }
   }
-  return { archived: Array.isArray(s?.archived) ? s.archived.filter(x => typeof x === 'string') : [], pins };
+  const archived = Array.isArray(s?.archived) ? s.archived.filter(x => typeof x === 'string') : [];
+  if (Array.isArray(s?.archived)) bad.archived = s.archived.filter(x => typeof x !== 'string');
+  unread = bad;
+  const n = bad.archived.length + Object.keys(bad.pins).length;
+  if (n) console.log(`claude: ${n} saved entries could not be read and are kept in ${path.basename(FILE)}`);
+  return { archived, pins };
 }
 
 let state: State = load();
 
-/** Write the whole state. The new state replaces the one in memory only when the write succeeds. */
-function save(next: State): boolean {
+/** Write the whole state, with the unread entries kept. The new state replaces the one in memory only when the write succeeds. */
+function save(next: State, dropUnreadPins?: string): boolean {
+  const pins: Record<string, unknown> = { ...next.pins };
+  for (const [id, v] of Object.entries(unread.pins)) {
+    if (id === dropUnreadPins) continue;
+    if (Array.isArray(v)) pins[id] = [...(Array.isArray(pins[id]) ? pins[id] as string[] : []), ...v];
+    else if (!(id in pins)) pins[id] = v;
+  }
+  const archived = [...next.archived, ...unread.archived];
   try {
-    writeJsonFile(FILE, next, { indent: 2 });
+    writeJsonFile(FILE, { archived, pins }, { indent: 2 });
   } catch (e) {
     console.log('claude: state save failed:', String((e as Error).message || e).slice(0, 160));
     return false;
   }
   state = next;
+  if (dropUnreadPins) delete unread.pins[dropUnreadPins];
   return true;
 }
 
@@ -57,5 +81,5 @@ export function setPinned(id: string, message: string, on: boolean): boolean {
 export function forgetState(id: string): boolean {
   const pins = { ...state.pins };
   delete pins[id];
-  return save({ archived: state.archived.filter(x => x !== id), pins });
+  return save({ archived: state.archived.filter(x => x !== id), pins }, id);
 }

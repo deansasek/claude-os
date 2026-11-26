@@ -55,3 +55,14 @@ test('a failed save returns false and leaves the state in memory unchanged', asy
   assert.deepEqual(s.pinnedIn('s1'), []);
   assert.equal(fs.existsSync(`${file}.tmp`), false);
 });
+
+test('entries that cannot be read are kept in the file through a later save', async () => {
+  const file = path.join(dir, 'unread.json');
+  fs.writeFileSync(file, JSON.stringify({ archived: ['a1', 7], pins: { s1: ['m1'], s2: 'bad' } }));
+  const s = await loadState(file);
+  assert.equal(s.setArchived('a2', true), true, 'the change saves');
+  const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.equal(stored.archived.includes(7), true, 'the unread archived entry is still in the file');
+  assert.equal(stored.pins.s2, 'bad', 'the unread pin value is still in the file');
+  assert.deepEqual(s.pinnedIn('s1'), ['m1']);
+});
