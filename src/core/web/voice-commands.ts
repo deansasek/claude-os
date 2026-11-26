@@ -28,7 +28,7 @@
 // the rest uses core only.
 import { getJson, postJson } from './dom.ts';
 import type { HaDashboard, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
-import { matchHome, matchScene, parseOnOff, parseScene, sayName, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
+import { matchHome, matchScene, onOffReply, parseOnOff, parseScene, sayName, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
 import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
@@ -524,10 +524,8 @@ async function homeOnOff(raw: string): Promise<CommandResult | null> {
     .map(e => ({ entity_id: e.entity_id, domain: e.domain, name: dash.layout.names?.[e.entity_id] || e.name }));
   const m = matchHome(raw, list);
   if (!m) return null;
+  // null: the PC could not be reached for that device (kept apart from the PC's own { ok: false, error })
   const results = await Promise.all(m.targets.map(d =>
-    postJson<HaResult>('/api/home-assistant/toggle', { entity_id: d.entity_id, on: m.on, voice: true }).catch(() => ({ ok: false } as HaResult))));
-  const failed = m.targets.filter((_, i) => !results[i]?.ok);
-  if (!failed.length) return { say: `${m.label}.`, react: m.on ? 'hop' : 'look' };
-  if (m.all && failed.length < m.targets.length) return { say: `Couldn’t reach ${failed.length} of the lights.` };
-  return { say: m.all ? 'Couldn’t reach the lights.' : `Couldn’t reach the ${sayName(m.targets[0]).replace(/^./, c => c.toLowerCase())}.` };
+    postJson<HaResult>('/api/home-assistant/toggle', { entity_id: d.entity_id, on: m.on, voice: true }).catch(() => null)));
+  return onOffReply(m, results);
 }
