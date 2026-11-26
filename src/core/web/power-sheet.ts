@@ -38,6 +38,7 @@ export function initPowerSheet(d: PowerDeps): void {
   let root: HTMLElement | null = null;
   let stage: PowerStage = 'menu';
   let unBack: (() => void) | null = null;
+  let fault = '';   // why the last press did not work, shown in place of the usual line until the next press
 
   const close = () => {
     if (root) root.hidden = true;
@@ -45,21 +46,28 @@ export function initPowerSheet(d: PowerDeps): void {
   };
   const paint = () => {
     const t = TEXT[stage];
+    const text = fault || t.text;
     root!.querySelector('h3')!.textContent = t.title;
     const p = root!.querySelector('p')!;
-    p.textContent = t.text;
-    p.hidden = !t.text;
+    p.textContent = text;
+    p.hidden = !text;
     root!.querySelector<HTMLElement>('[data-b="restart"] b')!.textContent = t.restart;
     root!.querySelector<HTMLElement>('[data-b="screen-off"]')!.hidden = stage === 'confirm';
     root!.querySelector<HTMLElement>('[data-b="screenshot"]')!.hidden = stage === 'confirm';
     root!.dataset.stage = stage;
   };
   const press = (b: PowerButton) => {
+    fault = '';
     const s = powerStep(stage, b);
+    if (s.call === 'reboot') {
+      // the tablet can refuse (a setup step is open): then the sheet stays, and says so
+      try { d.reboot(); } catch { fault = 'The tablet couldn’t restart. Finish any setup first, then try again.'; paint(); return; }
+      close();
+      return;
+    }
     if (s.next) { stage = s.next; paint(); } else close();
     try {
-      if (s.call === 'reboot') d.reboot();
-      else if (s.call === 'screenOff') d.screenOff();
+      if (s.call === 'screenOff') d.screenOff();
       else if (s.call === 'screenshot') d.screenshot();
     } catch { /* older app build or not device owner: the sheet is closed, nothing else happens */ }
   };
