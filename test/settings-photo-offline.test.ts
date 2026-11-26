@@ -137,3 +137,58 @@ test('usePhoto uses the saveProfile connection wording', () => {
   assert.ok(saveBody.includes(`'${CONNECTION}'`));
   assert.ok(body.includes(`'${CONNECTION}'`));
 });
+
+// Load removePhoto from the source, with stubs for postJson and the page's sheet and profile calls.
+function loadRemovePhoto(setup: { throws?: boolean; answer?: unknown }) {
+  const start = src.indexOf('async function removePhoto(): Promise<void> {');
+  const end = src.indexOf('\n}\n', start) + 3;
+  const code = stripTypeScriptTypes(src.slice(start, end));
+
+  const calls = { sheet: [] as [string, string][], applied: [] as unknown[], reported: [] as string[] };
+  const postJson = async (url: string): Promise<unknown> => {
+    assert.equal(url, '/api/settings/photo/remove');
+    if (setup.throws) throw new TypeError('fetch failed');
+    return setup.answer;
+  };
+  const confirmSheet = (title: string, body: string) => { calls.sheet.push([title, body]); };
+  const applyProfile = (p: unknown) => { calls.applied.push(p); };
+  const report = (id: string) => { calls.reported.push(id); };
+
+  const removePhoto = new Function('postJson', 'confirmSheet', 'applyProfile', 'report',
+    `${code}\nreturn removePhoto;`)(postJson, confirmSheet, applyProfile, report) as () => Promise<void>;
+  return { removePhoto, calls };
+}
+
+test('removePhoto applies no profile and shows the PC reason when the PC says no', async () => {
+  const { removePhoto, calls } = loadRemovePhoto({ answer: { ok: false, error: 'The photo is still in use.' } });
+  await removePhoto();
+  assert.deepEqual(calls.sheet, [['Couldn’t remove it', 'The photo is still in use.']]);
+  assert.deepEqual(calls.applied, []);
+  assert.deepEqual(calls.reported, []);
+});
+
+test('removePhoto says Try again when the PC gives no reason', async () => {
+  for (const answer of [{ ok: true }, { ok: false }, null]) {
+    const { removePhoto, calls } = loadRemovePhoto({ answer });
+    await removePhoto();
+    assert.deepEqual(calls.sheet, [['Couldn’t remove it', 'The PC did not remove the photo. Try again.']], JSON.stringify(answer));
+    assert.deepEqual(calls.applied, []);
+  }
+});
+
+test('removePhoto says Check the connection when the fetch throws', async () => {
+  const { removePhoto, calls } = loadRemovePhoto({ throws: true });
+  await removePhoto();
+  assert.deepEqual(calls.sheet, [['Couldn’t remove it', CONNECTION]]);
+  assert.deepEqual(calls.applied, []);
+  assert.deepEqual(calls.reported, []);
+});
+
+test('removePhoto applies the full profile the PC returns', async () => {
+  const profile = { name: 'Dean', nickname: 'D', role: '', photoAt: 0 };
+  const { removePhoto, calls } = loadRemovePhoto({ answer: profile });
+  await removePhoto();
+  assert.deepEqual(calls.applied, [profile]);
+  assert.deepEqual(calls.reported, ['settings:profile:photo:remove']);
+  assert.deepEqual(calls.sheet, []);
+});

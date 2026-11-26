@@ -20,3 +20,9 @@ test('no PIN is set, so the lock opens', () => {
 test('the welcome can be marked done', () => {
   assert.deepEqual(answerMock('POST', '/api/settings/welcome', { done: true }).body, { done: true });
 });
+
+test('removing the photo clears photoAt and returns the full profile', () => {
+  answerMock('POST', '/api/settings/profile', { name: 'Dean', nickname: 'Sam', role: 'Teacher' });
+  const body = answerMock('POST', '/api/settings/photo/remove', {}).body;
+  assert.deepEqual(body, { name: 'Dean', nickname: 'Sam', role: 'Teacher', photoAt: 0 });
+});
