@@ -478,7 +478,11 @@ function openHit(h: Hit): void {
     const a = tabApps.find(x => `a:${x.id}` === h.ref);
     if (a) launchAndroid(a);
   } else if (h.kind === 'setting') openSettings(h.ref);
-  else if (h.kind === 'list' || h.kind === 'item') openApp('lists');
+  else if (h.kind === 'list' || h.kind === 'item') {
+    // The Lists app opens the list named by hub:open-list.
+    openApp('lists');
+    dispatchEvent(new CustomEvent('hub:open-list', { detail: h.ref }));
+  }
   else if (h.kind === 'session') {
     // The Claude app opens the session named by hub:open-session (the same event Home uses).
     openApp('claude');
