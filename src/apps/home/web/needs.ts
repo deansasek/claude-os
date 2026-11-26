@@ -17,3 +17,9 @@ export function busyOf<T extends NeedSession>(sessions: T[], turns: NeedTurn[]):
   const approval = new Set(turns.filter(t => t.status === 'approval').map(t => t.sessionId));
   return sessions.filter(s => (s.state === 'thinking' || s.state === 'tool') && !(s.id && approval.has(s.id)));
 }
+
+/** The session and turn lists to judge now. A failed read gives none: the old lists are not live. */
+export function liveSessions<T extends NeedSession>(usage: { sessions?: T[]; turns?: NeedTurn[] } | null | undefined, failed: boolean): { sessions: T[]; turns: NeedTurn[] } {
+  if (failed) return { sessions: [], turns: [] };
+  return { sessions: usage?.sessions || [], turns: usage?.turns || [] };
+}

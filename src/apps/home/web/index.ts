@@ -20,7 +20,7 @@ import { ago, critterSpeak, notifications, onNotificationsChange, openApp, openC
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
 import { emptyTileText, weatherAfterRead } from './weather-read.ts';
-import { busyOf, needsYou, type NeedTurn } from './needs.ts';
+import { busyOf, liveSessions, needsYou, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
 import { readLists } from '../../lists/web/readers.ts';
@@ -210,8 +210,8 @@ async function loadUsage(): Promise<void> {
   paintClaude();
 }
 
-const waitingSessions = (): Session[] => needsYou(usage?.sessions || [], usage?.turns || []);
-const busySessions = (): Session[] => busyOf(usage?.sessions || [], usage?.turns || []);
+const waitingSessions = (): Session[] => { const live = liveSessions(usage, usageFailed); return needsYou(live.sessions, live.turns); };
+const busySessions = (): Session[] => { const live = liveSessions(usage, usageFailed); return busyOf(live.sessions, live.turns); };
 const left = (w: LimitWindow | undefined): number | null => (w && w.used != null ? Math.round(100 - Math.min(100, Math.max(0, w.used))) : null);
 const shortTitle = (t: string, n = 40) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
@@ -241,7 +241,7 @@ function paintClaude(): void {
 
   // header pill
   const pill = $('hmPill'), pillText = $('hmPillText');
-  if (!usage) { pill.className = 'live'; pillText.textContent = usageFailed ? 'Claude offline' : 'Loading'; }
+  if (!usage || usageFailed) { pill.className = 'live'; pillText.textContent = usageFailed ? 'Claude offline' : 'Loading'; }
   else if (waiting.length) { pill.className = 'live wait'; pillText.textContent = waiting.length > 1 ? `${waiting.length} sessions need you` : 'A session needs you'; }
   else if (busy.length) { pill.className = 'live work'; pillText.textContent = busy.length > 1 ? `Claude is working on ${busy.length}` : 'Claude is working'; }
   else { pill.className = 'live ok'; pillText.textContent = 'All quiet'; }
@@ -250,12 +250,12 @@ function paintClaude(): void {
   const val = $('hmClVal'), sub = $('hmClSub');
   $('hmClDot').classList.toggle('on', waiting.length > 0);
   // the PC's limits; when the PC has none (or is away), the tablet's own (native.ts) before anything says Offline
-  const L = usage?.limits, pcS = left(L?.limits?.five_hour), pcW = left(L?.limits?.seven_day);
+  const L = usageFailed ? undefined : usage?.limits, pcS = left(L?.limits?.five_hour), pcW = left(L?.limits?.seven_day);
   const tab = pcS == null && pcW == null ? tabletLimits() : null;
   const s = tab ? tab.s : pcS, w = tab ? tab.w : pcW;
   if (s == null && w == null) {
     val.className = 'quiet';
-    if (!usage) { val.textContent = usageFailed ? 'Offline' : '–'; sub.textContent = usageFailed ? 'Can’t reach the usage meter' : 'Loading usage…'; }
+    if (!usage || usageFailed) { val.textContent = usageFailed ? 'Offline' : '–'; sub.textContent = usageFailed ? 'Can’t reach the usage meter' : 'Loading usage…'; }
     else { val.textContent = 'Not connected'; sub.textContent = 'Plan limits aren’t connected yet'; }
   }
   else {
