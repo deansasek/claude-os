@@ -423,6 +423,7 @@ async function choosePlace(p: Place): Promise<void> {
   sel = { t: 'now' };
   Keyboard.close('chosen');
   appSettingsChanged();
+  dispatchEvent(new CustomEvent('hub:weather'));   // Home and the ambient screen show the new place at once
 }
 
 function openPicker(): void {
@@ -452,7 +453,7 @@ async function setUnits(u: Units): Promise<void> {
   pickUnits = u;
   paintUnits();
   // Save the unit even when no forecast is loaded (no city yet, or an error): the PC keeps it in meter-config.json.
-  try { await sendLocation({ units: u }); }
+  try { await sendLocation({ units: u }); dispatchEvent(new CustomEvent('hub:weather')); }   // Home and the ambient screen show the new unit at once
   catch (err) {
     const notSaved = err instanceof NotSaved;
     if (!notSaved) pcDown = true;
