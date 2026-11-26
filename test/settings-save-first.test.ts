@@ -52,3 +52,20 @@ test('instructions that cannot be saved do not change the instructions', () => {
   });
   assert.equal(Instructions.getInstructions(), 'Be brief.');
 });
+
+test('instructions that cannot be read are reported as an error, not as none saved, and are read again later', async () => {
+  // The shared module read the file at import, when it was missing. A fresh copy reads the blocked path now.
+  fs.rmSync(INSTRUCTIONS, { force: true });
+  fs.mkdirSync(INSTRUCTIONS);
+  try {
+    const Fresh = await import(new URL('../src/apps/settings/server/instructions.ts?unreadable', import.meta.url).href);
+    assert.deepEqual(Fresh.instructionsView(), { text: '', error: 'Your PC couldn’t read your saved instructions.' });
+    assert.equal(Fresh.instructionsForPrompt(), '');
+    fs.rmdirSync(INSTRUCTIONS);
+    fs.writeFileSync(INSTRUCTIONS, 'Be brief.');
+    // The next read succeeds, so the error goes away and the saved text comes back.
+    assert.deepEqual(Fresh.instructionsView(), { text: 'Be brief.' });
+  } finally {
+    fs.rmSync(INSTRUCTIONS, { recursive: true, force: true });
+  }
+});

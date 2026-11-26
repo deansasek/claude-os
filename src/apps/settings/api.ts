@@ -4,7 +4,7 @@
 //   POST /api/settings/photo              the profile photo: raw JPEG bytes, square, up to PHOTO_MAX
 //   POST /api/settings/photo/remove       take the photo away (initials show again)
 //   GET  /api/settings/photo?v=…          the photo itself (v is photoAt, to bust the cache)
-//   GET  /api/settings/instructions       "Your Claude": {text}
+//   GET  /api/settings/instructions       "Your Claude": {text}; {text: '', error} when the PC could not read the file
 //   POST /api/settings/instructions       {text}: saved (empty clears it), returns {text}
 //   GET  /api/settings/storage            what the PC keeps for ClaudeOS: {photos} in bytes
 //   GET  /api/settings/pin                the ClaudeOS PIN lock: PinStatus {set, lockedFor}
@@ -25,6 +25,7 @@ export const NAME_MAX = 60;
 export const NICK_MAX = 30;
 export const PHOTO_MAX = 512 * 1024;
 export const INSTRUCTIONS_MAX = 4000;
+export const INSTRUCTIONS_READ_FAILED = 'Your PC couldn’t read your saved instructions.';   // the error in the GET answer
 
 // The ClaudeOS PIN lock (server/pin.ts). 4 to 6 digits; 5 wrong tries give a 30-second cooldown.
 export interface PinStatus { set: boolean; lockedFor: number; fingerprint?: string | null }   // lockedFor: seconds of cooldown left; fingerprint changes with the PIN
