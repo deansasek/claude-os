@@ -29,6 +29,19 @@ test('a failed load shows the Offline pill again', () => {
   assert.match(index, /'Offline'; \$\('pill'\)\.hidden = false;/);
 });
 
+test('a PC that stopped answering overrides the old limits pill with Offline, after the hide rule', () => {
+  const hideRule = index.indexOf('pill.hidden = L.status');
+  const override = index.indexOf('if (pcDown)');
+  assert.ok(hideRule > 0 && override > hideRule, 'the pcDown override must follow the pill.hidden rule in tick()');
+  assert.match(index, /if \(pcDown\) \{ pill\.className = 'live bad'; pillText\.textContent = 'Offline'; pill\.hidden = false; \}/);
+});
+
+test('a good usage read clears pcDown, and a failed read sets it', () => {
+  assert.match(index, /let pcDown = false;/);
+  assert.match(index, /function render\(d: Usage\): void \{[\s\S]*?data = d;\s*pcDown = false;/);
+  assert.match(index, /catch \{\s*pcDown = true;/);
+});
+
 test('the hidden attribute wins over the .live display rule', () => {
   assert.match(css, /#app-claude #pill\[hidden\] \{ display: none; \}/);
 });
