@@ -32,8 +32,8 @@ const FAILED = failMessage(undefined);
 /** How long a stream may wait for data mid-play before it is taken as broken off (a live stream often never reports an error). */
 const STALL_MS = 15_000;
 let stallTimer = 0;
-const NO_DIRECTORY = 'No connection to the radio directory.';
 const RADIO_DOWN = 'Radio Browser is not available. Try again.';
+const PC_DOWN = 'Can’t reach your PC. Check that the computer running ClaudeOS is on, then try again.';
 const FACET_NAMES: Record<FacetKind, string> = { tags: 'Genres', countries: 'Countries', languages: 'Languages' };
 const BY: Record<FacetKind, string> = { tags: 'bytag', countries: 'bycountry', languages: 'bylanguage' };
 
@@ -72,7 +72,8 @@ let homeDone = false;                   // the shelves were asked for; a failed 
 let list: Station[] = [];                // the stations the catalogue shows now
 let facets: Facet[] = [];                // the genres, countries or languages it shows now
 let listState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
-let listError = '';
+let pcDown = false;                      // the last list read failed with a TypeError: the tablet cannot reach the PC
+const unreachable = (r: PromiseSettledResult<unknown>): boolean => r.status === 'rejected' && r.reason instanceof TypeError;
 let listKey = '';                        // what list and facets hold, so a view loads only once
 let query = '';
 let filters: SearchFilters = { ...NO_FILTERS };
@@ -359,12 +360,13 @@ async function load(force = false): Promise<void> {
       list = playableStations(r.stations);
     }
     listState = 'ok';
+    pcDown = false;
   } catch (e) {
     if (mine !== seq) return;
     list = [];
     facets = [];
     listState = 'error';
-    listError = e instanceof TypeError || e instanceof SyntaxError ? NO_DIRECTORY : String((e as Error).message || NO_DIRECTORY);
+    pcDown = e instanceof TypeError;
   }
   render();
 }
@@ -387,6 +389,7 @@ async function loadHome(force = false): Promise<void> {
   const top = getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent('stations/topvote/100')}`)
     .then(r => { if (r.status !== 'ok') throw new Error(r.error); return playableStations(r.stations); });
   const [t, g, c] = await Promise.allSettled([top, facetsOf('tags'), facetsOf('countries')]);
+  pcDown = [t, g, c].some(unreachable);
   home = {
     top: t.status === 'fulfilled' ? t.value : [], topState: t.status === 'fulfilled' ? 'ok' : 'error',
     genres: g.status === 'fulfilled' ? g.value : [], genresState: g.status === 'fulfilled' ? 'ok' : 'error',
@@ -400,6 +403,7 @@ const isFiltering = (): boolean => !!(query || filters.country || filters.codec 
 async function loadBrowse(): Promise<void> {
   if (browse !== 'loading' && browse !== 'error') { render(); return; }
   const [t, c, l] = await Promise.allSettled([facetsOf('tags'), facetsOf('countries'), facetsOf('languages')]);
+  pcDown = [t, c, l].some(unreachable);
   browse = t.status === 'fulfilled' && c.status === 'fulfilled' && l.status === 'fulfilled'
     ? { tags: t.value, countries: c.value, languages: l.value } : 'error';
   render();
@@ -564,7 +568,7 @@ function landingShelf(p: ShelfPlan): string {
   if (p.id === 'recent') return `<section class="rd-shelf">${landingHead('Recently played')}<div class="rd-row rd-cv-row">${recent.map(coverCard).join('')}</div></section>`;
   if (p.id === 'top') {
     const head = landingHead('Made for you', 'top');
-    if (p.error) return `<section class="rd-shelf">${head}<p class="rd-empty">${esc(p.error)}</p></section>`;
+    if (p.error) return `<section class="rd-shelf">${head}<p class="rd-empty">${esc(pcDown ? PC_DOWN : p.error)}</p></section>`;
     if (p.loading) return `<section class="rd-shelf">${head}<div class="rd-made">${'<div class="rd-sk-row"></div>'.repeat(MADE_COUNT)}</div></section>`;
     const picks = madeForYou(home.top, [...recent, ...favs]);
     if (!picks.length) return '';
@@ -769,7 +773,7 @@ function renderNow(): void {
 }
 
 /** The error text and a Try again button for a list Radio Browser did not send. */
-function retryHtml(): string { return `<p class="rd-empty">${esc(RADIO_DOWN)}</p><div class="rd-recent"><button class="rd-pill" data-retry="1">Try again</button></div>`; }
+function retryHtml(): string { return `<p class="rd-empty">${esc(pcDown ? PC_DOWN : RADIO_DOWN)}</p><div class="rd-recent"><button class="rd-pill" data-retry="1">Try again</button></div>`; }
 
 function render(): void {
   const s = current;
