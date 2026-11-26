@@ -16,3 +16,16 @@ test('the plugins list read gives up after PLUGINS_TIMEOUT_MS', () => {
   assert.match(body, /getJson<PluginsView>\([^;]*, PLUGINS_TIMEOUT_MS\)/);
   assert.match(src, /const PLUGINS_TIMEOUT_MS = 60_000;/);
 });
+
+test('a failed plugins read marks the kept list as out of date', () => {
+  assert.match(body, /stale = false;/, 'a good read clears stale');
+  assert.match(body, /catch \{ stale = view !== null;/, 'the catch marks stale only when a list was kept');
+});
+
+test('paintPlugins says the kept list may be out of date and shows the recheck control', () => {
+  const at = src.indexOf('export function paintPlugins(');
+  const paint = src.slice(at, src.indexOf('\n}\n', at));
+  assert.ok(at > 0, 'paintPlugins() exists');
+  assert.ok(paint.includes('Couldn’t reach your PC, so this list may be out of date.'), 'out-of-date note');
+  assert.match(paint, /else if \(stale\) \{[^}]*again\.hidden = false;/, 'recheck control shown when stale');
+});
