@@ -7,7 +7,7 @@
 // --model picks another Vosk model, e.g. the larger, more accurate (and ~4x bigger) one:
 //   node android/setup-voice.ts --model vosk-model-en-us-0.22-lgraph
 
-import { cpSync, createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, createWriteStream, existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
@@ -38,7 +38,9 @@ async function download(url: string, name: string): Promise<string> {
     console.log(`downloading ${url}`);
     const response = await fetch(url);
     if (!response.ok || !response.body) throw new Error(`download failed (${response.status}): ${url}`);
-    await pipeline(Readable.fromWeb(response.body as any), createWriteStream(to));
+    // written under a .part name and renamed when whole: a cut-off download is not taken for the file on the next run
+    await pipeline(Readable.fromWeb(response.body as any), createWriteStream(to + '.part'));
+    renameSync(to + '.part', to);
   }
   return to;
 }

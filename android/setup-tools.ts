@@ -5,7 +5,7 @@
 // Works on Windows, macOS (Intel and Apple Silicon) and Linux. Re-running is safe: finished parts are skipped.
 // Usage: node android/setup-tools.ts
 
-import { createWriteStream, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -22,7 +22,9 @@ async function getArchive(url: string, name: string): Promise<string> {
     console.log(`downloading ${name}`);
     const response = await fetch(url);
     if (!response.ok || !response.body) throw new Error(`download failed (${response.status}): ${url}`);
-    await pipeline(Readable.fromWeb(response.body as any), createWriteStream(archive));
+    // written under a .part name and renamed when whole: a cut-off download is not taken for the archive on the next run
+    await pipeline(Readable.fromWeb(response.body as any), createWriteStream(archive + '.part'));
+    renameSync(archive + '.part', archive);
   }
   return archive;
 }
