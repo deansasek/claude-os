@@ -1,6 +1,7 @@
 // The Hub's core server: static files, the app loader (routes under /api/<id>/),
 // a few core routes, and keeping the Nest Hub on the page.
 import fs from 'node:fs';
+import { EXIT_CANNOT_LISTEN } from './exit.ts';
 import http from 'node:http';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
@@ -281,6 +282,11 @@ export function startServer(apps: ServerApp[]): void {
   const server = http.createServer(handler);
 
   const pageUrl = `http://${args.host}:${args.port}/?theme=${args.theme}`;
+  // a listen that fails (the port is taken, or the address is not this PC's any more) is said once, and the host is told not to restart
+  server.on('error', e => {
+    console.error(`cannot listen on ${args.host}:${args.port}: ${(e as NodeJS.ErrnoException).code ?? e.message}. Check the address in config.json.`);
+    process.exit(EXIT_CANNOT_LISTEN);
+  });
   server.listen(args.port, args.host, () => console.log(`serving ${pageUrl} with apps: ${apps.map(a => a.id).join(', ')}`));
 
   // ---------- HTTPS for the camera and microphone on other devices (--https): port + 1, with a certificate this PC makes once ----------

@@ -11,6 +11,7 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EXIT_CANNOT_LISTEN } from '../src/core/server/exit.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOG_DIR = join(ROOT, 'host', 'logs');
@@ -128,6 +129,7 @@ function run(extra: string[]): void {
     child.stderr?.on('data', (d: Buffer) => log(d.toString()));
     child.on('exit', code => {
       if (stopping) return;
+      if (code === EXIT_CANNOT_LISTEN) { log('[host] the host cannot listen on its address (see the line above); not restarting it. Check config.json, then start the host again.'); return; }
       if (Date.now() - began > HEALTHY_MS) restarts = 0;
       const wait = BACKOFF[Math.min(restarts, BACKOFF.length - 1)];
       restarts++;
