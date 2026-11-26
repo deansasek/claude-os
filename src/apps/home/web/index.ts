@@ -19,6 +19,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { ago, critterSpeak, notifications, onNotificationsChange, openApp, openControlCenter, openSettings, sleep } from '../../../core/web/system.ts';
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
+import { listsRow } from './lists-row.ts';
 import { emptyTileText, weatherAfterRead } from './weather-read.ts';
 import { busyOf, liveSessions, needsYou, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
@@ -373,10 +374,9 @@ async function loadLists(): Promise<void> {
 function paintLists(): void {
   // a row beside its label: "3 to get · Milk, eggs…", or one plain phrase
   const val = $('hmLsVal'), sub = $('hmLsSub');
-  if (!lists) { val.textContent = listsFailed ? 'Can’t reach the lists' : 'Loading…'; sub.textContent = ''; return; }
-  const open = lists.items.filter(i => !i.done);
-  val.textContent = open.length ? `${open.length} to get` : 'Nothing to get';
-  sub.textContent = open.length ? open.slice(0, 2).map(i => i.text).join(', ') + (open.length > 2 ? '…' : '') : '';
+  const row = listsRow(lists, listsFailed);
+  val.textContent = row.val;
+  sub.textContent = row.sub;
 }
 
 const calLine = (e: CalEvent): string => (e.allDay ? `${e.title} (all day)` : `${hm(new Date(e.start))} ${e.title}`);
