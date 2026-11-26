@@ -15,6 +15,7 @@ import { backfillActive, backfillThumb } from './thumb.ts';
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let days: PhotoDay[] = [];
+let listFailed = false;                  // the last list could not be read: the empty panel must not claim the gallery is empty
 // the grid picture of a photo with no thumbnail on the PC yet: its thumbnail once made, or its full picture if the PC
 // could not make one. Kept across reloads of the list, which still say "no thumbnail" until the next one.
 const thumbSrc = new Map<string, string>();
@@ -55,7 +56,7 @@ const timeOf = (at: string): string => new Date(at).toLocaleTimeString([], { hou
 function paint(): void {
   const total = days.reduce((n, d) => n + d.photos.length, 0);
   $('phCount').textContent = total ? `${total} ${total === 1 ? 'photo' : 'photos'}` : '';
-  $('phEmpty').hidden = total > 0;
+  $('phEmpty').hidden = total > 0 || listFailed;
   // days that read the same ("Earlier this week") share one heading
   const groups: { label: string; photos: PhotoItem[] }[] = [];
   for (const d of days) {
@@ -134,10 +135,12 @@ async function load(): Promise<void> {
   try {
     const l = await getJson<PhotoList>('/api/photos/list');
     days = l.days || [];
+    listFailed = l.ok === false;
     // the PC answered but could not read its folder: say so, rather than an empty gallery
     $('phNote').hidden = l.ok !== false;
     if (l.ok === false) $('phNote').textContent = l.error || 'The PC couldn’t read its photos folder.';
   } catch {
+    listFailed = true;
     $('phNote').hidden = false;
     $('phNote').textContent = 'Can’t reach your PC just now. The photos will show when it answers.';
   }
