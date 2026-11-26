@@ -363,6 +363,8 @@ async function loadWx(): Promise<void> {
 async function sendLocation(body: LocationUpdate): Promise<void> {
   const d = await postJson<Weather>('/api/weather/location', body);
   if (d.status === 'ok' || d.status === 'no_location') { wx = d; wxAt = Date.now(); offline = false; }
+  // the place or units were saved, but the forecast failed: show that, and read it again soon (as loadWx does)
+  else if (d.status === 'error') { wx = d; wxAt = Date.now(); offline = false; clearTimeout(retryTimer); retryTimer = window.setTimeout(loadWx, RETRY_MS); }
 }
 
 // ---------- city picker (uses the shared keyboard) ----------
