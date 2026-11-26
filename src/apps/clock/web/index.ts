@@ -19,7 +19,7 @@ import { manifest } from '../manifest.ts';
 import { registerAppSettings } from '../../../core/web/app-settings.ts';
 import { alertFor, critterSpeak, onBack, openApp } from '../../../core/web/system.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
-import { dur, lengthWords, words } from './timer-text.ts';
+import { daysAhead, dayName, dur, lengthWords, whenWord, words } from './timer-text.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, nextTimerName, parseClockTimers, runningLeftMs, type ClockTimer } from '../../../core/web/clock-timer.ts';
 
 type Mode = 'clock' | 'timer' | 'stopwatch' | 'alarm';
@@ -78,8 +78,6 @@ function alarmParts(h: number, m: number): { hm: string; period: string } {
   return { hm: `${t.hour}:${t.minute}`, period: t.period };
 }
 const alarmText = (h: number, m: number) => { const p = alarmParts(h, m); return p.period ? `${p.hm} ${p.period}` : p.hm; };
-const dayName = (day: number, style: 'short' | 'long' = 'short') =>
-  new Date(2000, 0, 2 + day).toLocaleDateString([], { weekday: style });   // 2 Jan 2000 was a Sunday
 
 
 // ---------- icons ----------
@@ -579,12 +577,6 @@ function repeatLabel(days: number[]): string {
   }
   return parts.join(', ');
 }
-/** "today", "tomorrow", or "Tue" for when an alarm next rings */
-function whenWord(t: number, d: Date = now()): string {
-  const a = new Date(t), today = new Date(d); today.setHours(0, 0, 0, 0);
-  const days = Math.round((new Date(a).setHours(0, 0, 0, 0) - today.getTime()) / 864e5);
-  return days <= 0 ? 'today' : days === 1 ? 'tomorrow' : dayName(a.getDay(), 'long');
-}
 
 function alarmToggle(id: string): void {
   const a = alarms.find(x => x.id === id);
@@ -642,7 +634,8 @@ function renderNextPill(): void {
   pill.hidden = !n;
   if (n) {
     const soon = n.at - now().getTime() < 20 * 3600e3;
-    $('ckNextText').textContent = `${hm(new Date(n.at))}${soon ? '' : ` ${dayName(new Date(n.at).getDay())}`}`;
+    const far = daysAhead(n.at, now()) >= 7;
+    $('ckNextText').textContent = `${hm(new Date(n.at))}${soon ? '' : ` ${far ? 'next ' : ''}${dayName(new Date(n.at).getDay())}`}`;
   }
 }
 
