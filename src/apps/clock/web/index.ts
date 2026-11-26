@@ -651,7 +651,16 @@ function checkAlarms(d: Date): void {
   for (const a of alarms) {
     if (a.snooze) {
       if (Date.now() < a.snooze) continue;
+      const missed = Date.now() - a.snooze > 3 * 60e3;
       a.snooze = null;
+      // a snooze that ended more than three minutes ago does not ring: send the missed notice, as stopRing(true) does
+      if (missed) {
+        saveAlarms(); renderAlarms();
+        const lbl = labelOf(a);
+        const sub = `${d.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })} · ${repeatLabel(a.days)}`;
+        alertFor('timer', { title: `Missed alarm · ${alarmText(a.h, a.m)}${lbl ? ` · ${lbl}` : ''}`, body: lbl ? `${lbl} · ${sub}` : sub, app: 'clock' }, undefined, ctx.isVisible());
+        continue;
+      }
     } else {
       if (!a.on) continue;
       const t = new Date(d); t.setHours(a.h, a.m, 0, 0);
