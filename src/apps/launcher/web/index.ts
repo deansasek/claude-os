@@ -66,10 +66,10 @@ async function push(): Promise<void> {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ screen: SCREEN, layout, ...(allowed ? { allowed: [...allowed] } : {}) }),
     });
-    const j = (r.ok ? await r.json() : { ok: false, error: `HTTP ${r.status}` }) as LauncherLayoutResult;
-    // refused (it isn't a layout the PC takes): sending it again won't help, so the copy stops waiting for it
-    if (!j.ok) console.warn('launcher: the PC refused the layout:', j.error);
-    if (JSON.stringify(layout) === sent) setUnsynced(false);   // nothing changed while it was on its way
+    // a server error (5xx) or a save the PC could not make is sent again later; any other refusal is final
+    const j = (r.ok ? await r.json() : { ok: false, error: `HTTP ${r.status}`, retry: r.status >= 500 }) as LauncherLayoutResult;
+    if (!j.ok && !j.retry) console.warn('launcher: the PC refused the layout:', j.error);
+    if (JSON.stringify(layout) === sent && (j.ok || !j.retry)) setUnsynced(false);   // nothing changed while it was on its way
   } catch { /* the PC can't be reached: the local copy keeps it, and it is sent again when Apps next shows */ }
 }
 /** The PC's layout replaces the copy, unless the copy has changes of its own (then those are sent instead). */
