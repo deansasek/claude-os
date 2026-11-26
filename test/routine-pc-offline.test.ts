@@ -39,3 +39,9 @@ test('a Home tap on an offline PC says the PC is not answering, not that the rou
   assert.match(body, /say\('The PC isn’t answering, so that routine can’t start\.'\)/);
   assert.doesNotMatch(body.slice(0, body.indexOf("res === 'gone'")), /That routine is gone/);
 });
+
+test('refresh() clears only its own failure note on success, and keeps the Run now "gone" note', () => {
+  const body = between(routines, 'async function refresh(): Promise<void> {', 'async function loadScenes(');
+  assert.match(body, /if \(note === refreshNote\) note = ''; refreshNote = '';/);
+  assert.match(routines, /'That routine is gone\.'/);
+});
