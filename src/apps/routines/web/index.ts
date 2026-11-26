@@ -18,7 +18,7 @@ import {
   type Routine, type RoutineTime, type RoutinesResult, type Step, type StepKind,
 } from '../api.ts';
 import { manifest } from '../manifest.ts';
-import { onRunState, runRoutine, runState, stopRoutine } from './run.ts';
+import { onRunState, runState, startRoutine, stopRoutine } from './run.ts';
 import { apply, hasCopy, localRoutines, onCopyChange, pull } from './sync.ts';
 
 const API = `/api/${manifest.id}`;
@@ -347,7 +347,13 @@ function runNow(): void {
   const run = runState();
   if (run && run.id === draft.id) { stopRoutine(); return; }
   if (!draft.id || dirty()) return;
-  void runRoutine(draft.id).then(ok => { if (!ok) { note = 'That routine couldn’t start. Try again in a moment.'; render(); } });
+  void startRoutine(draft.id).then(res => {
+    if (res === 'started') return;
+    if (res === 'gone') { note = 'That routine is gone.'; void refresh(); return; }   // refresh() paints the note and drops the card
+    if (res === 'empty') { note = 'That routine has no steps yet.'; render(); return; }
+    if (res === 'offline') { note = 'The PC isn’t answering, so that routine can’t start.'; render(); return; }
+    note = 'That routine couldn’t start. Try again in a moment.'; render();
+  });
 }
 
 // ---------- the app ----------
