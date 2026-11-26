@@ -34,3 +34,14 @@ test('a save keeps the bad entries that were in the file', async () => {
   assert.equal(saved.some((s: unknown) => s === null), true, 'the bad entry is still in the file');
   assert.equal(saved.filter((s: { id?: string }) => s?.id === 'ok-1').length, 1);
 });
+
+test('a Hub session with a bad start time is not loaded, and a save keeps it on disk', async () => {
+  const badDate = { ...good, id: 'bad-date-1', createdAt: 'not a date' };
+  writeFileSync(file, JSON.stringify({ sessions: [good, badDate] }));
+  const H = await import(`../src/apps/claude/server/hostsessions.ts?baddate=${Date.now()}`);
+  assert.equal(H.hostSession('bad-date-1'), undefined, 'the bad record is not in use');
+  assert.equal(H.hostSession('ok-1')?.id, 'ok-1');
+  H.rememberHostSession({ ...good, id: 'ok-2' });
+  const saved = JSON.parse(readFileSync(file, 'utf8')).sessions as { id: string }[];
+  assert.equal(saved.some(s => s.id === 'bad-date-1'), true, 'the bad record is still in the file');
+});
