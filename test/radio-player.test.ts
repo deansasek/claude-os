@@ -60,6 +60,21 @@ test('the device media level (0..1) maps to the slider 0..100; a missing level i
   assert.equal(volumeFromDevice('loud'), null);
 });
 
+// The title fetch runs in the browser (DOM code), so these are source-text checks on fetchTitle.
+test('a failed title read clears the old song and refreshes the card and media session', () => {
+  const src = readFileSync(new URL('../src/apps/radio/web/index.ts', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('async function fetchTitle'), src.indexOf('// ---- the catalogue ----'));
+  const catchBlock = body.slice(body.indexOf('} catch {'));
+  assert.match(catchBlock, /streamTitle = ''/);
+  assert.match(catchBlock, /syncMedia\(\)/);
+  assert.match(catchBlock, /render\(\)/);
+});
+
+test('a successful title read still replaces the title through the same path', () => {
+  const src = readFileSync(new URL('../src/apps/radio/web/index.ts', import.meta.url), 'utf8');
+  assert.match(src, /streamTitle = r\.title \|\| ''; syncMedia\(\); render\(\);/);
+});
+
 test('the old radio.volume store key is ignored: radio no longer reads it', () => {
   const src = readFileSync(new URL('../src/apps/radio/web/index.ts', import.meta.url), 'utf8');
   assert.equal(src.includes('radio.volume'), false);

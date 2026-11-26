@@ -304,7 +304,10 @@ async function fetchTitle(): Promise<void> {
     const r = await getJson<TitleResult>(`${API}/title?url=${encodeURIComponent(s.url)}`);
     if (current?.id !== s.id || state === 'off') return;
     if ((r.title || '') !== streamTitle) { streamTitle = r.title || ''; syncMedia(); render(); }
-  } catch { /* no title; the card says "Live radio" */ }
+  } catch {
+    // No title (the PC host cannot be reached): drop the old song, so the card says "Live radio".
+    if (current?.id === s.id && state !== 'off' && streamTitle !== '') { streamTitle = ''; syncMedia(); render(); }
+  }
 }
 
 // ---- the catalogue ----
