@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import fs from 'node:fs';
 import { test } from 'node:test';
-import { insidePhotos, listPhotosPage, PHOTOS, photoIdsFrom, safeId } from '../src/apps/photos/server/store.ts';
+import { deletePhotos, insidePhotos, listPhotosPage, PHOTOS, photoIdsFrom, safeId } from '../src/apps/photos/server/store.ts';
 
 /** Run fn with one day folder holding these photo files. The folder reads are stubbed, so no photo files are touched. */
 function withDayFolder(names: string[], fn: () => void): void {
@@ -55,4 +55,34 @@ test('a list that holds every photo does not report more', () => {
     assert.equal(listPhotosPage(2).more, false);
     assert.equal(listPhotosPage(5).more, false);
   });
+});
+
+test('a photo whose folder cannot be read is failed, not reported as already gone', () => {
+  const realRead = fs.readdirSync;
+  fs.readdirSync = ((p: fs.PathLike) => {
+    if (String(p) === PHOTOS) throw Object.assign(new Error('denied'), { code: 'EACCES' });
+    return realRead(p);
+  }) as unknown as typeof fs.readdirSync;
+  try {
+    const r = deletePhotos(['abc123def456']);
+    assert.deepEqual(r.failed, ['abc123def456']);
+    assert.deepEqual(r.missing, []);
+  } finally {
+    fs.readdirSync = realRead;
+  }
+});
+
+test('a photos folder that is not there (ENOENT) still reports the photo as missing', () => {
+  const realRead = fs.readdirSync;
+  fs.readdirSync = ((p: fs.PathLike) => {
+    if (String(p) === PHOTOS) throw Object.assign(new Error('gone'), { code: 'ENOENT' });
+    return realRead(p);
+  }) as unknown as typeof fs.readdirSync;
+  try {
+    const r = deletePhotos(['abc123def456']);
+    assert.deepEqual(r.missing, ['abc123def456']);
+    assert.deepEqual(r.failed, []);
+  } finally {
+    fs.readdirSync = realRead;
+  }
 });
