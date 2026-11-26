@@ -73,6 +73,9 @@ test('a taken HTTPS port goes to onError, and the Host keeps running', { skip: !
     assert.equal((error as NodeJS.ErrnoException).code, 'EADDRINUSE');
   } finally {
     blocker.close();
+    fs.rmSync(state, { recursive: true, force: true });
+  }
+});
 
 test('the server certificate is remade when it is within 30 days of expiry', { skip: !hasOpenssl }, () => {
   const state = fs.mkdtempSync(path.join(os.tmpdir(), 'https-test-'));
