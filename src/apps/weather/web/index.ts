@@ -410,7 +410,8 @@ async function choosePlace(p: Place): Promise<void> {
     await sendLocation({ lat: p.lat, lon: p.lon, place: p.name, units: pickUnits });
     report('location');
   } catch {
-    paintPlaces('Couldn’t save that.', () => void choosePlace(p));
+    pcDown = true;
+    paintPlaces(`Couldn’t reach your PC, so <em>${esc(p.name)}</em> isn’t saved. Try again.`, () => void choosePlace(p));
     return;
   }
   sel = { t: 'now' };
