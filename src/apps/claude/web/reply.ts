@@ -557,7 +557,14 @@ function answer(allow: boolean, then: HubPermission = 'default'): void {
   const t = view?.turn, a = t?.approval;
   if (!t || !a) return;
   void withPin(async () => {
-    await call('approve', { turn: t.id, approval: a.id, allow, ...(a.kind === 'plan' ? { mode: then } : {}) });
+    try { await call('approve', { turn: t.id, approval: a.id, allow, ...(a.kind === 'plan' ? { mode: then } : {}) }); }
+    catch (e) {
+      if ((e as Error).message === 'locked_out') throw e;   // withPin shows the PIN pad
+      notify({ title: 'Couldn’t reach your PC', body: 'Your answer didn’t reach Claude. Try again.', app: 'claude' }, false);
+      report('approve-failed');
+      void refresh();
+      return;
+    }
     report(allow ? 'approve' : 'deny');
     void refresh();
   });
