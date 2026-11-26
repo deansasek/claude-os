@@ -34,6 +34,16 @@ test('sendLocation clears pcDown once the PC answers, before reading the status'
   assert.ok(checked > cleared, 'pcDown = false comes before the d.status checks');
 });
 
+test('choosePlace names the PC and marks it down when the save fails', () => {
+  const pickStart = src.indexOf('async function choosePlace(p: Place)');
+  const pickBody = src.slice(pickStart, src.indexOf('\n}\n', pickStart));
+  assert.ok(pickStart > 0, 'choosePlace exists');
+  const catchBody = pickBody.slice(pickBody.indexOf('catch {'));
+  assert.match(catchBody, /pcDown = true;/);
+  assert.match(catchBody, /Couldn’t reach your PC, so <em>\$\{esc\(p\.name\)\}<\/em> isn’t saved\. Try again\./);
+  assert.doesNotMatch(pickBody, /Couldn’t save that\./);
+});
+
 test('openPicker keeps the saved unit when no forecast is loaded', () => {
   const pickStart = src.indexOf('function openPicker(): void {');
   const pickBody = src.slice(pickStart, src.indexOf('\n}\n', pickStart));
