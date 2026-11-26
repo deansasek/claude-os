@@ -1,5 +1,5 @@
 {
-  "name": "claude-hub",
+  "name": "claude-os",
   "version": "1.0.0",
   "description": "ClaudeOS: a home tablet UI and hub for Claude sessions",
   "engines": {
