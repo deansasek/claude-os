@@ -472,6 +472,7 @@ function startNewSession(p: Project, text: string): void {
     $('ns').classList.add('starting');
     let r: NewSessionResult;
     try { r = await call<NewSessionResult>('new', { project: p.id, text, photoIds: photos, ...newDefaults() }); }
+    catch { r = { ok: false, error: 'unreachable' }; if (text) draft = text; }   // the PC did not answer: keep the message to send again
     finally { starting = false; $('ns').classList.remove('starting'); }
     report(r.ok ? 'new-session' : 'new-session-failed');
     if (r.ok && r.sessionId) { picking = false; photos = []; if (mode === 'new') openSession(r.sessionId); return; }
@@ -484,6 +485,7 @@ function startNewSession(p: Project, text: string): void {
 /** What a new session that didn't start says, by reason (anything else gets the general line). */
 const NEW_ERROR: Record<string, string> = {
   too_many: 'Two replies are already running. Try again in a moment.',
+  unreachable: 'Can’t reach your PC just now. Your message is kept: send it again.',
   no_such_folder: 'That folder isn’t there any more. Pick another one.',
   too_many_photos: 'Too many photos for one message. Take one off.',
   empty: 'Write a task, or add a photo, then send.',
