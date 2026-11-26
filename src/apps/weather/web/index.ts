@@ -9,7 +9,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import type { LocationUpdate, Place, PlacesResponse, Units, Weather, WeatherOk } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-settings.ts';
-import { critterSpeak, openApp } from '../../../core/web/system.ts';
+import { critterSpeak, notify, openApp } from '../../../core/web/system.ts';
 import { WMO, advice, icon, isCold, isWindy, kindOf, weatherScene } from './art.ts';
 import { airLine, pollenLine } from './air.ts';
 
@@ -439,7 +439,8 @@ async function setUnits(u: Units): Promise<void> {
   pickUnits = u;
   paintUnits();
   // Save the unit even when no forecast is loaded (no city yet, or an error): the PC keeps it in meter-config.json.
-  try { await sendLocation({ units: u }); } catch { /* the chosen unit stays on screen; the next change saves it */ }
+  try { await sendLocation({ units: u }); }
+  catch { notify({ title: 'Couldn’t reach your PC', body: 'The new temperature unit isn’t saved. Try again.', app: 'weather' }, false); report('wx-units-failed'); }
   renderWx();
   appSettingsChanged();   // Settings → Apps → Weather shows the new units
 }
