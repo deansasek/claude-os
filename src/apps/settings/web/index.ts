@@ -419,9 +419,19 @@ async function openPhotoSheet(): Promise<void> {
   grid.innerHTML = photos.map(p => `<button class="st-photo-thumb hit" data-photo="${esc(thumbUrl(p.id))}" aria-label="Use this photo"><img src="${esc(thumbUrl(p.id))}" alt="" loading="lazy"></button>`).join('');
 }
 
+/** The sentence for a photo the PC did not save. `error` is the error code from server/profile.ts, or its text. */
+function photoErrorText(error: unknown): string {
+  if (error === 'too_big') return 'That photo is too big. Try another photo.';
+  if (error === 'not_jpeg') return 'That photo isn’t a JPEG. Try another photo.';
+  if (error === 'no_photo') return 'No photo reached your PC. Try again.';
+  return typeof error === 'string' && error ? error : 'Try another photo, or try again.';
+}
+
 /** Crop a photo from the library to a 256 px square (the middle of it), and keep it as the profile photo. */
 async function usePhoto(url: string): Promise<void> {
   $('stPhotoSheet').hidden = true;
+  // stage 1: the tablet decodes and crops the photo. A failure here is the photo's fault.
+  let blob: Blob | null = null;
   try {
     const img = new Image();
     img.src = url;
@@ -430,14 +440,20 @@ async function usePhoto(url: string): Promise<void> {
     const c = document.createElement('canvas');
     c.width = c.height = 256;
     c.getContext('2d')!.drawImage(img, sx, sy, side, side, 0, 0, 256, 256);
-    const blob = await new Promise<Blob | null>(res => c.toBlob(res, 'image/jpeg', .88));
-    if (!blob) throw new Error('no image');
+    blob = await new Promise<Blob | null>(res => c.toBlob(res, 'image/jpeg', .88));
+  } catch { blob = null; }
+  if (!blob) { confirmSheet('Couldn’t use that photo', 'Try another photo, or try again.', 'OK', () => {}); return; }
+  // stage 2: the PC saves the photo. A fetch that throws or a non-JSON answer means the PC cannot be reached.
+  let j: { ok?: boolean; profile?: Profile; error?: unknown } | null;
+  try {
     const r = await fetch('/api/settings/photo', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
-    const j = await r.json() as { ok: boolean; profile?: Profile };
-    if (!j.ok || !j.profile) throw new Error('not saved');
-    applyProfile(j.profile);
-    report('settings:profile:photo');
-  } catch { confirmSheet('Couldn’t use that photo', 'Try another photo, or try again.', 'OK', () => {}); }
+    j = await r.json() as { ok?: boolean; profile?: Profile; error?: unknown } | null;
+  } catch { j = null; }
+  if (j === null) { confirmSheet('Couldn’t use that photo', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
+  // stage 3: the PC answered. Its reason says what to change.
+  if (!j.ok || !j.profile) { confirmSheet('Couldn’t use that photo', photoErrorText(j.error), 'OK', () => {}); return; }
+  applyProfile(j.profile);
+  report('settings:profile:photo');
 }
 
 async function removePhoto(): Promise<void> {
