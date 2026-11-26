@@ -4,11 +4,19 @@
 // The rules match the PC's (server/store.ts), which checks every change again. A scene that is not on Home is refused
 // there, so the PC's list replaces the tablet's copy once the queue is sent.
 import { MAX_ROUTINES, ROUTINE_ID, cleanRoutine, phraseKey, type Routine } from '../api.ts';
+import type { HaResult } from '../../home-assistant/api.ts';
 
 export type OpPath = 'save' | 'delete';
 /** One change, as the route and body the PC takes (server/index.ts): save {routine}, delete {id}. */
 export interface Op { path: OpPath; body: Record<string, unknown> }
 export interface OpResult { ok: boolean; routines: Routine[]; error?: string }
+
+/** The words a scene step says after the PC answers: '' when the scene is set, the PC's own reason when it refused, else a fallback. */
+export function sceneStepWords(r: HaResult & { name?: string }): string {
+  if (r.ok) return '';   // the lights changing say it
+  if (r.error) return r.error;
+  return `Couldn’t set the scene ${r.name || 'for this routine'}.`;
+}
 
 /** How many routines, from the top of the list, show as tiles on the Home screen. */
 export const HOME_ROUTINES = 2;
