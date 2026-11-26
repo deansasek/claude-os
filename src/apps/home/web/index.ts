@@ -10,7 +10,7 @@
 import { esc, getJson, onStore, params, postJson, report, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { HaResult, HaScenes } from '../../home-assistant/api.ts';
-import type { CalEvent, CalEvents } from '../../calendar/api.ts';
+import type { CalEvents } from '../../calendar/api.ts';
 import { loadRoutines, onRunState, startRoutine, runState, stopRoutine } from '../../routines/web/run.ts';
 import { onResume, onTablet } from '../../../core/web/device.ts';
 import { INK, inkSay, inkedBlob, inkedShape, rng } from '../../../core/web/ink.ts';
@@ -20,7 +20,7 @@ import { ago, critterSpeak, notifications, onNotificationsChange, openApp, openC
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
 import { listsRow } from './lists-row.ts';
-import { calendarRow } from './calendar-row.ts';
+import { calendarRow, connectorCalAfterRead, type ConnAnswer, type ConnRead, type RowCal } from './calendar-row.ts';
 import { emptyTileText, weatherAfterRead } from './weather-read.ts';
 import { isOffHome, sceneActsAfterRead, sceneFailText, type SceneAct } from './scene-words.ts';
 import { busyOf, liveSessions, needsYou, pillText, type NeedTurn } from './needs.ts';
@@ -332,33 +332,35 @@ function paintClock(): void {
 // The next three events still to come today (all-day ones first), with their times. The PC keeps its own copy of the
 // calendar for 5 minutes, so asking every couple of minutes costs nothing; the words follow the clock each minute.
 const CAL_EVERY_MS = 2 * 60e3;
-let cal: CalEvents | null = null, calAt = 0, calFailed = false;
+let cal: RowCal | null = null, calAt = 0, calFailed = false;
 
 // With no calendar address, Home reads the claude.ai connector's cached copy only (cached=1): Home never starts a Claude read.
 // Nothing cached yet means the tile says to open the Calendar app.
 let calMiss = false;
+// The local day (YYYY-MM-DD) the connector events in cal were read on: a later miss on the same day keeps them, marked stale.
+let calDay: string | null = null;
 async function loadCalendar(force = false): Promise<void> {
   if (!force && Date.now() - calAt < CAL_EVERY_MS) return;
   calAt = Date.now();
   try {
     const r = await getJson<CalEvents>('/api/calendar/events');
-    if (r.status === 'not_set') { const c = await cachedConnectorCal(); cal = c.cal; calMiss = c.miss; calFailed = c.failed; }
-    else { cal = r; calMiss = false; calFailed = false; }
+    if (r.status === 'not_set') {
+      const d = now();
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const c = await cachedConnectorCal(cal, calDay, key);
+      cal = c.cal; calMiss = c.miss; calFailed = c.failed; calDay = c.day;
+    }
+    else { cal = r; calMiss = false; calFailed = false; calDay = null; }
   }
   catch { calFailed = true; }
   paintCalendar();
 }
 
 // A non-ok answer (not a miss) is an error state: the tile says the PC cannot be reached, not "Reading the calendar…".
-async function cachedConnectorCal(): Promise<{ cal: CalEvents | null; miss: boolean; failed: boolean }> {
-  type CE = { status?: string; events?: { title: string; start: number; end: number; allDay: boolean }[] };
+async function cachedConnectorCal(prev: RowCal | null, prevDay: string | null, todayKey: string): Promise<ConnRead> {
+  type CE = ConnAnswer;
   const [t, m] = await Promise.all([getJson<CE>('/api/calendar/connector?day=today&cached=1'), getJson<CE>('/api/calendar/connector?day=tomorrow&cached=1')]);
-  if (t.status === 'miss' || m.status === 'miss') return { cal: null, miss: true, failed: false };
-  if (t.status !== 'ok' || m.status !== 'ok' || !t.events || !m.events) return { cal: null, miss: false, failed: true };
-  const toEv = (day: 'today' | 'tomorrow') => (e: { title: string; start: number; end: number; allDay: boolean }): CalEvent =>
-    ({ title: e.title, start: new Date(e.start).toISOString(), end: new Date(e.end).toISOString(), allDay: e.allDay, day });
-  const events = [...t.events.map(toEv('today')), ...m.events.map(toEv('tomorrow'))];
-  return { cal: { status: 'ok', events, today: '' }, miss: false, failed: false };
+  return connectorCalAfterRead(prev, prevDay, t, m, todayKey);
 }
 
 // The Shopping tile: how many items are still to get, and the first two of them.

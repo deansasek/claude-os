@@ -1,7 +1,7 @@
 // The words on Home's Today (calendar) tile (src/apps/home/web/calendar-row.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { calendarRow } from '../src/apps/home/web/calendar-row.ts';
+import { calendarRow, connectorCalAfterRead } from '../src/apps/home/web/calendar-row.ts';
 
 const NOW = Date.parse('2026-11-26T12:00:00');
 
@@ -60,4 +60,40 @@ test('a failed read with no events still says Offline, not May be out of date', 
 
 test('cal null with failed false and miss false still reads', () => {
   assert.deepEqual(calendarRow(null, false, false, NOW), { cls: 'quiet', val: '–', sub: 'Reading the calendar…' });
+});
+
+const TODAY = '2026-11-26';
+const earlierRead = {
+  status: 'ok' as const,
+  events: [{ title: 'Review', start: '2026-11-26T14:00:00', end: '2026-11-26T15:00:00', allDay: true, day: 'today' as const }],
+};
+
+test('a connector miss on the same day keeps the earlier events, marked stale', () => {
+  const res = connectorCalAfterRead(earlierRead, TODAY, { status: 'miss' }, { status: 'ok', events: [] }, TODAY);
+  assert.equal(res.miss, false);
+  assert.equal(res.failed, false);
+  assert.equal(res.day, TODAY);
+  const row = calendarRow(res.cal, res.failed, res.miss, NOW);
+  assert.equal(row.val, 'Review (all day)');
+  assert.equal(row.sub, 'May be out of date · Nothing else today');
+});
+
+test('a connector miss on a different day gives Not read yet', () => {
+  const res = connectorCalAfterRead(earlierRead, '2026-11-25', { status: 'miss' }, { status: 'miss' }, TODAY);
+  assert.equal(res.cal, null);
+  assert.equal(res.miss, true);
+  assert.equal(res.day, null);
+  assert.deepEqual(calendarRow(res.cal, res.failed, res.miss, NOW), { cls: 'quiet', val: 'Not read yet', sub: 'Open Calendar to read it' });
+});
+
+test('a connector ok answer uses the new events and records the day read', () => {
+  const dentist = { title: 'Dentist', start: Date.parse('2026-11-26T16:00:00'), end: Date.parse('2026-11-26T16:30:00'), allDay: false };
+  const res = connectorCalAfterRead(earlierRead, TODAY, { status: 'ok', events: [dentist] }, { status: 'ok', events: [] }, TODAY);
+  assert.equal(res.miss, false);
+  assert.equal(res.failed, false);
+  assert.equal(res.day, TODAY);
+  assert.equal(res.cal?.events.length, 1);
+  assert.equal(res.cal?.events[0].title, 'Dentist');
+  assert.equal(res.cal?.stale, undefined);
+  assert.ok(calendarRow(res.cal, res.failed, res.miss, NOW).val.endsWith(' Dentist'));
 });

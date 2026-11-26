@@ -49,3 +49,27 @@ export function calendarRow(cal: RowCal | null, failed: boolean, miss: boolean, 
   const rest = next.slice(1).map(calLine).join(' · ');
   return { cls: 'hm-ntitle', val: calLine(next[0]), sub: off + (rest || (next[0].location ?? 'Nothing else today')) };
 }
+
+// The connector's answer for one day, as the PC's cached-only read returns it (times as epoch ms).
+export interface ConnAnswer { status: string; events?: { title: string; start: number; end: number; allDay: boolean }[] }
+export interface ConnRead { cal: RowCal | null; miss: boolean; failed: boolean; day: string | null }
+
+/**
+ * What Home keeps after a cached-only connector read (no calendar address set).
+ * A miss keeps the earlier events, marked stale, only when they were read on the same local day (todayKey).
+ * Otherwise a miss leaves nothing, so the tile says "Not read yet". An ok answer replaces the events and
+ * records todayKey as the day read. Any other answer is a failed read. Pure: the caller passes the day.
+ */
+export function connectorCalAfterRead(
+  prev: RowCal | null, prevDay: string | null, today: ConnAnswer, tomorrow: ConnAnswer, todayKey: string,
+): ConnRead {
+  if (today.status === 'miss' || tomorrow.status === 'miss') {
+    if (prev && prev.status === 'ok' && prevDay === todayKey) return { cal: { ...prev, stale: true }, miss: false, failed: false, day: prevDay };
+    return { cal: null, miss: true, failed: false, day: null };
+  }
+  if (today.status !== 'ok' || tomorrow.status !== 'ok' || !today.events || !tomorrow.events) return { cal: null, miss: false, failed: true, day: null };
+  const toEv = (day: 'today' | 'tomorrow') => (e: { title: string; start: number; end: number; allDay: boolean }): RowEvent =>
+    ({ title: e.title, start: new Date(e.start).toISOString(), end: new Date(e.end).toISOString(), allDay: e.allDay, day });
+  const events = [...today.events.map(toEv('today')), ...tomorrow.events.map(toEv('tomorrow'))];
+  return { cal: { status: 'ok', events }, miss: false, failed: false, day: todayKey };
+}
