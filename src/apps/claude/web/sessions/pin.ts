@@ -4,7 +4,7 @@ import { postJson, report } from '../../../../core/web/dom.ts';
 import type { AppContext } from '../../../../core/web/shell.ts';
 import { onBack } from '../../../../core/web/system.ts';
 import type { UnlockResult } from '../../api.ts';
-import { LOCK_DEFAULT_SECS, waitText } from './pin-wait.ts';
+import { pinMessage } from './pin-wait.ts';
 
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
@@ -43,11 +43,19 @@ function paintPin(): void {
 
 async function submitPin(): Promise<void> {
   if (pin.length < 4) { $('pinMsg').textContent = 'At least 4 digits'; return; }
-  const r = await postJson<UnlockResult>('/api/claude/unlock', { pin });
+  let r: UnlockResult | null;
+  try {
+    r = await postJson<UnlockResult>('/api/claude/unlock', { pin });
+  } catch {
+    // The PC did not answer: clear the typed PIN and say so; the pad stays open for another try.
+    r = null;
+    pin = ''; paintPin();
+    $('pinMsg').textContent = pinMessage(r);
+    return;
+  }
   pin = ''; paintPin();
   if (!r.ok) {
-    $('pinMsg').textContent = r.error === 'locked' ? waitText(r.retryIn || LOCK_DEFAULT_SECS)
-      : r.error === 'no_pin' ? 'No PIN is set on the PC yet.' : 'That’s not it. Try again.';
+    $('pinMsg').textContent = pinMessage(r);
     report('pin-wrong');
     return;
   }
