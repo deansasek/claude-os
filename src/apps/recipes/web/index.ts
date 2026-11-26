@@ -507,6 +507,7 @@ function discoverHtml(): string {
   return search + noticesHtml() + todayHtml()
     + `<h3 class="rc-h">${query ? `Results for “${esc(query)}”` : 'Ideas for today'}</h3>${grid}`
     + (empty ? `<p class="rc-empty">${esc(empty)}</p>` : '')
+    + (resultsState === 'error' ? '<div class="rc-actions"><button class="rc-btn" data-act="retry">Try again</button></div>' : '')
     + `<h3 class="rc-h">Saved</h3>${saved}`
     + `<h3 class="rc-h">What do you have</h3><div data-pantry>${pantryHtml()}</div>`
     + `<p class="rc-source">Recipes from TheMealDB</p>`;
@@ -593,6 +594,7 @@ function onClick(ev: Event): void {
   switch (act) {
     case 'search': openSearch(); return;
     case 'clear': void search(''); return;
+    case 'retry': void search(query); return;
     case 'create': askClaude(RECIPE_PROMPT, 'create'); return;
     case 'adapt': if (screen.t === 'detail') adaptWithClaude(screen.r); return;
     case 'ask-time': askTime = true; toTop(); break;
