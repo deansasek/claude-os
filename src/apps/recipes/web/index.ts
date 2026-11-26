@@ -317,7 +317,7 @@ async function loadNames(): Promise<void> {
     const r = await getJson<IngredientsResult>(`${API}/ingredients`);
     names = r.status === 'ok' ? r.names : [];
     namesState = r.status === 'ok' ? 'ok' : 'error';
-    namesError = r.status === 'ok' ? '' : 'Ingredients are not available. Try again.';
+    namesError = r.status === 'ok' ? '' : r.error || 'Ingredients are not available. Try again.';
   } catch {
     names = [];
     namesState = 'error';
@@ -415,11 +415,11 @@ async function findPantry(): Promise<void> {
   const mine = ++foundSeq;
   foundState = 'loading';
   paintPicker();
-  const fail = (): void => { found = []; foundMissing = []; foundState = 'error'; foundError = 'Recipes are not available. Try again.'; };
+  const fail = (why: string): void => { found = []; foundMissing = []; foundState = 'error'; foundError = why || 'Recipes are not available. Try again.'; };
   try {
     const r = await getJson<PantryResult>(`${API}/pantry?have=${encodeURIComponent(have.join(','))}&want=${encodeURIComponent(want.join(','))}`);
     if (mine !== foundSeq) return;
-    if (r.status !== 'ok') { fail(); }
+    if (r.status !== 'ok') { fail(r.error); }
     else {
       const rows = (Array.isArray(r.recipes) ? r.recipes : [])
         .map(x => ({ recipe: fromStored(x), missing: Array.isArray(x.missing) ? x.missing : [] }))
