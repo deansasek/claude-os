@@ -470,6 +470,15 @@ async function openPhotos(): Promise<void> {
   openOver('brPhotos');
   try {
     const list = await getJson<PhotoList>('/api/photos/list?limit=80');
+    if (list.ok === false) {
+      // the PC could not read its folder: say so, not "no photos yet"
+      const msg = document.createElement('div');
+      msg.className = 'br-msg-line';
+      msg.textContent = typeof list.error === 'string' && list.error ? list.error : 'The PC couldn’t read its photos folder.';
+      el('brPhotoGrid').innerHTML = '';
+      el('brPhotoGrid').appendChild(msg);
+      return;
+    }
     const items = list.days.flatMap(d => d.photos);
     el('brPhotoGrid').innerHTML = items.length
       ? items.map(p => `<button data-photo="${esc(p.id)}" aria-label="Choose this photo"><img src="${esc(thumbUrl(p.id))}" alt="" loading="lazy"></button>`).join('')
