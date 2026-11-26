@@ -212,6 +212,11 @@ function period(s: Stamp, r: Record<string, string>, k: number, interval: number
     }
     case 'YEARLY': {
       const y = s.y + k * interval;
+      // BYMONTH and BYDAY ("the second Sunday of May"): the month's days, worked out as a monthly rule for that month
+      if (r.BYMONTH || byday.length) {
+        const mo = r.BYMONTH ? +r.BYMONTH.split(',')[0] - 1 : s.mo;
+        if (mo >= 0 && mo <= 11) return period(s, { ...r, FREQ: 'MONTHLY' }, (y - s.y) * 12 + (mo - s.mo), 1);
+      }
       return { first: onDay(s, y, 0, 1), days: s.d <= daysIn(y, s.mo) ? [onDay(s, y, s.mo, s.d)] : [] };
     }
     default: return null;
