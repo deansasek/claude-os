@@ -169,7 +169,8 @@ function paintWeather(): void {
   const hiLo = hi != null && lo != null ? `H ${Math.round(hi)}° L ${Math.round(lo)}°` : '';
   const later = rainLater(f);
   const rainShort = later ? `Rain ${later}` : rain != null ? `${Math.round(rain)}% rain` : '';
-  subLines($('hmWxSub'), [wxWord(c.weather_code), [hiLo, rainShort].filter(Boolean).join(' · ')]);
+  // the last read failed: this is the old forecast, so the tile says so rather than look current
+  subLines($('hmWxSub'), [wxFailed ? `Offline · ${wxWord(c.weather_code)}` : wxWord(c.weather_code), [hiLo, rainShort].filter(Boolean).join(' · ')]);
   setSky(skyOf(c.weather_code));
 }
 
