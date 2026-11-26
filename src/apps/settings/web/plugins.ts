@@ -4,7 +4,7 @@
 import { esc, getJson, postJson, report } from '../../../core/web/dom.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
-import type { PluginItem, PluginKind, PluginsView } from '../api.ts';
+import { toggleRefusal, type PluginItem, type PluginKind, type PluginsView } from '../api.ts';
 import { enterMarket, initMarket, paintMarket } from './market.ts';
 
 type Tab = 'all' | PluginKind | 'discover';   // 'discover': the Anthropic marketplace (market.ts), in place of the list
@@ -155,16 +155,23 @@ async function toggle(key: string): Promise<void> {
   it.on = on;
   paintPlugins();
   if (openKey === key) paintDetail();
-  try {
-    const r = await postJson<{ ok: boolean }>('/api/settings/plugins/toggle', { key, on });
-    if (!r.ok) throw new Error('not saved');
-    report(`settings:plugins:${it.kind}:${on ? 'on' : 'off'}`);
-  } catch {
+  const undo = (): void => {
     it.on = !on;
     paintPlugins();
     if (openKey === key) paintDetail();
+  };
+  let refusal: string;
+  try {
+    const r = await postJson<{ ok: true } | { ok: false; error: string }>('/api/settings/plugins/toggle', { key, on });
+    if (r.ok) { report(`settings:plugins:${it.kind}:${on ? 'on' : 'off'}`); return; }
+    refusal = toggleRefusal(r.error);
+  } catch {
+    undo();
     deps.confirm('Couldn’t change it', 'Check the connection to your PC, then try again.', 'OK', () => {});
+    return;
   }
+  undo();
+  deps.confirm('Couldn’t change it', refusal, 'OK', () => {});
 }
 
 // ---------- the detail sheet ----------
