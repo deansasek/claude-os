@@ -20,6 +20,7 @@ import { ago, critterSpeak, notifications, onNotificationsChange, openApp, openC
 import { manifest } from '../manifest.ts';
 import { notesRow } from './notes-row.ts';
 import { listsRow } from './lists-row.ts';
+import { calendarRow } from './calendar-row.ts';
 import { emptyTileText, weatherAfterRead } from './weather-read.ts';
 import { busyOf, liveSessions, needsYou, pillText, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
@@ -340,23 +341,23 @@ async function loadCalendar(force = false): Promise<void> {
   calAt = Date.now();
   try {
     const r = await getJson<CalEvents>('/api/calendar/events');
-    if (r.status === 'not_set') { const c = await cachedConnectorCal(); cal = c.cal; calMiss = c.miss; }
-    else { cal = r; calMiss = false; }
-    calFailed = false;
+    if (r.status === 'not_set') { const c = await cachedConnectorCal(); cal = c.cal; calMiss = c.miss; calFailed = c.failed; }
+    else { cal = r; calMiss = false; calFailed = false; }
   }
   catch { calFailed = true; }
   paintCalendar();
 }
 
-async function cachedConnectorCal(): Promise<{ cal: CalEvents | null; miss: boolean }> {
+// A non-ok answer (not a miss) is an error state: the tile says the PC cannot be reached, not "Reading the calendar…".
+async function cachedConnectorCal(): Promise<{ cal: CalEvents | null; miss: boolean; failed: boolean }> {
   type CE = { status?: string; events?: { title: string; start: number; end: number; allDay: boolean }[] };
   const [t, m] = await Promise.all([getJson<CE>('/api/calendar/connector?day=today&cached=1'), getJson<CE>('/api/calendar/connector?day=tomorrow&cached=1')]);
-  if (t.status === 'miss' || m.status === 'miss') return { cal: null, miss: true };
-  if (t.status !== 'ok' || m.status !== 'ok' || !t.events || !m.events) return { cal: null, miss: false };
+  if (t.status === 'miss' || m.status === 'miss') return { cal: null, miss: true, failed: false };
+  if (t.status !== 'ok' || m.status !== 'ok' || !t.events || !m.events) return { cal: null, miss: false, failed: true };
   const toEv = (day: 'today' | 'tomorrow') => (e: { title: string; start: number; end: number; allDay: boolean }): CalEvent =>
     ({ title: e.title, start: new Date(e.start).toISOString(), end: new Date(e.end).toISOString(), allDay: e.allDay, day });
   const events = [...t.events.map(toEv('today')), ...m.events.map(toEv('tomorrow'))];
-  return { cal: { status: 'ok', events, today: '' }, miss: false };
+  return { cal: { status: 'ok', events, today: '' }, miss: false, failed: false };
 }
 
 // The Shopping tile: how many items are still to get, and the first two of them.
@@ -377,31 +378,13 @@ function paintLists(): void {
   sub.textContent = row.sub;
 }
 
-const calLine = (e: CalEvent): string => (e.allDay ? `${e.title} (all day)` : `${hm(new Date(e.start))} ${e.title}`);
-
 function paintCalendar(): void {
-  const val = $('hmCalVal'), sub = $('hmCalSub'), c = cal;
+  const val = $('hmCalVal'), sub = $('hmCalSub');
   $('hmCalKick').textContent = 'Today';
-  if (!c || c.status !== 'ok') {
-    if (calMiss) { val.className = 'quiet'; val.textContent = 'Not read yet'; sub.textContent = 'Open Calendar to read it'; return; }
-    val.className = 'quiet';
-    val.textContent = c?.status === 'not_set' ? 'No calendar' : calFailed || c?.status === 'error' ? 'Can’t read it' : '–';
-    sub.textContent = c?.status === 'not_set' ? 'Tap to add yours' : calFailed ? 'Can’t reach the PC' : c?.status === 'error' ? 'Tap to see why' : 'Reading the calendar…';
-    return;
-  }
-  const t = now().getTime();
-  const off = calFailed ? 'Offline · ' : '';   // the last read failed: these are the old events, so the tile says so (as the weather tile does)
-  const next = c.events.filter(e => e.day === 'today' && Date.parse(e.end) > t).slice(0, 3);
-  if (!next.length) {
-    const tmr = c.events.find(e => e.day === 'tomorrow');
-    val.className = 'quiet';
-    val.textContent = c.events.some(e => e.day === 'today') ? 'Nothing more' : 'A free day';
-    sub.textContent = off + (tmr ? `Tomorrow: ${calLine(tmr)}` : 'Nothing tomorrow either');
-    return;
-  }
-  val.className = 'hm-ntitle';
-  val.textContent = calLine(next[0]);
-  sub.innerHTML = off + (next.slice(1).map(e => esc(calLine(e))).join(' · ') || esc(next[0].location ?? 'Nothing else today'));   // one line under the title
+  const row = calendarRow(cal, calFailed, calMiss, now().getTime());   // the words live in calendar-row.ts
+  val.className = row.cls;
+  val.textContent = row.val;
+  sub.textContent = row.sub;
 }
 
 // ---------- notifications ----------
