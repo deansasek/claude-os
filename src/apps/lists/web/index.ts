@@ -19,7 +19,7 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack } from '../../../core/web/system.ts';
-import { MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, isBuiltIn, tickedPlaces, type FamilyList, type ListItem, type ListsResult } from '../api.ts';
+import { MAX_ITEMS, MAX_LIST_NAME, MAX_LISTS, MAX_TEXT, cleanText, fullText, isBuiltIn, tickedPlaces, type FamilyList, type ListItem, type ListsResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { COPY_KEY, applyOp, type Op, type OpPath } from './local.ts';
 import { appendOp, readQueue, remapQueue, removeOp } from './queue.ts';
@@ -189,7 +189,7 @@ function render(): void {
   $('lsDelete').hidden = isBuiltIn(l.id);
   $('lsClear').hidden = notes || !done.length;
   $('lsClear').textContent = `Clear ticked (${done.length})`;
-  $('lsAddText').textContent = notes ? 'Write a note' : l.items.length >= MAX_ITEMS ? `${l.name} is full` : `Add to ${l.name}`;
+  $('lsAddText').textContent = l.items.length >= MAX_ITEMS ? `${l.name} is full` : notes ? 'Write a note' : `Add to ${l.name}`;
 
   $('lsItems').innerHTML = notes
     ? [...l.items].reverse().map(i => rowHtml(l, i)).join('')      // newest note first
@@ -290,7 +290,7 @@ function openAdd(): void {
   const l = listNow();
   if (!l) return;
   const notes = l.kind === 'notes';
-  if (!notes && l.items.length >= MAX_ITEMS) { note = `${l.name} is full (${MAX_ITEMS} items). Clear the ticked ones first.`; render(); return; }
+  if (l.items.length >= MAX_ITEMS) { note = fullText(l); render(); return; }
   Keyboard.open({
     placeholder: notes ? 'Write a note' : `Add to ${l.name}`, done: 'Add', autoCap: !notes, max: MAX_TEXT,
     onDone: text => {
