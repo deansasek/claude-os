@@ -229,6 +229,9 @@ export function renderFind(): void {
   el('brFindText').textContent = l.find.q || 'Find in page';
   el('brFindText').style.color = l.find.q ? '' : 'var(--t4)';
   el('brFindCount').textContent = !l.find.q ? '' : l.find.count === 0 ? 'No matches' : `${l.find.index} of ${l.find.count}`;
+  const none = !l.find.q || l.find.count === 0;
+  el<HTMLButtonElement>('brFindPrev').disabled = none;
+  el<HTMLButtonElement>('brFindNext').disabled = none;
 }
 
 /** The native page reports matches. */
