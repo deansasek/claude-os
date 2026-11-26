@@ -215,7 +215,8 @@ export function clearDone(listRef: unknown): ListsResult {
     if (!l) return NO_LIST;
     const done = l.items.filter(i => i.done);
     const n = done.length;
-    recordBought(done.map(i => i.text));   // ticked means bought: counted for the suggestions
+    try { recordBought(done.map(i => i.text)); }   // ticked means bought: counted for the suggestions
+    catch (e) { console.log('lists: the bought history was not counted:', e); }   // a history error never blocks the clear
     l.items = l.items.filter(i => !i.done);
     return { removed: n };
   });
