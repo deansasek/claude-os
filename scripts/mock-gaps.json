@@ -1,18 +1,5 @@
 {
-  "routes": [
-    "GET /api/settings/photo",
-    "GET /api/settings/plugins",
-    "GET /api/settings/plugins/market",
-    "POST /api/settings/plugins/folder",
-    "POST /api/settings/plugins/folder/remove",
-    "POST /api/settings/plugins/market/install",
-    "POST /api/settings/plugins/market/refresh",
-    "POST /api/settings/plugins/market/uninstall",
-    "POST /api/settings/plugins/mcp",
-    "POST /api/settings/plugins/mcp/remove",
-    "POST /api/settings/plugins/test",
-    "POST /api/settings/plugins/toggle"
-  ],
+  "routes": [],
   "bridge": [
     "allowedApps",
     "booted",

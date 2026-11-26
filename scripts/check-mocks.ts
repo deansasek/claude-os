@@ -37,7 +37,8 @@ for (const id of appIds) {
 
 // Mocked routes: the keys of every defineMock table ("GET /api/<id>/<path>").
 const mockedRoutes = new Set<string>();
-const mockFiles = [path.join(ROOT, 'src', 'core', 'web', 'mock.ts'), ...appIds.map(id => path.join(ROOT, 'src', 'apps', id, 'web', 'mock.ts'))];
+const isMockFile = (f: string): boolean => /mock.*\.ts$/.test(path.basename(f));
+const mockFiles = [path.join(ROOT, 'src', 'core', 'web', 'mock.ts'), ...appIds.flatMap(id => files(path.join(ROOT, 'src', 'apps', id, 'web')).filter(isMockFile))];
 for (const f of mockFiles) {
   if (!fs.existsSync(f)) continue;
   for (const m of fs.readFileSync(f, 'utf8').matchAll(/'([A-Z]+ \/api\/[^']+)'\s*:/g)) mockedRoutes.add(m[1]);
