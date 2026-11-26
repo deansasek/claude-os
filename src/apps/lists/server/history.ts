@@ -13,9 +13,22 @@ interface History { counts: Record<string, Entry> }
 
 const keyOf = (text: string): string => text.trim().toLowerCase().slice(0, 80);
 
+// Keep only the entries that have a count, a time and a name. A bad entry is dropped here, so it cannot break a sort.
+function cleanEntries(raw: Record<string, unknown>): Record<string, Entry> {
+  const out: Record<string, Entry> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    const e = v as Partial<Entry> | null;
+    if (e && typeof e.n === 'number' && Number.isFinite(e.n) && e.n > 0 && typeof e.at === 'string' && typeof e.text === 'string') {
+      out[k] = { n: e.n, at: e.at, text: e.text };
+    }
+  }
+  return out;
+}
+
 function load(): History {
-  const h = readJsonOrSetAside<History>(HISTORY_FILE);
-  return h && typeof h.counts === 'object' && h.counts ? h : { counts: {} };
+  const h = readJsonOrSetAside<{ counts?: unknown }>(HISTORY_FILE);
+  if (!h || !h.counts || typeof h.counts !== 'object' || Array.isArray(h.counts)) return { counts: {} };
+  return { counts: cleanEntries(h.counts as Record<string, unknown>) };
 }
 
 const byUse = (a: [string, Entry], b: [string, Entry]): number => b[1].n - a[1].n || b[1].at.localeCompare(a[1].at);
