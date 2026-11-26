@@ -45,7 +45,7 @@ import { matchOpenApp } from './voice-open.ts';
 
 export interface ClockApi {
   /** label: shown when it rings (Claude's set_timer); the Clock's own controls set none. */
-  startTimer(ms: number, label?: string): void;
+  startTimer(ms: number, label?: string): boolean;   // false when the timer list is full
   cancelTimer(): boolean;
   /** Pause a running timer. False when none runs. */
   pauseTimer(): boolean;
@@ -231,7 +231,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (ms == null) continue;
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
     // a new timer joins the list; any timer already running keeps going
-    clock.startTimer(ms);
+    if (!clock.startTimer(ms)) return { say: 'The timer list is full. Stop a timer first.' };
     return { say: `Timer set for ${sayDuration(ms)}.`, react: 'hop' };
   }
   // alarms: "stop" silences a ringing one; only "all my alarms" switches every alarm off (core/web/voice-alarm.ts)
@@ -255,7 +255,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const dl = named ? durationAndLabel(named[1].replace(/^(a|an) (?=\d)/, '')) : null;
   if (dl) {
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
-    clock.startTimer(dl.ms, dl.label);
+    if (!clock.startTimer(dl.ms, dl.label)) return { say: 'The timer list is full. Stop a timer first.' };
     return { say: namedTimerReply(dl.label, dl.ms), react: 'hop' };
   }
   // timer: pause, resume, add or take off minutes (core/web/voice-alarm.ts)
