@@ -21,3 +21,11 @@ test('setUnits restores the saved unit and repaints when the save fails', () => 
   assert.match(body, /const prev = pickUnits;/);
   assert.match(body, /catch \{ notify\([^]*?report\('wx-units-failed'\); pickUnits = prev; paintUnits\(\); \}/);
 });
+
+test('openPicker keeps the saved unit when no forecast is loaded', () => {
+  const pickStart = src.indexOf('function openPicker(): void {');
+  const pickBody = src.slice(pickStart, src.indexOf('\n}\n', pickStart));
+  assert.ok(pickStart > 0, 'openPicker exists');
+  assert.doesNotMatch(pickBody, /: 'fahrenheit'/);
+  assert.match(pickBody, /isOk\(wx\) \? wx\.units : pickUnits/);
+});
