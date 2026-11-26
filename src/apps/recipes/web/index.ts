@@ -591,6 +591,7 @@ function onClick(ev: Event): void {
   const src = b.dataset.src as Src | undefined;
   const act = b.dataset.act;
   msg = '';
+  if (act !== 'delete') confirmDelete = false;
   switch (act) {
     case 'search': openSearch(); return;
     case 'clear': void search(''); return;
@@ -640,7 +641,7 @@ function onClick(ev: Event): void {
       break;
     case 'delete': {
       if (screen.t !== 'detail') break;
-      if (!confirmDelete) { confirmDelete = true; break; }
+      if (!confirmDelete) { confirmDelete = true; msg = 'This removes the recipe from ClaudeOS. It can’t be undone.'; break; }
       const gone = savedIndex(screen.r);
       if (gone >= 0) { recipes = recipes.filter((_, k) => k !== gone); saveRecipes(); }
       go({ t: 'discover' });
