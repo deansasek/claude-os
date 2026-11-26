@@ -897,7 +897,8 @@ function onJoin(ssid: string): void {
   const n = (() => { try { return device.wifiNetworks().find(x => x.ssid === ssid); } catch { return undefined; } })();
   if (!n || n.ssid === joining) return;
   if (n.enterprise) { confirmSheet('Work network', 'Networks that need a username aren’t supported in ClaudeOS yet. The device settings (in About) can join them.', 'OK', () => {}); return; }
-  if (n.saved || !n.secure || !setup?.owner) { join(n.ssid); return; }   // otherwise Android's panel asks for the password
+  // a saved network that just failed to join was saved with the wrong password: ask for the password again, not reuse it
+  if ((n.saved && !joinErrors.has(n.ssid)) || !n.secure || !setup?.owner) { join(n.ssid); return; }   // otherwise Android's panel asks for the password
   // a WPA passphrase is up to 63 characters; a secret is shown as dots
   Keyboard.open({ placeholder: `Password for ${n.ssid}`, done: 'Join', max: 63, mask: true, onDone: pw => { if (pw.length < 8) return false; join(n.ssid, pw); } });
 }
