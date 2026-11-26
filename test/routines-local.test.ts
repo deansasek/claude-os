@@ -39,6 +39,14 @@ test('the PC rules hold on the tablet: no second name, no bad step, no change to
   assert.deepEqual(gone.routines.map(r => r.id), ['morning']);
 });
 
+test('a phrase another routine already uses is refused on the tablet too', () => {
+  const clash = applyOp([morning, night], save({ name: 'Early', phrases: ['morning'], steps: [{ kind: 'weather' }] }));
+  assert.equal(clash.ok, false);
+  assert.equal(clash.error, '“morning” already runs Morning.');
+  const own = applyOp([morning, night], save({ id: 'morning', name: 'Morning', phrases: ['morning'], steps: [{ kind: 'weather' }] }));
+  assert.equal(own.ok, true);
+});
+
 test('remapIds points later changes at the id the PC gave', () => {
   const queue: Op[] = [
     save({ id: 'tablet-1', name: 'Walk', phrases: [], steps: [{ kind: 'weather' }] }),
