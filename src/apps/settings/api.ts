@@ -123,6 +123,11 @@ export interface MarketResult {
   output: string;           // the tail of the CLI's own output (ANSI codes removed)
 }
 
+/** The view with one plugin's installed state set. Returns a new view; the view it gets is not changed. */
+export function markInstalled(view: MarketView, name: string, installed: boolean): MarketView {
+  return { ...view, plugins: view.plugins.map(p => (p.name === name ? { ...p, installed } : p)) };
+}
+
 /** The Add MCP server sheet. env and headers are typed as "KEY=value; KEY=value". */
 export interface McpInput {
   name: string;
