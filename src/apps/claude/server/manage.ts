@@ -61,6 +61,15 @@ export function archiveSession(id: string, on: boolean, from: string): ManageRes
 
 const isDir = (p: string): boolean => { try { return fs.lstatSync(p).isDirectory(); } catch { return false; } };
 
+/** Remove each leftover folder that is a real folder named for the session id. A folder that cannot be removed is logged and skipped. */
+export function removeLeftovers(folders: string[], id: string, rm: (p: string) => void = p => fs.rmSync(p, { recursive: true, force: true })): void {
+  for (const folder of folders) {
+    if (path.basename(folder) !== id || !isDir(folder)) continue;
+    try { rm(folder); }
+    catch (e) { console.log(`claude: a leftover folder could not be removed (${(e as NodeJS.ErrnoException).code ?? 'error'})`); }
+  }
+}
+
 /** The log really is this session's: its first or last lines name the session id. */
 function logIsFor(file: string, id: string): boolean {
   const size = fs.statSync(file).size, n = Math.min(size, 128 * 1024);
@@ -94,10 +103,8 @@ export function deleteSession(id: string, from: string): ManageResult {
     console.log('claude: delete failed:', String((e as Error).message || e).slice(0, 160));
     return { ok: false, error: 'delete_failed' };
   }
-  // the folders kept for this session: each is removed only if it is a real folder named for the id
-  for (const folder of [path.join(dir, id), path.join(HOME, '.claude', 'file-history', id), path.join(HOME, '.claude', 'session-env', id)]) {
-    if (path.basename(folder) === id && isDir(folder)) fs.rmSync(folder, { recursive: true, force: true });
-  }
+  // the folders kept for this session; a folder the PC cannot remove is logged, and the forget steps still run
+  removeLeftovers([path.join(dir, id), path.join(HOME, '.claude', 'file-history', id), path.join(HOME, '.claude', 'session-env', id)], id);
   forgetTranscript(id);
   forgetHistory(file);
   forgetHubSession(id);
