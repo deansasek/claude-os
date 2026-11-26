@@ -290,6 +290,7 @@ async function saveLayout(l: HaLayout): Promise<void> {
 async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
   const prev = dash ? copy() : undefined;   // the optimistic edit below changes dash.layout in place
   const d = devices?.devices.find(x => x.entity_id === id);
+  const before = d?.dashboard === true;
   if (d) d.dashboard = on;
   if (dash) {   // show it at once
     const l = dash.layout;
@@ -301,8 +302,9 @@ async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
     const r = await postJson<HaLayoutResult>(`${API}/dashboard`, { entity_id: id, on, ...(room !== OTHER ? { room } : {}) });
     if (r.ok && r.layout && typeof r.layout === 'object') { if (dash) dash.layout = r.layout; }
     else if (dash && prev) dash.layout = prev;
+    if (!r.ok && d) d.dashboard = before;   // the PC did not save it: the device value goes back
     note = r.ok ? '' : r.error ?? 'That wasn’t saved.';
-  } catch { if (dash && prev) dash.layout = prev; note = 'Can’t reach the PC right now, so that wasn’t saved.'; }
+  } catch { if (dash && prev) dash.layout = prev; if (d) d.dashboard = before; note = 'Can’t reach the PC right now, so that wasn’t saved.'; }
   await refresh(note !== '');
 }
 

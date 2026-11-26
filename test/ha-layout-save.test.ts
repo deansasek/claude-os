@@ -29,6 +29,17 @@ test('refresh keeps the caller note when the reload fails', () => {
   assert.match(setOnHomeBody, /await refresh\(note !== ''\);/);
 });
 
+test('setOnHome saves the old dashboard value first and restores it when the PC refuses or cannot be reached', () => {
+  const body = fnBody('setOnHome');
+  const save = body.indexOf('const before = d?.dashboard === true;');
+  const change = body.indexOf('if (d) d.dashboard = on;');
+  assert.notEqual(save, -1, 'setOnHome saves the old dashboard value');
+  assert.notEqual(change, -1, 'setOnHome sets the new dashboard value');
+  assert.ok(save < change, 'the old value is saved before the change');
+  assert.match(body, /if \(!r\.ok && d\) d\.dashboard = before;/);
+  assert.match(body, /catch \{ if \(dash && prev\) dash\.layout = prev; if \(d\) d\.dashboard = before;/);
+});
+
 test('saveLayout and setOnHome assign r.layout only when r is ok and the layout is an object', () => {
   for (const name of ['saveLayout', 'setOnHome']) {
     const body = fnBody(name);
