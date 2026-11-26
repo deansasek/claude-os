@@ -34,6 +34,7 @@ let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 
 let status: CalStatus | null = null;
+let statusFailed = false;   // the last status read threw: the PC could not be reached, so the address is unknown
 let view: View = 'day';
 let anchor = startOfDay(new Date());
 let events: Ev[] = [];
@@ -107,7 +108,7 @@ function daysWithEvents(): Set<string> {
 
 // ---------- talking to the PC ----------
 async function loadStatus(): Promise<void> {
-  try { status = await getJson<CalStatus>(`${API}/status`); } catch { /* keep what we had */ }
+  try { status = await getJson<CalStatus>(`${API}/status`); statusFailed = false; } catch { statusFailed = true; /* keep what we had */ }
   await loadCalendars();
   appSettingsChanged();
 }
@@ -194,7 +195,7 @@ async function loadConnector(): Promise<void> {
 async function saveAddress(address: string): Promise<void> {
   let r: CalConfigResult | null = null;
   try { r = await postJson<CalConfigResult>(`${API}/config`, { address }); } catch { /* below */ }
-  if (r) { status = { configured: r.configured, address: r.address }; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
+  if (r) { status = { configured: r.configured, address: r.address }; statusFailed = false; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
   else msg = 'Couldn’t reach the PC. Try again in a moment.';
   appSettingsChanged();
   await loadCalendars();
@@ -557,12 +558,13 @@ async function deleteDetail(): Promise<void> {
 // ---------- settings (Settings > Apps > Calendar) ----------
 function settingRows(): SettingRow[] {
   const s = status;
+  const unreachable = !s && statusFailed;   // no answer from the PC: the address may be saved there
   const rows: SettingRow[] = [
     { kind: 'action', id: 'address', title: 'Calendar address',
-      detail: msg || 'Your calendar’s secret address in iCal format (it ends in .ics). Kept only on the PC; ClaudeOS only reads the calendar.',
-      value: () => (s?.configured ? s.address : 'Not set'), label: s?.configured ? 'Replace' : 'Add', run: editAddress },
+      detail: msg || (unreachable ? 'The address shows when the PC is back.' : 'Your calendar’s secret address in iCal format (it ends in .ics). Kept only on the PC; ClaudeOS only reads the calendar.'),
+      value: () => (unreachable ? 'Can’t reach the PC' : s?.configured ? s.address : 'Not set'), label: s?.configured ? 'Replace' : 'Add', run: editAddress },
   ];
-  if (!s?.configured) {
+  if (!s?.configured && !unreachable) {
     rows.push({ kind: 'info', id: 'source', title: 'Without an address', detail: 'The claude.ai calendar reads today and tomorrow when you open the app.',
       value: () => 'claude.ai connector' });
   }
