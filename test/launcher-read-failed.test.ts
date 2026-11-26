@@ -27,3 +27,11 @@ test('openSheet tracks a failed read and paintList shows the read-failed message
   assert.match(fn('openSheet'), /launchOk = false/);
   assert.match(fn('paintList'), /Couldn’t read the tablet’s apps\. Close this and try again\./);
 });
+
+test('installApps shows the Play-failed message when the launch fails or throws', () => {
+  assert.match(fn('installApps'), /showSheetNote\('Couldn’t open Google Play\. Try again\.'\)/);
+});
+
+test('openSheet removes the old sheet note before the sheet opens', () => {
+  assert.match(fn('openSheet'), /querySelector\('\.ln-sheet-note'\)\?\.remove\(\)/);
+});
