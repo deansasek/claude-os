@@ -7,7 +7,7 @@ import path from 'node:path';
 import { after, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import type { Routine } from '../src/apps/routines/api.ts';
-import { HOME_ROUTINES, applyOp, remapIds, type Op } from '../src/apps/routines/web/local.ts';
+import { HOME_ROUTINES, applyOp, remapIds, sceneStepWords, type Op } from '../src/apps/routines/web/local.ts';
 
 // The store reads its file path when it loads, so the scratch file is set before the import.
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-routines-local-'));
@@ -121,4 +121,19 @@ test('the tablet copy is restored only when the PC has no routines file', async 
   const again = R.restoreRoutines([morning]);
   assert.equal(again.ok, false);
   assert.equal((await R.readRoutines()).routines.length, 2);
+});
+
+test('a scene step says nothing when the scene is set', () => {
+  assert.equal(sceneStepWords({ ok: true, name: 'Movie night' }), '');
+  assert.equal(sceneStepWords({ ok: true, error: 'ignored', name: 'Movie night' }), '');
+});
+
+test('a scene step says the PC reason when the PC refuses', () => {
+  assert.equal(sceneStepWords({ ok: false, error: 'Movie night isn’t on Home.', name: 'Movie night' }), 'Movie night isn’t on Home.');
+  assert.equal(sceneStepWords({ ok: false, error: 'Home Assistant cannot be reached.' }), 'Home Assistant cannot be reached.');
+});
+
+test('a scene step falls back to the scene name when the PC gives no reason', () => {
+  assert.equal(sceneStepWords({ ok: false, name: 'Movie night' }), 'Couldn’t set the scene Movie night.');
+  assert.equal(sceneStepWords({ ok: false }), 'Couldn’t set the scene for this routine.');
 });

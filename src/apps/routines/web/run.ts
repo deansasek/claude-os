@@ -22,6 +22,7 @@ import { voiceUi } from '../../../core/web/voice-ui.ts';
 import { prefs, setFocus, sleep as showScreenSaver } from '../../../core/web/system.ts';
 import type { HaResult } from '../../home-assistant/api.ts';
 import { AT_WINDOW_MIN, STEP_MAX_MS, dayKey, dueRoutines, type Routine, type RoutinesResult, type Step } from '../api.ts';
+import { sceneStepWords } from './local.ts';
 import { copyAge, hasCopy, localRoutines, pull } from './sync.ts';
 
 const CACHE_MS = 60e3;
@@ -92,8 +93,7 @@ async function doStep(s: Step, deadline: number): Promise<string> {
     case 'scene': {
       const r = await until(postJson<HaResult & { name?: string }>('/api/home-assistant/scene', { entity_id: s.entity_id }).catch(() => 'offline' as const), deadline, null);
       if (r === 'offline') return 'The PC isn’t answering, so the scene didn’t change.';
-      if (r?.ok) return '';   // the lights changing say it
-      return r ? `Couldn’t set the scene ${r.name || 'for this routine'}.` : 'The scene didn’t answer in time.';
+      return r ? sceneStepWords(r) : 'The scene didn’t answer in time.';
     }
     case 'timer': {
       const clock = getClock();
