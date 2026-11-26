@@ -26,3 +26,18 @@ test('the stTabApps handler restores tabAllowed in its catch block', () => {
   const handler = src.slice(start, src.indexOf('onAppSettingsChange(', start));
   assert.match(handler, /catch \{ tabAllowed = before; confirmSheet\('Couldn’t change it'/);
 });
+
+test('the stTabApps handler re-reads allowed() before it saves with setAllowed', () => {
+  const start = src.indexOf("$('stTabApps').addEventListener('click'");
+  const handler = src.slice(start, src.indexOf('onAppSettingsChange(', start));
+  const read = handler.indexOf('androidApps.allowed()');
+  assert.ok(read > 0, 'the handler reads androidApps.allowed()');
+  assert.ok(read < handler.indexOf('androidApps.setAllowed('), 'the read comes before the save');
+});
+
+test('the stTabApps handler does not save when the re-read throws', () => {
+  const start = src.indexOf("$('stTabApps').addEventListener('click'");
+  const handler = src.slice(start, src.indexOf('onAppSettingsChange(', start));
+  assert.match(handler, /try \{ tabAllowed = new Set\(androidApps\.allowed\(\)\.map\(a => a\.id\)\); \}\s*catch \{ confirmSheet\('Couldn’t change it', 'Couldn’t read the tablet’s apps, so nothing changed\. Try again\.', 'OK', \(\) => \{\}\); return; \}/);
+  assert.ok(handler.indexOf('return; }') < handler.indexOf('androidApps.setAllowed('), 'the return is before the save');
+});
