@@ -290,12 +290,13 @@ function paintApps(): void {
 /** Android apps the Launcher shows (moved here from the Launcher app): a switch per app. */
 let tabList: AndroidApp[] | null = null;
 let tabAllowed = new Set<string>();
+let tabFailed = false;   // the last read of the Android app list threw (for example an old APK)
 function paintTabApps(): void {
   const box = $('stTabApps');
   if (appOpen || !androidApps.available) { box.innerHTML = ''; return; }
   if (!tabList) {
-    try { tabList = androidApps.launchable(); tabAllowed = new Set(androidApps.allowed().map(a => a.id)); }
-    catch { tabList = []; }
+    try { tabList = androidApps.launchable(); tabAllowed = new Set(androidApps.allowed().map(a => a.id)); tabFailed = false; }
+    catch { tabList = []; tabFailed = true; }
   }
   box.innerHTML = `<h3 class="label">Apps on this tablet</h3>`
     + (tabList.length ? tabList.map(a => `
@@ -303,7 +304,7 @@ function paintTabApps(): void {
         <span class="st-app-ic">${a.icon ? `<img src="${esc(a.icon)}" alt="">` : ''}</span>
         <div class="st-txt"><b>${esc(a.name)}</b></div>
         <button class="st-switch hit" data-tabapp="${esc(a.id)}" role="switch" aria-checked="${tabAllowed.has(a.id)}"><i></i></button>
-      </div>`).join('') : '<div class="st-empty">No apps found.</div>')
+      </div>`).join('') : `<div class="st-empty">${tabFailed ? 'Couldn’t read the apps on this tablet. Check the tablet app is up to date, then try again.' : 'No apps found.'}</div>`)
     + '<p class="st-note-line">Also in Apps › Edit. Switched-on apps show in Apps, beside ClaudeOS’s own apps.</p>';
 }
 
