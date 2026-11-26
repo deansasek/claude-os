@@ -719,6 +719,7 @@ function settingRows(): SettingRow[] {
   rows.push({ kind: 'info', id: 'scenesHead', title: 'Scenes on the Home screen',
     detail: sceneMsg || `Up to ${MAX_HOME_SCENES} scenes show as one-tap buttons on the Home screen.`,
     value: () => (!sl ? 'Loading…' : sl.status === 'error' ? 'Couldn’t load' : `${sl.home.length} of ${MAX_HOME_SCENES}`) });
+  if (sl?.status === 'error') rows.push({ kind: 'info', id: 'scenesErr', title: 'Couldn’t list your scenes', detail: plain(sl.error), value: () => '' });
   if (sl?.status === 'ok' && !sl.scenes.length) rows.push({ kind: 'info', id: 'scenesNone', title: 'No scenes yet', detail: 'Make scenes in Home Assistant, and they show up here.', value: () => '' });
   for (const sc of sl?.status === 'ok' ? sl.scenes : []) {
     rows.push({ kind: 'switch', id: `homeScene:${sc.entity_id}`, title: sc.name,
