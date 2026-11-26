@@ -169,7 +169,8 @@ function paintEmpty(): void {
     empty.textContent = 'Every app is hidden. Tap Edit to bring some back.';
     empty.hidden = false;
   } else if (tabletSection && !tabApps.length) {
-    empty.textContent = on ? 'Tap Add apps to pick apps from this tablet for ClaudeOS to open.'
+    empty.textContent = !tabOk ? 'Couldn’t read the tablet’s apps. Open Apps again to retry.'
+      : on ? 'Tap Add apps to pick apps from this tablet for ClaudeOS to open.'
       : 'Nothing from the tablet here yet. Tap Edit, then Add apps, and pick a few for ClaudeOS to open.';
     empty.hidden = false;
   } else empty.hidden = true;
@@ -363,19 +364,22 @@ function stopEditing(): void {
 
 // ---------- the picker sheet ----------
 let launchable: AndroidApp[] = [];
-function paintList(): void {
+function paintList(failed = false): void {
   const allowed = new Set(tabApps.map(a => a.id));
   $('lnList').innerHTML = launchable.length ? launchable.map(a => {
     const src = safeIcon(a.icon), on = allowed.has(a.id);
     return `<button class="ln-row${on ? ' on' : ''}" data-pkg="${esc(a.id)}">`
       + (src ? `<img src="${esc(src)}" alt="">` : `<span class="ln-letter">${esc(a.name.slice(0, 1))}</span>`)
       + `<span class="ln-row-name">${esc(a.name)}</span><span class="ln-tick">${TICK}</span></button>`;
-  }).join('') : '<p class="ln-empty">No other apps found on the tablet.</p>';
+  }).join('') : '<p class="ln-empty"></p>';
+  if (!launchable.length) $('lnList').querySelector('.ln-empty')!.textContent = failed
+    ? 'Couldn’t read the tablet’s apps. Close this and try again.' : 'No other apps found on the tablet.';
 }
 function openSheet(): void {
-  try { launchable = androidApps.launchable(); } catch (e) { console.warn('launcher: launchable', e); launchable = []; }
+  let launchOk = true;
+  try { launchable = androidApps.launchable(); } catch (e) { console.warn('launcher: launchable', e); launchable = []; launchOk = false; }
   launchable.sort((a, b) => a.name.localeCompare(b.name));
-  paintList();
+  paintList(!launchOk);
   $('lnSheet').hidden = false;
   requestAnimationFrame(() => $('lnSheet').classList.add('on'));
 }
