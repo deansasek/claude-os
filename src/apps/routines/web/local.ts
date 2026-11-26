@@ -32,6 +32,10 @@ export function applyOp(routines: Routine[], op: Op): OpResult {
   if (next.some((r, i) => i !== at && phraseKey(r.name) === phraseKey(c.name))) {
     return { ok: false, routines, error: `There’s already a routine called ${c.name}.` };
   }
+  for (const p of c.phrases) {
+    const other = next.find((r, i) => i !== at && r.phrases.some(q => phraseKey(q) === phraseKey(p)));
+    if (other) return { ok: false, routines, error: `“${p}” already runs ${other.name}.` };
+  }
   if (at < 0 && next.length >= MAX_ROUTINES) return { ok: false, routines, error: `There are already ${MAX_ROUTINES} routines. Delete one first.` };
   const id = at >= 0 ? String(raw.id) : typeof raw.id === 'string' && ROUTINE_ID.test(raw.id) ? raw.id : newRoutineId(c.name);
   const saved: Routine = { id, ...c };
