@@ -167,7 +167,7 @@ function paintEmpty(): void {
   const box = $('wEmpty');
   box.classList.toggle('loading', st === 'loading');
   $('wPill').className = `live ${st === 'error' ? 'bad' : ''}`;
-  $('wPillText').textContent = st === 'loading' ? 'Loading' : st === 'error' ? 'Offline' : 'Not set up';
+  $('wPillText').textContent = st === 'loading' ? 'Loading' : st === 'error' ? 'Offline' : st === 'not_found' ? 'City not found' : 'Not set up';
   $('wEmptyTitle').textContent = st === 'loading' ? 'Checking the sky…'
     : st === 'not_found' ? 'Hmm, where’s that?'
     : st === 'error' ? 'Can’t reach the forecast'
