@@ -233,7 +233,7 @@ async function load(): Promise<void> {
 
 /** Settings → Apps → Claude: defaults for new sessions, and what "Hey Claude" uses. */
 function registerClaudeSettings(): void {
-  const models = () => modelChoices().slice(0, 4).map(m => ({ value: m.id, label: m.label }));
+  const models = () => { const all = modelChoices(), main = all.filter(m => m.main); return (main.length ? main : all.slice(0, 4)).map(m => ({ value: m.id, label: m.label })); };
   const SAME = { value: '', label: 'Same as above' };
   registerAppSettings({
     app: 'claude', name: 'Claude', icon: app.icon, blurb: 'Defaults for new sessions and for “Hey Claude”',
