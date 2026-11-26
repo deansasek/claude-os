@@ -1,5 +1,6 @@
 // The shown or hidden flag of each calendar, kept on the PC in calendar-shown.json (outside src/, git-ignored).
 // Only the known ids are stored, and only as true or false. A missing or unreadable file means every calendar is shown.
+import fs from 'node:fs';
 import path from 'node:path';
 import { STATE, readJson, writeJsonFile } from '../../../core/server/paths.ts';
 import { CAL_IDS, calendarsFor, cleanFlags, type CalendarInfo, type ShownFlags } from '../web/calendars.ts';
@@ -17,7 +18,10 @@ export type ShownResult = { status: 'ok'; calendars: CalendarInfo[] } | { status
 export function setShown(id: unknown, shown: unknown, hasAddress: boolean): ShownResult {
   if (typeof id !== 'string' || !(CAL_IDS as readonly string[]).includes(id)) return { status: 'error', error: 'That calendar isn’t one ClaudeOS knows.' };
   if (typeof shown !== 'boolean') return { status: 'error', error: 'Say whether the calendar is shown.' };
-  const flags = loadFlags();
+  // A file that is there but can't be read is not saved over, so the other stored flags are kept.
+  const raw = fs.existsSync(FILE) ? readJson<unknown>(FILE) : null;
+  if (raw === null && fs.existsSync(FILE)) return { status: 'error', error: 'The PC couldn’t read the shown calendars, so it didn’t save that.' };
+  const flags = cleanFlags(raw);
   flags[id as keyof ShownFlags] = shown;
   try {
     writeJsonFile(FILE, flags, { indent: 2, mode: 0o600 });
