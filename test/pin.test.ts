@@ -64,6 +64,26 @@ test('changing the PIN needs the current PIN; a wrong one is refused and nothing
   assert.equal(P.checkPin('1234').ok, false);
 });
 
+test('a missing PIN file means no PIN; a file that cannot be parsed counts as a PIN that is set, and nothing writes to it', () => {
+  assert.equal(fs.existsSync(file), false);
+  assert.deepEqual(P.pinStatus(), { set: false, lockedFor: 0, fingerprint: null });
+  for (const garbage of ['{not json', '', 'null', '{"salt":1,"hash":"x"}']) {
+    fs.writeFileSync(file, garbage);
+    const before = fs.readFileSync(file);
+    assert.deepEqual(P.pinStatus(), { set: true, lockedFor: 0, fingerprint: null });
+    assert.equal(P.pinFingerprint(), null);
+    assert.deepEqual(P.checkPin('1234'), { ok: false, error: 'save_failed', lockedFor: 0 });
+    assert.deepEqual(P.setPin('5678', ''), { ok: false, error: 'save_failed', lockedFor: 0 });
+    assert.deepEqual(P.removePin('1234'), { ok: false, error: 'save_failed', lockedFor: 0 });
+    assert.ok(fs.readFileSync(file).equals(before), `file bytes changed for ${JSON.stringify(garbage)}`);
+    assert.equal(fs.existsSync(`${file}.corrupt`), false);
+    assert.equal(fs.existsSync(`${file}.tmp`), false);
+  }
+  fs.rmSync(file, { force: true });   // deleting the file on the PC clears the PIN again
+  assert.equal(P.pinStatus().set, false);
+  assert.equal(P.checkPin('1234').error, 'no_pin');
+});
+
 test('removing the PIN needs the current PIN, then the file is gone and nothing is locked', () => {
   P.setPin('1234', '');
   assert.equal(P.removePin('0000').error, 'wrong');
