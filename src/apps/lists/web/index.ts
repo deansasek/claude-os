@@ -275,10 +275,11 @@ function edit(id: string): void {
     onDone: text => {
       const t = cleanText(text);
       if (!t || t === it.text) return;             // nothing typed, or no change: Save just closes
+      const was = it.text;                         // put back if the change is refused
       it.text = t;                                 // at once on screen; the PC's answer replaces it
       busy.add(id);
       render();
-      void send('edit', { list: l.id, id, text: t }).finally(() => { busy.delete(id); render(); });
+      void send('edit', { list: l.id, id, text: t }).then(r => { if (!r || !r.ok) it.text = was; }).finally(() => { busy.delete(id); render(); });
     },
   });
 }
