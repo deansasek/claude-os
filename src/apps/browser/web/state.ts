@@ -189,7 +189,7 @@ export function dayOf(at: number, now: number = Date.now()): string {
 export function size(bytes: number): string {
   if (!bytes || bytes < 1) return '';
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  if (bytes < 1023.5 * 1024) return `${Math.round(bytes / 1024)} KB`;   // from 1023.5 KB up, Math.round would say 1024 KB: the MB line says 1.0 MB
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
