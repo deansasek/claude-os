@@ -2,15 +2,16 @@
 // voice writes (readers.ts writeList) both go through these functions, each reading the stored queue first, so a change
 // queued by one is never lost to a write by the other. The rules are pure (local.ts queueAppend, queueRemove, queueRemap).
 import { store } from '../../../core/web/dom.ts';
-import { QUEUE_KEY, queueAppend, queueRemap, queueRemove, newQueueKey, type Op } from './local.ts';
+import { QUEUE_KEY, keepOps, queueAppend, queueRemap, queueRemove, newQueueKey, type Op } from './local.ts';
 
 export function readQueue(): Op[] {
-  let q: Op[];
-  try { q = JSON.parse(store.get(QUEUE_KEY) || '[]') as Op[]; } catch { q = []; }
-  if (!Array.isArray(q)) q = [];
-  const keyless = q.some(op => !op.key);
-  if (keyless) { q = q.map(op => (op.key ? op : { ...op, key: newQueueKey() })); writeQueue(q); }
-  return q;
+  let stored: unknown;
+  try { stored = JSON.parse(store.get(QUEUE_KEY) || '[]'); } catch { stored = []; }
+  let { ops, dropped } = keepOps(stored);
+  const keyless = ops.some(op => !op.key);
+  if (keyless) ops = ops.map(op => (op.key ? op : { ...op, key: newQueueKey() }));
+  if (dropped || keyless) writeQueue(ops);
+  return ops;
 }
 
 function writeQueue(q: Op[]): void {

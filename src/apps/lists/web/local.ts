@@ -109,6 +109,13 @@ export function remapIds(queue: Op[], key: 'id' | 'list', from: unknown, to: str
 export const newQueueKey = (): string => `q${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 /** The queue with one change added at the end. The entry gets a key when it has none. */
+/** The stored queue, with only the entries that are changes (an object with a path and a body). A null, a number or a half-written entry is dropped, so one bad value cannot stop every write. */
+export function keepOps(stored: unknown): { ops: Op[]; dropped: boolean } {
+  const all: unknown[] = Array.isArray(stored) ? stored : [];
+  const ops = all.filter((v): v is Op => typeof v === 'object' && v !== null && typeof (v as Op).path === 'string' && typeof (v as Op).body === 'object' && (v as Op).body !== null);
+  return { ops, dropped: ops.length !== all.length };
+}
+
 export function queueAppend(queue: Op[], op: Op): Op[] {
   return [...queue, { ...op, key: op.key ?? newQueueKey() }];
 }
