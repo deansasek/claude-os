@@ -196,6 +196,10 @@ function period(s: Stamp, r: Record<string, string>, k: number, interval: number
       const mAll = s.mo + k * interval, y = s.y + Math.floor(mAll / 12), mo = ((mAll % 12) + 12) % 12, n = daysIn(y, mo);
       const first = onDay(s, y, mo, 1);
       const days = new Set<number>();
+      // BYMONTHDAY and BYDAY together give the days that match both ("Friday the 13th"); with no valid BYMONTHDAY, BYDAY alone
+      const mdAll = (r.BYMONTHDAY ?? '').split(',').map(Number).filter(x => Number.isInteger(x) && x !== 0);
+      const monthDays = mdAll.length ? new Set(mdAll.map(x => (x > 0 ? x : n + 1 + x)).filter(d => d >= 1 && d <= n)) : null;
+      const onMonthDay = (d: number) => !monthDays || monthDays.has(d);
       if (byday.length) {
         for (const b of byday) {
           const m = b.match(/^([+-]?\d{1,2})?(SU|MO|TU|WE|TH|FR|SA)$/);
@@ -203,8 +207,8 @@ function period(s: Stamp, r: Record<string, string>, k: number, interval: number
           const wd = WEEKDAYS.indexOf(m[2]);
           const all: number[] = [];
           for (let d = 1; d <= n; d++) if (new Date(Date.UTC(y, mo, d)).getUTCDay() === wd) all.push(d);
-          if (!m[1]) all.forEach(d => days.add(d));
-          else { const i = +m[1]; const d = i > 0 ? all[i - 1] : all[all.length + i]; if (d) days.add(d); }
+          if (!m[1]) all.forEach(d => { if (onMonthDay(d)) days.add(d); });
+          else { const i = +m[1]; const d = i > 0 ? all[i - 1] : all[all.length + i]; if (d && onMonthDay(d)) days.add(d); }
         }
       } else {
         const md = (r.BYMONTHDAY ?? '').split(',').map(Number).filter(x => Number.isInteger(x) && x !== 0);

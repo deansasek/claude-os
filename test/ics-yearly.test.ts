@@ -24,6 +24,12 @@ test('BYMONTH with several months gives each month, in order, and a bad month li
   assert.deepEqual(months(yearly('BYMONTH=13,x', ';COUNT=1')), [0]);
 });
 
+test('a monthly repeat with BYDAY and BYMONTHDAY gives only the days that match both ("Friday the 13th")', () => {
+  const text = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20260101', 'RRULE:FREQ=MONTHLY;BYDAY=FR;BYMONTHDAY=13', 'SUMMARY:Unlucky', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const got = occurrences(parseIcs(text), new Date(2026, 0, 1).getTime(), new Date(2027, 0, 1).getTime()).map(o => { const d = new Date(o.start); return `${d.getMonth() + 1}/${d.getDate()}`; });
+  assert.deepEqual(got, ['2/13', '3/13', '11/13']);
+});
+
 function monthlyOccurrences(rrule: string, from: number, to: number) {
   const text = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20261001', `RRULE:${rrule}`, 'SUMMARY:Work', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   return occurrences(parseIcs(text), from, to).map(o => new Date(o.start));
