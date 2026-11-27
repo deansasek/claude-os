@@ -778,6 +778,7 @@ function mount(context: AppContext): void {
   void loadWeather(true);
   void loadUsage();
   void loadScenes();
+  addEventListener('hub:weather', () => { void loadWeather(true); });   // a new place or unit in Weather
   addEventListener('hub:ha-scenes', () => { void loadScenes(); });   // picked in Settings > Apps > Home Assistant
   void loadRoutineActs();
   addEventListener('hub:routines', () => { void loadRoutineActs(); });   // changed in the Routines app

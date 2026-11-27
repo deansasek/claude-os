@@ -348,6 +348,8 @@ async function loadWeather(force = false): Promise<void> {
     if (ambientOn) paintAmbient();
   } catch { wxAt = Date.now() - 13 * 60e3; /* try again in a couple of minutes */ }
 }
+// a new place or unit in Weather: the ambient screen reads the forecast again at once
+addEventListener('hub:weather', () => { void loadWeather(true); });
 
 // ---------- the next alarm, from the Clock app's saved state ----------
 const timeText = (d: Date) => clock(d);
