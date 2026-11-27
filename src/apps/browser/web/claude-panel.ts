@@ -254,13 +254,20 @@ async function send(): Promise<void> {
 }
 
 /** Polls the session until the turn finishes, showing its steps and any approval it asks for. */
+const READ_TIMEOUT_MS = 8000;   // a poll read the PC never answers gives up, and the panel tries again
+
 function watch(): void {
   clearTimeout(timer);
   const tick = async (): Promise<void> => {
     if (!sessionId) { finish(); return; }
+    const id = sessionId;
     let v: SessionView;
-    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(sessionId)}`); }
-    catch { statusHtml = `<span class="cl-step">Can’t reach your PC. Still trying…</span>`; paint(); timer = window.setTimeout(tick, 2000); return; }
+    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`, READ_TIMEOUT_MS); }
+    catch {
+      if (sessionId !== id) return;   // a newer choice (New chat, another session) came first
+      statusHtml = `<span class="cl-step">Can’t reach your PC. Still trying…</span>`; paint(); timer = window.setTimeout(tick, 2000); return;
+    }
+    if (sessionId !== id) return;   // the reply belongs to a session the panel has left: do not paint it into the new one
     const t = v.turn;
     contextUse = v.context ?? null;   // the ring follows the session's context as it grows
     canReply = v.canReply;

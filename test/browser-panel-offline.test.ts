@@ -12,7 +12,7 @@ const body = src.slice(start, src.indexOf('\n}\n', start));
 
 test('a reply that loses the PC says so while it waits', () => {
   assert.ok(start > 0, 'watch() exists');
-  const offline = /catch \{ statusHtml = `[^`]*Can’t reach your PC[^`]*`; paint\(\); timer = window\.setTimeout\(tick, 2000\); return; \}/;
+  const offline = /catch \{\s*(?:if \(sessionId !== id\) return;[^\n]*\n\s*)?statusHtml = `[^`]*Can’t reach your PC[^`]*`; paint\(\); timer = window\.setTimeout\(tick, 2000\); return;\s*\}/;
   assert.match(body, offline);
   assert.ok(body.search(offline) < body.indexOf('setTimeout(tick, 2000'), 'the offline status is set before the retry is scheduled');
 });
