@@ -43,7 +43,7 @@ test('loadDevices keeps the last good device list when the read fails', () => {
 test('loadScenes keeps the last good scene list when the read fails', () => {
   const start = src.indexOf('async function loadScenes(');
   const body = src.slice(start, src.indexOf('\n}\n', start));
-  assert.match(body, /catch \{ scenesFailed = true; if \(!sceneList\) sceneList = \{ status: 'error'/);
+  assert.match(body, /catch \{ (?:if \(gen !== scenesGen\) return; )?scenesFailed = true; if \(!sceneList\) sceneList = \{ status: 'error'/);
   assert.match(body, /scenesFailed = false;/);
   assert.doesNotMatch(body, /catch \{ sceneList = \{ status: 'error'/);
 });
