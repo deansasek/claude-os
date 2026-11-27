@@ -28,6 +28,11 @@ export function parseTime(phrase: string): TimeOfDay | null {
   // "12 noon" and "12 midnight" are said too
   if (/^(12 )?(noon|midday)$/.test(s)) return { h: 12, m: 0, meridiem: 'pm' };
   if (/^(12 )?midnight$/.test(s)) return { h: 0, m: 0, meridiem: 'am' };
+  // "quarter past midnight" is "quarter past 12 am"; "quarter to noon" is "quarter to 12 am" (11:45)
+  s = s.replace(/^((?:a )?(?:half|quarter|\d+)(?: minutes?)? )(past|after) midnight$/, '$1$2 12 am')
+    .replace(/^((?:a )?(?:half|quarter|\d+)(?: minutes?)? )(to|before) midnight$/, '$1$2 12 pm')
+    .replace(/^((?:a )?(?:half|quarter|\d+)(?: minutes?)? )(past|after) (noon|midday)$/, '$1$2 12 pm')
+    .replace(/^((?:a )?(?:half|quarter|\d+)(?: minutes?)? )(to|before) (noon|midday)$/, '$1$2 12 am');
   let mer: 'am' | 'pm' | null = null;
   const mm = s.match(/^(.*) (am|pm)$/);
   if (mm) { s = mm[1]; mer = mm[2] as 'am' | 'pm'; }
