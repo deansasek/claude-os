@@ -114,3 +114,14 @@ test('a topic switched to the state it already has writes nothing', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('a save the PC cannot make is refused with a code, not thrown, and leaves no file', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-news-save-'));
+  try {
+    const file = path.join(dir, 'missing-dir', 'news-topics.json');
+    assert.deepEqual(setTopic({ id: 'bbc', on: false }, FEEDS, file), { ok: false, error: 'save_failed' });
+    assert.equal(fs.existsSync(file), false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

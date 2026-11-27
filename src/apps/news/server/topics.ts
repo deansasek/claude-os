@@ -24,6 +24,11 @@ export function setTopic(body: unknown, feeds: Feed[] = FEEDS, file: string = FI
   const choices = topicChoices(feeds, file);
   if (isOn(choices, c.id) === c.on) return { ok: true, topics: topicsFor(feeds, choices) };
   choices[c.id] = c.on;
-  writeJsonFile(file, choices, { indent: 2 });
+  try { writeJsonFile(file, choices, { indent: 2 }); }
+  catch (e) {
+    // a save the PC cannot make is refused with a code: the tablet shows its own message, and the raw error stays on the PC
+    console.log('news: could not save the topics:', (e as NodeJS.ErrnoException).code ?? 'error');
+    return { ok: false, error: 'save_failed' };
+  }
   return { ok: true, topics: topicsFor(feeds, choices) };
 }
