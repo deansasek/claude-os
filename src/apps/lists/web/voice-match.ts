@@ -102,6 +102,6 @@ export function addManyReply(texts: string[], ok: number, waiting: number, name:
     const said = n === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[n - 1]}`;
     return ok === n ? `Added ${said} to ${name}.` : `Added ${ok} of ${n} to ${name}.`;
   }
-  if (ok === 0) return `I can’t reach ${name} right now. ${n === 1 ? 'It' : `The ${n} items`} will be added when the PC is back.`;
+  if (ok === 0) return `I can’t reach ${name} right now. ${waiting === 1 ? 'It' : `The ${waiting} items`} will be added when the PC is back.`;
   return `Added ${ok} of ${n} to ${name}. The other ${waiting === 1 ? 'one' : waiting} will be added when the PC is back.`;
 }
