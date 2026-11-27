@@ -78,6 +78,8 @@ function take(r: ListsResult | null | undefined): void {
 }
 
 /** Send the queued changes to the PC in order, then take its lists. Stops (the queue waits) while the PC is away. */
+// a PC call that never answers gives up, so a queued change stays queued and the next refresh tries again
+const SYNC_TIMEOUT_MS = 20e3;
 let flushing = false;
 async function flush(): Promise<void> {
   if (flushing || !readQueue().length) return;
@@ -86,7 +88,7 @@ async function flush(): Promise<void> {
     // read the stored queue for each entry: a change queued meanwhile (voice) is sent too, and only the sent entry is removed
     for (let op = readQueue()[0]; op; op = readQueue()[0]) {
       let r: ListsResult;
-      try { r = await postJson<ListsResult>(`${API}/${op.path}`, op.body); } catch { return; }
+      try { r = await postJson<ListsResult>(`${API}/${op.path}`, op.body, SYNC_TIMEOUT_MS); } catch { return; }
       if (!r || (!r.ok && r.retry)) return;   // the PC couldn't read or save its file: try again later
       removeOp(op.key!);              // done, or refused (Claude removed the item meanwhile): the PC's lists will show it
       if (op.path === 'add' && r.item && r.item.id !== op.body.id) remapQueue('id', op.body.id, r.item.id);
@@ -101,7 +103,7 @@ let suggest: string[] = [];
 async function loadSuggest(): Promise<void> {
   if (current !== 'shopping') { suggest = []; paintSuggest(); return; }
   let got: string[] | null = null;
-  try { got = (await getJson<{ items: string[] }>(`${API}/suggest?list=shopping`)).items ?? []; } catch { got = null; }
+  try { got = (await getJson<{ items: string[] }>(`${API}/suggest?list=shopping`, SYNC_TIMEOUT_MS)).items ?? []; } catch { got = null; }
   const open = (lists.find(l => l.id === 'shopping')?.items ?? []).map(i => i.text);
   suggest = keptSuggest(suggest, got, open);
   paintSuggest();
@@ -117,9 +119,9 @@ async function refresh(keepNote = false): Promise<void> {
   if (local() && readQueue().length) { await flush(); render(); return; }   // flush takes the PC's lists once the queue is sent
   const g = gen;
   try {
-    const r = await getJson<ListsResult>(`${API}/lists`);
+    const r = await getJson<ListsResult>(`${API}/lists`, SYNC_TIMEOUT_MS);
     if (g !== gen || swipe || readQueue().length) return;
-    if (local() && r.ok && r.stored === false) take(await postJson<ListsResult>(`${API}/restore`, { lists }));
+    if (local() && r.ok && r.stored === false) take(await postJson<ListsResult>(`${API}/restore`, { lists }, SYNC_TIMEOUT_MS));
     else take(r);
     if (!keepNote) note = r.ok ? '' : r.error ?? '';
   } catch {
