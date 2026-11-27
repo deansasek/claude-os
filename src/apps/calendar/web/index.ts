@@ -13,7 +13,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts';
-import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, pcAnswer, pruneNotified, type EventCopy, type Notified } from './event-notice.ts';
+import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, parseNotified, pcAnswer, pruneNotified, type EventCopy, type Notified } from './event-notice.ts';
 import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 import { swipeStep } from './swipe.ts';
@@ -620,7 +620,7 @@ function armRemove(): void {
 const NOTICED_KEY = 'cal.noticed';
 const EVENTS_KEY = 'cal.events';
 const NOTICE_CHECK_MS = 60e3;
-const readNotified = (): Notified => { try { return JSON.parse(store.get(NOTICED_KEY) || '{}') as Notified; } catch { return {}; } };
+const readNotified = (): Notified => parseNotified(store.get(NOTICED_KEY));
 
 /** The events to check: the PC's now (kept as the tablet copy), else the copy when it is recent enough, else none. */
 async function soonEvents(now: number): Promise<{ events: CalEvent[]; copyTime?: string } | null> {

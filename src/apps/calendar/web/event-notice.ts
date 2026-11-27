@@ -27,6 +27,16 @@ export function dueNotices(events: CalEvent[], now: number, told: Notified): Cal
   });
 }
 
+/** The saved told-events record. Anything that is not a plain object reads as empty, and an entry without a finite start time is dropped. */
+export function parseNotified(raw: string | null | undefined): Notified {
+  let v: unknown;
+  try { v = JSON.parse(raw || '{}'); } catch { return {}; }
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return {};
+  const out: Notified = {};
+  for (const [k, start] of Object.entries(v)) if (Number.isFinite(start)) out[k] = start as number;
+  return out;
+}
+
 /** The record without the entries whose event started more than a day ago. */
 export function pruneNotified(told: Notified, now: number): Notified {
   const out: Notified = {};
