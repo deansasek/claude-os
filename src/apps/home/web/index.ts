@@ -537,7 +537,8 @@ function onCritterTap(): void {
     // say where it's going (the bubble and the voice say the same line), then go after a moment to read it
     const w = waiting[0], line = `this way, to ${shortTitle(w.title, 32)}!`;
     act('hop', true); say(line); critterSpeak(line);
-    setTimeout(() => openSession(w.id!), 1100);
+    clearTimeout(goT);
+    goT = window.setTimeout(() => { goT = undefined; if (ctx.isVisible()) openSession(w.id!); }, 1100);   // only while Home is still on screen
     return;
   }
   taps++;
@@ -549,6 +550,7 @@ function onCritterTap(): void {
 }
 
 // the critter's idle acts: only while Home is on screen (onShow starts them, onHide stops them)
+let goT: number | undefined;   // the critter's walk to a waiting session: cancelled when Home is left
 let actT: number | undefined;
 function scheduleAct(): void {
   clearTimeout(actT);
@@ -739,6 +741,7 @@ function onShow(): void {
 function onHide(): void {
   clearInterval(pollT); pollT = undefined;
   clearTimeout(actT); actT = undefined;
+  clearTimeout(goT); goT = undefined;
   arm();
 }
 
