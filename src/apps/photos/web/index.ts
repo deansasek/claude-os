@@ -138,9 +138,14 @@ function selectAll(): void {
   paint();
 }
 
+// a list read the PC never answers gives up; each read takes a number, and only the newest read sets the grid
+const LIST_TIMEOUT_MS = 20e3;
+let listSeq = 0;
 async function load(): Promise<void> {
+  const seq = ++listSeq;
   try {
-    const l = await getJson<PhotoList>('/api/photos/list');
+    const l = await getJson<PhotoList>('/api/photos/list', LIST_TIMEOUT_MS);
+    if (seq !== listSeq) return;   // a newer read, or a delete, came first: its answer is the one that counts
     unreached = false;
     // a list the PC could not read keeps the photos already in the grid
     days = nextPhotoDays(days, l);
@@ -150,6 +155,7 @@ async function load(): Promise<void> {
     $('phNote').hidden = l.ok !== false;
     if (l.ok === false) $('phNote').textContent = l.error || 'The PC couldn’t read its photos folder.';
   } catch {
+    if (seq !== listSeq) return;
     listFailed = true;
     unreached = true;
     $('phNote').hidden = false;
@@ -360,6 +366,7 @@ async function removePending(): Promise<void> {
   hideSheet();
   const before = inOrder();   // the grid order before the delete: the viewer moves to a neighbour
   days = days.map(d => ({ ...d, photos: d.photos.filter(p => !gone.has(p.id)) })).filter(d => d.photos.length);
+  listSeq++;   // a list read still out was taken before this delete: it must not bring the photos back
   for (const id of gone) picked.delete(id);
   if (shown && gone.has(shown.id)) {
     const next = afterDelete(before.map(x => x.p.id), shown.id, gone);
