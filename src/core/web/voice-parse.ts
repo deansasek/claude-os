@@ -3,6 +3,8 @@
 
 export function parseDuration(phrase: string): number | null {
   let s = ` ${phrase} `
+    // "a couple of minutes" is 2 minutes; only before a time unit
+    .replace(/ (a )?couple (of )?(?=(hour|minute|second)s? )/g, ' 2 ')
     .replace(/ (a|an|1) (hour|minute|second)s? and a half /g, ' 1.5 $2s ')
     .replace(/ (\d+) and a half (hour|minute|second)s? /g, ' $1.5 $2s ')
     .replace(/ (\d+) (hour|minute|second)s? and a half /g, ' $1.5 $2s ')
