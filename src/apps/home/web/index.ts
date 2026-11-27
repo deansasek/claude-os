@@ -123,15 +123,21 @@ interface Forecast {
 let wx: Forecast | null = null, wxAt = 0, wxFailed = false;
 let sky: Sky | null = null;
 
+// a forecast read the PC never answers gives up; each read takes a number, and only the newest read sets the forecast
+const WX_TIMEOUT_MS = 20e3;
+let wxSeq = 0;
 async function loadWeather(force = false): Promise<void> {
   if (!force && Date.now() - wxAt < 10 * 60e3) return;
   wxAt = Date.now();
+  const seq = ++wxSeq;
   try {
-    const r = weatherAfterRead(wx, await getJson<Forecast>('/api/weather/forecast'));
+    const f = await getJson<Forecast>('/api/weather/forecast', WX_TIMEOUT_MS);
+    if (seq !== wxSeq) return;   // a newer read (a new place or unit) started: its answer is the one that counts
+    const r = weatherAfterRead(wx, f);
     wx = r.wx; wxFailed = r.failed;
     if (r.failed) wxAt = Date.now() - 8 * 60e3;   // a route error: try again in a couple of minutes
   }
-  catch { wxFailed = true; wxAt = Date.now() - 8 * 60e3; /* try again in a couple of minutes */ }
+  catch { if (seq !== wxSeq) return; wxFailed = true; wxAt = Date.now() - 8 * 60e3; /* try again in a couple of minutes */ }
   paintWeather();
 }
 
