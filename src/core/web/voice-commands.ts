@@ -9,6 +9,7 @@
 //   Alarms   "wake me up at 7", "set an alarm for 6:30 on weekdays", "alarm for half past six",
 //            "turn off my alarms", "when is my alarm"
 //   Weather  "what's the weather", "what's the weather tomorrow", "will it rain (today/tomorrow)"
+//   Radio    "play the radio" (the last station), "stop the radio" (pauses what is playing)
 //   Time     "what time is it", "what's the date", "what day is it"
 //   Screen   "dim the screen", "brighter", "brightness 50 percent", "dark mode", "light mode"
 //   Sound    "volume up/down", "louder", "quieter", "mute", "volume 30 percent"
@@ -26,7 +27,7 @@
 //
 // The Clock app provides timers and alarms (provideClock), the Routines app its routines (provideRoutines);
 // the rest uses core only.
-import { getJson, postJson } from './dom.ts';
+import { getJson, postJson, store } from './dom.ts';
 import type { HaDashboard, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
 import { matchHome, matchScene, onOffReply, parseOnOff, parseScene, sayName, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
 import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
@@ -37,6 +38,8 @@ import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay, weatherTrouble } from './voice-weather.ts';
+import { radioWord } from './voice-radio.ts';
+import { mediaState, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
@@ -322,6 +325,16 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (/^(?:turn on |switch to |go |use |enable )?(?:the )?(?:dark|night) (?:mode|theme)$|^(?:turn off|disable)(?: the)? light (?:mode|theme)$/.test(t)) { setThemeMode('dark'); return { say: 'Dark mode.', react: 'look' }; }
   if (/^(?:turn on |switch to |go |use |enable )?(?:the )?(?:light|day) (?:mode|theme)$|^(?:turn off|disable)(?: the)? (?:dark|night) (?:mode|theme)$/.test(t)) { setThemeMode('light'); return { say: 'Light mode.', react: 'hop' }; }
 
+  // radio: play the last station the Radio app kept, or pause what is playing (a stop when nothing plays is not heard)
+  const radio = radioWord(t);
+  if (radio === 'play') {
+    let last: unknown[] = [];
+    try { last = JSON.parse(store.get('radio.recent') || '[]') as unknown[]; } catch { /* none kept */ }
+    if (!last.length) return { say: 'No radio station has played yet.' };
+    dispatchEvent(new CustomEvent('hub:radio-last'));
+    return { say: '' };
+  }
+  if (radio === 'stop' && mediaState() === 'playing') { pauseMedia(); return { say: 'Stopped.' }; }
   // sound
   if (/^(?:turn |turn it |turn the volume |volume |sound )?up$|^louder$|^(?:turn|make)(?: it| the volume| the sound)? louder$|^(?:raise|increase)(?: the)? volume$/.test(t) && /up|loud|raise|increase/.test(t)) return volume('up');
   if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
