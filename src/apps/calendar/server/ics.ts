@@ -170,10 +170,11 @@ export function parseIcs(text: string): RawEvent[] {
 }
 
 // ---------- repeats ----------
-function untilMs(v: string): number {
+// an all-day series ends on the day UNTIL names, as written: a UTC date-time there is still that day (not a moment that falls the day before in the Americas)
+function untilMs(v: string, s: Stamp): number {
   const t = parseStamp(v);
   if (!t) return Infinity;
-  return t.date ? new Date(t.y, t.mo, t.d + 1).getTime() - 1 : toMs(t);
+  return t.date || s.date ? new Date(t.y, t.mo, t.d + 1).getTime() - 1 : toMs(t);
 }
 
 /** The candidate days of one period (in order), before COUNT / UNTIL / the start are applied; null when the rule isn't understood. */
@@ -247,7 +248,7 @@ function starts(e: RawEvent, from: number, to: number): Stamp[] {
   if (!r) return toMs(s) < to ? [s] : [];
   const interval = Math.max(1, Math.min(1000, parseInt(r.INTERVAL ?? '1', 10) || 1));
   const count = r.COUNT ? Math.max(0, parseInt(r.COUNT, 10) || 0) : Infinity;
-  const until = r.UNTIL ? untilMs(r.UNTIL) : Infinity;
+  const until = r.UNTIL ? untilMs(r.UNTIL, s) : Infinity;
   const startMs = toMs(s);
   const out: Stamp[] = [];
   // without COUNT, a daily or weekly rule can skip straight to the periods near `from`
