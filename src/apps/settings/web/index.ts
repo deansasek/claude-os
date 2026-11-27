@@ -313,7 +313,7 @@ function bindApps(): void {
     const t = e.target as HTMLElement;
     const open = appOpen ? appSettings().find(a => a.app === appOpen) : null;
     const appBtn = t.closest<HTMLElement>('[data-app]');
-    if (appBtn && !open) { appOpen = appBtn.dataset.app!; report(`settings:app:${appOpen}`); paintApps(); $('stContent').scrollTop = 0; return; }
+    if (appBtn && !open) { appOpen = appBtn.dataset.app!; report(`settings:app:${appOpen}`); paintApps(); paintTabApps(); $('stContent').scrollTop = 0; return; }
     if (t.closest('[data-back]')) { appOpen = null; paintApps(); paintTabApps(); return; }
     if (!open) return;
     const rows = open.rows();
