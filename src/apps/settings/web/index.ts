@@ -1370,9 +1370,14 @@ function paintSetup(): void {
 }
 
 // ---------- System monitor: the hub's uptime, the PC link, the open apps (Close) and the apps that did not start (Restart) ----------
+// the status read gives up on a PC that does not answer; a repaint that is no longer the newest does nothing
+const MONITOR_TIMEOUT_MS = 20e3;
+let monitorSeq = 0;
 async function paintMonitor(): Promise<void> {
+  const n = ++monitorSeq;
   let uptime: number | null = null;
-  try { uptime = (await getJson<{ uptimeSeconds: number }>('/api/core/status')).uptimeSeconds; } catch { uptime = null; }
+  try { uptime = (await getJson<{ uptimeSeconds: number }>('/api/core/status', MONITOR_TIMEOUT_MS)).uptimeSeconds; } catch { uptime = null; }
+  if (n !== monitorSeq) return;   // a newer repaint came first: its rows are the ones to show
   const open = openedApps();
   const failed = failedApps();
   const l = monitorLines({ uptimeSeconds: uptime, openNames: open.map(a => a.name), failedNames: failed.map(a => a.name) });
