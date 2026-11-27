@@ -124,6 +124,15 @@ export function stepMinutes(text: string): number | null {
   return minutes >= 1 && minutes <= 240 ? minutes : null;
 }
 
+/** A saved cook position (the recipe and its step, as cook mode keeps them). Null for anything that does not read back as a recipe at a whole step. */
+export function cookFromStored(raw: unknown): { r: Recipe; step: number } | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const v = raw as { r?: unknown; step?: unknown };
+  const r = fromStored(v.r);
+  if (!r || typeof v.step !== 'number' || !Number.isInteger(v.step) || v.step < 0) return null;
+  return { r, step: cookStep(r, v.step).index };
+}
+
 export function cookStep(r: Recipe, i: number): { heading: string; text: string; index: number; first: boolean; last: boolean } {
   const total = r.steps.length;
   const index = Math.min(Math.max(0, Math.floor(i) || 0), total - 1);
