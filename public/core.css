@@ -628,6 +628,7 @@
   .cc-slide { display: flex; align-items: center; gap: 14px; padding: 6px 16px 6px 14px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
   .cc-slide .cc-ic, .cc-slide .cc-ic svg { width: 22px; height: 22px; color: var(--t2); }
   .cc-slide input[type=range] { height: 44px; }   /* a 44px touch target for the slider (was 34) */
+  .cc-slide input[type=range]:disabled { opacity: .4; }
   .cc-notes { margin-top: 14px; }
   .cc-kick { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--t4); margin: 0 2px 2px; }
   .cc-kick-btns { display: flex; gap: 4px; }
