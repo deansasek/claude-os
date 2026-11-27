@@ -20,15 +20,18 @@ export function localSettings(): Record<string, string> {
   return backupValues(raw);
 }
 
+// the backup save and read give up on a PC that does not answer, so Save and Restore end with the can't-reach message
+const BACKUP_TIMEOUT_MS = 20e3;
+
 /** Send the tablet's settings to the PC. */
 export async function saveSettings(): Promise<SaveResult> {
-  try { return await postJson<SaveResult>('/api/settings/backup', { values: localSettings() }); }
+  try { return await postJson<SaveResult>('/api/settings/backup', { values: localSettings() }, BACKUP_TIMEOUT_MS); }
   catch { return { ok: false, error: 'Can’t reach your PC. Try again when it’s back.' }; }
 }
 
 /** The last backup on the PC, or null when the PC cannot be reached. */
 export async function loadSettings(): Promise<BackupState | null> {
-  try { return await getJson<BackupState>('/api/settings/backup'); } catch { return null; }
+  try { return await getJson<BackupState>('/api/settings/backup', BACKUP_TIMEOUT_MS); } catch { return null; }
 }
 
 /** The note under the Save button: the saved time and the count, or a reason when there is no backup to show. */
