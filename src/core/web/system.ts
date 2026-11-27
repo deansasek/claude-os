@@ -88,7 +88,7 @@ export const prefs = {
   get quiet(): QuietHours {
     return parseQuiet(store.get('os.quiet'));
   },
-  set quiet(q: QuietHours) { store.set('os.quiet', JSON.stringify(q)); sysChanged(); },
+  set quiet(q: QuietHours) { store.set('os.quiet', JSON.stringify(q)); syncWake(); sysChanged(); },   // pauses or resumes "Hey Claude" at once
   /** Break reminders: 0 (off), 30, 60 or 90 minutes of continuous use. */
   get breakMin(): number { return +(store.get('os.breakMin') || 0); },
   set breakMin(v: number) { store.set('os.breakMin', String(v)); },
@@ -97,7 +97,7 @@ export const prefs = {
   set breakWay(v: 'banner' | 'critter') { store.set('os.breakWay', v); },
   /** Low power mode: dims the screen, reduces motion, pauses "Hey Claude", and shortens the ambient wait. */
   get lowPower(): boolean { return flag('os.lowPower', false); },
-  set lowPower(v: boolean) { setFlag('os.lowPower', v); applyAppearance(); applyBrightness(); sysChanged(); },
+  set lowPower(v: boolean) { setFlag('os.lowPower', v); applyAppearance(); applyBrightness(); syncWake(); sysChanged(); },   // the wake word follows at once
   /** Turn low power on by itself below this battery level: 0 (never), 15, 20 or 30. */
   get lowAt(): number { return +(store.get('os.lowAt') || 0); },
   set lowAt(v: number) { store.set('os.lowAt', String(v)); },
