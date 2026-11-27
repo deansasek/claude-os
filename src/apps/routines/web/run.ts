@@ -37,7 +37,7 @@ export async function loadRoutines(fresh = false): Promise<Routine[]> {
   }
   if (!fresh && cache && Date.now() - cacheAt < CACHE_MS) return cache;
   const r = await getJson<RoutinesResult>('/api/routines/list');
-  if (!r || !Array.isArray(r.routines)) throw new Error('no routines');
+  if (!r || r.ok === false || !Array.isArray(r.routines)) throw new Error('no routines');   // the PC could not read its list: not an empty one
   cache = r.routines; cacheAt = Date.now();
   return cache;
 }
