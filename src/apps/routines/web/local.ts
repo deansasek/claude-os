@@ -62,6 +62,21 @@ export function keepOps(stored: unknown): { ops: Op[]; dropped: boolean } {
   return { ops, dropped: ops.length !== all.length };
 }
 
+/** The saved copy of the routines, with the entries that are not whole routines left out. A routine needs its id, name, phrases and steps, and a time (when it has one) with its hour, minute and days. */
+export function keepRoutines(stored: unknown): { routines: Routine[] | null; dropped: boolean } {
+  if (!Array.isArray(stored)) return { routines: null, dropped: false };
+  const whole = (v: unknown): v is Routine => {
+    if (typeof v !== 'object' || v === null) return false;
+    const r = v as Record<string, unknown>;
+    if (typeof r.id !== 'string' || typeof r.name !== 'string' || !Array.isArray(r.phrases) || !Array.isArray(r.steps)) return false;
+    if (r.at === undefined) return true;
+    const at = r.at as Record<string, unknown> | null;
+    return typeof at === 'object' && at !== null && typeof at.h === 'number' && typeof at.m === 'number' && Array.isArray(at.days);
+  };
+  const routines = stored.filter(whole);
+  return { routines, dropped: routines.length !== stored.length };
+}
+
 /** The PC gave a routine another id than the tablet's: later queued changes use the PC's id. */
 export function remapIds(queue: Op[], from: string, to: string): void {
   for (const op of queue) {

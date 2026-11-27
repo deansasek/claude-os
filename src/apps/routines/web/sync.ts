@@ -7,7 +7,7 @@ import { getJson, postJson, store } from '../../../core/web/dom.ts';
 import { caps } from '../../../core/web/device.ts';
 import { hubReachable, onHubReachable } from '../../../core/web/hub-link.ts';
 import type { Routine, RoutinesResult } from '../api.ts';
-import { applyOp, keepOps, remapIds, type Op, type OpResult } from './local.ts';
+import { applyOp, keepOps, keepRoutines, remapIds, type Op, type OpResult } from './local.ts';
 
 const API = '/api/routines';
 const COPY_KEY = 'routines.copy';     // the routines on this tablet
@@ -20,7 +20,8 @@ function readArr<T>(key: string): T[] | null {
   } catch { return null; }
 }
 
-let copy: Routine[] | null = caps.localState ? readArr<Routine>(COPY_KEY) : null;
+const storedCopy = caps.localState ? keepRoutines(readArr<unknown>(COPY_KEY)) : { routines: null, dropped: false };
+let copy: Routine[] | null = storedCopy.routines;
 const storedQueue = caps.localState ? keepOps(readArr<unknown>(QUEUE_KEY)) : { ops: [] as Op[], dropped: false };
 let queue: Op[] = storedQueue.ops;
 let pulledAt = 0;
@@ -96,7 +97,7 @@ export function apply(op: Op): OpResult | null {
 }
 
 if (caps.localState) {
-  if (storedQueue.dropped) keep();                         // write back the queue without its bad entries
+  if (storedQueue.dropped || storedCopy.dropped) keep();   // write back the queue and the copy without their bad entries
   void flush();                                            // a queue left from before, or the first copy
   onHubReachable(() => { if (hubReachable()) void flush(); });   // the PC is back: send what waited
 }
