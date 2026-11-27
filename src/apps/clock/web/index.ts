@@ -1083,6 +1083,13 @@ function mount(context: AppContext): void {
 // ---------- for voice commands ("set a timer for 10 minutes", "wake me up at 7") ----------
 // Registered with core/web/voice-commands.ts when the Clock mounts; nothing else changes here.
 const clockApi: ClockApi = {
+  // the voice path: the stopwatch starts or stops through the same toggle its button uses
+  stopwatch(start: boolean): boolean {
+    if (sw.running === start) return false;
+    swToggle();
+    return true;
+  },
+  stopwatchRunning: (): boolean => sw.running,
   // false when the list is full: the caller says so, rather than promising a timer that never runs
   startTimer(ms: number, label?: string): boolean {
     if (timers.length >= MAX_TIMERS) return false;

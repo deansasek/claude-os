@@ -6,6 +6,7 @@
 //
 //   Timers   "set a timer for 10 minutes", "five minute timer", "a minute and a half timer",
 //            "cancel the timer", "how long is left"
+//   Stopwatch "start the stopwatch" (starts or resumes it), "stop the stopwatch" (pauses it while it runs)
 //   Alarms   "wake me up at 7", "set an alarm for 6:30 on weekdays", "alarm for half past six",
 //            "turn off my alarms", "when is my alarm"
 //   Weather  "what's the weather", "what's the weather tomorrow", "will it rain (today/tomorrow)"
@@ -39,6 +40,7 @@ import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay, weatherTrouble } from './voice-weather.ts';
 import { radioWord } from './voice-radio.ts';
+import { stopwatchWord } from './voice-stopwatch.ts';
 import { mediaState, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
@@ -50,6 +52,9 @@ export interface ClockApi {
   /** label: shown when it rings (Claude's set_timer); the Clock's own controls set none. */
   startTimer(ms: number, label?: string): boolean;   // false when the timer list is full
   cancelTimer(): boolean;
+  /** Start the stopwatch (true) or stop it (false). False when it is already that way. */
+  stopwatch(start: boolean): boolean;
+  stopwatchRunning(): boolean;
   /** Pause a running timer. False when none runs. */
   pauseTimer(): boolean;
   /** Resume a paused timer. False when none is paused. */
@@ -226,6 +231,12 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (r) return r;
   } else if (list) return listCommand(list, customs.find(c => c.id === list.list)?.name);
 
+  // stopwatch: start it, or stop it only while it runs (a stop when none runs is left to Claude)
+  const sws = stopwatchWord(t);
+  if (sws && clock) {
+    if (sws === 'start') { clock.stopwatch(true); return { say: '' }; }
+    if (clock.stopwatchRunning()) { clock.stopwatch(false); return { say: 'Stopped.' }; }
+  }
   // timers: the first of these shapes whose duration parses wins
   for (const re of [/^(?:set|start|make|put on|give me)(?: me)?(?: a| an| the)? timer (?:for |of )?(.+)$/, /^timer (?:for )?(.+)$/,
     /^(?:set |start )?(?:a |an )?(.+?) timer$/]) {
