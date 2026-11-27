@@ -233,11 +233,15 @@ export function alertFor(kind: AlertKind | 'break', n: Notice, way?: AlertWay, a
 
 // ---------- wellbeing and the timed things: low power, quiet hours, break reminders ----------
 let breakSince = Date.now(), breakNudged = false;
+/** Set when low power turns itself on; cleared when the battery charges. So a user who turns it off below the level keeps it off. */
+let lowAuto = false;
 /** Low power's own battery check: turn it on below the chosen level (once, until it's charged again). */
 function lowPowerCheck(b: Battery): void {
-  if (!prefs.lowAt || prefs.lowPower) return;
+  if (b.charging) lowAuto = false;
+  if (!prefs.lowAt || prefs.lowPower || lowAuto) return;
   if (b.percent <= prefs.lowAt && !b.charging) {
     prefs.lowPower = true;
+    lowAuto = true;
     notify({ title: 'Low power mode is on', body: `The battery is at ${b.percent}%. The screen is dimmer and “Hey Claude” is paused.`, app: 'settings' });
   }
 }
