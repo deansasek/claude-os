@@ -99,3 +99,18 @@ test('topic rows: failed shows an info row with the PC detail, not switches', ()
   assert.equal(rows[0].detail, 'Can’t reach the PC right now.');
   assert.equal(rows[0].kind === 'info' && rows[0].value(), 'Couldn’t load');
 });
+
+test('a topic switched to the state it already has writes nothing', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudeos-news-noop-'));
+  const file = path.join(dir, 'news-topics.json');
+  try {
+    assert.equal(setTopic({ id: 'bbc', on: true }, FEEDS, file).ok, true);
+    assert.equal(fs.existsSync(file), false, 'on, which is already the state, is not saved');
+    assert.equal(setTopic({ id: 'bbc', on: false }, FEEDS, file).ok, true);
+    const before = fs.readFileSync(file, 'utf8');
+    assert.equal(setTopic({ id: 'bbc', on: false }, FEEDS, file).ok, true);
+    assert.equal(fs.readFileSync(file, 'utf8'), before);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
