@@ -53,6 +53,8 @@ test('timer words: pause, resume, and minutes added or taken off', () => {
   assert.deepEqual(timerWord('add five minutes to the timer'), { op: 'nudge', minutes: 5 });
   assert.deepEqual(timerWord('add 2 minutes to my timer'), { op: 'nudge', minutes: 2 });
   assert.deepEqual(timerWord('take two minutes off the timer'), { op: 'nudge', minutes: -2 });
+  assert.deepEqual(timerWord('add a minute to the timer'), { op: 'nudge', minutes: 1 });
+  assert.deepEqual(timerWord('take a minute off my timer'), { op: 'nudge', minutes: -1 });
   assert.equal(timerWord('add banana minutes to the timer'), null);
   assert.equal(timerWord('add 500 minutes to the timer'), null);
   assert.equal(timerWord('pause'), null);
