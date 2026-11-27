@@ -41,6 +41,11 @@ test('saved favourites are checked again before they play', () => {
   assert.deepEqual(playable(saved).map(s => s.id), ['ok']);
 });
 
+test('playable drops a saved station with no string id or name', () => {
+  const bad: unknown[] = [{ url: 'https://a.example/s' }, { id: 5, name: 'X', url: 'https://b.example/s' }, { id: 'c', name: '  ', url: 'https://c.example/s' }, { id: 'ok', name: 'Good', url: 'https://good.example/s' }];
+  assert.deepEqual(playable(bad).map(s => s.id), ['ok']);
+});
+
 test('playable drops a saved entry that is not a station and keeps the valid ones', () => {
   const mixed: unknown[] = [null, 5, 'x', { id: 'ok', name: 'Good', url: 'https://good.example/s', country: 'DE', codec: 'AAC', bitrate: 96 }];
   assert.deepEqual(playable(mixed).map(s => s.id), ['ok']);
