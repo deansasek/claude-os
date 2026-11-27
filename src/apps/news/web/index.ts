@@ -124,20 +124,32 @@ const savedStore: KeyValue = {
   setItem: (key, value) => { try { localStorage.setItem(key, value); } catch { /* blocked or full: nothing saved */ } },
 };
 
+// Each load takes a number. A load that answers after a newer one started is dropped, so an older answer never paints over the newer screen.
+let loadSeq = 0;
+
 async function load(): Promise<void> {
+  const mine = ++loadSeq;
   const wasDirty = topicsDirty;
   topicsDirty = false;
+  // a dropped load gives back the topic change it took, so the newer load still reads the feeds again
+  const stale = (): boolean => {
+    if (mine === loadSeq) return false;
+    if (wasDirty) topicsDirty = true;
+    return true;
+  };
   let res: NewsFeedResponse | null = null;
   try {
     // on the tablet the feeds are read natively (no CORS header on the feeds), for the topics that are on;
     // otherwise the PC route answers with the topics that are on
     if (feedSource(nativeHas('newsFetch')) === 'tablet') {
       await loadTopics();
+      if (stale()) return;
       res = tabletFeed(newsFetch, savedStore, Date.now(), activeFeeds(FEEDS, choices));
     } else {
       res = await getJson<NewsFeedResponse>('/api/news/feed');
     }
   } catch { res = null; }
+  if (stale()) return;
   loadedAt = Date.now();
   // a failed request, or a feed answer with status 'error', keeps the stories already on screen, with a note that they may be out of date.
   // loadedAt = 0 and the restored topicsDirty make the next show read the feed again.
