@@ -21,6 +21,7 @@ import { alertFor, critterSpeak, onBack, openApp } from '../../../core/web/syste
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import { daysAhead, dayName, dur, lengthWords, whenWord, words } from './timer-text.ts';
 import { parseStopwatch, type SwState } from './stopwatch.ts';
+import { readAlarmList } from './alarm-load.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, nextTimerName, parseClockTimers, runningLeftMs, type ClockTimer } from '../../../core/web/clock-timer.ts';
 
 type Mode = 'clock' | 'timer' | 'stopwatch' | 'alarm';
@@ -518,15 +519,8 @@ const LABEL_MAX = 80;   // a reminder's text is its label
 const labelOf = (a: { label?: unknown } | null | undefined): string => (typeof a?.label === 'string' ? a.label.trim() : '');
 const newId = () => Math.random().toString(36).slice(2, 9);
 function loadAlarms(): Alarm[] {
-  const list = readJson<Alarm[]>(K.alarms);
-  if (Array.isArray(list)) {
-    return list.filter(a => a && typeof a.h === 'number' && typeof a.m === 'number')
-      .map(a => {
-        const label = labelOf(a).slice(0, LABEL_MAX);   // old alarms have no label; the field is optional
-        return { id: a.id || newId(), h: a.h, m: a.m, on: !!a.on, days: Array.isArray(a.days) ? a.days : [], snooze: a.snooze ?? null, fired: a.fired ?? null,
-          ...(label ? { label } : {}), ...(a.claude === true ? { claude: true as const } : {}) };
-      });
-  }
+  const list = readJson<unknown>(K.alarms);
+  if (Array.isArray(list)) return readAlarmList(list, newId);   // each field checked (alarm-load.ts)
   // the old single daily alarm becomes the first of the list
   const old = readJson<{ h: number; m: number; on: boolean; snooze: number | null; firedKey: string | null }>(K.legacyAlarm);
   if (old && typeof old.h === 'number') {
