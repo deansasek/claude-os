@@ -6,7 +6,7 @@
 import { critterSvg } from './critter-svg.ts';
 import { esc, stageHeight, store } from './dom.ts';
 import { padKey, padKeysHtml, paintDots, PAD_MAX, PAD_MIN } from './pin-pad.ts';
-import { glanceLine } from './lock-glance.ts';
+import { glanceDelay, glanceLine } from './lock-glance.ts';
 import { mediaActions, nowPlaying, onNowPlaying } from './media.ts';
 import { I, nextAlarm, notifications, timerLeftText } from './system.ts';
 import { checkCopyFingerprint, checkLocally, clearLocalRecord, hasLocalPin, keepCopyAfterUnlock, localLockedFor } from './pin-local.ts';
@@ -134,7 +134,7 @@ function startClock(): void {
   fit();
   paintClock();
   const next = (): void => {
-    clockTimer = window.setTimeout(() => { paintClock(); next(); }, 60_000 - Date.now() % 60_000 + 50);
+    clockTimer = window.setTimeout(() => { paintClock(); next(); }, glanceDelay(Date.now(), timerLeftText() != null));
   };
   next();
 }

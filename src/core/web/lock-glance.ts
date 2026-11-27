@@ -12,3 +12,8 @@ export function glanceLine(count: number, alarm: string | null, timer: string | 
   if (timer) parts.push(`Timer ${timer}`);
   return parts.join(' · ');
 }
+
+/** ms to the next lock repaint: the next second while a timer runs, else the next minute. */
+export function glanceDelay(now: number, timerRunning: boolean): number {
+  return timerRunning ? 1000 - now % 1000 + 50 : 60_000 - now % 60_000 + 50;
+}
