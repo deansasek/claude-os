@@ -186,9 +186,11 @@ function period(s: Stamp, r: Record<string, string>, k: number, interval: number
       return { first: c, days: plainDays.length && !plainDays.includes(dow(c)) ? [] : [c] };
     }
     case 'WEEKLY': {
-      const monday = addDays(s, -((dow(s) + 6) % 7) + 7 * interval * k);
-      const offs = (plainDays.length ? plainDays : [dow(s)]).map(i => (i + 6) % 7);
-      return { first: monday, days: [...new Set(offs)].sort((a, b) => a - b).map(o => addDays(monday, o)) };
+      // a week starts on WKST (Monday when it is missing), so a every-2-weeks rule groups days the way the owner's calendar does
+      const wsIdx = WEEKDAYS.indexOf(r.WKST ?? 'MO'), ws = wsIdx < 0 ? 1 : wsIdx;
+      const weekStart = addDays(s, -((dow(s) - ws + 7) % 7) + 7 * interval * k);
+      const offs = (plainDays.length ? plainDays : [dow(s)]).map(i => (i - ws + 7) % 7);
+      return { first: weekStart, days: [...new Set(offs)].sort((a, b) => a - b).map(o => addDays(weekStart, o)) };
     }
     case 'MONTHLY': {
       const mAll = s.mo + k * interval, y = s.y + Math.floor(mAll / 12), mo = ((mAll % 12) + 12) % 12, n = daysIn(y, mo);
