@@ -101,6 +101,10 @@ export function showWelcome(again = false): void {
   nickDraft = profile().nickname;
   wakeOn = wakeNow();
   wakeNote = '';
+  // a join from an earlier visit is not this visit's: its state (and any old error) starts fresh
+  joining = '';
+  joinedAt = 0;
+  joinError = '';
   if (!unBack) unBack = onBack(welcomeBack, 100);   // above everything: the welcome is a full-screen step
   go(true);
 }
