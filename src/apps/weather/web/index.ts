@@ -330,11 +330,17 @@ function select(s: Selection): void {
   renderWx();
 }
 
+// a forecast read the PC never answers gives up; each read takes a number, and only the newest read sets the forecast
+const WX_TIMEOUT_MS = 20e3;
+let wxSeq = 0;
+
 async function loadWx(): Promise<void> {
   clearTimeout(retryTimer);
+  const seq = ++wxSeq;
   try {
     const loc = params.get('lat') ? `?${new URLSearchParams({ lat: params.get('lat')!, lon: params.get('lon') || '0', place: params.get('place') || 'Preview' })}` : '';
-    const next = await getJson<Weather>(`/api/weather/forecast${loc}`);
+    const next = await getJson<Weather>(`/api/weather/forecast${loc}`, WX_TIMEOUT_MS);
+    if (seq !== wxSeq) return;   // a newer read, or a saved place or unit, came first: its answer is the one that counts
     pcDown = false;
     if (next.status === 'error' && isOk(wx)) offline = true;   // keep the forecast we have
     else { wx = next; offline = false; }
@@ -349,6 +355,7 @@ async function loadWx(): Promise<void> {
     else if (st === 'not_found') wx = { status: 'not_found', city: 'Atlantis' };
     else if (st === 'loading' || st === 'error' || st === 'no_location') wx = { status: st };
   } catch {
+    if (seq !== wxSeq) return;
     pcDown = true;
     if (isOk(wx)) offline = true; else wx = { status: 'error' };
   }
@@ -366,6 +373,7 @@ async function sendLocation(body: LocationUpdate): Promise<void> {
   pcDown = false;
   // the PC did not save it: throw, so the caller reverts the unit and says so
   if (d.status === 'error' && d.saved === false) throw new NotSaved(d.error ?? 'not saved');
+  wxSeq++;   // a forecast read still out was for the old place or unit: drop it
   if (d.status === 'ok' || d.status === 'no_location') { wx = d; wxAt = Date.now(); offline = false; }
   // the place or units were saved, but the forecast failed: show that, and read it again soon (as loadWx does)
   else if (d.status === 'error') { wx = d; wxAt = Date.now(); offline = false; clearTimeout(retryTimer); retryTimer = window.setTimeout(loadWx, RETRY_MS); }
