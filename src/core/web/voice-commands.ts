@@ -30,6 +30,8 @@
 // the rest uses core only.
 import { getJson, postJson, store } from './dom.ts';
 import type { HaDashboard, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
+// a quick command the PC never answers gives up, so the voice still says it cannot reach the PC
+const READ_TIMEOUT_MS = 20e3;
 import { matchHome, matchScene, onOffReply, parseOnOff, parseScene, sayName, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
 import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
@@ -154,7 +156,7 @@ export const weatherToday = (): Promise<CommandResult> => weather(0, null);
 
 async function weather(day: 0 | 1, rainOnly: 'rain' | 'snow' | null): Promise<CommandResult> {
   let w: Wx;
-  try { w = await getJson<Wx>('/api/weather/forecast'); } catch { return weatherTrouble(null)!; }
+  try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
   if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
   if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
   const d = w.daily, when = day ? 'tomorrow' : 'today';
@@ -391,13 +393,13 @@ async function routineCommand(t: string): Promise<CommandResult | null> {
 async function sceneCommand(raw: string): Promise<CommandResult | null> {
   if (!parseScene(raw)) return null;   // not a "set / activate <scene>" phrase: don't ask the PC at all
   let list: HaScenes;
-  try { list = await getJson<HaScenes>('/api/home-assistant/scenes'); } catch { return null; }
+  try { list = await getJson<HaScenes>('/api/home-assistant/scenes', READ_TIMEOUT_MS); } catch { return null; }
   if (list?.status !== 'ok' || !Array.isArray(list.scenes)) return null;
   const m = matchScene(raw, list.scenes.filter(s => s.dashboard || s.home));
   if (!m) return null;
   // r stays null when the PC does not answer, so the say line can tell "no answer" from "the PC refused"
   let r: HaResult | null = null;
-  try { r = await postJson<HaResult>('/api/home-assistant/scene', { entity_id: m.entity_id }); } catch { r = null; }
+  try { r = await postJson<HaResult>('/api/home-assistant/scene', { entity_id: m.entity_id }, READ_TIMEOUT_MS); } catch { r = null; }
   return r?.ok ? { say: `${m.name} is on.`, react: 'hop' } : { say: sceneFailText(m.name, r) };
 }
 
@@ -405,7 +407,7 @@ async function sceneCommand(raw: string): Promise<CommandResult | null> {
 /** The next three events still to come today, read aloud (the Calendar app's own route, GET /api/calendar/events). */
 export async function calendarCommand(day: 'today' | 'tomorrow' = 'today', cachedOnly = false): Promise<CommandResult> {
   let r: CalEvents;
-  try { r = await getJson<CalEvents>('/api/calendar/events'); } catch { return { say: 'I can’t reach your PC right now.' }; }
+  try { r = await getJson<CalEvents>('/api/calendar/events', READ_TIMEOUT_MS); } catch { return { say: 'I can’t reach your PC right now.' }; }
   // no calendar address set: the claude.ai calendar connector answers instead (the PC's cached read)
   if (r?.status === 'not_set') return connectorCommand(day, cachedOnly);
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
@@ -573,7 +575,7 @@ async function editAnywhere(text: string, to: string): Promise<CommandResult | n
 async function homeOnOff(raw: string): Promise<CommandResult | null> {
   if (!parseOnOff(raw)) return null;   // not an on/off phrase: don't ask the PC at all
   let dash: HaDashboard;
-  try { dash = await getJson<HaDashboard>('/api/home-assistant/layout'); } catch { return null; }
+  try { dash = await getJson<HaDashboard>('/api/home-assistant/layout', READ_TIMEOUT_MS); } catch { return null; }
   if (!dash?.layout || !Array.isArray(dash.entities)) return null;
   const list: VoiceDevice[] = dash.entities.filter(e => !e.missing && !e.readonly)
     .map(e => ({ entity_id: e.entity_id, domain: e.domain, name: dash.layout.names?.[e.entity_id] || e.name }));
@@ -581,6 +583,6 @@ async function homeOnOff(raw: string): Promise<CommandResult | null> {
   if (!m) return null;
   // null: the PC could not be reached for that device (kept apart from the PC's own { ok: false, error })
   const results = await Promise.all(m.targets.map(d =>
-    postJson<HaResult>('/api/home-assistant/toggle', { entity_id: d.entity_id, on: m.on, voice: true }).catch(() => null)));
+    postJson<HaResult>('/api/home-assistant/toggle', { entity_id: d.entity_id, on: m.on, voice: true }, READ_TIMEOUT_MS).catch(() => null)));
   return onOffReply(m, results);
 }
