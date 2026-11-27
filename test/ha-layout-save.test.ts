@@ -78,4 +78,10 @@ test('a layout save that cannot be written keeps the saved layout, for the layou
   assert.equal(scene.ok, false);
   assert.deepEqual(scene.home, ['scene.good_morning'], 'the Home scenes keep the saved pick');
   assert.deepEqual(L.homeScenes(false), ['scene.good_morning']);
+
+  // taking off a scene that is not picked changes nothing, so the blocked file does not matter
+  const off = L.setHomeScene(false, 'scene.movie_night', false);
+  assert.equal(off.ok, true);
+  assert.deepEqual(off.home, ['scene.good_morning']);
+  assert.deepEqual(L.homeScenes(false), ['scene.good_morning']);
 });

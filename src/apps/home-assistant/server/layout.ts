@@ -157,6 +157,8 @@ export function setHomeScene(demo: boolean, id: string, on: boolean, fallback: s
   const l = getLayout(demo);
   const cur = l.homeScenes ?? fallback.slice(0, MAX_HOME_SCENES);
   if (!ENTITY_ID.test(id) || !isSceneDomain(id.split('.')[0]) || (known && !known.has(id))) return { ok: false, home: cur, error: 'Only scenes can go on the Home screen.' };
+  // taking off a scene that is not picked changes nothing: no write, so a failed write cannot fail this
+  if (!on && !cur.includes(id)) return { ok: true, home: cur };
   let next = cur.filter(x => x !== id);
   if (on) {
     if (cur.includes(id)) return { ok: true, home: cur };
