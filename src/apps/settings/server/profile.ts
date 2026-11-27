@@ -56,9 +56,18 @@ export function savePhoto(raw: Buffer | null): { ok: true; profile: Profile } | 
   if (!raw || !raw.length) return { ok: false, error: 'no_photo' };
   if (raw.length > PHOTO_MAX) return { ok: false, error: 'too_big' };
   if (!isJpeg(raw)) return { ok: false, error: 'not_jpeg' };
-  fs.writeFileSync(PHOTO, raw);
+  // Write a temp file, then rename it over the photo: a failed write keeps the old photo, and the profile is not changed.
+  const tmp = `${PHOTO}.tmp`;
   const next: Profile = { ...state, photoAt: Date.now() };
-  save(next);
+  try {
+    fs.writeFileSync(tmp, raw);
+    fs.renameSync(tmp, PHOTO);
+    save(next);
+  } catch (e) {
+    try { fs.rmSync(tmp, { force: true }); } catch { /* already gone */ }
+    console.log(`profile photo could not be saved (${(e as NodeJS.ErrnoException).code})`);
+    return { ok: false, error: 'save_failed' };
+  }
   state = next;
   return { ok: true, profile: getProfile() };
 }
