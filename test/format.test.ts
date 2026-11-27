@@ -4,7 +4,7 @@ import { test } from 'node:test';
 
 // format.ts reads the page's location when it loads (via dom.ts); node has none, so give it one first.
 Object.assign(globalThis, { location: { search: '' } });
-const { fmt } = await import('../src/core/web/format.ts');
+const { fmt, prettyModel } = await import('../src/core/web/format.ts');
 
 test('plain numbers round to a whole number', () => {
   assert.equal(fmt(0), '0');
@@ -25,4 +25,12 @@ test('rounding up to the next unit shows that unit, not 1000K or 1000M', () => {
   assert.equal(fmt(999_999), '1.0M');
   assert.equal(fmt(999_500), '1.0M');
   assert.equal(fmt(999_960_000), '1.0B');
+});
+
+test('prettyModel shows a model id as a clean name, with or without a release date', () => {
+  assert.equal(prettyModel('claude-opus-5-5'), 'Opus 5.5');
+  assert.equal(prettyModel('claude-haiku-4-5-20251001'), 'Haiku 4.5');
+  assert.equal(prettyModel('claude-opus-4-1-20250805'), 'Opus 4.1');
+  assert.equal(prettyModel('claude-opus-5'), 'Opus 5');
+  assert.equal(prettyModel(''), '');
 });

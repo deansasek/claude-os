@@ -18,7 +18,7 @@ export const fmt = (n: number): string => {
 
 /** "claude-opus-5-5" → "Opus 5.5" */
 export const prettyModel = (m: string): string =>
-  m.replace(/^claude-/, '').replace(/-(\d+)-(\d+)$/, ' $1.$2').replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
+  m.replace(/^claude-/, '').replace(/-\d{8}$/, '').replace(/-(\d+)-(\d+)$/, ' $1.$2').replace(/-/g, ' ').replace(/^\w/, c => c.toUpperCase());
 
 /** A time of day. Settings → Date & time can choose 24-hour; unset, it follows the tablet's own locale. */
 export const clock = (d: Date): string => {
