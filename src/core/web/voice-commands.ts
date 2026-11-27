@@ -39,7 +39,7 @@ import { device, onTablet } from './device.ts';
 import { openApp, prefs } from './system.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay, weatherTrouble } from './voice-weather.ts';
-import { radioWord } from './voice-radio.ts';
+import { radioStopHeard, radioWord } from './voice-radio.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { mediaState, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
@@ -345,7 +345,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     dispatchEvent(new CustomEvent('hub:radio-last'));
     return { say: '' };
   }
-  if (radio === 'stop' && mediaState() === 'playing') { pauseMedia(); return { say: 'Stopped.' }; }
+  if (radio === 'stop' && radioStopHeard(mediaState())) { pauseMedia(); return { say: 'Stopped.' }; }
   // sound
   if (/^(?:turn |turn it |turn the volume |volume |sound )?up$|^louder$|^(?:turn|make)(?: it| the volume| the sound)? louder$|^(?:raise|increase)(?: the)? volume$/.test(t) && /up|loud|raise|increase/.test(t)) return volume('up');
   if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
