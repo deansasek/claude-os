@@ -30,6 +30,15 @@ export function toggleDay(picked: Set<string>, ids: string[]): Set<string> {
   return out;
 }
 
+/** The photo the viewer moves to when the shown one is deleted: the next surviving one in the grid order, else the one before it, else null. */
+export function afterDelete(orderIds: string[], shownId: string, gone: Set<string>): string | null {
+  const at = orderIds.indexOf(shownId);
+  if (at < 0) return null;
+  for (let i = at + 1; i < orderIds.length; i++) if (!gone.has(orderIds[i])) return orderIds[i];
+  for (let i = at - 1; i >= 0; i--) if (!gone.has(orderIds[i])) return orderIds[i];
+  return null;
+}
+
 /** The most ids one delete request carries. The PC refuses more (server/store.ts MAX_PER_DELETE: keep them equal). */
 export const DELETE_BATCH = 200;
 /** The ids split into delete requests of at most DELETE_BATCH, in the same order. */
