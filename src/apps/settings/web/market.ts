@@ -139,12 +139,14 @@ function closeSheet(): void {
 }
 
 /** Fetch the marketplace listing from the PC. Returns true when the list was read. A failed read keeps the list we had, marked stale. */
+// the listing read gives up on a PC that does not answer, so the loading flag clears and Discover can be read again
+const MARKET_TIMEOUT_MS = 20e3;
 async function loadMarket(): Promise<boolean> {
   if (loading) return false;
   loading = true;
   paintMarket();
   let read = false;
-  try { mk = await getJson<MarketView>('/api/settings/plugins/market'); stale = false; read = true; }
+  try { mk = await getJson<MarketView>('/api/settings/plugins/market', MARKET_TIMEOUT_MS); stale = false; read = true; }
   catch { stale = mk !== null; }   // keep what we had
   finally { loading = false; }
   paintMarket();
