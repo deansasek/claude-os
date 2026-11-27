@@ -350,20 +350,27 @@ let calMiss = false;
 let calDay: string | null = null;
 // The local day the last good read happened on. Events read on an earlier day have ended: a failed read after midnight shows none.
 let calReadDay: string | null = null;
+// a calendar read the PC never answers gives up before the next poll; each read takes a number, and only the newest one sets the tile
+const CAL_TIMEOUT_MS = 20e3;
+let calSeq = 0;
 async function loadCalendar(force = false): Promise<void> {
   if (!force && Date.now() - calAt < CAL_EVERY_MS) return;
   calAt = Date.now();
+  const seq = ++calSeq;
   try {
-    const r = await getJson<CalEvents>('/api/calendar/events');
+    const r = await getJson<CalEvents>('/api/calendar/events', CAL_TIMEOUT_MS);
+    if (seq !== calSeq) return;   // a newer read started: its answer is the one that counts
     if (r.status === 'not_set') {
       const key = dayKey(now());
       const c = await cachedConnectorCal(cal, calDay, key);
+      if (seq !== calSeq) return;
       cal = c.cal; calMiss = c.miss; calFailed = c.failed; calDay = c.day;
       calReadDay = key;
     }
     else { cal = r; calMiss = false; calFailed = false; calDay = null; calReadDay = dayKey(now()); }
   }
   catch {
+    if (seq !== calSeq) return;
     calFailed = true;
     if (calReadDay !== dayKey(now())) cal = null;   // a read from an earlier day: its events have ended
   }
@@ -373,7 +380,7 @@ async function loadCalendar(force = false): Promise<void> {
 // A non-ok answer (not a miss) is an error state: the tile says the PC cannot be reached, not "Reading the calendar…".
 async function cachedConnectorCal(prev: RowCal | null, prevDay: string | null, todayKey: string): Promise<ConnRead> {
   type CE = ConnAnswer;
-  const [t, m] = await Promise.all([getJson<CE>('/api/calendar/connector?day=today&cached=1'), getJson<CE>('/api/calendar/connector?day=tomorrow&cached=1')]);
+  const [t, m] = await Promise.all([getJson<CE>('/api/calendar/connector?day=today&cached=1', CAL_TIMEOUT_MS), getJson<CE>('/api/calendar/connector?day=tomorrow&cached=1', CAL_TIMEOUT_MS)]);
   return connectorCalAfterRead(prev, prevDay, t, m, todayKey);
 }
 
