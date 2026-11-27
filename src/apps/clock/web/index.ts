@@ -22,6 +22,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import { daysAhead, dayName, dur, lengthWords, whenWord, words } from './timer-text.ts';
 import { parseStopwatch, type SwState } from './stopwatch.ts';
 import { readAlarmList } from './alarm-load.ts';
+import { dueOccurrence, occurrenceKey } from './alarm-due.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, nextTimerName, parseClockTimers, runningLeftMs, type ClockTimer } from '../../../core/web/clock-timer.ts';
 
 type Mode = 'clock' | 'timer' | 'stopwatch' | 'alarm';
@@ -536,7 +537,7 @@ function saveAlarms(): void {
 saveAlarms();
 
 const dayOk = (a: Alarm, d: Date) => !a.days.length || a.days.includes(d.getDay());
-const occKey = (a: Alarm, t: Date) => `${t.toDateString()} ${a.h}:${a.m}`;
+const occKey = (a: Alarm, t: Date) => occurrenceKey(a, t);
 /** Don't let an alarm set for a minute that has just passed ring straight away. */
 function arm(a: Alarm, d: Date = now()): void {
   const t = new Date(d); t.setHours(a.h, a.m, 0, 0);
@@ -652,10 +653,9 @@ function checkAlarms(d: Date): void {
       }
     } else {
       if (!a.on) continue;
-      const t = new Date(d); t.setHours(a.h, a.m, 0, 0);
-      const late = d.getTime() - t.getTime();
-      // up to three minutes late still rings: the page may have been reloading at the time
-      if (late < 0 || late > 3 * 60e3 || !dayOk(a, t) || a.fired === occKey(a, t)) continue;
+      // up to three minutes late still rings: the page may have been reloading at the time (yesterday's too, after midnight)
+      const t = dueOccurrence(a, d, 3 * 60e3);
+      if (!t) continue;
       a.fired = occKey(a, t);
       if (!a.days.length) a.on = false;    // a one-off alarm turns itself off once it rings
     }
