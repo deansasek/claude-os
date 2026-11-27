@@ -673,13 +673,15 @@ function tapRoutine(id: string): void {
   });
 }
 
+// a scene post the PC never answers gives up, so the button shows the failure and can be tapped again
+const SCENE_TIMEOUT_MS = 20e3;
 async function setScene(id: string): Promise<void> {
   const s = sceneActs.find(x => x.id === id);
   if (!s || sceneBusy.get(id) === 'busy') return;
   sceneBusy.set(id, 'busy');
   paintActs();
   let r: HaResult | null;
-  try { r = await postJson<HaResult>('/api/home-assistant/scene', { entity_id: id }); } catch { r = null; }
+  try { r = await postJson<HaResult>('/api/home-assistant/scene', { entity_id: id }, SCENE_TIMEOUT_MS); } catch { r = null; }
   sceneBusy.set(id, r?.ok ? 'done' : 'fail');
   paintActs();
   if (r?.ok) act('hop', true);
