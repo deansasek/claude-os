@@ -57,7 +57,8 @@ export function parseDays(phrase: string): number[] | null {
   const r = s.match(/^(?:on |every )((?:[a-z]+days?(?:,? (?:and )?)?)+)$/);
   if (r) {
     const days = r[1].split(/,? (?:and )?|,/).map(w => w.replace(/s$/, '')).filter(Boolean);
-    if (days.every(d => d in DAY_WORDS)) return days.map(d => DAY_WORDS[d]);
+    // a day named twice is saved once, in the order heard ("monday and monday" is [1])
+    if (days.every(d => d in DAY_WORDS)) return [...new Set(days.map(d => DAY_WORDS[d]))];
   }
   return null;
 }
