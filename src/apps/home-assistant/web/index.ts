@@ -24,6 +24,8 @@ import { manifest } from '../manifest.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 15e3;
+const READ_TIMEOUT_MS = 10_000;   // a read the PC never answers gives up, so the next refresh can run
+let layoutGen = 0;                // bumped by each layout edit (saveLayout, setOnHome)
 const DEVICES_STALE_MS = 30e3;
 const HOLD_MS = 520;          // a long-press opens a tile's settings
 const DRAG_START_PX = 6;      // in edit mode, a tile moves once the finger has moved this far
@@ -217,12 +219,17 @@ function render(): void {
 
 // ---------- talking to the PC ----------
 async function loadStatus(): Promise<void> {
-  try { status = await getJson<HaStatus>(`${API}/status`); statusFailed = false; } catch { statusFailed = true; /* keep the last one */ }
+  try { status = await getJson<HaStatus>(`${API}/status`, READ_TIMEOUT_MS); statusFailed = false; } catch { statusFailed = true; /* keep the last one */ }
 }
 
 // keepNote: the caller's message (a save that failed) stays on screen after the reload
 async function refresh(keepNote = false): Promise<void> {
-  try { dash = await getJson<HaDashboard>(`${API}/layout`); if (!keepNote) note = ''; }
+  const gen = layoutGen;   // a refresh that answers after a layout edit started must not undo the edit
+  try {
+    const d = await getJson<HaDashboard>(`${API}/layout`, READ_TIMEOUT_MS);
+    if (gen === layoutGen) dash = d;
+    if (!keepNote) note = '';
+  }
   catch { if (!keepNote || !note) note = 'Can’t reach the PC right now.'; }
   await loadStatus();
   render();
@@ -276,6 +283,7 @@ async function tap(id: string): Promise<void> {
 
 /** Save the whole layout: it shows at once, and the PC's cleaned copy settles it. */
 async function saveLayout(l: HaLayout): Promise<void> {
+  layoutGen++;
   const prev = dash?.layout;
   if (dash) dash.layout = l;
   render();
@@ -290,6 +298,7 @@ async function saveLayout(l: HaLayout): Promise<void> {
 
 /** Add a device to Home (into `room`) or take it off. The state of a new device comes with the next refresh. */
 async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
+  layoutGen++;
   const prev = dash ? copy() : undefined;   // the optimistic edit below changes dash.layout in place
   const d = devices?.devices.find(x => x.entity_id === id);
   const before = d?.dashboard === true;
