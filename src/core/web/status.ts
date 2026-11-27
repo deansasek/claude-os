@@ -220,7 +220,8 @@ export function initStatus(): void {
   onHubReachable(() => paint());   // the PC went away or came back: the Wi-Fi icon and label follow
   // a toggle (Do Not Disturb, low power, Wi-Fi from its tile or Settings) repaints the cluster at once
   onSystemChange(() => { if (controlCenterOpen()) markSeen(); readDevice(); recompute(); paint(); });
-  onNotificationsChange(() => { recompute(); paint(); });
+  // a notice that lands while the shade is open is already in its list: it is seen, not unread
+  onNotificationsChange(() => { if (controlCenterOpen()) markSeen(); recompute(); paint(); });
   // the Clock app's timer or ringing changed: pick up the new state now, and start (or stop) the one-second countdown
   // the 12/24-hour switch in Settings changes the time's text: forget the minute so the next tick repaints it
   onStore(k => {
