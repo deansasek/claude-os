@@ -31,7 +31,7 @@ test('a profile change that cannot be saved does not change the profile', () => 
   Profile.setProfile({ name: 'Ada' });
   assert.equal(Profile.getProfile().name, 'Ada');
   blockPath(PROFILE, () => {
-    assert.throws(() => Profile.setProfile({ name: 'Grace' }));
+    assert.deepEqual(Profile.setProfile({ name: 'Grace' }), { ok: false, error: 'save_failed' });
   });
   assert.equal(Profile.getProfile().name, 'Ada');
 });
@@ -39,7 +39,7 @@ test('a profile change that cannot be saved does not change the profile', () => 
 test('a welcome change that cannot be saved does not change the welcome flag', () => {
   assert.equal(Profile.setWelcomeDone(false), false);
   blockPath(PROFILE, () => {
-    assert.throws(() => Profile.setWelcomeDone(true));
+    assert.equal(Profile.setWelcomeDone(true), false);
   });
   assert.equal(Profile.welcomeDone(), false);
 });

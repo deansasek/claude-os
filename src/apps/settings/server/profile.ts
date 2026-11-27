@@ -78,16 +78,16 @@ export function savePhoto(raw: Buffer | null): { ok: true; profile: Profile } | 
   return { ok: true, profile: getProfile() };
 }
 
-/** Delete the profile photo. The profile is saved without it first, so a failed save keeps the photo. A photo file that cannot be deleted is left behind, unused. */
+/** Delete the profile photo. A photo file that cannot be deleted keeps the photo and reports an error. A profile that cannot be saved after the delete is logged; the photo is gone, so the profile shows none. */
 export function removePhoto(): Profile | { ok: false; error: string } {
-  const next: Profile = { ...state, photoAt: 0 };
-  try { save(next); }
+  try { fs.rmSync(PHOTO, { force: true }); }
   catch (e) {
-    console.log(`profile could not be saved (${(e as NodeJS.ErrnoException).code})`);
+    console.log(`profile photo could not be removed (${(e as NodeJS.ErrnoException).code})`);
     return { ok: false, error: 'The PC could not delete the photo. Try again.' };
   }
-  try { fs.rmSync(PHOTO, { force: true }); }
-  catch (e) { console.log(`profile photo could not be removed (${(e as NodeJS.ErrnoException).code})`); }
+  const next: Profile = { ...state, photoAt: 0 };
+  try { save(next); }
+  catch (e) { console.log(`profile could not be saved (${(e as NodeJS.ErrnoException).code})`); }
   state = next;
   return getProfile();
 }

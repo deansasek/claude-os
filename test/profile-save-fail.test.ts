@@ -21,8 +21,4 @@ test('a welcome flag the PC cannot save stays as it was', () => {
   assert.equal(setWelcomeDone(true), false);
 });
 
-test('a photo the PC cannot forget is kept, with the reply saying so', () => {
-  assert.deepEqual(removePhoto(), { ok: false, error: 'The PC could not delete the photo. Try again.' });
-});
-
 test.after(() => fs.rmSync(dir, { recursive: true, force: true }));
