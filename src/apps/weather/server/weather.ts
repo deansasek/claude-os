@@ -52,7 +52,7 @@ async function geocode(name: string, count: number): Promise<any[]> {
 }
 
 export async function weather(override?: Config): Promise<Weather> {
-  const cfg = override || readConfig();
+  const cfg = override ? cleanConfig(override) : readConfig();   // a preview's lat and lon are checked like a saved place
   let { lat, lon, place } = cfg;
   if ((lat == null || lon == null) && cfg.city) {
     const city = cfg.city;
