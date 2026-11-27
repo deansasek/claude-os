@@ -15,6 +15,7 @@ import { enterLook, exitLook, initLook, isLooking } from './look.ts';
 let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let shotId: string | null = null;
+let camState: cam.CamState | null = null;   // the preview's last state: a shutter tap after an error keeps the error
 let flashTimer: number | undefined;
 
 const ICON = appIcon('camera');
@@ -22,6 +23,7 @@ const ICON = appIcon('camera');
 /** The preview's state, shown in the status pill under the frame and (when it isn't on) over the frame. */
 function paintState(state: cam.CamState, message?: string): void {
   const pill = $('caPill'), text = $('caPillText'), msg = $('caMsg'), msgText = $('caMsgText');
+  camState = state;
   const on = state === 'open';
   document.documentElement.classList.toggle('cam-live', on && cam.nativeCamera);   // the page is see-through where the tablet's preview is
   pill.className = 'live';
@@ -47,7 +49,12 @@ let shooting = false;   // one photo at a time: a second tap while it uploads do
 
 async function shoot(): Promise<void> {
   if (!cam.cameraAvailable || shooting) return;
-  if (!cam.isOpen()) { $('caMsgText').textContent = 'The camera is still starting.'; $('caMsg').hidden = false; return; }
+  if (!cam.isOpen()) {
+    // after an error or when the camera is off, the message already on screen says why: keep it
+    if (camState !== 'error' && camState !== 'closed') $('caMsgText').textContent = 'The camera is still starting.';
+    $('caMsg').hidden = false;
+    return;
+  }
   shooting = true;
   try {
     report('camera:shot');
