@@ -20,7 +20,7 @@ import { isQueued, readLists, writeList } from '../../lists/web/readers.ts';
 import { addManyReply } from '../../lists/web/voice-match.ts';
 import type { FamilyList } from '../../lists/api.ts';
 import {
-  RECIPE_PROMPT, adaptPrompt, cookStep, countWord, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, shoppingItems, stepMinutes, textRecipe, tonightPrompt, type Recipe,
+  RECIPE_PROMPT, adaptPrompt, cookFromStored, cookStep, countWord, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, shoppingItems, stepMinutes, textRecipe, tonightPrompt, type Recipe,
 } from './recipe.ts';
 
 const API = `/api/${manifest.id}`;
@@ -31,6 +31,7 @@ const PENDING_PHOTO_KEY = 'recipes.pendingPhoto'; // the photo of the recipe an 
 const TIMERS_KEY = 'recipes.timers';
 const PANTRY_KEY = 'recipes.pantry';         // the “What do you have” chips: { name, kind }
 const COOK_VIEW_KEY = 'recipes.cookView';    // 'book' for the cookbook page in cook mode; unset for the plain view
+const COOK_KEY = 'recipes.cooking';          // the recipe and step in cook mode, so a page reload comes back to them (cleared on leaving)
 const TIMER_MINUTES = [5, 10, 15, 30];
 const TONIGHT_TIMES = ['20 minutes', '40 minutes', '1 hour', ''];   // '' is no limit
 const ICON = appIcon('recipes');
@@ -62,7 +63,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 
 const isTimer = (t: unknown): t is CookTimer => isObj(t) && typeof t.id === 'string' && typeof t.name === 'string' && typeof t.end === 'number' && Number.isFinite(t.end);
 
 let recipes: Recipe[] = readList<unknown>(LIST_KEY).filter(isObj).map(fromStored).filter((r): r is Recipe => r !== null);
-let screen: Screen = { t: 'discover' };
+let screen: Screen = restoredScreen();
 let pending: string | null = store.get(PENDING_KEY);
 let pendingKind: PendingKind = (store.get(PENDING_KIND_KEY) as PendingKind | null) ?? 'create';
 let pendingPhoto: string = store.get(PENDING_PHOTO_KEY) ?? '';
@@ -618,8 +619,22 @@ function render(): void {
   else el.innerHTML = discoverHtml();
 }
 
+/** The cook position to come back to after a reload, or Discover when none is saved (or the saved one is not valid). */
+function restoredScreen(): Screen {
+  let raw: unknown = null;
+  try { raw = JSON.parse(store.get(COOK_KEY) || 'null'); } catch { raw = null; }
+  const c = cookFromStored(raw);
+  return c ? { t: 'cook', r: c.r, step: c.step } : { t: 'discover' };
+}
+
+/** Keep the cook position (cleared when cook mode is left), so a reload comes back to the same step. */
+function saveCook(): void {
+  store.set(COOK_KEY, screen.t === 'cook' ? JSON.stringify({ r: screen.r, step: screen.step }) : null);
+}
+
 function go(next: Screen): void {
   screen = next;
+  saveCook();
   confirmDelete = false;
   toTop();
 }
@@ -671,6 +686,7 @@ function onClick(ev: Event): void {
         const next = cookStep(screen.r, screen.step + Number(b.dataset.d)).index;
         turn = Math.sign(next - screen.step);
         screen = { ...screen, step: next };
+        saveCook();
       }
       break;
     case 'timer':
