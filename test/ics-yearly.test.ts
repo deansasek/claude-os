@@ -15,6 +15,15 @@ test('a yearly repeat on the second Sunday of May lands on that Sunday', () => {
   assert.equal(d.getDay(), 0);
 });
 
+test('BYMONTH with several months gives each month, in order, and a bad month list keeps the yearly date', () => {
+  const yearly = (rrule: string, count: string) => ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20250115', `RRULE:FREQ=YEARLY;${rrule}${count}`, 'SUMMARY:Twice', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const months = (text: string) => occurrences(parseIcs(text), new Date(2025, 0, 1).getTime(), new Date(2028, 0, 1).getTime()).map(o => new Date(o.start).getMonth());
+  assert.deepEqual(months(yearly('BYMONTH=1,7', '')), [0, 6, 0, 6, 0, 6]);
+  assert.deepEqual(months(yearly('BYMONTH=7,1', ';COUNT=3')), [0, 6, 0]);
+  assert.deepEqual(months(yearly('BYMONTH=5;BYDAY=2SU', '')), [4, 4, 4]);
+  assert.deepEqual(months(yearly('BYMONTH=13,x', ';COUNT=1')), [0]);
+});
+
 function monthlyOccurrences(rrule: string, from: number, to: number) {
   const text = ['BEGIN:VCALENDAR', 'BEGIN:VEVENT', 'DTSTART;VALUE=DATE:20261001', `RRULE:${rrule}`, 'SUMMARY:Work', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
   return occurrences(parseIcs(text), from, to).map(o => new Date(o.start));

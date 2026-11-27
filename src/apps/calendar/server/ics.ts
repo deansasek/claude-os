@@ -220,8 +220,14 @@ function period(s: Stamp, r: Record<string, string>, k: number, interval: number
       const y = s.y + k * interval;
       // BYMONTH and BYDAY ("the second Sunday of May"): the month's days, worked out as a monthly rule for that month
       if (r.BYMONTH || byday.length) {
-        const mo = r.BYMONTH ? +r.BYMONTH.split(',')[0] - 1 : s.mo;
-        if (mo >= 0 && mo <= 11) return period(s, { ...r, FREQ: 'MONTHLY' }, (y - s.y) * 12 + (mo - s.mo), 1);
+        // every month in BYMONTH (1 to 12, sorted, no repeats); with no valid month, the yearly date below
+        const months = r.BYMONTH
+          ? [...new Set(r.BYMONTH.split(',').map(Number).filter(x => Number.isInteger(x) && x >= 1 && x <= 12))].map(x => x - 1).sort((a, b) => a - b)
+          : [s.mo];
+        if (months.length) {
+          const parts = months.map(mo => period(s, { ...r, FREQ: 'MONTHLY' }, (y - s.y) * 12 + (mo - s.mo), 1)).filter(p => p !== null);
+          return { first: parts[0].first, days: parts.flatMap(p => p.days) };
+        }
       }
       return { first: onDay(s, y, 0, 1), days: s.d <= daysIn(y, s.mo) ? [onDay(s, y, s.mo, s.d)] : [] };
     }
