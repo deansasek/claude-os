@@ -1228,16 +1228,21 @@ function clearClaudeHistory(): void {
   });
 }
 
+// the weather-city reads and save give up on a PC that does not answer; a read that is no longer the newest does not repaint
+const WX_TIMEOUT_MS = 20e3;
+let wxSeq = 0;
 async function paintWeatherPlace(): Promise<void> {
+  const seq = ++wxSeq;
   try {
-    const w = await getJson<Weather>('/api/weather/forecast');
+    const w = await getJson<Weather>('/api/weather/forecast', WX_TIMEOUT_MS);
+    if (seq !== wxSeq) return;   // a newer read, or a saved city, came first
     const note = $('stWxNote');
     if (w.status === 'ok' && w.place) note.innerHTML = `The weather is for ${esc(w.place)}.`;
     else if (w.status === 'no_location') note.textContent = 'Not set yet. Choose a city.';
     else if (w.status === 'not_found') note.innerHTML = `City not found: ${esc(w.city)}. Choose a city.`;
     else if (w.status === 'error') note.textContent = 'The weather service didn’t answer, so the city can’t be checked.';
     else note.textContent = 'Where the weather is for.';
-  } catch { $('stWxNote').textContent = 'Couldn’t reach your PC to check.'; }
+  } catch { if (seq !== wxSeq) return; $('stWxNote').textContent = 'Couldn’t reach your PC to check.'; }
 }
 
 function editWeatherCity(): void {
@@ -1248,7 +1253,7 @@ async function findWeatherCity(q: string): Promise<void> {
   if (q.length < 2) return;
   let r: PlacesResponse;
   try {
-    r = await getJson<PlacesResponse>(`/api/weather/places?q=${encodeURIComponent(q)}`);
+    r = await getJson<PlacesResponse>(`/api/weather/places?q=${encodeURIComponent(q)}`, WX_TIMEOUT_MS);
   } catch { confirmSheet('Couldn’t look that up', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
   if (r.status !== 'ok') { confirmSheet('Couldn’t look that up', 'The city search service didn’t answer. Try again in a moment.', 'OK', () => {}); return; }
   const res = r.results;
@@ -1260,7 +1265,8 @@ async function findWeatherCity(q: string): Promise<void> {
 
 async function saveWeatherPlace(p: Place): Promise<void> {
   try {
-    const w = await postJson<Weather>('/api/weather/location', { lat: p.lat, lon: p.lon, place: p.name });
+    const w = await postJson<Weather>('/api/weather/location', { lat: p.lat, lon: p.lon, place: p.name }, WX_TIMEOUT_MS);
+    wxSeq++;   // a forecast read still out is for the old city: it must not put that city back
     report('settings:privacy:weather');
     if (w.status === 'error' && w.saved === false) { confirmSheet('Couldn’t save', w.error ?? 'The PC couldn’t save the place.', 'OK', () => {}); void paintWeatherPlace(); return; }
     // The city is saved. A forecast that did not load still names it, and the repaint is skipped so this text stays.
