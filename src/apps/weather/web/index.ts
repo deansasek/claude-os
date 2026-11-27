@@ -13,6 +13,7 @@ import { critterSpeak, notify, openApp } from '../../../core/web/system.ts';
 import { WMO, advice, icon, isCold, isWindy, kindOf, weatherScene } from './art.ts';
 import { airLine, pollenLine } from './air.ts';
 import { nowIndex } from './now-index.ts';
+import { rainLine } from './rain-line.ts';
 
 type Selection = { t: 'now' } | { t: 'hour'; i: number; strip: number | null } | { t: 'day'; d: number };
 
@@ -76,9 +77,6 @@ function soonLine(w: WeatherOk): string {
   }
   return '';
 }
-
-const rainLine = (pp: number, amt: number, unit: string) =>
-  pp < 10 && amt <= 0 ? 'Dry' : `${pp}% chance of rain${amt > 0 ? `, ${amt.toFixed(unit === 'in' ? 2 : 1)} ${unit}` : ''}`;
 
 function view(w: WeatherOk): View {
   const { current: c, hourly: h, daily: d } = w;
