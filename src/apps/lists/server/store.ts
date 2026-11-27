@@ -73,8 +73,9 @@ function load(): FamilyList[] | null {
       if (c && !out.some(o => o.id === c.id)) out.push(c);
     }
     // the built-in lists are always there (in front, in their order) even if the file lost one
-    for (const d of [...DEFAULTS].reverse()) if (!out.some(o => o.id === d.id)) out.unshift(clone(d));
-    return out.slice(0, Math.max(MAX_LISTS, BUILT_IN.length));
+    const built = DEFAULTS.map(d => out.find(o => o.id === d.id) ?? clone(d));   // in their order: Shopping, To-do, Notes
+    const rest = out.filter(o => !isBuiltIn(o.id));
+    return [...built, ...rest].slice(0, Math.max(MAX_LISTS, BUILT_IN.length));
   } catch { return null; }
 }
 
