@@ -601,12 +601,13 @@ async function addToShopping(r: Recipe): Promise<void> {
   const onList = (shopping?.items ?? []).filter(i => !i.done).map(i => i.text);
   const items = shoppingItems(r.ingredients.map(i => i.item), onList);
   if (!items.length) { msg = 'Everything in this recipe is already on your shopping list.'; render(); return; }
+  // a refused write is neither added nor waiting (the Lists voice path counts the same way)
   let ok = 0, waiting = 0;
   for (const text of items) {
-    try { await writeList('add', { list: 'shopping', text }); ok++; }
-    catch (e) { if (isQueued(e)) waiting++; else break; }
+    try { const r = await writeList('add', { list: 'shopping', text }); if (r?.ok) ok++; }
+    catch (e) { if (isQueued(e)) waiting++; }
   }
-  msg = addManyReply(items.slice(0, ok + waiting), ok, waiting, 'Shopping');
+  msg = !ok && !waiting ? 'I couldn’t add those to Shopping.' : addManyReply(items, ok, waiting, 'Shopping');
   render();
 }
 
