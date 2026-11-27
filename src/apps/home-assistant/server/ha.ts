@@ -52,11 +52,12 @@ function load(): Config {
   };
 }
 let cfg = load();
+let unsaved = false;   // the last write failed: saving the same values again must try the write again
 
 /** Write the config to the PC. False when it could not be written: the change then lasts only until a restart. */
 function save(): boolean {
-  try { writeJsonFile(FILE, cfg, { indent: 2, mode: 0o600 }); return true; }
-  catch (e) { console.log('home-assistant: could not save the config:', (e as NodeJS.ErrnoException).code ?? 'error'); return false; }
+  try { writeJsonFile(FILE, cfg, { indent: 2, mode: 0o600 }); unsaved = false; return true; }
+  catch (e) { unsaved = true; console.log('home-assistant: could not save the config:', (e as NodeJS.ErrnoException).code ?? 'error'); return false; }
 }
 
 // CLAUDEOS_HA_DEMO=1 is for the tests only: it shows the made-up house. A normal start never sets it, and no route
@@ -94,16 +95,19 @@ function cleanAddress(raw: string): string | null {
 }
 
 export function saveConfig(u: HaConfigUpdate): HaStatus & { ok: boolean; message?: string } {
+  let changed = false;
   if (typeof u.address === 'string') {
     const a = cleanAddress(u.address.slice(0, 300));
     if (a == null) return { ...status(), ok: false, message: 'That doesn’t look like an address. Try http://homeassistant.local:8123' };
-    if (a !== cfg.address) { cfg.address = a; lastOk = null; lastError = ''; }
+    if (a !== cfg.address) { cfg.address = a; lastOk = null; lastError = ''; changed = true; }
   }
   if (typeof u.token === 'string') {
     const t = u.token.trim();
     if (t.length > 1000 || /\s/.test(t)) return { ...status(), ok: false, message: 'That token has spaces in it or is too long.' };
-    if (t !== cfg.token) { cfg.token = t; lastOk = null; lastError = ''; }
+    if (t !== cfg.token) { cfg.token = t; lastOk = null; lastError = ''; changed = true; }
   }
+  // the same values as are saved, and the last write worked: nothing to write
+  if (!changed && !unsaved) return { ...status(), ok: true };
   if (!save()) return { ...status(), ok: false, message: 'The PC couldn’t save the address and token. They work until the PC restarts; save them again.' };
   console.log(`home-assistant: settings saved (address ${cfg.address ? 'set' : 'empty'}, token ${cfg.token ? 'set' : 'empty'})`);
   return { ...status(), ok: true };
