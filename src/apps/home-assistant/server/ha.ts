@@ -247,8 +247,10 @@ export function setAllowed(entityId: string, on: boolean): { ok: boolean; error?
   const domain = id.split('.')[0];
   if (!/^[a-z0-9_]+\.[a-z0-9_]+$/.test(id) || isDeniedDomain(domain) || !isControlDomain(domain)) return { ok: false, error: 'That kind of device can’t be allowed.' };
   const list = allowList().filter(x => x !== id);
+  // a full list refuses the device; it is not dropped while the call still says ok
+  if (on && !isDemo() && list.length >= 500) return { ok: false, error: 'Claude can control up to 500 devices. Turn one off first.' };
   if (on) list.push(id);
-  if (isDemo()) cfg.allowDemo = list; else cfg.allow = list.slice(0, 500);
+  if (isDemo()) cfg.allowDemo = list; else cfg.allow = list;
   if (!save()) return { ok: false, error: 'The PC couldn’t save that device. It works until the PC restarts; try again.' };
   return { ok: true };
 }
