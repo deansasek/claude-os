@@ -28,6 +28,7 @@ let micTarget: { target: MicTarget; at: number } | null = null;
 const FOLLOW_UP_MS = 7000;      // after Claude speaks: how long to wait for you to start answering
 const APPROVAL_LISTEN_MS = 9000;
 const WATCH_MS = 20 * 60e3;     // give up following a turn after this long
+const READ_TIMEOUT_MS = 8000;   // a poll read the PC never answers gives up, and the loop reads again
 
 let ctx: AppContext;
 /** The conversation in progress: which session, which turn we're waiting on, what we last said. */
@@ -227,7 +228,7 @@ async function watch(c: NonNullable<typeof convo>): Promise<void> {
   while (Date.now() < until && convo === c) {
     await new Promise(r => setTimeout(r, 1500));
     let v: SessionView;
-    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(c.sessionId)}`); } catch { continue; }
+    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(c.sessionId)}`, READ_TIMEOUT_MS); } catch { continue; }
     const t = v.turn;
     if (!t || (c.turnId && t.id !== c.turnId)) continue;
     if (!c.turnId) c.turnId = t.id;
