@@ -17,7 +17,7 @@
 // Preferences are per screen (localStorage), so the Nest Hub and the tablet can differ.
 import { esc, getJson, report, store } from './dom.ts';
 import { parseClockAlarms } from './clock-alarms.ts';
-import { parseQuiet, type QuietHours } from './quiet-hours.ts';
+import { inQuietWindow, parseQuiet, type QuietHours } from './quiet-hours.ts';
 import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, parseNotices, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { keepAwakeWanted, orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
@@ -140,14 +140,7 @@ const isNight =(d = new Date()): boolean => d.getHours() >= 22 || d.getHours() <
 
 /** Is it quiet hours right now (Settings → Notifications → Quiet hours)? */
 export function quietNow(d = new Date()): boolean {
-  const q = prefs.quiet;
-  if (!q.on) return false;
-  const toMin = (s: string) => { const [h, m] = s.split(':').map(Number); return (h || 0) * 60 + (m || 0); };
-  const a = toMin(q.from), b = toMin(q.to), m = d.getHours() * 60 + d.getMinutes(), day = d.getDay();
-  if (a === b) return false;
-  if (a < b) return q.days.includes(day) && m >= a && m < b;
-  // overnight (22:00 to 07:00): the small hours belong to the evening before
-  return (m >= a && q.days.includes(day)) || (m < b && q.days.includes((day + 6) % 7));
+  return inQuietWindow(prefs.quiet, d);
 }
 
 /** Android's auto-brightness is on: then ClaudeOS leaves the backlight to it. Set by Settings → Display. */
