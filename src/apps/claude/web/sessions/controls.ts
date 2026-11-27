@@ -46,9 +46,11 @@ let loading: Promise<void> | null = null;
 /** Every screen's controls, told when the model list arrives (their menus show the real models then). */
 const listeners = new Set<() => void>();
 
+// a model list the PC never answers gives up, so the shared read is freed and the next screen can ask again
+const MODELS_TIMEOUT_MS = 20e3;
 export function loadModels(): Promise<void> {
   if (list.source === 'sdk') return Promise.resolve();
-  loading ||= getJson<ModelList>('/api/claude/models')
+  loading ||= getJson<ModelList>('/api/claude/models', MODELS_TIMEOUT_MS)
     .then(l => { if (l?.models?.length) { list = l; listeners.forEach(f => f()); } })
     .catch(() => {})
     .finally(() => { loading = null; });
