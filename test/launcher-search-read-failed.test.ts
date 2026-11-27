@@ -21,7 +21,7 @@ test('loadSearchData resets loadedAt and sets searchReadFailed when the sessions
 
 test('loadSearchData resets loadedAt and sets listsReadFailed when the lists read fails', () => {
   const body = fn('loadSearchData');
-  assert.match(body, /catch \{\s*loadedAt = 0;[^\n]*\n\s*listsReadFailed = true;\s*\}/);
+  assert.match(body, /catch \{\s*(?:if \(seq !== searchSeq\) return;\s*)?loadedAt = 0;[^\n]*\n\s*listsReadFailed = true;\s*\}/);
 });
 
 test('loadSearchData keeps the last good lists and sessions when a read fails', () => {
@@ -53,7 +53,7 @@ test('paintResults says couldn’t be read only for a source never read', () => 
 });
 
 test('loadSearchData clears listsReadFailed when the lists read succeeds', () => {
-  assert.match(fn('loadSearchData'), /lists = \(await readLists\(\)\)[^\n]*\n\s*listsReadFailed = false;/);
+  assert.match(fn('loadSearchData'), /lists = l;\s*listsReadFailed = false;/);
 });
 
 test('paintResults uses searchReadFailed in the empty message', () => {
