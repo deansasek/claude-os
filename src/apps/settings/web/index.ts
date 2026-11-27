@@ -1445,7 +1445,11 @@ function initUpdate(): void {
 }
 
 // ---------- About ----------
+// the Hub's status read gives up on a PC that does not answer; a repaint that is no longer the newest does not write the uptime
+const ABOUT_TIMEOUT_MS = 20e3;
+let aboutSeq = 0;
 function paintAbout(): void {
+  const n = ++aboutSeq;
   try {
     const i = device.info();
     $('stVersion').textContent = `Version ${i.app} · Desk tablet`;
@@ -1455,7 +1459,8 @@ function paintAbout(): void {
   $('stConn').textContent = !navigator.onLine ? 'Offline' : hubReachable() ? `Connected to ${location.host}` : 'Wi-Fi is on, but the PC can’t be reached';
   $('stServer').textContent = `Your PC · ${location.host}`;
   // the Hub's own status: how long it has run (a page that can't reach it keeps the address line alone)
-  getJson<{ uptimeSeconds: number }>('/api/core/status').then(s => {
+  getJson<{ uptimeSeconds: number }>('/api/core/status', ABOUT_TIMEOUT_MS).then(s => {
+    if (n !== aboutSeq) return;   // a newer repaint came first: its uptime is the one to show
     $('stServer').textContent = `Your PC · ${location.host} · running ${uptimeText(s.uptimeSeconds)}`;
   }).catch(() => { /* not reachable now: keep the address line */ });
   try {
