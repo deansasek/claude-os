@@ -121,3 +121,8 @@ test('other errors from those writes are rethrown to the outer catch, which says
   assert.equal((src.match(/catch \(e\) \{ return queuedReply\(e, /g) ?? []).length, 4);
   assert.match(src, /\} catch \{ return \{ say: `I can’t reach \$\{name\} right now\.` \}; \}/);
 });
+
+test('a refused item is not counted as waiting when the PC cannot be reached', () => {
+  assert.equal(addManyReply(['Milk', 'Eggs', 'Bread'], 0, 1, 'the shopping list'), 'I can’t reach the shopping list right now. It will be added when the PC is back.');
+  assert.equal(addManyReply(['Milk', 'Eggs', 'Bread'], 0, 2, 'the shopping list'), 'I can’t reach the shopping list right now. The 2 items will be added when the PC is back.');
+});
