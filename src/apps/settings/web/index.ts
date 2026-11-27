@@ -404,7 +404,11 @@ function paintRoles(): void {
     </button>`).join('');
 }
 
+// the photo list the PC never answers gives up; a read for a sheet that was closed, or a newer open, does not fill the grid
+const PHOTOS_TIMEOUT_MS = 20e3;
+let photoSheetSeq = 0;
 async function openPhotoSheet(): Promise<void> {
+  const seq = ++photoSheetSeq;
   const grid = $('stPhotoGrid');
   $('stPhotoSheet').hidden = false;
   $('stPhotoEmpty').hidden = true;
@@ -412,10 +416,11 @@ async function openPhotoSheet(): Promise<void> {
   let photos: { id: string; url: string }[] = [];
   let failed: string | null = null;
   try {
-    const r = await getJson<{ ok: boolean; days?: { photos: { id: string; url: string }[] }[]; error?: string }>('/api/photos/list?limit=120');
+    const r = await getJson<{ ok: boolean; days?: { photos: { id: string; url: string }[] }[]; error?: string }>('/api/photos/list?limit=120', PHOTOS_TIMEOUT_MS);
+    if (seq !== photoSheetSeq || $('stPhotoSheet').hidden) return;   // closed, or a newer open came first
     if (r.ok !== true) failed = typeof r.error === 'string' && r.error ? r.error : 'Your photos didn’t load. ClaudeOS can’t reach the PC.';
     else photos = (r.days ?? []).flatMap(d => d.photos).slice(0, 120);
-  } catch { failed = 'Your photos didn’t load. ClaudeOS can’t reach the PC.'; }
+  } catch { if (seq !== photoSheetSeq || $('stPhotoSheet').hidden) return; failed = 'Your photos didn’t load. ClaudeOS can’t reach the PC.'; }
   // the note says "no photos" only when the list loaded and is empty
   const empty = $('stPhotoEmpty');
   empty.textContent = failed ?? 'No photos yet. Take one with the Camera or add one in Photos.';
@@ -434,6 +439,7 @@ function photoErrorText(error: unknown): string {
 
 /** Crop a photo from the library to a 256 px square (the middle of it), and keep it as the profile photo. */
 async function usePhoto(url: string): Promise<void> {
+  photoSheetSeq++;   // a photo list still out is for a sheet that is now closed
   $('stPhotoSheet').hidden = true;
   // stage 1: the tablet decodes and crops the photo. A failure here is the photo's fault.
   let blob: Blob | null = null;
@@ -1521,8 +1527,8 @@ function mount(context: AppContext): void {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-photo]');
     if (b) void usePhoto(b.dataset.photo!);
   });
-  $('stPhotoCancel').addEventListener('click', () => { $('stPhotoSheet').hidden = true; });
-  $('stPhotoSheet').addEventListener('click', e => { if (e.target === $('stPhotoSheet')) $('stPhotoSheet').hidden = true; });
+  $('stPhotoCancel').addEventListener('click', () => { photoSheetSeq++; $('stPhotoSheet').hidden = true; });
+  $('stPhotoSheet').addEventListener('click', e => { if (e.target === $('stPhotoSheet')) { photoSheetSeq++; $('stPhotoSheet').hidden = true; } });
   onProfile(() => { if (section === 'profile') paintProfile(); });
 
   // Your Claude
