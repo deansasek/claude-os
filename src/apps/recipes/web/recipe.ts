@@ -185,3 +185,8 @@ export function recipeGlance(list: Recipe[], now: Date): string {
   const i = recipeOfDay(list.length, now);
   return i < 0 ? 'Find a recipe' : list[i].name;
 }
+
+/** The same recipe: the same object, the same TheMealDB id, or the same contents. A saved copy comes back from the store as a new object, so the contents decide for Claude's recipes. */
+export function sameRecipe(a: Recipe, b: Recipe): boolean {
+  return a === b || (!!a.mealId && a.mealId === b.mealId) || JSON.stringify(a) === JSON.stringify(b);
+}
