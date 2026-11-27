@@ -109,3 +109,6 @@ export function ago(iso: string | null, now: number): string {
   if (h < 24) return `${h} h ago`;
   return `${Math.floor(h / 24)} d ago`;
 }
+
+/** Back closes an open story first, while News is on screen; otherwise Back goes on to Home. */
+export function readerBack(visible: boolean, sheetOpen: boolean): boolean { return visible && sheetOpen; }
