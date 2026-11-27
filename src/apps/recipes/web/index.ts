@@ -38,6 +38,7 @@ const TONIGHT_TIMES = ['20 minutes', '40 minutes', '1 hour', ''];   // '' is no 
 const ICON = appIcon('recipes');
 const NATIVE_OFF = 'Turn on “Run Claude chats on this tablet” under Settings, Apps, Claude, then try again.';
 const PC_DOWN = 'Can’t reach your PC just now. Try again.';   // the shared text when the PC cannot be reached
+const NAMES_TIMEOUT_MS = 15e3;   // the ingredient names give up after this long, so the pantry sheet can retry (a sleeping PC can leave a connection open)
 
 const HEART = (on: boolean) => `<svg viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/></svg>`;
 const LENS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>';
@@ -327,7 +328,7 @@ async function loadNames(): Promise<void> {
   if (namesState === 'loading' || namesState === 'ok') return;
   namesState = 'loading';
   try {
-    const r = await getJson<IngredientsResult>(`${API}/ingredients`);
+    const r = await getJson<IngredientsResult>(`${API}/ingredients`, NAMES_TIMEOUT_MS);
     names = r.status === 'ok' ? r.names : [];
     namesState = r.status === 'ok' ? 'ok' : 'error';
     namesError = r.status === 'ok' ? '' : r.error || 'Ingredients are not available. Try again.';
