@@ -563,6 +563,7 @@ async function deleteDetail(): Promise<void> {
     closeDetail();
     msg = '';   // clear the old note, so only the reload's note is kept
     await load();
+    dispatchEvent(new CustomEvent('hub:calendar'));   // the Home screen's Today tile drops the deleted event at once
     msg = afterWriteNote(`Deleted “${e.title}” from ClaudeOS.`, msg);
     render();
   } else {
