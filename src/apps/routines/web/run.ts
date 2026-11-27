@@ -21,7 +21,7 @@ import { readLists } from '../../lists/web/readers.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
 import { prefs, setFocus, sleep as showScreenSaver } from '../../../core/web/system.ts';
 import type { HaResult } from '../../home-assistant/api.ts';
-import { AT_WINDOW_MIN, STEP_MAX_MS, dayKey, dueRoutines, parseRanDays, type Routine, type RoutinesResult, type Step } from '../api.ts';
+import { AT_WINDOW_MIN, STEP_MAX_MS, dueDay, parseRanDays, type Routine, type RoutinesResult, type Step } from '../api.ts';
 import { sceneStepWords } from './local.ts';
 import { copyAge, hasCopy, localRoutines, pull } from './sync.ts';
 
@@ -179,9 +179,10 @@ async function schedulerTick(): Promise<void> {
   let list: Routine[];
   try { list = await loadRoutines(); } catch { return; }
   const now = new Date();
-  const due = dueRoutines(list, now, ranDays())[0];
+  const ran = ranDays();
+  const due = list.find(x => dueDay(x, now, ran) !== null);
   if (!due) return;
-  markRan(due.id, dayKey(now));   // marked first, so a routine that fails is not tried again and again today
+  markRan(due.id, dueDay(due, now, ran)!);   // marked first, with the day it was due, so a routine that fails is not tried again
   void runSteps(due);
 }
 

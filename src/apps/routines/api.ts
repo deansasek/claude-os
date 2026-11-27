@@ -128,16 +128,25 @@ export function parseRanDays(raw: unknown): Record<string, string> {
   return out;
 }
 
-/** The routines whose time has come: due today, not yet run today (ran: routine id → day key), and within AT_WINDOW_MIN of it. */
+/** The day key of the occurrence of a routine that is due now: today's, or yesterday's while its start window runs past midnight. null when none is. */
+export function dueDay(r: Routine, now: Date, ran: Record<string, string>): string | null {
+  if (!r.at) return null;
+  for (const back of [0, 1]) {
+    const t = new Date(now);
+    t.setDate(t.getDate() - back);
+    t.setHours(r.at.h, r.at.m, 0, 0);
+    const day = dayKey(t);
+    if (r.at.days.length && !r.at.days.includes(t.getDay())) continue;
+    if (ran[r.id] === day) continue;
+    const since = now.getTime() - t.getTime();
+    if (since >= 0 && since < AT_WINDOW_MIN * 60e3) return day;
+  }
+  return null;
+}
+
+/** The routines whose time has come (ran: routine id → day key of its last run). */
 export function dueRoutines(list: Routine[], now: Date, ran: Record<string, string>): Routine[] {
-  const today = dayKey(now), nowMin = now.getHours() * 60 + now.getMinutes();
-  return list.filter(r => {
-    if (!r.at) return false;
-    if (r.at.days.length && !r.at.days.includes(now.getDay())) return false;
-    if (ran[r.id] === today) return false;
-    const since = nowMin - (r.at.h * 60 + r.at.m);
-    return since >= 0 && since < AT_WINDOW_MIN;
-  });
+  return list.filter(r => dueDay(r, now, ran) !== null);
 }
 
 /** A routine's time: HH:MM and its days, or null when it doesn't run by itself. */
