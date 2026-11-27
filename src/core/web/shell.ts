@@ -430,7 +430,8 @@ function watchVersion(): void {
 /** Claude Home's own apps, in rail order (the Apps screen lists them). */
 export function installedApps(): { id: string; name: string; icon: string }[] {
   const hidden = focusHidden();
-  return apps.filter(a => !hidden.includes(a.id) || a.id === 'launcher' || fixedIds().includes(a.id)).map(a => ({ id: a.id, name: a.name, icon: a.icon }));
+  // the live rail icon, as the switcher shows it: an app that redraws its icon (the Clock's hands) is current here too
+  return apps.filter(a => !hidden.includes(a.id) || a.id === 'launcher' || fixedIds().includes(a.id)).map(a => ({ id: a.id, name: a.name, icon: ownBtns.get(a.id)?.querySelector('.ri-icon')?.innerHTML || a.icon }));
 }
 
 export async function startHub(list: HubApp[]): Promise<void> {
