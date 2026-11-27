@@ -46,8 +46,11 @@ export async function getJson<T>(url: string, timeoutMs?: number): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-export async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+export async function postJson<T>(url: string, body: unknown, timeoutMs?: number): Promise<T> {
+  const r = await fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
+  });
   return r.json() as Promise<T>;
 }
 
