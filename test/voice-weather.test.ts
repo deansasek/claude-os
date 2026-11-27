@@ -7,6 +7,8 @@ test('a question about the temperature now is about today', () => {
   assert.equal(temperatureDay("what's the temperature"), 0);
   assert.equal(temperatureDay('how cold is it outside'), 0);
   assert.equal(temperatureDay('is it hot outside'), 0);
+  assert.equal(temperatureDay('is it cold'), 0);
+  assert.equal(temperatureDay('is it chilly'), 0);
   assert.equal(temperatureDay('do i need a jacket'), 0);
 });
 
