@@ -689,6 +689,7 @@ const app: HubApp = {
     $('calPick').addEventListener('click', e => { if (e.target === $('calPick')) closePicker(); });
     // Back (system.ts) closes the topmost open sheet: details, picker, confirm step, then the add sheet. Nothing open goes on to Home.
     onBack(() => {
+      if (!ctx.isVisible()) return false;   // the Calendar's Back is for the Calendar only
       const t = backTarget({ detail: !$('calDetail').hidden, picker: !$('calPick').hidden, confirm: !$('calAddConfirm').hidden, add: !$('calAdd').hidden });
       if (t === 'detail') closeDetail();
       else if (t === 'picker') closePicker();

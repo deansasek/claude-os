@@ -19,3 +19,7 @@ test('each sheet is closed in order: details, picker, confirm, then the add shee
 test('a picker over the add sheet closes before the sheet', () => {
   assert.equal(backTarget({ ...none, picker: true, add: true }), 'picker');
 });
+
+test('a confirm step whose add sheet is closed is not a Back target', () => {
+  assert.equal(backTarget({ ...none, confirm: true }), null);
+});
