@@ -148,7 +148,6 @@ export function listPhotosPage(limit = 500): { days: PhotoDay[]; more: boolean }
   let left = limit;
   let more = false;
   for (const day of days) {
-    if (left <= 0) { more = true; break; }
     const names = new Set<string>();
     try { for (const f of fs.readdirSync(path.join(PHOTOS, day))) names.add(f); } catch (e) { if (missing(e)) continue; throw e; }
     const items: { id: string; mtime: number; hasThumb: boolean }[] = [];
@@ -160,6 +159,8 @@ export function listPhotosPage(limit = 500): { days: PhotoDay[]; more: boolean }
       try { items.push({ id, mtime: fs.statSync(path.join(PHOTOS, day, f)).mtimeMs, hasThumb: names.has(`${id}_thumb.jpg`) }); } catch { /* gone */ }
     }
     items.sort((a, b) => b.mtime - a.mtime);
+    // the limit is used up: more only when a later day really has a photo (an empty or thumbnail-only folder does not count)
+    if (left <= 0) { if (items.length) { more = true; break; } continue; }
     const kept = items.slice(0, left);
     left -= kept.length;
     if (items.length > kept.length) more = true;

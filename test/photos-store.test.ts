@@ -16,6 +16,26 @@ function withDayFolder(names: string[], fn: () => void): void {
 }
 const PHOTO_FILES = ['abcdefgh01.jpg', 'abcdefgh02.jpg', 'abcdefgh03.jpg'];
 
+/** Run fn with several day folders, each holding its own files. The folder reads are stubbed. */
+function withDays(days: Record<string, string[]>, fn: () => void): void {
+  const realRead = fs.readdirSync, realStat = fs.statSync;
+  fs.readdirSync = ((p: fs.PathLike) => (String(p) === PHOTOS ? Object.keys(days) : days[path.basename(String(p))] ?? [])) as unknown as typeof fs.readdirSync;
+  fs.statSync = (() => ({ mtimeMs: 1000 })) as unknown as typeof fs.statSync;
+  try { fn(); } finally { fs.readdirSync = realRead; fs.statSync = realStat; }
+}
+
+test('the limit used up does not say more when the later day folder holds only a thumbnail', () => {
+  withDays({ '2026-11-27': PHOTO_FILES, '2026-11-26': ['abcdefgh09_thumb.jpg'] }, () => {
+    assert.equal(listPhotosPage(3).more, false);
+  });
+});
+
+test('the limit used up says more when the later day folder holds a photo', () => {
+  withDays({ '2026-11-27': PHOTO_FILES, '2026-11-26': ['abcdefgh09.jpg'] }, () => {
+    assert.equal(listPhotosPage(3).more, true);
+  });
+});
+
 test('a photo id is 8 to 64 safe characters', () => {
   assert.equal(safeId('abcdefgh12'), 'abcdefgh12');
   assert.equal(safeId('short'), null);
