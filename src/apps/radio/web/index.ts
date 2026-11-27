@@ -74,7 +74,10 @@ let list: Station[] = [];                // the stations the catalogue shows now
 let facets: Facet[] = [];                // the genres, countries or languages it shows now
 let listState: 'idle' | 'loading' | 'ok' | 'error' = 'idle';
 let pcDown = false;                      // the last list read failed with a TypeError: the tablet cannot reach the PC
-const unreachable = (r: PromiseSettledResult<unknown>): boolean => r.status === 'rejected' && r.reason instanceof TypeError;
+// a catalogue read the PC never answers gives up (the tablet shows the can't-reach state, as for a refused connection)
+const CATALOGUE_TIMEOUT_MS = 10e3;
+const cantReach = (e: unknown): boolean => e instanceof TypeError || (e as { name?: string } | null)?.name === 'TimeoutError';
+const unreachable = (r: PromiseSettledResult<unknown>): boolean => r.status === 'rejected' && cantReach(r.reason);
 let listKey = '';                        // what list and facets hold, so a view loads only once
 let query = '';
 let filters: SearchFilters = { ...NO_FILTERS };
@@ -117,7 +120,7 @@ const byTag = new Map<string, Station[] | 'loading' | 'error'>();
 function ensureMoreLike(tag: string): void {
   if (byTag.has(tag)) return;
   byTag.set(tag, 'loading');
-  getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent(`stations/bytag/${tag}`)}`)
+  getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent(`stations/bytag/${tag}`)}`, CATALOGUE_TIMEOUT_MS)
     .then(r => { if (r.status !== 'ok') throw new Error(r.error); byTag.set(tag, playableStations(r.stations)); })
     .catch(() => { byTag.set(tag, 'error'); })
     .finally(() => { if (view.kind === 'station') render(); });
@@ -352,7 +355,7 @@ async function load(force = false): Promise<void> {
       const facet = view.facet;
       let got = facetCache.get(facet);
       if (!got) {
-        const r = await getJson<FacetsResult>(`${API}/catalogue?path=${facet}`);
+        const r = await getJson<FacetsResult>(`${API}/catalogue?path=${facet}`, CATALOGUE_TIMEOUT_MS);
         if (mine !== seq) return;
         if (r.status !== 'ok') throw new Error(r.error);
         got = r.facets;
@@ -364,7 +367,7 @@ async function load(force = false): Promise<void> {
       if (view.kind === 'top') url = `${API}/catalogue?path=${encodeURIComponent('stations/topvote/100')}`;
       else if (view.kind === 'browse') url = `${API}/catalogue?path=${encodeURIComponent(`stations/${BY[view.facet]}/${view.name}`)}`;
       else url = `${API}/stations?${new URLSearchParams({ q: query, country: filters.country, codec: filters.codec, bitrate: String(filters.bitrate) })}`;
-      const r = await getJson<StationsResult>(url);
+      const r = await getJson<StationsResult>(url, CATALOGUE_TIMEOUT_MS);
       if (mine !== seq) return;
       if (r.status !== 'ok') throw new Error(r.error);
       list = playableStations(r.stations);
@@ -376,7 +379,7 @@ async function load(force = false): Promise<void> {
     list = [];
     facets = [];
     listState = 'error';
-    pcDown = e instanceof TypeError;
+    pcDown = cantReach(e);
   }
   render();
 }
@@ -384,7 +387,7 @@ async function load(force = false): Promise<void> {
 async function facetsOf(facet: FacetKind): Promise<Facet[]> {
   const got = facetCache.get(facet);
   if (got) return got;
-  const r = await getJson<FacetsResult>(`${API}/catalogue?path=${facet}`);
+  const r = await getJson<FacetsResult>(`${API}/catalogue?path=${facet}`, CATALOGUE_TIMEOUT_MS);
   if (r.status !== 'ok') throw new Error(r.error);
   facetCache.set(facet, r.facets);
   return r.facets;
@@ -405,7 +408,7 @@ async function loadHome(force = false): Promise<void> {
   };
   render();
   const top = keepTop ? Promise.resolve(keptTop)
-    : getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent('stations/topvote/100')}`)
+    : getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent('stations/topvote/100')}`, CATALOGUE_TIMEOUT_MS)
       .then(r => { if (r.status !== 'ok') throw new Error(r.error); return playableStations(r.stations); });
   const [t, g, c] = await Promise.allSettled([top, facetsOf('tags'), facetsOf('countries')]);
   pcDown = [t, g, c].some(unreachable);
