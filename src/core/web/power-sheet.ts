@@ -91,6 +91,7 @@ export function initPowerSheet(d: PowerDeps): void {
       document.getElementById('stage')!.appendChild(root);
     }
     stage = 'menu';
+    fault = '';   // an old failed-restart message does not come back on a fresh open
     paint();
     root.hidden = false;
     if (!unBack) unBack = d.onBack(() => { close(); return true; }, 110);   // above the welcome: Back is Cancel
