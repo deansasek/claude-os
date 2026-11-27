@@ -25,3 +25,9 @@ export function parseConnectorEvents(text: string): ConnEvent[] | null {
   }
   return out.sort((x, y) => x.start - y.start).slice(0, 50);
 }
+
+/** The reply for a connector read that failed: the fixed text the tablet shows. The raw error (it can hold a PC path) goes to the PC log only. */
+export function connectorError(e: unknown): { status: 'error'; error: string } {
+  console.log('calendar: connector read failed', e);
+  return { status: 'error', error: 'Couldn’t read the claude.ai calendar connector.' };
+}
