@@ -17,7 +17,7 @@ import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { PANTRY_MAX } from './pantry.ts';
 import {
-  RECIPE_PROMPT, adaptPrompt, cookStep, countWord, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, textRecipe, tonightPrompt, type Recipe,
+  RECIPE_PROMPT, adaptPrompt, cookStep, countWord, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, stepMinutes, textRecipe, tonightPrompt, type Recipe,
 } from './recipe.ts';
 
 const API = `/api/${manifest.id}`;
@@ -572,7 +572,9 @@ function cookHtml(r: Recipe, step: number): string {
     return `<button class="rc-ck-vw${on ? ' on' : ''}" data-act="cook-view" data-view="${v}" aria-pressed="${on}">${label}</button>`;
   };
   const ticks = r.steps.map((_, k) => `<i class="${k < s.index ? 'done' : k === s.index ? 'now' : ''}"></i>`).join('');
-  const presets = TIMER_MINUTES.map(m => `<button class="rc-ck-pre" data-act="timer" data-min="${m}">${lengthWords(m * 60e3)}</button>`).join('');
+  const own = stepMinutes(s.text);
+  const offer = own !== null && !TIMER_MINUTES.includes(own) ? [own, ...TIMER_MINUTES] : TIMER_MINUTES;
+  const presets = offer.map(m => `<button class="rc-ck-pre" data-act="timer" data-min="${m}">${lengthWords(m * 60e3)}</button>`).join('');
   return `<div class="rc-ck${book ? ' book' : ''}">`
     + `<header class="rc-ck-hd"><button class="rc-ck-txt rc-ck-exit" data-act="detail">Exit</button>`
     + `<h2 class="rc-ck-name">${esc(r.name)}</h2>`

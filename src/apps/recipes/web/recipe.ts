@@ -100,6 +100,15 @@ export function countWord(n: number, word: string): string {
 }
 
 /** The text of one cook-mode step. The step number is clamped to the recipe's steps. */
+/** The first time a step names, in whole minutes: "25 minutes", "10-15 min" (the larger), "1 hour". 1 to 240, or null. */
+export function stepMinutes(text: string): number | null {
+  const m = text.match(/(\d{1,3})(?:\s*(?:-|–|to)\s*(\d{1,3}))?\s*(hours?|hrs?|minutes?|mins?)\b/i);
+  if (!m) return null;
+  const n = Math.max(Number(m[1]), Number(m[2] ?? 0));
+  const minutes = /^h/i.test(m[3]) ? n * 60 : n;
+  return minutes >= 1 && minutes <= 240 ? minutes : null;
+}
+
 export function cookStep(r: Recipe, i: number): { heading: string; text: string; index: number; first: boolean; last: boolean } {
   const total = r.steps.length;
   const index = Math.min(Math.max(0, Math.floor(i) || 0), total - 1);

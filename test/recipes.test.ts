@@ -94,3 +94,12 @@ test('the reply of an adapt request gets the source photo, and the photo is kept
   assert.match(app, /recipe: keepPhoto\(parsed\.recipe, photo\)/);
   assert.match(app, /store\.set\(PENDING_PHOTO_KEY, photo \|\| null\)/);
 });
+
+test('stepMinutes reads the time a cook step names, in whole minutes, or none', async () => {
+  const { stepMinutes } = await import('../src/apps/recipes/web/recipe.ts');
+  assert.equal(stepMinutes('Simmer for 25 minutes, stirring.'), 25);
+  assert.equal(stepMinutes('Bake 10-15 min until golden'), 15, 'a range gives its larger number');
+  assert.equal(stepMinutes('Rest for 1 hour'), 60);
+  assert.equal(stepMinutes('Chop the onion finely'), null, 'no time named');
+  assert.equal(stepMinutes('Leave for 500 minutes'), null, 'out of range');
+});
