@@ -227,6 +227,11 @@ export function alertFor(kind: AlertKind | 'break', n: Notice, way?: AlertWay, a
 
 // ---------- wellbeing and the timed things: low power, quiet hours, break reminders ----------
 let breakSince = Date.now(), breakNudged = false;
+// a touch after a long time away (the tablet asleep or locked) starts a new break: the time away is not counted as use
+function touched(now = Date.now()): void {
+  if (now - lastTouch > 5 * 60e3) { breakSince = now; breakNudged = false; }
+  lastTouch = now;
+}
 /** Set when low power turns itself on; cleared when the battery charges. So a user who turns it off below the level keeps it off. */
 let lowAuto = false;
 /** Low power's own battery check: turn it on below the chosen level (once, until it's charged again). */
@@ -1077,7 +1082,7 @@ function armAmbientMinute(): void {
 let wakeTimer: number | undefined;
 /** Leave the ambient screen (a tap, or something asking for attention). */
 export function wake(): void {
-  lastTouch = Date.now();
+  touched();
   if (!ambientOn) return;
   ambientOn = false;
   clearTimeout(ambTick); ambTick = undefined;
@@ -1230,7 +1235,7 @@ export function initSystem(stage: HTMLElement, h: SystemHooks): void {
     if (!(ev.target as Element).closest('[data-amb-media]')) return;
     try { mediaActions()?.toggle(); } catch { /* the app that plays is busy */ }
   });
-  document.addEventListener('pointerdown', () => { lastTouch = Date.now(); }, true);
+  document.addEventListener('pointerdown', () => touched(), true);
   setInterval(() => {
     // low power shortens the wait before the ambient screen (two minutes at most)
     const base = prefs.ambientMin, min = prefs.lowPower ? (base ? Math.min(base, 2) : 2) : base;
