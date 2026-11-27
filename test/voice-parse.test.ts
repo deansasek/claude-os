@@ -20,6 +20,10 @@ test('a duration phrase becomes milliseconds', () => {
   assert.deepEqual(durationAndLabel('3 quarters of an hour pasta'), { ms: 2_700_000, label: 'pasta' });
   assert.equal(parseDuration('2 hours and a quarter'), 8_100_000);
   assert.equal(parseDuration('a minute and a quarter'), 75_000);
+  assert.equal(parseDuration('2 and a quarter hours'), 8_100_000);
+  assert.equal(parseDuration('1 and a quarter hours'), 4_500_000);
+  assert.equal(parseDuration('2 and a quarter minutes'), 135_000);
+  assert.deepEqual(durationAndLabel('2 and a quarter hours roast'), { ms: 8_100_000, label: 'roast' });
   assert.equal(parseDuration('2 minutes and a quarter'), 135_000);
   assert.equal(parseDuration('1 hour 30 minutes'), 5_400_000);
   assert.equal(parseDuration('nonsense'), null);
