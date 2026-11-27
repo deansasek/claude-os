@@ -34,7 +34,7 @@ test('loadWx sets pcDown in its catch when the tablet cannot reach the PC', () =
   const lstart = src.indexOf('async function loadWx(): Promise<void> {');
   const lbody = src.slice(lstart, src.indexOf('\n}\n', lstart));
   assert.ok(lstart > 0, 'loadWx exists');
-  assert.match(lbody, /\} catch \{\n\s+pcDown = true;/);
+  assert.match(lbody, /\} catch \{\n\s+(?:if \(seq !== wxSeq\) return;\n\s+)?pcDown = true;/);
 });
 
 test('paintEmpty uses pcDown for the Can’t reach your PC text', () => {
