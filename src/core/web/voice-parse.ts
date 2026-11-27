@@ -22,8 +22,9 @@ export interface TimeOfDay { h: number; m: number; meridiem: 'am' | 'pm' | null 
 export function parseTime(phrase: string): TimeOfDay | null {
   let s = ` ${phrase} `.replace(/ o'?clock /g, ' ').replace(/ (a\.? ?m\.?|in the morning|this morning) /g, ' am ')
     .replace(/ (p\.? ?m\.?|in the (afternoon|evening)|tonight|this (afternoon|evening)|at night) /g, ' pm ').replace(/\s+/g, ' ').trim();
-  if (s === 'noon' || s === 'midday') return { h: 12, m: 0, meridiem: 'pm' };
-  if (s === 'midnight') return { h: 0, m: 0, meridiem: 'am' };
+  // "12 noon" and "12 midnight" are said too
+  if (/^(12 )?(noon|midday)$/.test(s)) return { h: 12, m: 0, meridiem: 'pm' };
+  if (/^(12 )?midnight$/.test(s)) return { h: 0, m: 0, meridiem: 'am' };
   let mer: 'am' | 'pm' | null = null;
   const mm = s.match(/^(.*) (am|pm)$/);
   if (mm) { s = mm[1]; mer = mm[2] as 'am' | 'pm'; }
