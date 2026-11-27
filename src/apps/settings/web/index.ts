@@ -566,14 +566,19 @@ let instructions = '';
 let instructionsLoaded = false;
 let instructionsFailed = false;
 let instructionsReadFailed = false;   // the PC answered, but its file of instructions cannot be read
+// a read the PC never answers gives up; each read takes a number, and only the newest one (or a save) sets the instructions
+const INSTR_TIMEOUT_MS = 20e3;
+let instrSeq = 0;
 async function loadInstructions(): Promise<void> {
+  const seq = ++instrSeq;
   try {
-    const r = await fetch('/api/settings/instructions', { cache: 'no-store' });
+    const r = await fetch('/api/settings/instructions', { cache: 'no-store', signal: AbortSignal.timeout(INSTR_TIMEOUT_MS) });
     if (!r.ok) throw new Error(`PC answered ${r.status}`);
     const d = (await r.json()) as { text: string; error?: string };
+    if (seq !== instrSeq) return;   // a newer read, or a save, came first
     instructionsReadFailed = !!d.error;
     instructions = d.error ? '' : d.text || ''; instructionsLoaded = true; instructionsFailed = false;
-  } catch { instructionsFailed = true; /* keep what we have */ }
+  } catch { if (seq !== instrSeq) return; instructionsFailed = true; /* keep what we have */ }
   if (section === 'yourclaude') paintInstructions();
 }
 function paintInstructions(): void {
@@ -604,9 +609,10 @@ async function editInstructions(): Promise<void> {
 }
 async function saveInstructions(text: string): Promise<void> {
   try {
-    const r = await postJson<{ text: string; ok?: boolean }>('/api/settings/instructions', { text: text.trim() });
+    const r = await postJson<{ text: string; ok?: boolean }>('/api/settings/instructions', { text: text.trim() }, INSTR_TIMEOUT_MS);
     if (r.ok === false) throw new Error('not saved');   // the PC kept the old text: say so, do not clear the box
-    instructions = r.text || ''; instructionsReadFailed = false;
+    instrSeq++;   // a read still out is older than this save: it must not bring the old text back
+    instructions = r.text || ''; instructionsLoaded = true; instructionsReadFailed = false; instructionsFailed = false;
     report('settings:instructions');
   } catch { confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
   paintInstructions();

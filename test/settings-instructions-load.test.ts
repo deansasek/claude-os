@@ -41,5 +41,5 @@ test('loadInstructions sets the failed note text when the PC does not answer', (
   const start = src.indexOf('function paintInstructions(): void {');
   const body = src.slice(start, src.indexOf('function editInstructions', start));
   assert.match(body, /instructionsFailed \? 'Couldn’t reach your PC\. Your instructions show when it’s back\.'/);
-  assert.match(src.slice(src.indexOf('async function loadInstructions'), start), /catch \{ instructionsFailed = true;/);
+  assert.match(src.slice(src.indexOf('async function loadInstructions'), start), /catch \{ (?:if \(seq !== instrSeq\) return; )?instructionsFailed = true;/);
 });
