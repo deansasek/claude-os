@@ -10,7 +10,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import { askWithText } from '../../claude/web/reply.ts';
 import { askAboutPage } from './claude-panel.ts';
 import { articleOf } from './reader.ts';
-import { restoreLater } from './later.ts';
+import { parseLater, restoreLater, type Later } from './later.ts';
 import { runningMeta } from './downloads.ts';
 import { thumbUrl } from '../../photos/api.ts';
 import type { PhotoList } from '../../photos/api.ts';
@@ -313,12 +313,9 @@ function renderHistory(): void {
 function openBookmarks(): void { renderBookmarks(); openOver('brBookmarks'); }
 
 // ---------- reading list: pages saved to read later, kept with their text (no network needed to read them again) ----------
-interface Later { url: string; title: string; json: string; at: number }
 const LATER_KEY = 'browser.later', LATER_MAX = 30;
 let laterPending: { url: string; title: string } | null = null;   // a page being saved: its reader text comes next
-function laterList(): Later[] {
-  try { const l = JSON.parse(store.get(LATER_KEY) || '[]') as Later[]; return Array.isArray(l) ? l : []; } catch { return []; }
-}
+function laterList(): Later[] { return parseLater(store.get(LATER_KEY)); }
 function saveLater(list: Later[]): void { store.set(LATER_KEY, JSON.stringify(list.slice(0, LATER_MAX))); }
 /** The reader text for a page being saved (from the 'reader' event): keep it and say so. */
 function keepForLater(json: string): void {
