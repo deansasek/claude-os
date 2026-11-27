@@ -4,6 +4,8 @@ import { getJson } from '../../../../core/web/dom.ts';
 import type { History, HistoryGroup } from '../../api.ts';
 
 const STALE_MS = 30e3;
+// a history read the PC never answers gives up, so the sidebar can try again (historyTick waits while a read is out)
+const HISTORY_TIMEOUT_MS = 20e3;
 let data: History | null = null;
 let fetchedAt = 0, loading = false, gen = 0;
 let failed = false;                  // the last history fetch failed (the PC did not answer)
@@ -38,9 +40,11 @@ export async function loadHistory(): Promise<void> {
   const my = ++gen, q = query;
   loading = true;
   let fresh: History;
-  try { fresh = await getJson<History>(url({ q, ...scope() })); } catch { failed = true; loading = false; onChange(); return; } finally { fetchedAt = Date.now(); }
-  failed = false;
+  try { fresh = await getJson<History>(url({ q, ...scope() }), HISTORY_TIMEOUT_MS); }
+  catch { if (my !== gen) return; failed = true; loading = false; onChange(); return; }   // a late failure of an old search changes nothing
+  finally { if (my === gen) fetchedAt = Date.now(); }
   if (my !== gen) return;   // a newer search went out meanwhile
+  failed = false;
   loading = false;
   if (data && data.q === fresh.q) {
     for (const g of fresh.groups) {
@@ -74,7 +78,7 @@ export async function loadOlder(folderId: string): Promise<void> {
   if (!g || !g.more) return;
   const last = g.items[g.items.length - 1];
   let r: History;
-  try { r = await getJson<History>(url({ q: query, ...scope(), folder: folderId, before: last?.at || '', limit: 25 })); } catch { olderFailed = folderId; onChange(); return; }
+  try { r = await getJson<History>(url({ q: query, ...scope(), folder: folderId, before: last?.at || '', limit: 25 }), HISTORY_TIMEOUT_MS); } catch { olderFailed = folderId; onChange(); return; }
   olderFailed = null;
   const page = r.groups[0];
   const cur = data?.groups.find(x => x.id === folderId);
