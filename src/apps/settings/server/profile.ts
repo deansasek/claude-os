@@ -33,20 +33,26 @@ export const getProfile = (): Profile => ({ ...state });
 
 export const welcomeDone = (): boolean => welcomed;
 
-/** Mark the first-run welcome finished or skipped (true), or bring it back (false). Returns the flag now. */
+/** Mark the first-run welcome finished or skipped (true), or bring it back (false). Returns the flag now; a save the PC cannot make leaves it as it was. */
 export function setWelcomeDone(done: boolean): boolean {
-  save(state, done);
+  try { save(state, done); }
+  catch (e) { console.log(`welcome could not be saved (${(e as NodeJS.ErrnoException).code})`); return welcomed; }
   welcomed = done;
   return welcomed;
 }
 
-/** Save the fields sent (a field left out stays as it was). Returns the profile now. */
-export function setProfile(body: Record<string, unknown>): Profile {
+
+/** Save the fields sent (a field left out stays as it was). Returns the profile now, or save_failed when the PC cannot write it. */
+export function setProfile(body: Record<string, unknown>): Profile | { ok: false; error: string } {
   const next: Profile = { ...state };
   if (typeof body.name === 'string') next.name = clean(body.name, NAME_MAX);
   if (typeof body.nickname === 'string') next.nickname = clean(body.nickname, NICK_MAX);
   if (typeof body.role === 'string') next.role = (ROLES as readonly string[]).includes(body.role) ? body.role : '';
-  save(next);
+  try { save(next); }
+  catch (e) {
+    console.log(`profile could not be saved (${(e as NodeJS.ErrnoException).code})`);
+    return { ok: false, error: 'save_failed' };
+  }
   state = next;
   return getProfile();
 }
@@ -72,15 +78,16 @@ export function savePhoto(raw: Buffer | null): { ok: true; profile: Profile } | 
   return { ok: true, profile: getProfile() };
 }
 
-/** Delete the profile photo. A missing file is already gone; any other failure keeps the photo and the profile as they were. */
+/** Delete the profile photo. The profile is saved without it first, so a failed save keeps the photo. A photo file that cannot be deleted is left behind, unused. */
 export function removePhoto(): Profile | { ok: false; error: string } {
-  try { fs.rmSync(PHOTO, { force: true }); }
+  const next: Profile = { ...state, photoAt: 0 };
+  try { save(next); }
   catch (e) {
-    console.log(`profile photo could not be removed (${(e as NodeJS.ErrnoException).code})`);
+    console.log(`profile could not be saved (${(e as NodeJS.ErrnoException).code})`);
     return { ok: false, error: 'The PC could not delete the photo. Try again.' };
   }
-  const next: Profile = { ...state, photoAt: 0 };
-  save(next);
+  try { fs.rmSync(PHOTO, { force: true }); }
+  catch (e) { console.log(`profile photo could not be removed (${(e as NodeJS.ErrnoException).code})`); }
   state = next;
   return getProfile();
 }
