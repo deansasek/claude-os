@@ -13,7 +13,7 @@ const body = src.slice(start, src.indexOf('\n}\n', start));
 
 test('setUnits sends the unit to the PC without a loaded forecast as a condition', () => {
   assert.ok(start > 0, 'setUnits exists');
-  assert.match(body, /try \{ await sendLocation\(\{ units: u \}\); \}\s*catch \(err\) \{/);
+  assert.match(body, /try \{ await sendLocation\(\{ units: u \}\);\s*dispatchEvent\(new CustomEvent\('hub:weather'\)\); \}\s*(?:\/\/[^\n]*)?\s*catch \(err\) \{/);
   assert.doesNotMatch(body, /isOk\(wx\)/);
 });
 
