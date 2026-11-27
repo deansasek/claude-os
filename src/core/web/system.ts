@@ -486,6 +486,8 @@ function paintCC(): void {
       status += `<span class="cc-stat cc-batt${b.percent <= 20 && !b.charging ? ' low' : ''}">${batteryGlyph(b)}<span class="num">${b.percent}%</span></span>`;
     } catch { /* ignore */ }
     paintRange('ccBright', prefs.brightness);
+    // with Android's auto-brightness on, the backlight is Android's to set: the slider is greyed, as in Settings → Display
+    ($s('ccBright') as HTMLInputElement).disabled = autoBrightness.on;
     try {
       const v = device.volume().media;
       paintRange('ccVol', v);
@@ -813,7 +815,7 @@ function bindCC(stage: HTMLElement): void {
       el.style.setProperty('--p', `${(+el.value - +el.min) / (+el.max - +el.min) * 100}%`);
       try { fn(+el.value / 100); } catch { /* ignore */ }
     });
-    bind('ccBright', v => { prefs.brightness = Math.max(.02, v); });
+    bind('ccBright', v => { if (!autoBrightness.on) prefs.brightness = Math.max(.02, v); });
     bind('ccVol', v => { device.setVolume('media', v); $s('ccVolIcon').innerHTML = v > 0 ? I.vol : I.mute; });
   }
   // the card's buttons run the playing app's actions; a failed one is ignored, as the other tiles are
