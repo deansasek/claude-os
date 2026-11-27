@@ -54,9 +54,11 @@ export function playableStations(records: unknown[]): Station[] {
   return records.map(stationFrom).filter((s): s is Station => s !== null);
 }
 
-/** Keep only saved stations whose stream is https (stored favourites are checked again before they play). */
-export function playable(list: Station[]): Station[] {
-  return list.flatMap(s => {
+/** Keep only saved stations whose stream is https (stored favourites are checked again before they play). An entry that is not an object is dropped, so one bad value cannot empty the list. */
+export function playable(list: unknown[]): Station[] {
+  return list.flatMap(x => {
+    if (typeof x !== 'object' || x === null) return [];
+    const s = x as Station;
     const url = httpsUrl(s.url);
     return url ? [{ ...s, url, favicon: httpsUrl(s.favicon) ?? '' }] : [];
   });
