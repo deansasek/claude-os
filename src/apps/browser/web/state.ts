@@ -92,6 +92,29 @@ export function host(u: string): string {
   try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; }
 }
 
+/** One address-bar match: a bookmark or a history visit. */
+export interface SuggestHit { kind: 'bookmark' | 'history'; url: string; title: string }
+
+/**
+ * The address-bar matches for `q` (already lower case): bookmarks first, then history, one row per URL, at most `max`.
+ * A title that is not a string counts as empty. Pure: no DOM, no store.
+ */
+export function suggestMatches(q: string, history: Visit[], bookmarks: Bookmark[], max: number): SuggestHit[] {
+  const out: SuggestHit[] = [];
+  const seen = new Set<string>();
+  const hit = (url: string, title: unknown): boolean =>
+    url.toLowerCase().includes(q) || (typeof title === 'string' && title.toLowerCase().includes(q));
+  for (const [kind, list] of [['bookmark', bookmarks], ['history', history]] as const) {
+    for (const v of list) {
+      if (out.length >= max) return out;
+      if (seen.has(v.url) || !hit(v.url, v.title)) continue;
+      seen.add(v.url);
+      out.push({ kind, url: v.url, title: typeof v.title === 'string' ? v.title : '' });
+    }
+  }
+  return out;
+}
+
 /** Top-level domains that make "word.word" an address; anything else with a dot ("node.js", "file.pdf") searches. */
 const TLDS = new Set(['com', 'org', 'net', 'io', 'dev', 'app', 'ai', 'co', 'uk', 'us', 'ca', 'de', 'edu', 'gov', 'me', 'tv', 'gg', 'xyz', 'info']);
 /** The home network and this tablet: localhost, *.local, *.lan, *.home, home.arpa, 127.x, 169.254.x, 10.x, 192.168.x, 172.16-31.x. */

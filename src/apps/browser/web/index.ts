@@ -15,6 +15,7 @@ import { Keyboard } from '../../../core/web/keyboard.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import { manifest } from '../manifest.ts';
 import { hasNumberId, hasStringId, hasUrl, isVisit, readSavedList, readSavedObject } from './saved-list.ts';
+import { suggestMatches } from './state.ts';
 import {
   I, S, ENGINES, DEFAULT_QUICK, K, MAX_TABS, MAX_QUICK, MAX_DL, MAX_PAST, PERM_KINDS, PERM_LABEL, type Tab, type Engine, type Quick,
   type Visit, type Bookmark, type Dl, type Perms, type Live, host, liveOf, cur, newId, readJson, resolveInput, reading, ago, visit,
@@ -117,12 +118,8 @@ function renderSuggest(text: string): void {
     const r = reading(text);
     rows.push(`<button class="br-row" data-url="${esc(r.url)}">${r.search ? I.searchSm : I.globeSm}<span class="br-rt">${esc(r.search ? `Search ${ENGINES[S.engine].label} for “${text.trim()}”` : r.url)}</span></button>`);
     if (r.alt) rows.push(`<button class="br-row" data-url="${esc(r.alt)}">${I.globeSm}<span class="br-rt">${esc(`Go to ${text.trim()}`)}</span></button>`);
-    const seen = new Set<string>();
-    for (const v of S.history) {
-      if (rows.length >= 7) break;
-      if (seen.has(v.url) || !(v.url.toLowerCase().includes(q) || v.title.toLowerCase().includes(q))) continue;
-      seen.add(v.url);
-      rows.push(`<button class="br-row" data-url="${esc(v.url)}">${I.clockSm}<span class="br-rt">${esc(v.title || host(v.url))}</span><span class="br-rd">${esc(host(v.url))}</span></button>`);
+    for (const h of suggestMatches(q, S.history, S.bookmarks, 7 - rows.length)) {
+      rows.push(`<button class="br-row" data-url="${esc(h.url)}">${h.kind === 'bookmark' ? I.star : I.clockSm}<span class="br-rt">${esc(h.title || host(h.url))}</span><span class="br-rd">${esc(host(h.url))}</span></button>`);
     }
   }
   $('brSuggest').innerHTML = rows.join('') || '<div class="br-empty">Type an address, or words to search.</div>';
