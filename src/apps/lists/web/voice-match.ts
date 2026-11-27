@@ -56,7 +56,7 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
     const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
     const clean = (s: string): string => s.replace(/^(?:a|an|some|more) (?=\S)/, '').trim();
     // several items only when the words have a comma: "milk, eggs and bread". "milk and eggs" stays one item (and so does "mac and cheese").
-    const parts = hadComma ? m[1].split(/\s+comma\s+|\s+and\s+/).map(clean).filter(Boolean) : [clean(m[1])];
+    const parts = hadComma ? m[1].replace(/\s+comma$/, '').split(/\s+comma\s+(?:and\s+)?|\s+and\s+/).map(clean).filter(Boolean) : [clean(m[1])];
     if (!parts.length || parts.length > 10 || parts.some(p => p.length > 80 || /^(it|that|this|them)$/.test(p))) return null;
     const list = which(m[2], custom);
     if (parts.length > 1) return { op: 'addMany', list, texts: parts.map(cap) };
