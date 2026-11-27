@@ -3,7 +3,7 @@
 // The page and the voice write are modelled on the stored queue, as the page does it. Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { queueAppend, queueRemove, type Op } from '../src/apps/lists/web/local.ts';
+import { keepOps, queueAppend, queueRemove, type Op } from '../src/apps/lists/web/local.ts';
 
 const add = (text: string): Op => ({ path: 'add', body: { list: 'shopping', text } });
 
@@ -36,4 +36,18 @@ test('an entry without a key gets one, and two entries never share a key', () =>
   const a = queueAppend([], add('A'))[0];
   const b = queueAppend([a], add('B'));
   assert.ok(a.key && b[1].key && a.key !== b[1].key);
+});
+
+test('a stored queue with a bad entry keeps the good ones and drops the rest', () => {
+  const good: Op = { path: 'add', body: { list: 'shopping', text: 'Milk' }, key: 'k1' };
+  assert.deepEqual(keepOps([null, good, 42, { path: 'add' }, 'x']), { ops: [good], dropped: true });
+});
+
+test('a queue of only good entries is not reported as changed', () => {
+  const good: Op = { path: 'add', body: { list: 'shopping', text: 'Milk' }, key: 'k1' };
+  assert.deepEqual(keepOps([good]), { ops: [good], dropped: false });
+});
+
+test('a stored value that is not an array is an empty queue', () => {
+  assert.deepEqual(keepOps({ path: 'add', body: {} }), { ops: [], dropped: false });
 });
