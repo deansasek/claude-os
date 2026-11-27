@@ -13,6 +13,7 @@ import { setMediaActions, setNowPlaying } from '../../../core/web/media.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '../api.ts';
+import { cleanQuery } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, addSearch, browsePick, moreLikeTag, nextChoice, noMatchText } from './catalogue.ts';
 import {
@@ -425,7 +426,7 @@ async function loadBrowse(): Promise<void> {
 
 // A query (or a filter) is remembered as a recent search; the Search view then shows results, or Browse all when empty.
 function search(q: string): void {
-  query = q.trim().slice(0, 60);
+  query = cleanQuery(q);
   if (query) { searches = addSearch(searches, query); store.set(SEARCHES_KEY, JSON.stringify(searches)); }
   go({ kind: 'search' });
 }

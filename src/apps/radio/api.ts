@@ -25,3 +25,6 @@ export type FacetsResult =
 
 /** The stream's current title (ICY metadata), or '' when the stream sends none. */
 export interface TitleResult { title: string }
+
+/** A search as the family typed it: runs of spaces become one, the ends are cut, and it is at most 60 characters. */
+export const cleanQuery = (q: string): string => q.replace(/\s+/g, ' ').trim().slice(0, 60);
