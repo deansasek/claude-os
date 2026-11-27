@@ -225,14 +225,20 @@ function openStory(id: string): void {
 
 // ---------- topics: Settings > Apps > News ----------
 /** Reads which topics are on from the PC. A failed read keeps the choices already known. */
+// a topic read or save that is no longer the newest does not change the choices (each save also counts per topic)
+let topicsSeq = 0;
+const topicSeq = new Map<string, number>();
 async function loadTopics(): Promise<void> {
+  const seq = ++topicsSeq;
   try {
     const r = await getJson<NewsTopicsResponse>('/api/news/topics', NEWS_TIMEOUT_MS);
+    if (seq !== topicsSeq) return;   // a newer read or save came first
     choices = Object.fromEntries(r.topics.map(t => [t.id, t.on]));
     topicsLoaded = true;
     topicsFailed = false;
     appSettingsChanged();
   } catch {
+    if (seq !== topicsSeq) return;
     // keep the choices already known; with none, Settings shows the topics could not load
     topicsFailed = true;
     appSettingsChanged();
@@ -241,8 +247,11 @@ async function loadTopics(): Promise<void> {
 
 /** Saves one topic on or off on the PC. Throws when the PC does not save it, so Settings shows the error (web/topics.ts). */
 async function saveTopic(id: string, on: boolean): Promise<void> {
+  const seq = ++topicsSeq;
+  topicSeq.set(id, seq);
   let r: { ok: boolean } | null = null;   // null: the request failed and the PC gave no answer
-  try { r = await postJson<{ ok: boolean }>('/api/news/topics', { id, on }); } catch { r = null; }
+  try { r = await postJson<{ ok: boolean }>('/api/news/topics', { id, on }, NEWS_TIMEOUT_MS); } catch { r = null; }
+  if (topicSeq.get(id) !== seq) return;   // a newer save of this topic came first: its choice is the one that counts
   if (!r || !r.ok) throw new Error(topicSaveError(r));
   choices[id] = on;
   topicsDirty = true;
