@@ -604,10 +604,15 @@ const ACTIONS: QuickAction[] = [
 let sceneActs: SceneAct[] = [];
 const sceneBusy = new Map<string, 'busy' | 'done' | 'fail'>();
 
+// a scene list read the PC never answers gives up; each read takes a number, and only the newest read sets the buttons
+const SCENES_TIMEOUT_MS = 20e3;
+let scenesSeq = 0;
 async function loadScenes(): Promise<void> {
+  const seq = ++scenesSeq;
   let next: SceneAct[];
   try {
-    const r = await getJson<HaScenes>('/api/home-assistant/scenes');
+    const r = await getJson<HaScenes>('/api/home-assistant/scenes', SCENES_TIMEOUT_MS);
+    if (seq !== scenesSeq) return;   // a newer read (after a change in Settings) started: its answer is the one that counts
     next = sceneActsAfterRead(sceneActs, r);
   } catch { /* the PC is away: keep what is shown */ return; }
   if (JSON.stringify(next) === JSON.stringify(sceneActs)) return;
