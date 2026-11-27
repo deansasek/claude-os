@@ -201,3 +201,13 @@ test('load(): the keep branch shows the note, restores topicsDirty only for a fa
   assert.match(stale, /loadedAt = 0;/);
   assert.match(stale, /return;/);
 });
+
+test('askText gives the title, source, summary and link of a story, and leaves out what is missing', async () => {
+  const { askText } = await import('../src/apps/news/web/screen.ts');
+  const full = { id: 'a', title: 'Trains stop', source: 'Daily News', description: 'A strike.', link: 'https://news.example/trains', published: '2026-11-26T08:00:00Z' } as NewsItem;
+  assert.equal(askText(full), 'Trains stop\nFrom Daily News\nA strike.\nhttps://news.example/trains');
+  const noLink = { ...full, link: null } as NewsItem;
+  assert.equal(askText(noLink), 'Trains stop\nFrom Daily News\nA strike.');
+  const noSummary = { ...full, description: '' } as NewsItem;
+  assert.equal(askText(noSummary), 'Trains stop\nFrom Daily News\nhttps://news.example/trains');
+});

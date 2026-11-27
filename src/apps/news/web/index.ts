@@ -7,12 +7,13 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import { critterSvg } from '../../../core/web/critter-svg.ts';
 import { browser, nativeHas, newsFetch } from '../../../core/web/device.ts';
 import { openApp } from '../../../core/web/system.ts';
+import { askWithText } from '../../claude/web/reply.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import type { NewsFeedResponse, NewsItem, NewsTopicsResponse } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { FEEDS } from './feeds.ts';
 import { activeFeeds, topicRows, topicSaveError, type TopicChoices } from './topics.ts';
-import { ago, FEED_ERROR_TEXT, keepStoriesOnError, linkFor, pictureFor, POLL_MS, readerFor, screenFor, STALE_TEXT, staleNotes, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
+import { ago, FEED_ERROR_TEXT, keepStoriesOnError, askText, linkFor, pictureFor, POLL_MS, readerFor, screenFor, STALE_TEXT, staleNotes, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
 import { feedSource, tabletFeed, type KeyValue } from './tablet.ts';
 
 let ctx: AppContext;
@@ -191,6 +192,11 @@ function openStory(id: string): void {
   const act = $('nwSheetAct');
   act.replaceChildren();
   $('nwSheetLink').hidden = true;
+  // Claude about the story: its title, source, summary and link, in the composer
+  const ask = el('button', 'nw-read', 'Ask Claude about this');
+  ask.type = 'button';
+  ask.addEventListener('click', () => { report('news-ask'); $('nwSheet').hidden = true; askWithText(askText(item)); openApp('claude'); });
+  act.append(ask);
   // a story without an http or https link gets no Read button
   if (r.link) {
     const link = r.link;
