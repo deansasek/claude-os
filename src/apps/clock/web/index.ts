@@ -10,7 +10,7 @@
 // and the critter hops and waves. A reload while ringing carries on ringing.
 // The rail icon is a little clock showing the time; the rail label is the time, or the countdown while a timer runs.
 // For testing, ?hour=23 (and &min=59) shifts this app's clock.
-import { esc, onStore, params, report, store } from '../../../core/web/dom.ts';
+import { esc, getJson, onStore, params, report, store } from '../../../core/web/dom.ts';
 import { clockIcon } from '../../../core/web/app-icons.ts';
 import { INK, inkSay, inkedBlob, inkedShape, rng } from '../../../core/web/ink.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -806,11 +806,14 @@ let sky: Sky = 'clear';
 const skyOf = (code: number): Sky =>
   code <= 1 ? 'clear' : code === 2 ? 'partly' : code === 3 ? 'cloudy' : code <= 48 ? 'fog'
   : code >= 95 ? 'storm' : (code >= 71 && code <= 77) || code === 85 || code === 86 ? 'snow' : 'rain';
+// a sky read the PC never answers gives up; each read takes a number, and only the newest read sets the sky
+const SKY_TIMEOUT_MS = 20e3;
+let skySeq = 0;
 async function refreshSky(): Promise<void> {
+  const seq = ++skySeq;
   try {
-    const r = await fetch('/api/weather/forecast', { cache: 'no-store' });
-    if (!r.ok) return;
-    const f = await r.json() as { current?: { weather_code?: number } };
+    const f = await getJson<{ current?: { weather_code?: number } }>('/api/weather/forecast', SKY_TIMEOUT_MS);
+    if (seq !== skySeq) return;   // a newer read (say, after a new place) came first
     if (typeof f.current?.weather_code !== 'number') return;
     sky = skyOf(f.current.weather_code);
     (['clear', 'partly', 'cloudy', 'fog', 'rain', 'snow', 'storm'] as Sky[]).forEach(k => ctx.root.classList.toggle(`ck-sky-${k}`, k === sky));
@@ -1067,6 +1070,7 @@ function mount(context: AppContext): void {
   else store.set(K.ring, null);
   void refreshSky();
   setInterval(() => void refreshSky(), 15 * 60e3);
+  addEventListener('hub:weather', () => { void refreshSky(); });   // a new place or unit in Weather: read the sky again now
   // any change to the timer, stopwatch, seconds or ringing state re-times the tick (store writes say so)
   onStore(k => { if (k === K.timers || k === K.sw || k === K.secs || k === K.ring || k === K.alarms) tickLoop(); });
   // a tap on a timer's row focuses it; "New timer" brings the dial back
