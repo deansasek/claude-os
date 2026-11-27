@@ -63,7 +63,7 @@ function loadUsePhoto(setup: Setup) {
   const dollar = (id: string) => { assert.equal(id, 'stPhotoSheet'); return sheet; };
 
   const usePhoto = new Function('$', 'Image', 'document', 'fetch', 'confirmSheet', 'applyProfile', 'report',
-    `let photoSheetSeq = 0;\n${code}\nreturn usePhoto;`)(dollar, FakeImage, doc, fakeFetch, confirmSheet, applyProfile, report) as (url: string) => Promise<void>;
+    `let photoSheetSeq = 0;\nlet photoSaveSeq = 0;\nconst PHOTO_SAVE_TIMEOUT_MS = 20e3;\n${code}\nreturn usePhoto;`)(dollar, FakeImage, doc, fakeFetch, confirmSheet, applyProfile, report) as (url: string) => Promise<void>;
   return { usePhoto, calls, sheet };
 }
 
@@ -155,7 +155,7 @@ function loadRemovePhoto(setup: { throws?: boolean; answer?: unknown }) {
   const report = (id: string) => { calls.reported.push(id); };
 
   const removePhoto = new Function('postJson', 'confirmSheet', 'applyProfile', 'report',
-    `${code}\nreturn removePhoto;`)(postJson, confirmSheet, applyProfile, report) as () => Promise<void>;
+    `const PHOTO_SAVE_TIMEOUT_MS = 20e3;\nlet photoSaveSeq = 0;\n${code}\nreturn removePhoto;`)(postJson, confirmSheet, applyProfile, report) as () => Promise<void>;
   return { removePhoto, calls };
 }
 

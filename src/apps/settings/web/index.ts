@@ -443,6 +443,9 @@ function photoErrorText(error: unknown): string {
 }
 
 /** Crop a photo from the library to a 256 px square (the middle of it), and keep it as the profile photo. */
+// a photo save or remove the PC never answers gives up; an answer to an older pick or remove does not change the profile
+const PHOTO_SAVE_TIMEOUT_MS = 20e3;
+let photoSaveSeq = 0;
 async function usePhoto(url: string): Promise<void> {
   photoSheetSeq++;   // a photo list still out is for a sheet that is now closed
   $('stPhotoSheet').hidden = true;
@@ -460,11 +463,13 @@ async function usePhoto(url: string): Promise<void> {
   } catch { blob = null; }
   if (!blob) { confirmSheet('Couldn’t use that photo', 'Try another photo, or try again.', 'OK', () => {}); return; }
   // stage 2: the PC saves the photo. A fetch that throws or a non-JSON answer means the PC cannot be reached.
+  const seq = ++photoSaveSeq;
   let j: { ok?: boolean; profile?: Profile; error?: unknown } | null;
   try {
-    const r = await fetch('/api/settings/photo', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+    const r = await fetch('/api/settings/photo', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob, signal: AbortSignal.timeout(PHOTO_SAVE_TIMEOUT_MS) });
     j = await r.json() as { ok?: boolean; profile?: Profile; error?: unknown } | null;
   } catch { j = null; }
+  if (seq !== photoSaveSeq) return;   // a newer pick or remove came first: its profile is the one to show
   if (j === null) { confirmSheet('Couldn’t use that photo', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
   // stage 3: the PC answered. Its reason says what to change.
   if (!j.ok || !j.profile) { confirmSheet('Couldn’t use that photo', photoErrorText(j.error), 'OK', () => {}); return; }
@@ -474,9 +479,11 @@ async function usePhoto(url: string): Promise<void> {
 
 /** Remove the profile photo. The PC answers with the full profile; anything else keeps the profile as it is. */
 async function removePhoto(): Promise<void> {
+  const seq = ++photoSaveSeq;
   let r: (Partial<Profile> & { error?: unknown }) | null;
-  try { r = await postJson<(Partial<Profile> & { error?: unknown }) | null>('/api/settings/photo/remove', {}); }
-  catch { confirmSheet('Couldn’t remove it', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
+  try { r = await postJson<(Partial<Profile> & { error?: unknown }) | null>('/api/settings/photo/remove', {}, PHOTO_SAVE_TIMEOUT_MS); }
+  catch { if (seq !== photoSaveSeq) return; confirmSheet('Couldn’t remove it', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
+  if (seq !== photoSaveSeq) return;   // a newer pick or remove came first
   // the PC answered without a profile: say why, and do not apply anything
   if (!r || typeof r.name !== 'string') {
     const why = r && typeof r.error === 'string' && r.error ? r.error : 'The PC did not remove the photo. Try again.';
