@@ -14,10 +14,10 @@ const body = src.slice(start, src.indexOf('\n}\n', start));
 test('the folder list is read on every paint, not only once', () => {
   assert.ok(start > 0, 'paintSessions() exists');
   assert.doesNotMatch(body, /if \(!projects\) \{/);
-  assert.match(body, /projects = await getJson<Project\[\]>\('\/api\/claude\/projects'\)/);
+  assert.match(body, /const p = await getJson<Project\[\]>\('\/api\/claude\/projects', SESSIONS_TIMEOUT_MS\);[\s\S]*?projects = p;/);
 });
 
 test('a failed read keeps the last good list', () => {
-  assert.match(body, /catch \{ foldersFailed = true; \}/);
+  assert.match(body, /catch \{ (?:if \(seq !== foldersSeq\) return; )?foldersFailed = true; \}/);
   assert.doesNotMatch(body, /projects = null/);
 });

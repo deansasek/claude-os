@@ -655,7 +655,11 @@ function folderLabel(fid: string): string {
   return 'Unavailable';
 }
 
+// the default model and folder reads give up on a PC that does not answer; a repaint that is no longer the newest does nothing
+const SESSIONS_TIMEOUT_MS = 20e3;
+let foldersSeq = 0;
 async function paintSessions(): Promise<void> {
+  const seq = ++foldersSeq;
   const mid = newPref('model'), mode = newPref('mode') || 'default', fid = newFolderPref();
   $('stNewModelV').textContent = mid ? (modelChoices().find(m => m.id === mid)?.label ?? mid) : 'Automatic';
   $('stNewModeV').textContent = MODE_NAME[mode] ?? 'Manual';
@@ -663,7 +667,11 @@ async function paintSessions(): Promise<void> {
   await loadModels();   // the models this PC's Claude offers (cached on the tablet)
   if (section === 'sessions') $('stNewModelV').textContent = mid ? (modelChoices().find(m => m.id === mid)?.label ?? mid) : 'Automatic';
   // read again each time: a folder added or removed on the PC shows at once; a failed read keeps the last good list
-  try { projects = await getJson<Project[]>('/api/claude/projects'); foldersFailed = false; } catch { foldersFailed = true; }
+  try {
+    const p = await getJson<Project[]>('/api/claude/projects', SESSIONS_TIMEOUT_MS);
+    if (seq !== foldersSeq) return;   // a newer repaint came first: its folder list is the one that counts
+    projects = p; foldersFailed = false;
+  } catch { if (seq !== foldersSeq) return; foldersFailed = true; }
   if (section === 'sessions') $('stNewFolderV').textContent = folderLabel(newFolderPref());
 }
 
