@@ -12,11 +12,11 @@ export const hasStringId = (v: unknown): boolean => isObj(v) && typeof v.id === 
 /** An entry with a numeric id (downloads). */
 export const hasNumberId = (v: unknown): boolean => isObj(v) && typeof v.id === 'number' && Number.isFinite(v.id);
 
-/** The saved list, with the entries that pass `ok`; null when the saved value is not an array. */
-export function readSavedList<T>(raw: string | null, ok: (v: unknown) => boolean): T[] | null {
+/** The saved list, with the entries that pass `ok` (at most `max`); null when the saved value is not an array. */
+export function readSavedList<T>(raw: string | null, ok: (v: unknown) => boolean, max = Infinity): T[] | null {
   let v: unknown;
   try { v = JSON.parse(raw || 'null'); } catch { return null; }
-  return Array.isArray(v) ? (v.filter(ok) as T[]) : null;
+  return Array.isArray(v) ? (v.filter(ok) as T[]).slice(0, max) : null;
 }
 
 /** The saved permissions: a plain object, or null when the value is anything else. */

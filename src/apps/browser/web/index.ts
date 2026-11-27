@@ -593,13 +593,13 @@ function mount(c: AppContext): void {
   ctx = c;
   // each saved list is read field by field: a value that is not a list, or an entry that fails its check, is left out
   const saved = readJson<{ active?: unknown; tabs?: unknown } | null>(K.tabs, null);
-  S.tabs = Array.isArray(saved?.tabs) ? (saved!.tabs as unknown[]).filter(hasStringId) as Tab[] : [];
+  S.tabs = Array.isArray(saved?.tabs) ? (saved!.tabs as unknown[]).filter(hasStringId).slice(0, MAX_TABS) as Tab[] : [];
   if (!S.tabs.length) S.tabs = [{ id: newId(), url: '', title: '', icon: '' }];
   S.active = saved && typeof saved.active === 'string' && S.tabs.some(t => t.id === saved.active) ? saved.active : S.tabs[0].id;
   S.history = readSavedList<Visit>(store.get(K.history), isVisit) ?? [];
   S.bookmarks = readSavedList<Bookmark>(store.get(K.bookmarks), hasUrl) ?? [];
   S.downloads = readSavedList<Dl>(store.get(K.downloads), hasNumberId) ?? [];
-  S.quick = readSavedList<Quick>(store.get(K.quick), hasUrl) ?? DEFAULT_QUICK;
+  S.quick = readSavedList<Quick>(store.get(K.quick), hasUrl, MAX_QUICK) ?? DEFAULT_QUICK;
   S.perms = readSavedObject<Perms>(store.get(K.perms)) ?? {};
   const eng = store.get(K.engine);
   S.engine = (Object.keys(ENGINES) as Engine[]).find(e => e === eng) || 'duckduckgo';
