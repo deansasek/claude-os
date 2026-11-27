@@ -149,7 +149,7 @@ const app: HubApp = {
   onShow() {
     void refreshLast();
     // after the page has finished sliding in, so the preview lands on the frame
-    setTimeout(() => { if (!isLooking()) cam.show($('caFrame')); }, 320);
+    setTimeout(() => { if (ctx.isVisible() && !isLooking()) cam.show($('caFrame')); }, 320);
   },
   onHide() { exitLook(); cam.hide(); document.documentElement.classList.remove('cam-live'); },
   onClose() { exitLook(); cam.hide(); document.documentElement.classList.remove('cam-live'); },
