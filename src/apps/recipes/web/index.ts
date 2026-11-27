@@ -16,8 +16,11 @@ import { nativeBusy, nativeOn, nativeSend, nativeView } from '../../claude/web/n
 import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { PANTRY_MAX } from './pantry.ts';
+import { isQueued, readLists, writeList } from '../../lists/web/readers.ts';
+import { addManyReply } from '../../lists/web/voice-match.ts';
+import type { FamilyList } from '../../lists/api.ts';
 import {
-  RECIPE_PROMPT, adaptPrompt, cookStep, countWord, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, stepMinutes, textRecipe, tonightPrompt, type Recipe,
+  RECIPE_PROMPT, adaptPrompt, cookStep, countWord, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, shoppingItems, stepMinutes, textRecipe, tonightPrompt, type Recipe,
 } from './recipe.ts';
 
 const API = `/api/${manifest.id}`;
@@ -542,6 +545,7 @@ function detailHtml(r: Recipe): string {
     + (r.tag ? `<span class="rc-kicker">${esc(r.tag)}</span>` : '')
     + `<h2 class="rc-display">${esc(r.name)}</h2><p class="rc-sub">${esc(meta(r)) || 'Serves and time not given'}</p>`
     + `<div class="rc-actions"><button class="rc-btn pri" data-act="cook">Start cooking</button>`
+    + `<button class="rc-btn" data-act="shop">Add to shopping list</button>`
     + (own
       ? `<button class="rc-btn danger" data-act="delete">${confirmDelete ? 'Tap again to delete' : 'Delete'}</button>`
       : `<button class="rc-btn rc-save${saved ? ' on' : ''}" data-act="save-this" aria-pressed="${saved}">${HEART(saved)}${saved ? 'Saved' : 'Save'}</button>`)
@@ -588,6 +592,23 @@ function cookHtml(r: Recipe, step: number): string {
     + `<div data-timers>${timersHtml()}</div></section></div>`;
 }
 
+/** Put this recipe's ingredients on the Shopping list (the items already there are left out). */
+async function addToShopping(r: Recipe): Promise<void> {
+  let shopping: FamilyList | undefined;
+  try { shopping = (await readLists()).find(l => l.id === 'shopping'); }
+  catch { msg = 'Couldn’t reach your PC, so nothing was added. Try again.'; render(); return; }
+  const onList = (shopping?.items ?? []).filter(i => !i.done).map(i => i.text);
+  const items = shoppingItems(r.ingredients.map(i => i.item), onList);
+  if (!items.length) { msg = 'Everything in this recipe is already on your shopping list.'; render(); return; }
+  let ok = 0, waiting = 0;
+  for (const text of items) {
+    try { await writeList('add', { list: 'shopping', text }); ok++; }
+    catch (e) { if (isQueued(e)) waiting++; else break; }
+  }
+  msg = addManyReply(items.slice(0, ok + waiting), ok, waiting, 'Shopping');
+  render();
+}
+
 function render(): void {
   if (!ctx) return;
   const el = $('rcBody');
@@ -620,6 +641,7 @@ function onClick(ev: Event): void {
     case 'ask-time': askTime = true; toTop(); break;
     case 'cancel-time': askTime = false; break;
     case 'tonight': askClaude(tonightPrompt(recipes.map(r => r.name), b.dataset.time ?? ''), 'tonight'); return;
+    case 'shop': if (screen.t === 'detail') void addToShopping(screen.r); return;
     case 'save-draft':
       if (draft) { keep(draft.kind === 'recipe' ? draft.recipe : textRecipe(draft.text)); toTop(); }
       break;

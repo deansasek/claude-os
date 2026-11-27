@@ -99,6 +99,21 @@ export function countWord(n: number, word: string): string {
   return `${n} ${n === 1 ? word : `${word}s`}`;
 }
 
+/** The ingredient names to put on the shopping list: trimmed, the first letter capitalised, no repeats, and none already on the list (the names still to buy, any case). */
+export function shoppingItems(items: string[], onList: string[], max = 40): string[] {
+  const have = new Set(onList.map(t => t.trim().toLowerCase()));
+  const out: string[] = [];
+  for (const raw of items) {
+    const name = raw.trim().replace(/\s+/g, ' ').slice(0, 60);
+    const key = name.toLowerCase();
+    if (!name || have.has(key)) continue;
+    have.add(key);
+    out.push(name.charAt(0).toUpperCase() + name.slice(1));
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 /** The text of one cook-mode step. The step number is clamped to the recipe's steps. */
 /** The first time a step names, in whole minutes: "25 minutes", "10-15 min" (the larger), "1 hour". 1 to 240, or null. */
 export function stepMinutes(text: string): number | null {
