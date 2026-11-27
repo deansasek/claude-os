@@ -110,10 +110,15 @@ export async function listModels(): Promise<ModelList> {
       let release!: () => void;
       const idle = new Promise<void>(r => { release = r; });
       async function* never() { await idle; }
-      const q = query({ prompt: never(), options: { cwd: (fs.mkdirSync(SCRATCH, { recursive: true }), SCRATCH), permissionMode: 'default' } });
-      try { takeModels(await Promise.race([q.supportedModels(), new Promise<never>((_, no) => setTimeout(() => no(new Error('timeout')), 30e3))])); }
+      // the folder and the process are made inside the try: a failure here is logged and retried, and the loading flag is always cleared
+      let q: ReturnType<typeof query> | undefined;
+      try {
+        fs.mkdirSync(SCRATCH, { recursive: true });
+        q = query({ prompt: never(), options: { cwd: SCRATCH, permissionMode: 'default' } });
+        takeModels(await Promise.race([q.supportedModels(), new Promise<never>((_, no) => setTimeout(() => no(new Error('timeout')), 30e3))]));
+      }
       catch (e) { console.log('claude: model list unavailable:', String((e as Error).message || e).slice(0, 120)); modelsAt = Date.now() - 5.5 * 3600e3; }   // retry in half an hour
-      finally { release(); try { q.close(); } catch { /* already gone */ } modelsLoading = null; }
+      finally { release(); try { q?.close(); } catch { /* already gone */ } modelsLoading = null; }
     })();
   }
   if (modelsLoading && models.source === 'fallback') await modelsLoading;
