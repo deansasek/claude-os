@@ -199,7 +199,7 @@ export function toggleBookmark(): void {
 
 /** Puts a removed bookmark back where it was (the Undo banner). */
 function restoreBookmark(b: Bookmark, at: number): void {
-  S.bookmarks.splice(Math.min(at, S.bookmarks.length), 0, b);
+  S.bookmarks = restoreLater(S.bookmarks, b, at);   // one copy, at its old place: a bookmark added again meanwhile is not doubled
   saveBookmarks();
   D.render();
   if (el('brBookmarks').classList.contains('on')) renderBookmarks();
