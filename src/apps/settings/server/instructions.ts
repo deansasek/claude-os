@@ -34,10 +34,14 @@ export function instructionsView(): { text: string; error?: string } {
 /** Save the instructions (empty clears them). Returns what is saved now. */
 export function setInstructions(v: unknown): string {
   // Write or remove the file first: a failed write or removal throws and leaves the saved text as it was.
+  // The text goes to a .tmp file, then is renamed over the file, so a cut-short write never replaces the saved text.
   // force: a file that is already gone is not an error; any other failure is.
   const next = clean(v);
-  if (next) fs.writeFileSync(FILE, next);
-  else fs.rmSync(FILE, { force: true });
+  if (next) {
+    const tmp = `${FILE}.tmp`;
+    try { fs.writeFileSync(tmp, next); fs.renameSync(tmp, FILE); }
+    catch (e) { try { fs.rmSync(tmp, { force: true }); } catch { /* already gone */ } throw e; }
+  } else fs.rmSync(FILE, { force: true });
   text = next;
   readFailed = false;   // the saved file is now the text this call wrote
   return text;
