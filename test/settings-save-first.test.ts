@@ -87,3 +87,20 @@ test('a profile photo the PC cannot delete is kept, and the removal reports an e
   }
   assert.equal(Profile.getProfile().photoAt, before, 'the profile still shows the photo');
 });
+
+test('a profile photo that cannot be written keeps the old photo and reports an error', () => {
+  const jpeg = (n: number) => Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(n, 1)]);
+  const photo = process.env.CLAUDEOS_PROFILE_PHOTO as string;
+  assert.equal(Profile.savePhoto(jpeg(8))!.ok, true);
+  const before = Profile.getProfile().photoAt;
+  const oldBytes = fs.readFileSync(photo);
+  fs.mkdirSync(`${photo}.tmp`);                      // a directory where the temp file goes: the write fails
+  try {
+    const r = Profile.savePhoto(jpeg(16));
+    assert.deepEqual(r, { ok: false, error: 'save_failed' });
+  } finally {
+    fs.rmdirSync(`${photo}.tmp`);
+  }
+  assert.deepEqual(fs.readFileSync(photo), oldBytes, 'the old photo is unchanged');
+  assert.equal(Profile.getProfile().photoAt, before, 'the profile still shows the old photo');
+});
