@@ -29,7 +29,7 @@ export function afterWriteNote(done: string, readNote: string): string {
 export function backTarget(s: { detail: boolean; picker: boolean; confirm: boolean; add: boolean }): 'detail' | 'picker' | 'confirm' | 'add' | null {
   if (s.detail) return 'detail';
   if (s.picker) return 'picker';
-  if (s.confirm) return 'confirm';
+  if (s.confirm && s.add) return 'confirm';   // a confirm step left visible in a closed sheet is not a target
   if (s.add) return 'add';
   return null;
 }
