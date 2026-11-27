@@ -240,7 +240,7 @@ async function refresh(keepNote = false): Promise<void> {
 async function loadDevices(): Promise<void> {
   if (devicesBusy) return;
   devicesBusy = true;
-  try { devices = await getJson<HaDevices>(`${API}/devices`); devicesFailed = false; devicesAt = Date.now(); }
+  try { devices = await getJson<HaDevices>(`${API}/devices`, READ_TIMEOUT_MS); devicesFailed = false; devicesAt = Date.now(); }
   catch { devicesFailed = true; if (!devices) devices = { status: 'error', demo: false, devices: [], error: 'Can’t reach the PC right now.' }; devicesAt = Date.now(); /* keep the last good list */ }
   finally { devicesBusy = false; }
   await loadScenes();
@@ -340,9 +340,16 @@ async function runTest(): Promise<void> {
   appSettingsChanged();
 }
 
+// each scene read takes a number; only the newest read sets the list (a late older read must not undo a switch)
+let scenesGen = 0;
 async function loadScenes(): Promise<void> {
-  try { sceneList = await getJson<HaScenes>(`${API}/scenes`); scenesFailed = false; }
-  catch { scenesFailed = true; if (!sceneList) sceneList = { status: 'error', demo: false, scenes: [], home: [], error: 'Can’t reach the PC right now.' }; /* keep the last good list */ }
+  const gen = ++scenesGen;
+  try {
+    const s = await getJson<HaScenes>(`${API}/scenes`, READ_TIMEOUT_MS);
+    if (gen !== scenesGen) return;
+    sceneList = s; scenesFailed = false;
+  }
+  catch { if (gen !== scenesGen) return; scenesFailed = true; if (!sceneList) sceneList = { status: 'error', demo: false, scenes: [], home: [], error: 'Can’t reach the PC right now.' }; /* keep the last good list */ }
 }
 
 /** Put a scene on the Home screen's quick actions, or take it off. The Home screen picks it up when it next shows. */
