@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { execFile } from 'node:child_process';
 import type { LimitEntry, Limits } from '../api.ts';
 import path from 'node:path';
-import { CREDS_FILE, STATE, TOKEN_FILE, readJson, which } from '../../../core/server/paths.ts';
+import { CREDS_FILE, STATE, TOKEN_FILE, readJson, which, writeJsonFile } from '../../../core/server/paths.ts';
 
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage';
 const EVERY_MS = 120e3;
@@ -35,6 +35,11 @@ function readToken(): Token | null {
   const o = readJson<any>(CREDS_FILE)?.claudeAiOauth;
   if (o?.accessToken) return { token: o.accessToken, source: 'claude', expires: o.expiresAt || 0 };
   return null;
+}
+
+/** Keep the last good numbers, safely: a write that is cut short never leaves the file empty (paths.ts writeJsonFile). */
+export function saveLimitsCache(): void {
+  try { writeJsonFile(CACHE_FILE, LIMITS, { indent: 0 }); } catch { /* not fatal */ }
 }
 
 export function readPlan(): string | null {
@@ -99,7 +104,7 @@ async function pollOnce(): Promise<void> {
     }
     Object.assign(LIMITS, { status: 'ok', error: null, source: tok.source, updated: new Date().toISOString() }, shape(body));
     backoffMs = 0;
-    try { fs.writeFileSync(CACHE_FILE, JSON.stringify(LIMITS)); } catch { /* not fatal */ }
+    saveLimitsCache();
   } catch (e) {
     // keep the last good numbers; just flag the problem
     if (e instanceof HttpError && e.code === 429) {
