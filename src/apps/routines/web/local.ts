@@ -55,6 +55,13 @@ export function applyOp(routines: Routine[], op: Op): OpResult {
   return { ok: true, routines: next };
 }
 
+/** The stored queue, with only the entries that are changes (a save or delete with an object body). A null or a half-written entry is dropped, so one bad value cannot stop the queue. */
+export function keepOps(stored: unknown): { ops: Op[]; dropped: boolean } {
+  const all: unknown[] = Array.isArray(stored) ? stored : [];
+  const ops = all.filter((v): v is Op => typeof v === 'object' && v !== null && ((v as Op).path === 'save' || (v as Op).path === 'delete') && typeof (v as Op).body === 'object' && (v as Op).body !== null);
+  return { ops, dropped: ops.length !== all.length };
+}
+
 /** The PC gave a routine another id than the tablet's: later queued changes use the PC's id. */
 export function remapIds(queue: Op[], from: string, to: string): void {
   for (const op of queue) {
