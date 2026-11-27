@@ -19,6 +19,12 @@ export function feedSource(hasNative: boolean): 'tablet' | 'pc' {
   return hasNative ? 'tablet' : 'pc';
 }
 
+/** A saved story with the fields the page reads. An entry without them (null, a number, a half-written story) is dropped. */
+const isStory = (x: unknown): boolean => !!x && typeof x === 'object'
+  && typeof (x as Record<string, unknown>).title === 'string'
+  && typeof (x as Record<string, unknown>).id === 'string'
+  && typeof (x as Record<string, unknown>).sourceId === 'string';
+
 /** The saved stories. Empty when storage is empty, blocked or holds bad data. Never throws. */
 export function readSaved(store: KeyValue): Saved {
   const out: Saved = {};
@@ -26,7 +32,7 @@ export function readSaved(store: KeyValue): Saved {
     const raw: unknown = JSON.parse(store.getItem(SAVED_KEY) || '{}');
     if (!raw || typeof raw !== 'object') return out;
     for (const [id, entry] of Object.entries(raw as Record<string, Partial<SavedFeed>>)) {
-      if (entry && Number.isFinite(entry.at) && Array.isArray(entry.items)) out[id] = { at: entry.at!, items: entry.items };
+      if (entry && Number.isFinite(entry.at) && Array.isArray(entry.items)) out[id] = { at: entry.at!, items: entry.items.filter(isStory) };
     }
   } catch { /* bad JSON: start with nothing saved */ }
   return out;

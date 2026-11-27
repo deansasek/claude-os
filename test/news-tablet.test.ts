@@ -64,6 +64,7 @@ test('a feed that fails with nothing saved, or has no stories, is an error for t
 test('bad or blocked storage is ignored and the read still works', () => {
   assert.deepEqual(readSaved(memory('{not json')), {});
   assert.deepEqual(readSaved(memory('{"bbc":{"at":"soon","items":3}}')), {});
+  assert.deepEqual(readSaved(memory(JSON.stringify({ bbc: { at: NOW, items: [null, 3, { title: 'x' }] } }))), { bbc: { at: NOW, items: [] } });
   const blocked: KeyValue = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('full'); } };
   const res = tabletFeed(native({ [BBC]: () => ok('bbc-1'), [NPR]: () => ok('npr-1') }), blocked, NOW, TWO);
   assert.equal(res.status, 'ok');
