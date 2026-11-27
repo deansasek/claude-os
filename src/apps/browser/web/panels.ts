@@ -507,18 +507,21 @@ async function choosePhoto(id: string): Promise<void> {
   const url = `/api/photos/file?id=${encodeURIComponent(id)}`;
   try {
     // a missing photo answers 404 with a plain-text body: that is not the picture, so it is an error, not a file
-    const blob = await fetch(url).then(r => { if (!r.ok) throw new Error(`photo ${r.status}`); return r.blob(); });
+    const blob = await fetch(url, { signal: AbortSignal.timeout(PHOTOS_TIMEOUT_MS) }).then(r => { if (!r.ok) throw new Error(`photo ${r.status}`); return r.blob(); });
+    if (chooser !== c) return;   // the picker was closed, or a newer one came first: the photo is no longer wanted
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const fr = new FileReader();
       fr.onload = () => resolve(String(fr.result));
       fr.onerror = () => reject(fr.error);
       fr.readAsDataURL(blob);
     });
+    if (chooser !== c) return;
     chooser = null;
     browser.chooseFile(c.tab, 'photo', dataUrl, `${id}.jpg`);
     hideOver('brPhotos');
     D.sync();
   } catch {
+    if (chooser !== c) return;   // a late failure on a picker that is gone says nothing
     D.flash('That photo didn’t load');
   }
 }
