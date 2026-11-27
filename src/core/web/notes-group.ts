@@ -36,6 +36,29 @@ export function withoutNotice<T extends GroupableNotice>(list: readonly T[], at:
   return list.filter(n => n.at !== at);
 }
 
+/** A saved notice as the shade reads it: a title and a time, and the optional text, app and icon when they are strings. */
+export interface SavedNotice extends GroupableNotice { title: string; body?: string; app?: string; icon?: string }
+
+/** The saved notices, newest first, at most 30. A bad entry (not an object, no title, no time) is dropped, and one bad value cannot stop every notification. */
+export function parseNotices(raw: string | null | undefined): SavedNotice[] {
+  let v: unknown;
+  try { v = JSON.parse(raw || '[]'); } catch { return []; }
+  if (!Array.isArray(v)) return [];
+  const out: SavedNotice[] = [];
+  for (const x of v) {
+    if (typeof x !== 'object' || x === null) continue;
+    const n = x as Record<string, unknown>;
+    if (typeof n.title !== 'string' || typeof n.at !== 'number' || !Number.isFinite(n.at)) continue;
+    const notice: SavedNotice = { title: n.title, at: n.at };
+    if (typeof n.body === 'string') notice.body = n.body;
+    if (typeof n.app === 'string') notice.app = n.app;
+    if (typeof n.icon === 'string') notice.icon = n.icon;
+    out.push(notice);
+    if (out.length >= 30) break;
+  }
+  return out;
+}
+
 /** The muted apps, read from the saved text (a JSON array of app ids). Anything else reads as none. */
 export function parseMutedApps(raw: string | null | undefined): string[] {
   try {

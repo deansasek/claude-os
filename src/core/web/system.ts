@@ -18,7 +18,7 @@
 import { esc, getJson, report, store } from './dom.ts';
 import { parseClockAlarms } from './clock-alarms.ts';
 import { parseQuiet, type QuietHours } from './quiet-hours.ts';
-import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, toggleMutedApp, withoutNotice } from './notes-group.ts';
+import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, parseNotices, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { keepAwakeWanted, orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
 import { device, hasTopBand, onTablet, onVolume, setTopBand, topInsets, voice } from './device.ts';
@@ -851,7 +851,7 @@ function bindCC(stage: HTMLElement): void {
 
 // ---------- notifications ----------
 const KEEP = 30;
-let notes: StoredNotice[] = (() => { try { return JSON.parse(store.get('os.notes') || '[]') as StoredNotice[]; } catch { return []; } })();
+let notes: StoredNotice[] = parseNotices(store.get('os.notes'));
 const noteListeners: (() => void)[] = [];
 function saveNotes(): void {
   notes = notes.slice(0, KEEP);
