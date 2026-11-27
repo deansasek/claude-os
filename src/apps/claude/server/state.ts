@@ -62,6 +62,7 @@ function save(next: State, dropUnreadPins?: string): boolean {
 export const archivedIds = (): Set<string> => new Set(state.archived);
 
 export function setArchived(id: string, on: boolean): boolean {
+  if (on === state.archived.includes(id)) return true;   // nothing changes: nothing to write
   const rest = state.archived.filter(x => x !== id);
   return save({ ...state, archived: on ? [...rest, id] : rest });
 }
@@ -70,6 +71,8 @@ export function setArchived(id: string, on: boolean): boolean {
 export const pinnedIn = (id: string): string[] => state.pins[id] || [];
 
 export function setPinned(id: string, message: string, on: boolean): boolean {
+  // nothing changes (already pinned, or not pinned): nothing to write. A message already pinned keeps its place.
+  if (on === (state.pins[id] || []).includes(message)) return true;
   const rest = (state.pins[id] || []).filter(x => x !== message);
   const next = on ? [...rest, message].slice(-200) : rest;
   const pins = { ...state.pins };
