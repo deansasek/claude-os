@@ -25,6 +25,8 @@ let choices: TopicChoices = {};                // the topics the owner has switc
 let topicsDirty = false;                       // a topic changed in Settings: the next time News shows, it reads the feeds again
 let topicsLoaded = false;                      // the PC has answered with the topics at least once (the switches show)
 let topicsFailed = false;                      // the last topic read got no answer from the PC (Settings says so, no switches)
+// a feed or topics read the PC never answers gives up, so the tablet does not stay on loading (the server gives up on a feed at 8 s)
+const NEWS_TIMEOUT_MS = 20e3;
 
 const clockTime = (iso: string | null): string =>
   iso && !Number.isNaN(Date.parse(iso)) ? whenText(new Date(iso)) : '';
@@ -146,7 +148,7 @@ async function load(): Promise<void> {
       if (stale()) return;
       res = tabletFeed(newsFetch, savedStore, Date.now(), activeFeeds(FEEDS, choices));
     } else {
-      res = await getJson<NewsFeedResponse>('/api/news/feed');
+      res = await getJson<NewsFeedResponse>('/api/news/feed', NEWS_TIMEOUT_MS);
     }
   } catch { res = null; }
   if (stale()) return;
@@ -225,7 +227,7 @@ function openStory(id: string): void {
 /** Reads which topics are on from the PC. A failed read keeps the choices already known. */
 async function loadTopics(): Promise<void> {
   try {
-    const r = await getJson<NewsTopicsResponse>('/api/news/topics');
+    const r = await getJson<NewsTopicsResponse>('/api/news/topics', NEWS_TIMEOUT_MS);
     choices = Object.fromEntries(r.topics.map(t => [t.id, t.on]));
     topicsLoaded = true;
     topicsFailed = false;
