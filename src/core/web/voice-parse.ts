@@ -25,8 +25,9 @@ export function parseDuration(phrase: string): number | null {
 export interface TimeOfDay { h: number; m: number; meridiem: 'am' | 'pm' | null }
 /** "7", "7 30", "6 30 am", "7 o'clock", "half past 6", "quarter to 7", "6 oh 5", "noon", "midnight". */
 export function parseTime(phrase: string): TimeOfDay | null {
-  let s = ` ${phrase} `.replace(/ o'?clock /g, ' ').replace(/ (a\.? ?m\.?|in the morning|this morning) /g, ' am ')
-    .replace(/ (p\.? ?m\.?|in the (afternoon|evening)|tonight|this (afternoon|evening)|at night) /g, ' pm ').replace(/\s+/g, ' ').trim();
+  let s = ` ${phrase} `.replace(/ o'?clock /g, ' ').replace(/ (a\.? ?m\.?|in the morning|this morning)(?= )/g, ' am ')
+    .replace(/ (p\.? ?m\.?|in the (afternoon|evening)|tonight|this (afternoon|evening)|at night)(?= )/g, ' pm ').replace(/\s+/g, ' ').trim()
+    .replace(/\b(am|pm) \1\b/g, '$1');   // "7 pm tonight" is "7 pm pm" before this: one meridiem
   // "12 noon" and "12 midnight" are said too
   if (/^(12 )?(noon|midday)$/.test(s)) return { h: 12, m: 0, meridiem: 'pm' };
   if (/^(12 )?midnight$/.test(s)) return { h: 0, m: 0, meridiem: 'am' };
