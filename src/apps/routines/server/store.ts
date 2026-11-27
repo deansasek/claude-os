@@ -103,7 +103,9 @@ export async function readRoutines(): Promise<RoutinesResult> {
 }
 
 /** The tablet's copy, when the PC has no routines file (a lost file, or a new PC). An existing file is never replaced. */
-export function restoreRoutines(raw: unknown): RoutinesResult {
+export function restoreRoutines(raw: unknown): Promise<RoutinesResult> { return serial(async () => restoreRoutinesNow(raw)); }
+
+function restoreRoutinesNow(raw: unknown): RoutinesResult {
   if (fs.existsSync(FILE)) return { ok: false, routines: [], error: 'The PC already has routines.' };
   const out: Routine[] = [];
   for (const r of Array.isArray(raw) ? raw : []) {
@@ -124,8 +126,18 @@ export function idFor(name: string, list: Routine[]): string {
   return id;
 }
 
+// One change at a time: a save or delete that waits on Home Assistant must not be overwritten by one that started after it.
+let chain: Promise<unknown> = Promise.resolve();
+function serial<T>(fn: () => Promise<T>): Promise<T> {
+  const p = chain.then(fn);
+  chain = p.catch(() => undefined);
+  return p;
+}
+
 /** Add a routine (no id, or an id not saved yet) or replace one (its id). Everything is checked again here. */
-export async function saveRoutine(raw: unknown): Promise<RoutinesResult> {
+export function saveRoutine(raw: unknown): Promise<RoutinesResult> { return serial(() => saveRoutineNow(raw)); }
+
+async function saveRoutineNow(raw: unknown): Promise<RoutinesResult> {
   const loaded = await loadFile();
   if (!loaded) return { ok: false, routines: [], error: UNREADABLE, retry: true };
   const list = loaded.routines;
@@ -160,7 +172,9 @@ export async function saveRoutine(raw: unknown): Promise<RoutinesResult> {
   return { ok: true, routines: clone(list), id: saved.id };
 }
 
-export async function deleteRoutine(idRaw: unknown): Promise<RoutinesResult> {
+export function deleteRoutine(idRaw: unknown): Promise<RoutinesResult> { return serial(() => deleteRoutineNow(idRaw)); }
+
+async function deleteRoutineNow(idRaw: unknown): Promise<RoutinesResult> {
   const loaded = await loadFile();
   if (!loaded) return { ok: false, routines: [], error: UNREADABLE, retry: true };
   const list = loaded.routines;
