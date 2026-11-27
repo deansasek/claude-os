@@ -153,7 +153,7 @@ async function attempt<T>(fn: () => Promise<T>): Promise<{ ok: true; value: T } 
 
 interface RawState { entity_id: string; state: string; attributes?: Record<string, unknown> }
 
-function toEntity(s: RawState): HaEntity | null {
+export function toEntity(s: RawState): HaEntity | null {
   if (!s || typeof s.entity_id !== 'string') return null;
   if (!ENTITY_ID.test(s.entity_id)) return null;
   const domain = s.entity_id.split('.')[0];
@@ -175,7 +175,8 @@ function toEntity(s: RawState): HaEntity | null {
   }
   if (domain === 'climate') {
     e.current = num(a.current_temperature); e.target = num(a.temperature);
-    e.unit = typeof a.temperature_unit === 'string' ? a.temperature_unit : '°C';
+    // only the unit Home Assistant sends: a thermostat without one gets a bare degree sign, not a made-up °C
+    if (typeof a.temperature_unit === 'string') e.unit = a.temperature_unit;
   }
   if (domain === 'media_player' && typeof a.media_title === 'string') e.media = a.media_title.slice(0, 80);
   return e;
