@@ -209,6 +209,17 @@ export function editItem(listRef: unknown, id: unknown, rawText: unknown): Lists
 }
 
 /** Remove every ticked item from a list. */
+/** Untick every item on a list, so a checklist can be used again. Nothing is counted as bought. */
+export function untickAll(listRef: unknown): ListsResult {
+  return change(lists => {
+    const l = findList(lists, listRef);
+    if (!l) return NO_LIST;
+    let n = 0;
+    for (const i of l.items) if (i.done) { i.done = false; n++; }
+    return { unticked: n };
+  });
+}
+
 export function clearDone(listRef: unknown): ListsResult {
   let bought: string[] = [];
   const r = change(lists => {

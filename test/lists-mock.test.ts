@@ -31,3 +31,14 @@ test('an add to a list that is not there is refused', () => {
   const r = post('add', { list: 'nope', text: 'x' });
   assert.equal(r.ok, false);
 });
+
+test('the mock untick-all route unticks the list and says how many changed', () => {
+  const shopping = (answerMock('GET', '/api/lists/lists').body as { lists: { id: string; items: { id: string; text: string; done: boolean }[] }[] }).lists.find(l => l.id === 'shopping')!;
+  const first = shopping.items[0];
+  post('tick', { list: 'shopping', id: first.id, done: true });
+  const r = post('untick-all', { list: 'shopping' });
+  assert.equal(r.ok, true);
+  assert.ok(((r as unknown as { unticked: number }).unticked) >= 1);
+  const after = (answerMock('GET', '/api/lists/lists').body as { lists: { id: string; items: { done: boolean }[] }[] }).lists.find(l => l.id === 'shopping')!;
+  assert.equal(after.items.some(i => i.done), false);
+});

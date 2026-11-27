@@ -61,6 +61,13 @@ defineMock({
     const r = renameItem(l, b.id, b.text);
     return typeof r === 'string' ? fail(r) : reply({ item: r });
   },
+  'POST /api/lists/untick-all': ({ body }): ListsResult => {
+    const l = find((body as { list?: unknown } | null)?.list);
+    if (!l) return fail('That list isn’t here.');
+    const n = l.items.filter(i => i.done).length;
+    for (const i of l.items) i.done = false;
+    return reply({ unticked: n });
+  },
   'POST /api/lists/clear-done': ({ body }): ListsResult => {
     const l = find((body as { list?: unknown } | null)?.list);
     if (!l) return fail('That list isn’t here.');
