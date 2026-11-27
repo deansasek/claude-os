@@ -604,7 +604,8 @@ async function editInstructions(): Promise<void> {
 }
 async function saveInstructions(text: string): Promise<void> {
   try {
-    const r = await postJson<{ text: string }>('/api/settings/instructions', { text: text.trim() });
+    const r = await postJson<{ text: string; ok?: boolean }>('/api/settings/instructions', { text: text.trim() });
+    if (r.ok === false) throw new Error('not saved');   // the PC kept the old text: say so, do not clear the box
     instructions = r.text || ''; instructionsReadFailed = false;
     report('settings:instructions');
   } catch { confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
