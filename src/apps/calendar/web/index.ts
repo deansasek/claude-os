@@ -16,6 +16,7 @@ import type { CalConfigResult, CalEvent, CalEvents, CalStatus } from '../api.ts'
 import { copyUsable, dueNotices, eventKey, noticeText, parseCopy, pcAnswer, pruneNotified, type EventCopy, type Notified } from './event-notice.ts';
 import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
+import { swipeStep } from './swipe.ts';
 import { flagsOf, tagCalendar, visibleEvents, type CalendarInfo } from './calendars.ts';
 import { afterWriteNote, editable, formCanShow, ownEvent } from './edit.ts';
 
@@ -707,8 +708,18 @@ const app: HubApp = {
     $('calAddNo').addEventListener('click', backToForm);
     $('calAddYes').addEventListener('click', () => void addEvent());
     for (const v of ['day', 'week', 'month', 'year'] as View[]) $(`calV-${v}`).addEventListener('click', () => setView(v));
+    // a swipe across the body moves the period (swipe.ts); the click that a swipe ends on is not also a tap
+    let swipeFrom: { x: number; y: number } | null = null, swiped = false;
+    $('calBody').addEventListener('pointerdown', e => { swipeFrom = e.isPrimary ? { x: e.clientX, y: e.clientY } : null; swiped = false; });
+    $('calBody').addEventListener('pointerup', e => {
+      if (!swipeFrom) return;
+      const dir = swipeStep(e.clientX - swipeFrom.x, e.clientY - swipeFrom.y);
+      swipeFrom = null;
+      if (dir) { swiped = true; step(dir); }
+    });
     // a ClaudeOS event opens its details; a day, a week's header, a month cell, or a month name in the Year view
     $('calBody').addEventListener('click', e => {
+      if (swiped) { swiped = false; return; }
       const t = e.target as HTMLElement;
       const own = t.closest<HTMLElement>('[data-ev]');
       if (own?.dataset.ev) { openDetail(own.dataset.ev); return; }
