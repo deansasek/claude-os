@@ -337,19 +337,24 @@ function wxGlyph(code: number, day: boolean): string {
   return svg('<path d="M10 19h13a5 5 0 0 0 .6-10A7 7 0 0 0 10.2 11 4 4 0 0 0 10 19z"/><path d="M12 23l-1 3M17 23l-1 3M22 23l-1 3"/>');
 }
 
+// the forecast read gives up on a PC that does not answer; each read takes a number, and only the newest read sets the chip
+const WX_TIMEOUT_MS = 20e3;
+let wxSeq = 0;
 async function loadWeather(force = false): Promise<void> {
   if (!force && Date.now() - wxAt < 15 * 60e3) return;
   wxAt = Date.now();
+  const seq = ++wxSeq;
   try {
     const r = await getJson<{ status: string; place?: string | null; current?: { temperature_2m: number; weather_code: number; is_day: number };
-      daily?: { temperature_2m_max: number[]; temperature_2m_min: number[] } }>('/api/weather/forecast');
+      daily?: { temperature_2m_max: number[]; temperature_2m_min: number[] } }>('/api/weather/forecast', WX_TIMEOUT_MS);
+    if (seq !== wxSeq) return;   // a newer read (a new place or unit) came first: its answer is the one that counts
     // The hub answers status 'error' when a route throws: a failed read keeps the last chip and retries in two minutes.
     if (r.status === 'error') { wxAt = Date.now() - 13 * 60e3; return; }
     if (r.status !== 'ok' || !r.current) { wx = null; if (ambientOn) paintAmbient(); return; }
     wx = { temp: r.current.temperature_2m, code: r.current.weather_code, day: !!r.current.is_day, place: r.place ?? null,
       hi: r.daily?.temperature_2m_max?.[0], lo: r.daily?.temperature_2m_min?.[0] };
     if (ambientOn) paintAmbient();
-  } catch { wxAt = Date.now() - 13 * 60e3; /* try again in a couple of minutes */ }
+  } catch { if (seq !== wxSeq) return; wxAt = Date.now() - 13 * 60e3; /* try again in a couple of minutes */ }
 }
 // a new place or unit in Weather: the ambient screen reads the forecast again at once
 addEventListener('hub:weather', () => { void loadWeather(true); });
