@@ -201,9 +201,18 @@ interface Usage {
 const MOCK = params.get('mock');
 let usage: Usage | null = null, usageFailed = false;
 
+// a usage read the PC never answers gives up before the 30 s poll runs again
+const USAGE_TIMEOUT_MS = 20e3;
+let usageSeq = 0;   // each read takes a number; only the newest read sets the usage
+
 async function loadUsage(): Promise<void> {
-  try { usage = await getJson<Usage>('/api/claude/usage'); usageFailed = false; }
-  catch { usageFailed = true; }
+  const seq = ++usageSeq;
+  try {
+    const u = await getJson<Usage>('/api/claude/usage', USAGE_TIMEOUT_MS);
+    if (seq !== usageSeq) return;   // a newer read started: its answer is the one that counts
+    usage = u; usageFailed = false;
+  }
+  catch { if (seq !== usageSeq) return; usageFailed = true; }
   if (usage && MOCK) {
     const base = { folder: 'storefront', age: 90 };
     if (MOCK === 'waiting') usage.sessions = [{ ...base, id: 'mock', title: 'Refactor checkout flow', state: 'waiting' }];
