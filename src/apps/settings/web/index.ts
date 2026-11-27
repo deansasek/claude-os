@@ -1402,10 +1402,17 @@ function lastUpdateText(): string | null {
   } catch { return null; }
 }
 
+// the PC's build read gives up on a PC that does not answer; a check that is no longer the newest does not repaint
+const UPDATE_TIMEOUT_MS = 20e3;
+let updateSeq = 0;
 async function paintUpdate(): Promise<void> {
+  const n = ++updateSeq;
   let avail: UpdateAvailable | null = null;
   if (onTablet) { try { avail = device.updateAvailable() as UpdateAvailable; } catch { avail = null; } }
-  try { pcBuild = (await getJson<{ versionCode: number }>('/apk/version')).versionCode; } catch { pcBuild = null; }
+  let build: number | null = null;
+  try { build = (await getJson<{ versionCode: number }>('/apk/version', UPDATE_TIMEOUT_MS)).versionCode; } catch { build = null; }
+  if (n !== updateSeq) return;   // a newer check came first: its status is the one to show
+  pcBuild = build;
   const s = updateStatus(avail, pcBuild);
   $('stUpdInstalled').textContent = avail?.installed != null ? `Build ${avail.installed}` : '–';
   $('stUpdPc').textContent = pcBuild != null ? `Build ${pcBuild}` : '–';
