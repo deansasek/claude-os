@@ -73,6 +73,8 @@ export const copyUsable = (readAt: number, now: number): boolean => now - readAt
  * What the PC's answer to the events read means for notices: 'use' its events, 'none' (not set up: no notices), or 'copy'
  * (the PC has no read to give, as after a restart with no internet, or it could not answer: use the tablet's copy).
  */
-export function pcAnswer(status: 'ok' | 'not_set' | 'error' | undefined): 'use' | 'none' | 'copy' {
-  return status === 'ok' ? 'use' : status === 'not_set' ? 'none' : 'copy';
+// An answer from the PC is used only while its calendar read is recent: the PC can answer from an old read when it cannot reach the calendar.
+export function pcAnswer(status: 'ok' | 'not_set' | 'error' | undefined, readAt?: number, now?: number): 'use' | 'none' | 'copy' {
+  if (status === 'ok') return readAt == null || now == null || copyUsable(readAt, now) ? 'use' : 'copy';
+  return status === 'not_set' ? 'none' : 'copy';
 }

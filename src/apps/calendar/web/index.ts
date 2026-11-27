@@ -628,7 +628,7 @@ async function soonEvents(now: number): Promise<{ events: CalEvent[]; copyTime?:
   try { r = await getJson<CalEvents>(`${API}/events`); } catch { r = null; }   // the PC cannot be reached
   if (r) {
     if (r.status === 'not_set' && caps.localState) store.set(EVENTS_KEY, null);   // the address was removed: forget the copy
-    const answer = pcAnswer(r.status);
+    const answer = pcAnswer(r.status, Date.parse(r.fetchedAt ?? '') || now, now);
     if (answer === 'none') return null;                                      // not set up
     if (answer === 'use' && caps.localState) {
       const next: EventCopy = { readAt: Date.parse(r.fetchedAt ?? '') || now, events: r.events };
