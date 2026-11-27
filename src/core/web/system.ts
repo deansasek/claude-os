@@ -18,6 +18,7 @@
 import { esc, getJson, report, store } from './dom.ts';
 import { parseClockAlarms } from './clock-alarms.ts';
 import { inQuietWindow, parseQuiet, type QuietHours } from './quiet-hours.ts';
+import { volumeTarget } from './volume-target.ts';
 import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, parseNotices, toggleMutedApp, withoutNotice } from './notes-group.ts';
 import { keepAwakeWanted, orderTiles, TILE_IDS } from './quick-order.ts';
 import { FOCUS_MODES, modeSettings } from './focus-modes.ts';
@@ -1207,7 +1208,12 @@ export function initSystem(stage: HTMLElement, h: SystemHooks): void {
   bindBanner(stage);
   watchBattery();
   // the control center has its own volume slider, so the HUD stays out of its way while it's open
-  onVolume(level => { if (!ccOpen && Date.now() >= quietUntil) showVolume(level); });
+  onVolume(level => {
+    // the drawer's slider follows the hardware keys while it is open; otherwise the HUD shows, unless a quiet window has it down
+    const to = volumeTarget(ccOpen, Date.now(), quietUntil);
+    if (to === 'slider') { paintRange('ccVol', level); $s('ccVolIcon').innerHTML = level > 0 ? I.vol : I.mute; }
+    else if (to === 'hud') showVolume(level);
+  });
   onNowPlaying(() => { if (ccOpen) paintMedia(); if (ambientOn) paintAmbientMedia(); });
   // a toggle made anywhere (a tile, Settings, low power kicking in) repaints the open tiles
   onSystemChange(() => { if (ccOpen) paintCC(); });
