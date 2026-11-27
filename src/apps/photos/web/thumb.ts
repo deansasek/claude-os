@@ -33,6 +33,9 @@ async function makeThumb(full: Blob): Promise<Blob | null> {
   }
 }
 
+/** Longest wait for one read or one send. A PC that never answers must not hold a backfill slot for good. */
+export const THUMB_FETCH_MS = 20e3;
+
 /** Make a photo's thumbnail from its full picture and keep it on the PC. True when the PC kept it. */
 async function sendThumb(id: string, full: Blob): Promise<boolean> {
   const thumb = await makeThumb(full);
@@ -40,6 +43,7 @@ async function sendThumb(id: string, full: Blob): Promise<boolean> {
   try {
     const r = await fetch(`/api/photos/thumb?id=${encodeURIComponent(id)}`, {
       method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: thumb,
+      signal: AbortSignal.timeout(THUMB_FETCH_MS),
     });
     const j = await r.json() as { ok?: boolean };
     return r.ok && j.ok === true;
@@ -86,7 +90,8 @@ function pump(): void {
 async function run(id: string, job: Job): Promise<void> {
   let ok = false;
   try {
-    const full = await fetch(job.url).then(r => (r.ok ? r.blob() : null));
+    const full = await fetch(job.url, { signal: AbortSignal.timeout(THUMB_FETCH_MS) })
+      .then(r => (r.ok ? r.blob() : null));
     ok = !!full && await sendThumb(id, full);
   } catch {
     ok = false;
