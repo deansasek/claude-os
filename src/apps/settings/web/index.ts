@@ -1169,7 +1169,11 @@ function initBackup(): void {
   });
 }
 
+// the storage read gives up on a PC that does not answer; the tablet's own rows paint first, and a read that is no longer the newest does nothing
+const STORAGE_TIMEOUT_MS = 20e3;
+let storageSeq = 0;
 async function paintStorage(): Promise<void> {
+  const n = ++storageSeq;
   let st: StorageInfo | null = null;
   if (nativeHas('storage')) { try { st = device.storage(); } catch { st = null; } }
   gateRow(rowOf('stStUsed'), !!st);
@@ -1182,15 +1186,16 @@ async function paintStorage(): Promise<void> {
     $('stStUsed').textContent = '–';
     $('stStNote').textContent = '–';
   }
-  try {
-    const p = await getJson<{ photos: number }>('/api/settings/storage');
-    $('stStPhotos').textContent = bytes(p.photos);
-  } catch { $('stStPhotos').textContent = '–'; }
-  // the files the Browser saved: "1.2 GB, 14 files"
+  // the files the Browser saved: "1.2 GB, 14 files" (from the tablet, so it paints before the PC is asked)
   const dl = nativeHas('browserDownloadsSize') ? device.browserDownloads() : null;
   gateRow(rowOf('stStDownloads'), !!dl);
   $('stStDownloads').textContent = !dl ? '–'
     : dl.count ? `${bytes(dl.bytes)}, ${dl.count} file${dl.count === 1 ? '' : 's'}` : 'None yet';
+  try {
+    const p = await getJson<{ photos: number }>('/api/settings/storage', STORAGE_TIMEOUT_MS);
+    if (n !== storageSeq) return;   // a newer read came first: its size is the one to show
+    $('stStPhotos').textContent = bytes(p.photos);
+  } catch { if (n !== storageSeq) return; $('stStPhotos').textContent = '–'; }
 }
 
 // ---------- Date & time ----------
