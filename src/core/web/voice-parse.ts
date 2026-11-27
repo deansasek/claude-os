@@ -7,6 +7,7 @@ export function parseDuration(phrase: string): number | null {
     .replace(/ (\d+) and a half (hour|minute|second)s? /g, ' $1.5 $2s ')
     .replace(/ (\d+) (hour|minute|second)s? and a half /g, ' $1.5 $2s ')
     .replace(/ (a )?half (an |a )?hour /g, ' 30 minutes ')
+    .replace(/ (a )?half (a )?minute /g, ' 30 seconds ')
     .replace(/ (a )?quarter (of )?(an |a )?hour /g, ' 15 minutes ')
     .replace(/ (a|an) (hour|minute|second)/g, ' 1 $2')
     .replace(/ and /g, ' ').replace(/\s+/g, ' ').trim();

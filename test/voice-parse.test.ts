@@ -6,6 +6,8 @@ import { daysText, durationAndLabel, morningDays, namedTimerReply, parseDays, pa
 test('a duration phrase becomes milliseconds', () => {
   assert.equal(parseDuration('10 minutes'), 600_000);
   assert.equal(parseDuration('a minute and a half'), 90_000);
+  assert.equal(parseDuration('half a minute'), 30_000);
+  assert.equal(parseDuration('a half minute'), 30_000);
   assert.equal(parseDuration('1 hour 30 minutes'), 5_400_000);
   assert.equal(parseDuration('nonsense'), null);
   assert.equal(parseDuration('30 hours'), null);   // over 24 hours
