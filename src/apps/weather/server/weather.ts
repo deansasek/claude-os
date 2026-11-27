@@ -46,9 +46,28 @@ async function airNow(lat: number, lon: number): Promise<WxAir> {
   return { aqi: num(c.us_aqi), pollen };
 }
 
+/** The places from a geocoding answer. An entry is kept only with a name and a finite latitude and longitude; the rest are left out, so one bad entry never hides the others. */
+export function placesFrom(results: unknown): Place[] {
+  if (!Array.isArray(results)) return [];
+  const text = (v: unknown, max: number): string | null => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
+  const out: Place[] = [];
+  for (const r of results) {
+    if (typeof r !== 'object' || r === null) continue;
+    const o = r as Record<string, unknown>;
+    const lat = o.latitude, lon = o.longitude;
+    if (typeof lat !== 'number' || !Number.isFinite(lat) || lat < -90 || lat > 90) continue;
+    if (typeof lon !== 'number' || !Number.isFinite(lon) || lon < -180 || lon > 180) continue;
+    const name = text(o.name, 60);
+    if (!name) continue;
+    out.push({ name, region: text(o.admin1, 60), country: text(o.country, 60), lat, lon });
+  }
+  return out;
+}
+
 async function geocode(name: string, count: number): Promise<any[]> {
   const q = new URLSearchParams({ name, count: String(count), language: 'en', format: 'json' });
-  return (await getJson('https://geocoding-api.open-meteo.com/v1/search?' + q)).results || [];
+  const body = (await getJson('https://geocoding-api.open-meteo.com/v1/search?' + q)) as { results?: unknown } | null;
+  return Array.isArray(body?.results) ? body.results : [];
 }
 
 export async function weather(override?: Config): Promise<Weather> {
@@ -112,9 +131,7 @@ export async function weather(override?: Config): Promise<Weather> {
 export async function searchPlaces(q: string): Promise<Place[]> {
   q = q.trim().slice(0, 60);
   if (q.length < 2) return [];
-  return (await geocode(q, 6))
-    .filter(r => r.latitude != null)
-    .map(r => ({ name: r.name, region: r.admin1 ?? null, country: r.country ?? null, lat: r.latitude, lon: r.longitude }));
+  return placesFrom(await geocode(q, 6));
 }
 
 /** Called by the Hub's city picker. Merges into meter-config.json. */
