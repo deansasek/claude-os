@@ -10,6 +10,8 @@ import type { Routine, RoutinesResult } from '../api.ts';
 import { applyOp, keepOps, keepRoutines, remapIds, type Op, type OpResult } from './local.ts';
 
 const API = '/api/routines';
+// a PC call that never answers gives up, so the queue and the pull do not wait behind it for good
+const SYNC_TIMEOUT_MS = 20e3;
 const COPY_KEY = 'routines.copy';     // the routines on this tablet
 const QUEUE_KEY = 'routines.queue';   // changes the PC hasn't got yet, oldest first
 
@@ -60,7 +62,7 @@ async function sendQueue(): Promise<void> {
   while (queue.length) {
     const op = queue[0];
     let r: RoutinesResult;
-    try { r = await postJson<RoutinesResult>(`${API}/${op.path}`, op.body); } catch { return; }
+    try { r = await postJson<RoutinesResult>(`${API}/${op.path}`, op.body, SYNC_TIMEOUT_MS); } catch { return; }
     if (!r || (!r.ok && r.retry)) return;   // the PC is away or could not save its file: keep the queue
     queue.shift();                          // done, or refused (for example a scene Home no longer has): the PC's list shows it
     const sent = (op.body.routine as { id?: string } | undefined)?.id;
@@ -74,8 +76,8 @@ async function pullNow(): Promise<void> {
   if (!caps.localState || queue.length) return;
   let r: RoutinesResult;
   try {
-    r = await getJson<RoutinesResult>(`${API}/list`);
-    if (r?.ok && r.stored === false && copy) r = await postJson<RoutinesResult>(`${API}/restore`, { routines: copy });
+    r = await getJson<RoutinesResult>(`${API}/list`, SYNC_TIMEOUT_MS);
+    if (r?.ok && r.stored === false && copy) r = await postJson<RoutinesResult>(`${API}/restore`, { routines: copy }, SYNC_TIMEOUT_MS);
   } catch { return; }
   if (!r?.ok || !Array.isArray(r.routines) || queue.length) return;
   pulledAt = Date.now();
