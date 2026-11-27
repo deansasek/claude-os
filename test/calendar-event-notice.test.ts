@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { CalEvent } from '../src/apps/calendar/api.ts';
-import { dueNotices, eventKey, noticeText, NOTICE_LEAD_MS, pruneNotified } from '../src/apps/calendar/web/event-notice.ts';
+import { dueNotices, eventKey, noticeText, NOTICE_LEAD_MS, parseNotified, pruneNotified } from '../src/apps/calendar/web/event-notice.ts';
 
 const START = Date.parse('2026-11-24T14:00:00');
 const at = (ms: number): string => new Date(ms).toISOString();
@@ -46,4 +46,17 @@ test('the notice names the event, its start and its place', () => {
   assert.deepEqual(noticeText(timed('Dentist', START, { location: 'Main St' }), '2:00 PM'),
     { title: 'Coming up: Dentist', body: 'Starts at 2:00 PM · Main St' });
   assert.deepEqual(noticeText(timed('Dentist'), '2:00 PM'), { title: 'Coming up: Dentist', body: 'Starts at 2:00 PM' });
+});
+
+test('parseNotified reads a plain record and drops entries without a start time', () => {
+  assert.deepEqual(parseNotified(null), {});
+  assert.deepEqual(parseNotified('not json'), {});
+  assert.deepEqual(parseNotified('null'), {});
+  assert.deepEqual(parseNotified('[1,2]'), {});
+  assert.deepEqual(parseNotified('5'), {});
+  assert.deepEqual(parseNotified(JSON.stringify({ a: START, b: 'x', c: null })), { a: START });
+});
+
+test('pruneNotified does not throw on a saved record that was null', () => {
+  assert.doesNotThrow(() => pruneNotified(parseNotified('null'), START));
 });
