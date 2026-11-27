@@ -111,4 +111,8 @@ test('"12 tonight" and "12 at night" are midnight, and "8 tonight" is 8 pm', () 
   assert.deepEqual(resolveHour(parseTime('12 tonight')!, false), { h: 0, m: 0 });
   assert.deepEqual(resolveHour(parseTime('half past 12 at night')!, false), { h: 0, m: 30 });
   assert.deepEqual(resolveHour(parseTime('8 tonight')!, false), { h: 20, m: 0 });
+  assert.deepEqual(parseTime('7 pm tonight'), { h: 7, m: 0, meridiem: 'pm' });
+  assert.deepEqual(parseTime('7 30 pm this evening'), { h: 7, m: 30, meridiem: 'pm' });
+  assert.deepEqual(parseTime('6 am in the morning'), { h: 6, m: 0, meridiem: 'am' });
+  assert.deepEqual(parseTime('half past 7 pm tonight'), { h: 7, m: 30, meridiem: 'pm' });
 });
