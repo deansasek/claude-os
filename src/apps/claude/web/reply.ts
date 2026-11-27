@@ -66,6 +66,8 @@ let draft = '';
 let sendNote = '';
 // refreshes of the open session that failed in a row (the PC did not answer); two or more shows "Can’t reach your PC"
 let refreshFails = 0;
+const READ_TIMEOUT_MS = 8000;      // a poll read the PC never answers gives up, so the failure counts
+let refreshSeq = 0, appliedSeq = 0; // each poll takes a number; an answer older than the one applied is dropped
 const SEND_NOTE: Record<string, string> = {
   unreachable: 'Can’t reach your PC just now. Your message is kept: send it again.',
   too_many_photos: 'Too many photos for one message. Take one off.',
@@ -250,17 +252,21 @@ async function refresh(): Promise<void> {
   const id = openId;
   if (mode !== 'session' || !id) return;
   if (id === NATIVE_ID) { view = nativeView(); render(); return; }   // the tablet's own chat (native.ts): no hub
+  const seq = ++refreshSeq;
   let v: SessionView;
   // send the version we hold: the Hub answers "unchanged" with no transcript when nothing changed
   const have = view?.version ?? '';
-  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}&have=${encodeURIComponent(have)}`); }
+  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}&have=${encodeURIComponent(have)}`, READ_TIMEOUT_MS); }
   catch {
+    if (seq < appliedSeq) return;   // a newer read already answered: this miss is old news
     // the PC did not answer: after two tries the state line says so (the next poll tries again)
     refreshFails++;
     if (refreshFails >= 2 && mode === 'session' && openId === id) render();
     return;
   }
   if (mode !== 'session' || openId !== id) return;   // switched away while it loaded
+  if (seq < appliedSeq) return;   // a newer read answered first: do not paint older state over it
+  appliedSeq = seq;
   refreshFails = 0;
   if (v.unchanged && view) v = { ...v, transcript: view.transcript };
   view = v;
