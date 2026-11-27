@@ -69,6 +69,15 @@ export function pictureFor(item: NewsItem): string | null {
 }
 
 /** What the reader sheet shows: the feed's own title and description, unchanged, and the link (or null). */
+/** The text the Claude composer starts with for a story: its title, source, summary and link, one per line (the ones there are). */
+export function askText(item: NewsItem): string {
+  const lines = [item.title, `From ${item.source}`];
+  if (item.description) lines.push(item.description);
+  const link = linkFor(item);
+  if (link) lines.push(link);
+  return lines.join('\n');
+}
+
 export function readerFor(item: NewsItem, now: number): { source: string; when: string; title: string; description: string; link: string | null } {
   return {
     source: item.source,
