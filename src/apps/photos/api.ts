@@ -20,6 +20,8 @@ export function nextPhotoDays(prev: PhotoDay[], list: { ok?: boolean; days?: unk
   return list.ok !== false && Array.isArray(list.days) ? (list.days as PhotoDay[]) : prev;
 }
 
+/** Reload the list when the PC answers again: only while Photos is on screen, and only after a load that could not reach the PC. */
+export const reloadOnHubBack = (reachable: boolean, visible: boolean, unreached: boolean): boolean => reachable && visible && unreached;
 export interface UploadResult { ok: boolean; id?: string; url?: string; error?: string }
 export interface PhotoDeleteResult { ok: boolean; error?: string; deleted?: string[]; missing?: string[]; failed?: string[] }
 /** Pick every id in a day's group, or clear them when they are all picked already. Other picks stay. */
