@@ -6,6 +6,8 @@ export function parseDuration(phrase: string): number | null {
     .replace(/ (a|an|1) (hour|minute|second)s? and a half /g, ' 1.5 $2s ')
     .replace(/ (\d+) and a half (hour|minute|second)s? /g, ' $1.5 $2s ')
     .replace(/ (\d+) (hour|minute|second)s? and a half /g, ' $1.5 $2s ')
+    // "an hour and a quarter" is 75 minutes: the hours, then 15 minutes
+    .replace(/ (a|an|\d+) hours? and a quarter /g, ' $1 hours 15 minutes ')
     .replace(/ (a )?half (an |a )?hour /g, ' 30 minutes ')
     .replace(/ (a )?half (a )?minute /g, ' 30 seconds ')
     .replace(/ (a )?quarter (of )?(an |a )?hour /g, ' 15 minutes ')
