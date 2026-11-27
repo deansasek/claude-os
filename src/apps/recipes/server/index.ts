@@ -64,6 +64,8 @@ async function ingredients(): Promise<IngredientsResult> {
   if (ingredientCache && Date.now() - ingredientCache.at < INGREDIENTS_KEEP_MS) return { status: 'ok', names: ingredientCache.names };
   try {
     const names = [...new Set((await meals('list.php?i=list')).map(m => String((m as any)?.strIngredient ?? '').trim()).filter(Boolean))].sort();
+    // an empty answer is a failure, not a list to keep for 24 hours (as random() does)
+    if (!names.length) return { status: 'error', names: [], error: errorText('No ingredients came back.') };
     ingredientCache = { at: Date.now(), names };
     return { status: 'ok', names };
   } catch (e) {
