@@ -44,19 +44,26 @@ export function savedNote(saved: string, count: number): string {
   return `${when} · ${count} settings`;
 }
 
-/** Write the PC's settings back to this tablet. Returns how many were written, -1 when the PC cannot be reached, -2 when its backup cannot be read, or -3 when this tablet's storage would not take some settings. */
+/** Write the PC's settings back to this tablet. Returns how many were written, -1 when the PC cannot be reached, -2 when its backup cannot be read, or -3 when this tablet's storage would not take some settings (then every setting is put back as it was). */
 export async function restoreSettings(): Promise<number> {
   const b = await loadSettings();
   if (!b) return -1;
   if (b.ok === false) return -2;
   const values = backupValues(b.values ?? {});
+  // the values as they are now, so a restore that fails partway can be put back: a half-restore would mix the two sets
+  const before = new Map(Object.keys(values).map(k => [k, localStorage.getItem(k)] as const));
   // each write is read back: store.set swallows a refused write, so a setting that did not land is counted as a failure
   let failed = 0;
   for (const [k, v] of Object.entries(values)) {
     try { localStorage.setItem(k, v); } catch { failed++; continue; }
     if (localStorage.getItem(k) !== v) failed++;
   }
-  if (failed) return -3;
+  if (failed) {
+    for (const [k, old] of before) {
+      try { if (old === null) localStorage.removeItem(k); else localStorage.setItem(k, old); } catch { /* nothing more to do */ }
+    }
+    return -3;
+  }
   return Object.keys(values).length;
 }
 
