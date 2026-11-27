@@ -3,11 +3,12 @@
 // or hold a photo) to delete them together, or to ask Claude about up to three.
 // Nothing is removed from the list until the PC says it is gone: a delete that fails leaves the photo where it was.
 import { esc, getJson, postJson, report } from '../../../core/web/dom.ts';
+import { hubReachable, onHubReachable } from '../../../core/web/hub-link.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithPhoto } from '../../claude/web/reply.ts';
-import { ASK_MAX_PHOTOS, afterDelete, deleteBatches, nextPhotoDays, thumbUrl, toggleDay } from '../api.ts';
+import { ASK_MAX_PHOTOS, afterDelete, deleteBatches, nextPhotoDays, reloadOnHubBack, thumbUrl, toggleDay } from '../api.ts';
 import type { PhotoDay, PhotoDeleteResult, PhotoItem, PhotoList } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { backfillActive, backfillThumb } from './thumb.ts';
@@ -16,6 +17,7 @@ let ctx: AppContext;
 const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 let days: PhotoDay[] = [];
 let listFailed = false;                  // the last list could not be read: the empty panel must not claim the gallery is empty
+let unreached = false;                   // the last list did not reach the PC at all: reload when the PC answers again
 let more = false;                        // the last list stopped at its limit: older photos are not shown
 // the grid picture of a photo with no thumbnail on the PC yet: its thumbnail once made, or its full picture if the PC
 // could not make one. Kept across reloads of the list, which still say "no thumbnail" until the next one.
@@ -139,6 +141,7 @@ function selectAll(): void {
 async function load(): Promise<void> {
   try {
     const l = await getJson<PhotoList>('/api/photos/list');
+    unreached = false;
     // a list the PC could not read keeps the photos already in the grid
     days = nextPhotoDays(days, l);
     more = l.ok !== false ? l.more === true : more;
@@ -148,6 +151,7 @@ async function load(): Promise<void> {
     if (l.ok === false) $('phNote').textContent = l.error || 'The PC couldn’t read its photos folder.';
   } catch {
     listFailed = true;
+    unreached = true;
     $('phNote').hidden = false;
     $('phNote').textContent = 'Can’t reach your PC just now. The photos will show when it answers.';
   }
@@ -478,6 +482,7 @@ const app: HubApp = {
       if (selecting) { setSelecting(false); return true; }
       return false;
     }, 10);
+    onHubReachable(() => { if (reloadOnHubBack(hubReachable(), ctx.isVisible(), unreached)) void load(); });
     backfillActive(ctx.isVisible());
     void load();
   },
