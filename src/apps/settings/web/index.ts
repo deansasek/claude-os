@@ -386,13 +386,18 @@ function editName(key: 'name' | 'nickname'): void {
   });
 }
 
+// a profile save the PC never answers gives up; each save takes a number, and only the newest save is shown
+const PROFILE_TIMEOUT_MS = 20e3;
+let profileSaveSeq = 0;
 async function saveProfile(fields: Partial<Record<'name' | 'nickname' | 'role', string>>): Promise<void> {
+  const seq = ++profileSaveSeq;
   try {
-    const r = await postJson<Partial<Profile>>('/api/settings/profile', fields);
+    const r = await postJson<Partial<Profile>>('/api/settings/profile', fields, PROFILE_TIMEOUT_MS);
+    if (seq !== profileSaveSeq) return;   // a newer save came first: its answer is the one that counts
     if (typeof r.name !== 'string') throw new Error('not saved');
     applyProfile(r as Profile);
     report('settings:profile');
-  } catch { confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
+  } catch { if (seq !== profileSaveSeq) return; confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
 }
 
 function paintRoles(): void {
