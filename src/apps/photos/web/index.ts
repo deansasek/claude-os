@@ -7,7 +7,7 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithPhoto } from '../../claude/web/reply.ts';
-import { ASK_MAX_PHOTOS, deleteBatches, nextPhotoDays, thumbUrl } from '../api.ts';
+import { ASK_MAX_PHOTOS, deleteBatches, nextPhotoDays, thumbUrl, toggleDay } from '../api.ts';
 import type { PhotoDay, PhotoDeleteResult, PhotoItem, PhotoList } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { backfillActive, backfillThumb } from './thumb.ts';
@@ -65,9 +65,10 @@ function paint(): void {
     if (last && last.label === label) last.photos.push(...d.photos);
     else groups.push({ label, photos: [...d.photos] });
   }
-  $('phDays').innerHTML = groups.map(g => `
+  groupIds = groups.map(g => g.photos.map(p => p.id));
+  $('phDays').innerHTML = groups.map((g, gi) => `
     <section>
-      <h3 class="ph-dayhd">${esc(g.label)}<span>${g.photos.length}</span></h3>
+      <h3 class="ph-dayhd" data-group="${gi}">${esc(g.label)}<span>${g.photos.length}</span></h3>
       <div class="ph-grid">${g.photos.map(p => {
         const on = picked.has(p.id);
         const src = gridSrc(p);
@@ -122,6 +123,9 @@ function togglePick(id: string): void {
   if (picked.has(id)) picked.delete(id); else picked.add(id);
   paint();
 }
+
+/** The photo ids of each heading group, in the order paint() shows them. A tap on a heading picks that group. */
+let groupIds: string[][] = [];
 
 /** Pick every photo, or clear the picks when they are all picked already. */
 function selectAll(): void {
@@ -407,6 +411,12 @@ const app: HubApp = {
     const grid = $('phDays');
     grid.addEventListener('click', e => {
       if (suppressClick) { suppressClick = false; return; }
+      const head = (e.target as Element).closest<HTMLElement>('.ph-dayhd');
+      if (head && selecting) {
+        const ids = groupIds[Number(head.dataset.group)];
+        if (ids) { report('photos:select:day'); const next = toggleDay(picked, ids); picked.clear(); for (const id of next) picked.add(id); paint(); }
+        return;
+      }
       const cell = (e.target as Element).closest<HTMLElement>('[data-id]');
       if (!cell) return;
       const id = cell.dataset.id!;
