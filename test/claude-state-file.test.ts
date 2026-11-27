@@ -40,6 +40,20 @@ test('a good file loads its archived sessions and pins, and drops entries of the
   assert.equal(fs.existsSync(`${file}.corrupt`), false);
 });
 
+test('archiving or pinning that changes nothing returns true, even when the file cannot be written', async () => {
+  const file = path.join(dir, 'noop.json');
+  const s = await loadState(file);
+  assert.equal(s.setArchived('a1', true), true);
+  assert.equal(s.setPinned('s1', 'm1', true), true);
+  fs.rmSync(file);
+  fs.mkdirSync(file);
+  assert.equal(s.setArchived('never', false), true);
+  assert.equal(s.setArchived('a1', true), true);
+  assert.equal(s.setPinned('s1', 'mX', false), true);
+  assert.equal(s.setPinned('s1', 'm1', true), true);
+  assert.deepEqual(s.pinnedIn('s1'), ['m1']);
+});
+
 test('a failed save returns false and leaves the state in memory unchanged', async () => {
   const file = path.join(dir, 'blocked.json');
   const s = await loadState(file);
