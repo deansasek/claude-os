@@ -24,3 +24,12 @@ export function editable(e: EditableEvent): boolean {
 export function afterWriteNote(done: string, readNote: string): string {
   return readNote ? `${done} ${readNote}` : done;
 }
+
+/** What hardware Back closes first in the Calendar: the details, then the day/time picker, then the add sheet's confirm step, then the add sheet. null: nothing is open. */
+export function backTarget(s: { detail: boolean; picker: boolean; confirm: boolean; add: boolean }): 'detail' | 'picker' | 'confirm' | 'add' | null {
+  if (s.detail) return 'detail';
+  if (s.picker) return 'picker';
+  if (s.confirm) return 'confirm';
+  if (s.add) return 'add';
+  return null;
+}
