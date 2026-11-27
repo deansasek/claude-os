@@ -7,7 +7,7 @@ import { PHOTO_MAX } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { PHOTOS } from '../../photos/server/store.ts';
 import { listProjects, projectFolder } from '../../claude/server/hostsessions.ts';
-import { instructionsView, setInstructions } from './instructions.ts';
+import { instructionsView, saveInstructions } from './instructions.ts';
 import { getProfile, readProfilePhoto, removePhoto, savePhoto, setProfile, setWelcomeDone, welcomeDone } from './profile.ts';
 import { addCustomMcp, addFolder, knownServer, pluginsView, probe, removeCustomMcp, removeFolder, setOn } from './plugins.ts';
 import { checkPin, pinStatus, removePin, setPin } from './pin.ts';
@@ -59,7 +59,7 @@ const app: ServerApp = {
       },
     },
     { method: 'GET', path: 'instructions', handle: () => instructionsView() },
-    { method: 'POST', path: 'instructions', handle: ({ body }) => ({ text: setInstructions(body?.text) }) },
+    { method: 'POST', path: 'instructions', handle: ({ body }) => saveInstructions(body?.text) },
     // The first-run welcome (core/web/welcome.ts): {done: true} once finished or skipped; {done: false} brings it back
     { method: 'GET', path: 'welcome', handle: () => ({ done: welcomeDone() }) },
     { method: 'POST', path: 'welcome', handle: ({ body }) => ({ done: setWelcomeDone(body?.done !== false) }) },

@@ -47,6 +47,15 @@ export function setInstructions(v: unknown): string {
   return text;
 }
 
+/** The route's save: a save the PC cannot make is refused with a code, and the saved text stays. */
+export function saveInstructions(v: unknown): { ok: true; text: string } | { ok: false; text: string; error: string } {
+  try { return { ok: true, text: setInstructions(v) }; }
+  catch (e) {
+    console.log('settings: could not save the instructions:', (e as NodeJS.ErrnoException).code ?? 'error');
+    return { ok: false, text: getInstructions(), error: 'save_failed' };
+  }
+}
+
 /** The line for a new Claude session's system prompt; "" when none are set. */
 export function instructionsForPrompt(): string {
   // Reads again while the last read failed, so a new session gets the text once the file is readable.
