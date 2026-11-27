@@ -32,3 +32,9 @@ export function parseQuiet(raw: string | null): QuietHours {
     pauseWake: o.pauseWake !== false,
   };
 }
+
+/** The quiet days with day d toggled. The last ticked day stays ticked: an empty list would read back as every day. */
+export function toggleQuietDay(days: number[], d: number): number[] {
+  if (days.includes(d)) return days.length > 1 ? days.filter(x => x !== d) : days;
+  return [...days, d].sort((a, b) => a - b);
+}
