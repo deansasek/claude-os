@@ -19,6 +19,7 @@ import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 import { swipeStep } from './swipe.ts';
 import { flagsOf, tagCalendar, visibleEvents, type CalendarInfo } from './calendars.ts';
 import { afterWriteNote, backTarget, editable, formCanShow, ownEvent } from './edit.ts';
+import { shownStart } from './shown-start.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 5 * 60e3;
@@ -260,7 +261,7 @@ function evRow(e: Ev, day: Date): string {
   const now = Date.now(), isToday = sameDay(day, new Date());
   const past = isToday && !e.allDay && e.end <= now;
   const on = isToday && !e.allDay && e.start <= now && e.end > now;
-  const time = e.allDay ? 'All day' : timeFmt.format(new Date(e.start));
+  const time = e.allDay ? 'All day' : timeFmt.format(new Date(shownStart(e, startOfDay(day).getTime())));
   const sub = !e.allDay && e.end > e.start ? `to ${timeFmt.format(new Date(e.end))}` : '';
   return `<li class="cal-ev${past ? ' past' : ''}${on ? ' now' : ''}"${evData(e)}><span class="cal-time">${esc(time)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>`
     + `<span><div class="cal-title-ev">${esc(e.title)}</div>${e.location ? `<div class="cal-where">${esc(e.location)}</div>` : ''}</span></li>`;
@@ -277,7 +278,7 @@ function weekHtml(): string {
   for (let i = 0; i < 7; i++) {
     const d = addDays(first, i), list = eventsOn(d);
     const body = list.length
-      ? list.map(e => `<div class="cal-chip${e.allDay ? ' all' : ''}"${evData(e)}><small>${e.allDay ? 'All day' : esc(timeFmt.format(new Date(e.start)))}</small>${esc(e.title)}</div>`).join('')
+      ? list.map(e => `<div class="cal-chip${e.allDay ? ' all' : ''}"${evData(e)}><small>${e.allDay ? 'All day' : esc(timeFmt.format(new Date(shownStart(e, startOfDay(d).getTime()))))}</small>${esc(e.title)}</div>`).join('')
       : '<p class="cal-none">Nothing</p>';
     cols.push(`<div class="cal-wcol"><button class="cal-wh${sameDay(d, new Date()) ? ' today' : ''}" data-day="${keyOf(d)}">`
       + `<small>${esc(weekdayFmt.format(d))}</small><b>${d.getDate()}</b></button>${body}</div>`);
