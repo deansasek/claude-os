@@ -31,13 +31,15 @@ const POLITE = /^(?:(?:can|could|would|will) you |please |hey |ok |okay |claude 
 
 /** A list name as a voice phrase: lower case, letters and digits, single spaces. */
 const norm = (s: string): string => s.toLowerCase().replace(/[’]/g, "'").replace(/[^a-z0-9' -]+/g, ' ').replace(/\s+/g, ' ').trim();
+/** A family list's name as the voice says it, without a trailing "list": "Packing list" is heard as "packing", so "the packing list" matches once. */
+const stem = (s: string): string => norm(s).replace(/ list$/, '');
 const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** The list a spoken name means: Shopping, To-do, or one of the family's own lists (its id). */
 function which(w: string, custom: { id: string; name: string }[]): VoiceList {
   if (/^(shopping|grocery|groceries)$/.test(w)) return 'shopping';
   if (/^(to ?do|to-do|todo)$/.test(w)) return 'todo';
-  return custom.find(c => norm(c.name) === w)?.id ?? 'todo';
+  return custom.find(c => stem(c.name) === w)?.id ?? 'todo';
 }
 
 /** The command in a phrase, or null. The item keeps the words as said (minus a leading "a", "some"...).
@@ -47,7 +49,7 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
   const hadComma = raw.includes(',');
   const t = raw.replace(/\s*,[\s,]*/g, ' comma ').toLowerCase().replace(/[’]/g, "'").replace(/[^a-z0-9' -]+/g, ' ').replace(/\s+/g, ' ').trim()
     .replace(POLITE, '').trim().replace(POLITE, '').trim();
-  const names = custom.map(c => norm(c.name)).filter(Boolean).map(esc);
+  const names = custom.map(c => stem(c.name)).filter(Boolean).map(esc);
   const LIST = `(?:the |my |our )?(${['shopping', 'grocery', 'groceries', 'to ?do', 'to-do', 'todo', ...names].join('|')}) list`;
   let m = t.match(new RegExp(`^(?:add|put|stick|write) (.+?) (?:to|on|onto|in|into) ${LIST}$`));
   if (m) {
