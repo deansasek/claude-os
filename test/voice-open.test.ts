@@ -19,6 +19,10 @@ test('each app opens by its name', () => {
   assert.equal(id('open claude'), 'claude');
   assert.equal(id('open apps'), 'launcher');
   assert.equal(id('open home'), 'home');
+  assert.equal(id('open the news'), 'news');
+  assert.equal(id('show me the news'), 'news');
+  assert.equal(id('open radio'), 'radio');
+  assert.equal(id('open recipes'), 'recipes');
 });
 
 test('"the", "my", "app" and the other verbs are allowed', () => {
