@@ -59,6 +59,8 @@ export function playable(list: unknown[]): Station[] {
   return list.flatMap(x => {
     if (typeof x !== 'object' || x === null) return [];
     const s = x as Station;
+    // the card art reads the name and the id: an entry without them would break the screen
+    if (typeof s.id !== 'string' || typeof s.name !== 'string' || !s.name.trim()) return [];
     const url = httpsUrl(s.url);
     return url ? [{ ...s, url, favicon: httpsUrl(s.favicon) ?? '' }] : [];
   });
