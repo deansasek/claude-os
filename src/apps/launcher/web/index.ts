@@ -473,8 +473,17 @@ async function loadSearchData(): Promise<void> {
   if (query) paintResults();
 }
 
+/** The saved recipe names, read from the Recipes app's list (recipes.list): a bad entry is left out. */
+function savedRecipes(): { name: string }[] {
+  try {
+    const v = JSON.parse(store.get('recipes.list') || '[]') as unknown;
+    if (!Array.isArray(v)) return [];
+    return v.flatMap(x => (x && typeof x === 'object' && typeof (x as { name?: unknown }).name === 'string' && (x as { name: string }).name.trim() ? [{ name: (x as { name: string }).name }] : []));
+  } catch { return []; }
+}
+
 function sources(): SearchSources {
-  return { apps: allTiles().map(t => ({ key: t.key, name: t.name })), lists, sessions, onTablet };
+  return { apps: allTiles().map(t => ({ key: t.key, name: t.name })), lists, sessions, recipes: savedRecipes(), onTablet };
 }
 
 /** Say what could not be read. A source never read says "couldn't be read"; a source with kept data says it may be out of date. */
@@ -528,6 +537,11 @@ function openHit(h: Hit): void {
     // The Claude app opens the session named by hub:open-session (the same event Home uses).
     openApp('claude');
     dispatchEvent(new CustomEvent('hub:open-session', { detail: h.ref }));
+  }
+  else if (h.kind === 'recipe') {
+    // The Recipes app opens the recipe named by hub:open-recipe.
+    openApp('recipes');
+    dispatchEvent(new CustomEvent('hub:open-recipe', { detail: h.ref }));
   }
   else openApp('claude');
 }

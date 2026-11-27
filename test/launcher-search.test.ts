@@ -57,3 +57,17 @@ test('on a Hub, Apps search offers no tablet-only Settings section, and finds Sy
   assert.equal(searchAll('wi-fi', { ...hub, onTablet: true }).some(h => h.kind === 'setting'), true, 'the tablet still offers Wi-Fi');
   assert.equal(searchAll('system monitor', hub).some(h => h.ref === 'monitor'), true, 'System monitor is offered on every screen');
 });
+
+test('searchAll finds a saved recipe by name, as a recipe hit', () => {
+  const hits = searchAll('lasagne', { ...src, recipes: [{ name: 'Lasagne' }] });
+  assert.deepEqual(hits, [{ kind: 'recipe', label: 'Lasagne', sub: 'Recipe', ref: 'Lasagne' }]);
+  assert.deepEqual(searchAll('lasagne', src), []);
+});
+
+test('the Apps search opens a saved recipe through hub:open-recipe, and Recipes listens for it', async () => {
+  const { readFileSync } = await import('node:fs');
+  const launcher = readFileSync(new URL('../src/apps/launcher/web/index.ts', import.meta.url), 'utf8');
+  const recipes = readFileSync(new URL('../src/apps/recipes/web/index.ts', import.meta.url), 'utf8');
+  assert.match(launcher, /hub:open-recipe/);
+  assert.match(recipes, /addEventListener\('hub:open-recipe'/);
+});
