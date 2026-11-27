@@ -8,8 +8,9 @@ export function parseDuration(phrase: string): number | null {
     .replace(/ (a|an|1) (hour|minute|second)s? and a half /g, ' 1.5 $2s ')
     .replace(/ (\d+) and a half (hour|minute|second)s? /g, ' $1.5 $2s ')
     .replace(/ (\d+) (hour|minute|second)s? and a half /g, ' $1.5 $2s ')
-    // "an hour and a quarter" is 75 minutes: the hours, then 15 minutes
+    // "an hour and a quarter" is 75 minutes: the hours, then 15 minutes; "a minute and a quarter" is 75 seconds
     .replace(/ (a|an|\d+) hours? and a quarter /g, ' $1 hours 15 minutes ')
+    .replace(/ (a|an|\d+) minutes? and a quarter /g, ' $1 minutes 15 seconds ')
     .replace(/ (a )?half (an |a )?hour /g, ' 30 minutes ')
     .replace(/ (a )?half (a )?minute /g, ' 30 seconds ')
     // "three quarters of an hour" is 45 minutes; "3" is the form after normalise
