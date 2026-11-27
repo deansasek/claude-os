@@ -89,9 +89,14 @@ function paintFacing(): void {
 }
 
 /** The thumbnail of the newest photo (empty until there is one). */
+// the last-photo read the PC never answers gives up; each read takes a number, and only the newest one sets the thumbnail
+const LAST_TIMEOUT_MS = 20e3;
+let lastSeq = 0;
 async function refreshLast(): Promise<void> {
+  const n = ++lastSeq;
   try {
-    const l = await getJson<PhotoList>('/api/photos/list?limit=1');
+    const l = await getJson<PhotoList>('/api/photos/list?limit=1', LAST_TIMEOUT_MS);
+    if (n !== lastSeq) return;   // a newer read came first: its photo is the one to show
     // the PC could not read its folder, so keep the thumbnail
     if (l.ok === false) return;
     const p = l.days[0]?.photos[0];
