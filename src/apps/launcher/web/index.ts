@@ -458,23 +458,32 @@ let listsReadFailed = false;
 let listsRead = false;      // true once a lists read has succeeded
 let sessionsRead = false;   // true once a Claude sessions read has succeeded
 
+// a search read the PC never answers gives up; each load takes a number, and only the newest load sets the search data
+const SEARCH_TIMEOUT_MS = 10e3;
+let searchSeq = 0;
 async function loadSearchData(): Promise<void> {
   if (Date.now() - loadedAt < 60e3) return;   // read again at most once a minute
   loadedAt = Date.now();
+  const seq = ++searchSeq;
   try {
-    lists = (await readLists()).map(l => ({ id: l.id, name: l.name, items: l.items.map(i => i.text) }));
+    const l = (await readLists(SEARCH_TIMEOUT_MS)).map(x => ({ id: x.id, name: x.name, items: x.items.map(i => i.text) }));
+    if (seq !== searchSeq) return;   // a newer load came first: its answer is the one that counts
+    lists = l;
     listsReadFailed = false;
     listsRead = true;
   } catch {
+    if (seq !== searchSeq) return;
     loadedAt = 0;   // read again on the next search open; keep the last good lists
     listsReadFailed = true;
   }
   try {
-    const u = await getJson<{ sessions?: { id: string | null; title: string; folder: string }[] }>('/api/claude/usage');
+    const u = await getJson<{ sessions?: { id: string | null; title: string; folder: string }[] }>('/api/claude/usage', SEARCH_TIMEOUT_MS);
+    if (seq !== searchSeq) return;
     sessions = (u.sessions ?? []).filter(s => !!s.id).map(s => ({ id: s.id!, title: s.title, folder: s.folder }));
     searchReadFailed = false;
     sessionsRead = true;
   } catch {
+    if (seq !== searchSeq) return;
     loadedAt = 0;   // read again on the next search open; keep the last good sessions
     searchReadFailed = true;
   }

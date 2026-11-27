@@ -18,8 +18,8 @@ function tabletCopy(): FamilyList[] | null {
 }
 
 /** All the lists, as a reader sees them now. */
-export const readLists = (): Promise<FamilyList[]> =>
-  pickLists(tabletCopy(), () => getJson<ListsResult>('/api/lists/lists'));
+export const readLists = (timeoutMs?: number): Promise<FamilyList[]> =>
+  pickLists(tabletCopy(), () => getJson<ListsResult>('/api/lists/lists', timeoutMs));
 
 /** True when a write threw because the PC could not take it and the tablet queued it (writeList). The caller says the
  *  change will be added when the PC is back. A write with no tablet copy (the Nest Hub) is never queued: no flag. */
