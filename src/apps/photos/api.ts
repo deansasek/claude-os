@@ -22,6 +22,14 @@ export function nextPhotoDays(prev: PhotoDay[], list: { ok?: boolean; days?: unk
 
 export interface UploadResult { ok: boolean; id?: string; url?: string; error?: string }
 export interface PhotoDeleteResult { ok: boolean; error?: string; deleted?: string[]; missing?: string[]; failed?: string[] }
+/** Pick every id in a day's group, or clear them when they are all picked already. Other picks stay. */
+export function toggleDay(picked: Set<string>, ids: string[]): Set<string> {
+  const out = new Set(picked);
+  const all = ids.length > 0 && ids.every(id => picked.has(id));
+  for (const id of ids) { if (all) out.delete(id); else out.add(id); }
+  return out;
+}
+
 /** The most ids one delete request carries. The PC refuses more (server/store.ts MAX_PER_DELETE: keep them equal). */
 export const DELETE_BATCH = 200;
 /** The ids split into delete requests of at most DELETE_BATCH, in the same order. */
