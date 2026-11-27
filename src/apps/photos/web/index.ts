@@ -7,7 +7,7 @@ import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithPhoto } from '../../claude/web/reply.ts';
-import { ASK_MAX_PHOTOS, deleteBatches, nextPhotoDays, thumbUrl, toggleDay } from '../api.ts';
+import { ASK_MAX_PHOTOS, afterDelete, deleteBatches, nextPhotoDays, thumbUrl, toggleDay } from '../api.ts';
 import type { PhotoDay, PhotoDeleteResult, PhotoItem, PhotoList } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { backfillActive, backfillThumb } from './thumb.ts';
@@ -354,9 +354,14 @@ async function removePending(): Promise<void> {
     return;
   }
   hideSheet();
+  const before = inOrder();   // the grid order before the delete: the viewer moves to a neighbour
   days = days.map(d => ({ ...d, photos: d.photos.filter(p => !gone.has(p.id)) })).filter(d => d.photos.length);
   for (const id of gone) picked.delete(id);
-  if (shown && gone.has(shown.id)) close();
+  if (shown && gone.has(shown.id)) {
+    const next = afterDelete(before.map(x => x.p.id), shown.id, gone);
+    const nx = next ? before.find(x => x.p.id === next) : undefined;
+    if (nx) open(nx.p, nx.day, 1); else close();
+  }
   setSelecting(false);
   paint();
   await load();   // the PC's own list, now
