@@ -6,6 +6,7 @@
 // Every directory call tries the public mirrors in turn (MIRRORS), the one that last answered first.
 import type { ServerApp } from '../../../core/server/app.ts';
 import type { FacetsResult, StationsResult, TitleResult } from '../api.ts';
+import { cleanQuery } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { MIRRORS, cataloguePath, facetsFrom, filtersFrom, mirrorOrder } from '../web/catalogue.ts';
 import { icyTitle } from '../web/player.ts';
@@ -43,7 +44,7 @@ async function directory(pathAndQuery: string): Promise<unknown[]> {
 }
 
 async function stations(query: URLSearchParams): Promise<StationsResult> {
-  const name = (query.get('q') || '').trim().slice(0, 60);
+  const name = cleanQuery(query.get('q') || '');
   const f = filtersFrom(query);
   const params = new URLSearchParams({ hidebroken: 'true', order: 'votes', reverse: 'true', limit: '60' });
   if (name) params.set('name', name);
