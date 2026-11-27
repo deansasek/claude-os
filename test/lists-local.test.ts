@@ -104,7 +104,7 @@ test('a failed refresh warns that the lists may be out of date only when the PC 
 
 test('untick-all puts every ticked item back on the list, and reports how many', () => {
   const lists: FamilyList[] = [{ id: 'pack', name: 'Packing', kind: 'check' as const, items: [
-    { id: 'a1', text: 'Socks', done: true }, { id: 'a2', text: 'Hat', done: false }, { id: 'a3', text: 'Map', done: true },
+    { id: 'a1', text: 'Socks', done: true, at: '2026-11-26T08:00:00Z' }, { id: 'a2', text: 'Hat', done: false, at: '2026-11-26T08:00:00Z' }, { id: 'a3', text: 'Map', done: true, at: '2026-11-26T08:00:00Z' },
   ] }];
   const r = applyOp(lists, { path: 'untick-all', body: { list: 'pack' } });
   assert.equal(r.ok, true);
