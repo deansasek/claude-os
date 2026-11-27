@@ -1,7 +1,7 @@
 // Saved Quiet hours that are not the right shape fall back field by field, so the status line and the DND tile never break. Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { inQuietWindow, parseQuiet, type QuietHours } from '../src/core/web/quiet-hours.ts';
+import { inQuietWindow, parseQuiet, toggleQuietDay, type QuietHours } from '../src/core/web/quiet-hours.ts';
 
 test('no saved value, null, an array and a string all give the defaults', () => {
   const def = { on: false, days: [1, 2, 3, 4, 5, 6, 0], from: '22:00', to: '07:00', pauseWake: true };
@@ -62,4 +62,15 @@ test('an overnight window gives the small hours to the evening before', () => {
 test('Sunday early morning checks Saturday, the day before', () => {
   assert.equal(inQuietWindow(q({ days: [6] }), at(0, 6, 0)), true);   // Sunday 06:00: Saturday evening is in days
   assert.equal(inQuietWindow(q({ days: [0] }), at(0, 6, 0)), false);
+});
+
+test('a day is added and removed, and the days stay in order', () => {
+  assert.deepEqual(toggleQuietDay([1, 3], 5), [1, 3, 5]);
+  assert.deepEqual(toggleQuietDay([1, 3, 5], 3), [1, 5]);
+  assert.deepEqual(toggleQuietDay([5, 1], 3), [1, 3, 5]);
+});
+
+test('the last ticked day cannot be unticked, so quiet hours never save every day by mistake', () => {
+  assert.deepEqual(toggleQuietDay([3], 3), [3]);
+  assert.deepEqual(parseQuiet(JSON.stringify({ on: true, days: toggleQuietDay([3], 3) })).days, [3]);
 });

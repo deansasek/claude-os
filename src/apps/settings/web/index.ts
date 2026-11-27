@@ -40,6 +40,7 @@ import { INSTRUCTIONS_MAX, INSTRUCTIONS_READ_FAILED, NAME_MAX, NICK_MAX, ROLES }
 import { thumbUrl } from '../../photos/api.ts';
 import { handlePluginSeg, initPlugins, loadPlugins, paintPlugins } from './plugins.ts';
 import { initPinSettings, paintPinRow } from './pin.ts';
+import { toggleQuietDay } from '../../../core/web/quiet-hours.ts';
 
 type Section = 'profile' | 'usage' | 'yourclaude' | 'sessions' | 'plugins' | 'voice' | 'notifications'
   | 'wifi' | 'google' | 'bluetooth' | 'display' | 'appearance' | 'sound' | 'battery' | 'keyboard' | 'apps' | 'storage' | 'datetime'
@@ -1723,7 +1724,7 @@ function mount(context: AppContext): void {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-day]');
     if (!b) return;
     const d = +b.dataset.day!;
-    quietDraft = { ...quietDraft, days: quietDraft.days.includes(d) ? quietDraft.days.filter(x => x !== d) : [...quietDraft.days, d].sort() };
+    quietDraft = { ...quietDraft, days: toggleQuietDay(quietDraft.days, d) };
     paintQuietSheet();
   });
   $('stQWake').addEventListener('click', () => { quietDraft = { ...quietDraft, pauseWake: !quietDraft.pauseWake }; setSwitch('stQWake', quietDraft.pauseWake); });
