@@ -18,7 +18,7 @@ import { manifest } from '../manifest.ts';
 import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 import { swipeStep } from './swipe.ts';
 import { flagsOf, tagCalendar, visibleEvents, type CalendarInfo } from './calendars.ts';
-import { afterWriteNote, editable, formCanShow, ownEvent } from './edit.ts';
+import { afterWriteNote, backTarget, editable, formCanShow, ownEvent } from './edit.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 5 * 60e3;
@@ -685,12 +685,14 @@ const app: HubApp = {
     $('calAddStart').addEventListener('click', () => openPicker('start'));
     $('calAddEnd').addEventListener('click', () => openPicker('end'));
     $('calPick').addEventListener('click', e => { if (e.target === $('calPick')) closePicker(); });
-    // Back (system.ts): an open day or time picker closes first; otherwise Back goes on to Home
+    // Back (system.ts) closes the topmost open sheet: details, picker, confirm step, then the add sheet. Nothing open goes on to Home.
     onBack(() => {
-      if (!$('calDetail').hidden) { closeDetail(); return true; }
-      if ($('calPick').hidden) return false;
-      closePicker();
-      return true;
+      const t = backTarget({ detail: !$('calDetail').hidden, picker: !$('calPick').hidden, confirm: !$('calAddConfirm').hidden, add: !$('calAdd').hidden });
+      if (t === 'detail') closeDetail();
+      else if (t === 'picker') closePicker();
+      else if (t === 'confirm') backToForm();
+      else if (t === 'add') closeAdd();
+      return t !== null;
     });
     $('calDetailClose').addEventListener('click', closeDetail);
     $('calDetailEdit').addEventListener('click', openEdit);
