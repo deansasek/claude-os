@@ -29,3 +29,9 @@ test('a saved history visit with no string title or a bad time is left out, and 
   const raw = JSON.stringify([{ url: 'https://a.example', at: 1 }, { url: 'https://b.example', title: 'B', at: 2 }, { url: 'https://c.example', title: 7, at: 3 }, { url: 'https://d.example', title: 'D', at: 'x' }]);
   assert.deepEqual(readSavedList(raw, isVisit), [{ url: 'https://b.example', title: 'B', at: 2 }]);
 });
+
+test('a saved list longer than its maximum is cut to the maximum, after the bad entries are dropped', () => {
+  const raw = JSON.stringify([{ url: 'https://a.example' }, null, { url: 'https://b.example' }, { url: 'https://c.example' }]);
+  assert.deepEqual(readSavedList(raw, hasUrl, 2), [{ url: 'https://a.example' }, { url: 'https://b.example' }]);
+  assert.equal(readSavedList(raw, hasUrl)?.length, 3);
+});
