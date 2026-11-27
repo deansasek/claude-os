@@ -77,7 +77,7 @@ test('refresh() clears only its own failure note on success, and keeps the Run n
 test('loadScenes records the scenes status, and its catch marks a failed read as error', () => {
   const body = between(routines, 'async function loadScenes(', 'async function save(');
   assert.match(body, /scenesWhy = r\?\.status \?\? 'error';/);
-  assert.match(body, /\} catch \{ scenesWhy = 'error'; \/\* keep the last list \*\/ \}/);
+  assert.match(body, /\} catch \{ (?:if \(seq !== scenesSeq\) return; )?scenesWhy = 'error'; \/\* keep the last list \*\/ \}/);
 });
 
 test('pickScene says why there are no scenes: not set up, cannot be read, or none yet', () => {
