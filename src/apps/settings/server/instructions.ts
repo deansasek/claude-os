@@ -33,10 +33,11 @@ export function instructionsView(): { text: string; error?: string } {
 
 /** Save the instructions (empty clears them). Returns what is saved now. */
 export function setInstructions(v: unknown): string {
-  // Write the file first: a failed write throws and leaves the saved text as it was.
+  // Write or remove the file first: a failed write or removal throws and leaves the saved text as it was.
+  // force: a file that is already gone is not an error; any other failure is.
   const next = clean(v);
   if (next) fs.writeFileSync(FILE, next);
-  else { try { fs.rmSync(FILE, { force: true }); } catch { /* already gone */ } }
+  else fs.rmSync(FILE, { force: true });
   text = next;
   readFailed = false;   // the saved file is now the text this call wrote
   return text;
