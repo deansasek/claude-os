@@ -27,7 +27,9 @@ interface Info {
 export interface SessionDetail { id: string; cwd: string; file: string; model: string | null; lastText: string | null; live: LiveSession }
 const details = new Map<string, SessionDetail>();
 export const lookupSession = (id: string): SessionDetail | undefined => details.get(id) || findSession(id);
-const cache = new Map<string, { key: string; info: Info }>();
+// the session logs read so far, newest kept: a session that goes quiet is dropped once the cache is full (not kept for as long as the hub runs)
+const cache = new Lru<string, { key: string; info: Info }>(300);
+export const sessionCacheSize = (): number => cache.size;
 
 function contentKinds(msg: any): { kinds: string[]; tool: string | null } {
   const c = msg?.content;
