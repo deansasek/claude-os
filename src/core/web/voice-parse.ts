@@ -28,7 +28,8 @@ export function parseTime(phrase: string): TimeOfDay | null {
   const mm = s.match(/^(.*) (am|pm)$/);
   if (mm) { s = mm[1]; mer = mm[2] as 'am' | 'pm'; }
   let h: number, m: number, r: RegExpMatchArray | null;
-  if ((r = s.match(/^(half|quarter|\d+)(?: minutes?)? (past|after|to|before) (\d+)$/))) {
+  // "a quarter to 7" and "a half past 6" are said with an "a" in front too
+  if ((r = s.match(/^(?:a )?(half|quarter|\d+)(?: minutes?)? (past|after|to|before) (\d+)$/))) {
     const by = r[1] === 'half' ? 30 : r[1] === 'quarter' ? 15 : +r[1];
     h = +r[3]; m = r[2] === 'to' || r[2] === 'before' ? 60 - by : by;
     if (r[2] === 'to' || r[2] === 'before') { h -= 1; if (h === 0) h = 12; }   // "quarter to 1" is 12:45, not midnight
