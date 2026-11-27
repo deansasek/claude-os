@@ -25,7 +25,7 @@ export function parseQuiet(raw: string | null): QuietHours {
     ? [...new Set(o.days.filter((d): d is number => typeof d === 'number' && Number.isInteger(d) && d >= 0 && d <= 6))]
     : [];
   return {
-    on: o.on === true,
+    on: o.on === true && !(Array.isArray(o.days) && o.days.length === 0),   // an older build saved an empty day list for "none": that stays off
     days: days.length ? days : ALL_DAYS,
     from: typeof o.from === 'string' && TIME.test(o.from) ? o.from : '22:00',
     to: typeof o.to === 'string' && TIME.test(o.to) ? o.to : '07:00',

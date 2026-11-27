@@ -74,3 +74,8 @@ test('the last ticked day cannot be unticked, so quiet hours never save every da
   assert.deepEqual(toggleQuietDay([3], 3), [3]);
   assert.deepEqual(parseQuiet(JSON.stringify({ on: true, days: toggleQuietDay([3], 3) })).days, [3]);
 });
+
+test('a saved empty day list from an older build reads as off, not as every night', () => {
+  assert.equal(parseQuiet('{"on":true,"days":[]}').on, false);
+  assert.equal(parseQuiet('{"on":true,"days":["mon"]}').on, true);
+});
