@@ -1146,13 +1146,19 @@ function paintKeyboard(): void {
 
 // ---------- Storage ----------
 // ---------- Settings backup (Storage): save to the PC, restore on request (backup.ts) ----------
+// a note read that answers after a newer note or a save started does not write the note
+let backupSeq = 0;
 async function paintBackupNote(): Promise<void> {
-  $('stBkNote').textContent = backupNote(await loadSettings());
+  const n = ++backupSeq;
+  const b = await loadSettings();
+  if (n !== backupSeq) return;
+  $('stBkNote').textContent = backupNote(b);
 }
 function initBackup(): void {
   $('stBkSave').addEventListener('click', async () => {
     $('stBkMsg').textContent = 'Saving…';
     const r = await saveSettings();
+    backupSeq++;   // a note read that started before this save is out of date
     $('stBkMsg').textContent = r.ok ? `Saved ${r.count} settings to your PC.` : (r.error ?? 'Couldn’t save.');
     // A good save answers with its own time and count, so the note needs no second read.
     if (r.ok && r.saved) $('stBkNote').textContent = savedNote(r.saved, r.count ?? 0);
