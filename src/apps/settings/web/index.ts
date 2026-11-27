@@ -656,10 +656,9 @@ async function paintSessions(): Promise<void> {
   $('stNewFolderV').textContent = folderLabel(fid);
   await loadModels();   // the models this PC's Claude offers (cached on the tablet)
   if (section === 'sessions') $('stNewModelV').textContent = mid ? (modelChoices().find(m => m.id === mid)?.label ?? mid) : 'Automatic';
-  if (!projects) {
-    try { projects = await getJson<Project[]>('/api/claude/projects'); foldersFailed = false; } catch { foldersFailed = true; }
-    if (section === 'sessions') $('stNewFolderV').textContent = folderLabel(newFolderPref());
-  }
+  // read again each time: a folder added or removed on the PC shows at once; a failed read keeps the last good list
+  try { projects = await getJson<Project[]>('/api/claude/projects'); foldersFailed = false; } catch { foldersFailed = true; }
+  if (section === 'sessions') $('stNewFolderV').textContent = folderLabel(newFolderPref());
 }
 
 function pickModel(): void {
