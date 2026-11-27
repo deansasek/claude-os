@@ -1,7 +1,7 @@
 // The notification shade's grouping rules (src/core/web/notes-group.ts). Run with: npm test
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, toggleMutedApp, withoutNotice } from '../src/core/web/notes-group.ts';
+import { appLabel, groupNotices, nextNoticeAt, parseMutedApps, parseNotices, toggleMutedApp, withoutNotice } from '../src/core/web/notes-group.ts';
 
 const list = [
   { app: 'claude', title: 'Done', at: 500 },
@@ -64,4 +64,15 @@ test('appLabel makes a readable heading from an app id', () => {
   assert.equal(appLabel('home-assistant'), 'Home assistant');
   assert.equal(appLabel('claude'), 'Claude');
   assert.equal(appLabel(''), 'Other');
+});
+
+test('parseNotices keeps the good notices in order and drops the bad ones', () => {
+  const raw = JSON.stringify([null, { title: 'A', at: 2, app: 'clock' }, 42, { at: 3 }, { title: 'B', at: 'x' }, { title: 'C', at: 1, body: 'hi', icon: 7 }]);
+  assert.deepEqual(parseNotices(raw), [{ title: 'A', at: 2, app: 'clock' }, { title: 'C', at: 1, body: 'hi' }]);
+});
+
+test('parseNotices reads nothing from text that is not a list of notices', () => {
+  assert.deepEqual(parseNotices('not json'), []);
+  assert.deepEqual(parseNotices('{}'), []);
+  assert.deepEqual(parseNotices(null), []);
 });
