@@ -12,6 +12,7 @@ import { appSettingsChanged, registerAppSettings } from '../../../core/web/app-s
 import { critterSpeak, notify, openApp } from '../../../core/web/system.ts';
 import { WMO, advice, icon, isCold, isWindy, kindOf, weatherScene } from './art.ts';
 import { airLine, pollenLine } from './air.ts';
+import { nowIndex } from './now-index.ts';
 
 type Selection = { t: 'now' } | { t: 'hour'; i: number; strip: number | null } | { t: 'day'; d: number };
 
@@ -62,11 +63,6 @@ function dayName(w: WeatherOk, d: number, long = false): string {
 function dayHours(w: WeatherOk, d: number): number[] {
   const start = w.hourly.time.indexOf(`${w.daily.time[d]}T00:00`);
   return start < 0 ? [] : Array.from({ length: COLS }, (_, j) => start + j * STEP).filter(i => i < w.hourly.time.length);
-}
-
-function nowIndex(w: WeatherOk): number {
-  const i = w.hourly.time.indexOf(`${w.current.time.slice(0, 13)}:00`);
-  return i < 0 ? 0 : i;
 }
 
 /** Rain, snow or storms in the next twelve hours, as one line. Nothing when it's already wet out. */
