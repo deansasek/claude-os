@@ -83,12 +83,17 @@ async function refresh(): Promise<void> {
   render();
 }
 
+// a scene read the PC never answers gives up; each read takes a number, and only the newest read sets the picker
+const SCENES_TIMEOUT_MS = 20e3;
+let scenesSeq = 0;
 async function loadScenes(): Promise<void> {
+  const seq = ++scenesSeq;
   try {
-    const r = await getJson<HaScenes>('/api/home-assistant/scenes');
+    const r = await getJson<HaScenes>('/api/home-assistant/scenes', SCENES_TIMEOUT_MS);
+    if (seq !== scenesSeq) return;   // a newer read came first: its answer is the one that counts
     scenesWhy = r?.status ?? 'error';
     if (r?.status === 'ok') scenes = r.scenes.filter(s => s.dashboard || s.home).map(s => ({ entity_id: s.entity_id, name: s.name }));
-  } catch { scenesWhy = 'error'; /* keep the last list */ }
+  } catch { if (seq !== scenesSeq) return; scenesWhy = 'error'; /* keep the last list */ }
   render();
 }
 
