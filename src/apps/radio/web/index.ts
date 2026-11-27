@@ -16,7 +16,7 @@ import type { Facet, FacetsResult, Station, StationsResult, TitleResult } from '
 import { manifest } from '../manifest.ts';
 import { BITRATES, CODECS, type FacetKind, NO_FILTERS, type SearchFilters, addRecent, addSearch, browsePick, moreLikeTag, nextChoice, noMatchText } from './catalogue.ts';
 import {
-  type PlayState, SLEEP_CHOICES, barModel, failMessage, initial, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
+  type PlayState, SLEEP_CHOICES, barModel, canStepFavourites, failMessage, initial, sleepEnd, sleepLeft, stationHue, stepFavourite, titleLine, volumeFrom,
   volumeFromDevice,
 } from './player.ts';
 import { httpsUrl, playable, playableStations } from './stations.ts';
@@ -817,8 +817,10 @@ function render(): void {
   $('rdToggle').innerHTML = playingNow ? I.pause : I.play;
   $('rdToggle').setAttribute('aria-label', playingNow ? 'Pause' : 'Play');
   $<HTMLButtonElement>('rdToggle').disabled = !s && !favs.length && !list.length;
-  $<HTMLButtonElement>('rdPrev').disabled = !favs.length;
-  $<HTMLButtonElement>('rdNext').disabled = !favs.length;
+  // the bar skips exactly when the Now playing view does: two or more favourites (player.ts canStepFavourites)
+  const canSkip = canStepFavourites(favs);
+  $<HTMLButtonElement>('rdPrev').disabled = !canSkip;
+  $<HTMLButtonElement>('rdNext').disabled = !canSkip;
   renderSleep();
 
   renderShelves();
