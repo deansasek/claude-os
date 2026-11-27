@@ -12,7 +12,7 @@ const app: ServerApp = {
   routes: [
     {
       method: 'GET', path: 'forecast', handle: ({ query: q }) => weather(
-        q.has('lat') && q.has('lon') ? { lat: Number(q.get('lat')), lon: Number(q.get('lon')), place: q.get('place') || 'Preview' } : undefined),
+        q.has('lat') && q.has('lon') ? { lat: Number(q.get('lat')), lon: Number(q.get('lon')), place: (q.get('place') || 'Preview').slice(0, 60) } : undefined),
     },
     {
       method: 'GET', path: 'places', handle: async ({ query }): Promise<PlacesResponse> => {
