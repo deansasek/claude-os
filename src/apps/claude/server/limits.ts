@@ -15,6 +15,10 @@ const CLAUDE = which('claude');
 const CACHE_FILE = path.join(STATE, '.limits-cache.json');   // last good numbers, so restarts don't show dashes
 let lastRenew = 0;
 let backoffUntil = 0, backoffMs = 0;
+/** Whether a poll is due after a rate-limit back-off: when the deadline has come, or is further out than the wait itself (the PC clock went back). */
+export function backoffOver(now: number, until: number, ms: number): boolean {
+  return now >= until || until - now > ms;
+}
 
 export const LIMITS: Limits = { status: 'no_token', error: null, updated: null, source: null, limits: {}, list: [], breakdown: [] };
 
@@ -123,7 +127,7 @@ async function pollOnce(): Promise<void> {
 
 export function startLimits(): void {
   const loop = async () => {
-    if (Date.now() >= backoffUntil) await pollOnce();
+    if (backoffOver(Date.now(), backoffUntil, backoffMs)) await pollOnce();
     setTimeout(loop, EVERY_MS);
   };
   void loop();
