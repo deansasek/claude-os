@@ -53,6 +53,7 @@ function closeOver(id: string): void {
     else { e.classList.remove('on'); D.sync(); }
     return;
   }
+  if (id === 'brPhotos') photosSeq++;   // a list read still out is for a picker that is now closed: it must not fill the grid
   if ((id === 'brChoose' || id === 'brPhotos') && chooser) { const c = chooser; chooser = null; browser.chooseFile(c.tab, 'cancel'); }
   e.classList.remove('on');
   D.sync();
@@ -470,12 +471,17 @@ function openChooser(e: BrowserEvent): void {
   openOver('brChoose');
 }
 
+// a photo list the PC never answers gives up; each opening takes a number, and only the newest opening fills the grid
+const PHOTOS_TIMEOUT_MS = 8000;
+let photosSeq = 0;
 async function openPhotos(): Promise<void> {
   hideOver('brChoose');
   el('brPhotoGrid').innerHTML = '<div class="br-msg-line">Loading…</div>';
   openOver('brPhotos');
+  const seq = ++photosSeq;
   try {
-    const list = await getJson<PhotoList>('/api/photos/list?limit=80');
+    const list = await getJson<PhotoList>('/api/photos/list?limit=80', PHOTOS_TIMEOUT_MS);
+    if (seq !== photosSeq || !chooser) return;   // the picker was closed, or a newer opening came first
     if (list.ok === false) {
       // the PC could not read its folder: say so, not "no photos yet"
       const msg = document.createElement('div');
@@ -490,6 +496,7 @@ async function openPhotos(): Promise<void> {
       ? items.map(p => `<button data-photo="${esc(p.id)}" aria-label="Choose this photo"><img src="${esc(thumbUrl(p.id))}" alt="" loading="lazy"></button>`).join('')
       : '<div class="br-msg-line">No photos yet. Take one with the camera in ClaudeOS first.</div>';
   } catch {
+    if (seq !== photosSeq || !chooser) return;
     el('brPhotoGrid').innerHTML = '<div class="br-msg-line">The photos didn’t load. ClaudeOS can’t reach the PC.</div>';
   }
 }
