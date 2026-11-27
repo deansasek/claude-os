@@ -37,6 +37,9 @@ const $ = <T extends Element = HTMLElement>(id: string): T => ctx.$<T>(id);
 
 let status: CalStatus | null = null;
 let statusFailed = false;   // the last status read threw: the PC could not be reached, so the address is unknown
+// a read the PC never answers gives up, so the chips and the starts-soon check do not wait for good
+const READ_TIMEOUT_MS = 10_000;
+let statusSeq = 0;          // each status read takes a number; a saved address makes a read still out stale
 let view: View = 'day';
 let anchor = startOfDay(new Date());
 let events: Ev[] = [];
@@ -115,7 +118,12 @@ function daysWithEvents(): Set<string> {
 
 // ---------- talking to the PC ----------
 async function loadStatus(): Promise<void> {
-  try { status = await getJson<CalStatus>(`${API}/status`); statusFailed = false; } catch { statusFailed = true; /* keep what we had */ }
+  const seq = ++statusSeq;
+  try {
+    const s = await getJson<CalStatus>(`${API}/status`, READ_TIMEOUT_MS);
+    if (seq !== statusSeq) return;   // a newer read, or a saved address, came first
+    status = s; statusFailed = false;
+  } catch { if (seq !== statusSeq) return; statusFailed = true; /* keep what we had */ }
   await loadCalendars();
   appSettingsChanged();
 }
@@ -161,7 +169,7 @@ async function load(force = false, auto = false): Promise<void> {
 /** The calendars and their shown flags from the PC. A failed read keeps the chips as they were. */
 async function loadCalendars(): Promise<void> {
   try {
-    const r = await getJson<{ status?: string; calendars?: CalendarInfo[] }>(`${API}/calendars`);
+    const r = await getJson<{ status?: string; calendars?: CalendarInfo[] }>(`${API}/calendars`, READ_TIMEOUT_MS);
     if (r.status === 'ok' && r.calendars) { calendars = r.calendars; render(); }
   } catch { /* keep what we had */ }
 }
@@ -210,7 +218,7 @@ async function loadConnector(): Promise<void> {
 async function saveAddress(address: string): Promise<void> {
   let r: CalConfigResult | null = null;
   try { r = await postJson<CalConfigResult>(`${API}/config`, { address }); } catch { /* below */ }
-  if (r) { status = { configured: r.configured, address: r.address }; statusFailed = false; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; addressMsg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
+  if (r) { statusSeq++; status = { configured: r.configured, address: r.address }; statusFailed = false; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; addressMsg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
   else { msg = 'Couldn’t reach the PC. Try again in a moment.'; addressMsg = 'Couldn’t reach the PC. Try again in a moment.'; }
   appSettingsChanged();
   await loadCalendars();
@@ -627,7 +635,7 @@ const readNotified = (): Notified => parseNotified(store.get(NOTICED_KEY));
 /** The events to check: the PC's now (kept as the tablet copy), else the copy when it is recent enough, else none. */
 async function soonEvents(now: number): Promise<{ events: CalEvent[]; copyTime?: string } | null> {
   let r: CalEvents | null = null;
-  try { r = await getJson<CalEvents>(`${API}/events`); } catch { r = null; }   // the PC cannot be reached
+  try { r = await getJson<CalEvents>(`${API}/events`, READ_TIMEOUT_MS); } catch { r = null; }   // the PC cannot be reached (or never answers)
   if (r) {
     if (r.status === 'not_set' && caps.localState) store.set(EVENTS_KEY, null);   // the address was removed: forget the copy
     const answer = pcAnswer(r.status, Date.parse(r.fetchedAt ?? '') || now, now);
