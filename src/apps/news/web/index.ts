@@ -6,14 +6,14 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { critterSvg } from '../../../core/web/critter-svg.ts';
 import { browser, nativeHas, newsFetch } from '../../../core/web/device.ts';
-import { openApp } from '../../../core/web/system.ts';
+import { onBack, openApp } from '../../../core/web/system.ts';
 import { askWithText } from '../../claude/web/reply.ts';
 import { appSettingsChanged, registerAppSettings, type SettingRow } from '../../../core/web/app-settings.ts';
 import type { NewsFeedResponse, NewsItem, NewsTopicsResponse } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { FEEDS } from './feeds.ts';
 import { activeFeeds, topicRows, topicSaveError, type TopicChoices } from './topics.ts';
-import { ago, FEED_ERROR_TEXT, keepStoriesOnError, askText, linkFor, pictureFor, POLL_MS, readerFor, screenFor, STALE_TEXT, staleNotes, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
+import { ago, FEED_ERROR_TEXT, keepStoriesOnError, askText, linkFor, pictureFor, POLL_MS, readerBack, readerFor, screenFor, STALE_TEXT, staleNotes, storiesById, storyKey, type NewsScreen, type Shelf } from './screen.ts';
 import { feedSource, tabletFeed, type KeyValue } from './tablet.ts';
 
 let ctx: AppContext;
@@ -249,6 +249,12 @@ function mount(context: AppContext): void {
   ctx = context;
   registerSettings();
   void loadTopics();
+  // Back closes an open story before it goes Home (the shell's fallback only knows the .st-sheet and .pin sheets)
+  onBack(() => {
+    if (!readerBack(ctx.isVisible(), !$('nwSheet').hidden)) return false;
+    closeSheet();
+    return true;
+  }, 10);
   const pick = (e: Event) => {
     const t = e.target as Element;
     const id = t.closest<HTMLElement>('[data-id]')?.dataset.id;
