@@ -30,6 +30,10 @@ test('a time of day is read with or without am and pm', () => {
   assert.deepEqual(parseTime('12 noon'), { h: 12, m: 0, meridiem: 'pm' });
   assert.deepEqual(parseTime('12 midday'), { h: 12, m: 0, meridiem: 'pm' });
   assert.deepEqual(parseTime('12 midnight'), { h: 0, m: 0, meridiem: 'am' });
+  assert.deepEqual(resolveHour(parseTime('quarter past midnight')!, false), { h: 0, m: 15 });
+  assert.deepEqual(resolveHour(parseTime('quarter to midnight')!, false), { h: 23, m: 45 });
+  assert.deepEqual(resolveHour(parseTime('half past noon')!, false), { h: 12, m: 30 });
+  assert.deepEqual(resolveHour(parseTime('quarter to noon')!, false), { h: 11, m: 45 });
   assert.deepEqual(resolveHour(parseTime('12 midnight')!, false), { h: 0, m: 0 });
   assert.equal(parseTime('25'), null);
   assert.equal(parseTime('some time'), null);
