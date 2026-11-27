@@ -15,6 +15,9 @@ import { speakable } from '../../claude/web/voice.ts';
 import { voiceDefaults, wantFor } from '../../claude/web/sessions/controls.ts';
 import * as cam from './camera.ts';
 
+// a reply read gives up after this long: a PC that sleeps can leave a connection that never answers, and the poll must go on
+const READ_TIMEOUT_MS = 8000;
+
 interface LookParts {
   frame: HTMLElement;       // the Camera app's own preview box (where the preview goes back to)
   view: HTMLElement;        // Look's full-screen preview box
@@ -159,7 +162,7 @@ async function follow(id: string, turnId: string | null): Promise<void> {
   while (Date.now() < until && on) {
     await new Promise(r => setTimeout(r, 1500));
     let v: SessionView;
-    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`); }
+    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`, READ_TIMEOUT_MS); }
     catch {
       // four failed reads in a row (about 6 s): say the PC could not be reached
       if (++misses < 4) continue;
