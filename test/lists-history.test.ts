@@ -54,6 +54,10 @@ test('a good suggest read replaces the chips', () => {
   assert.deepEqual(keptSuggest(['Eggs'], ['Milk', 'Bread'], []), ['Milk', 'Bread']);
 });
 
+test('a good suggest read drops a chip that is already open on Shopping', () => {
+  assert.deepEqual(keptSuggest([], ['Milk', 'Bread'], ['milk']), ['Bread']);
+});
+
 test('a failed suggest read keeps the chips on screen', () => {
   assert.deepEqual(keptSuggest(['Eggs', 'Milk'], null, []), ['Eggs', 'Milk']);
 });
