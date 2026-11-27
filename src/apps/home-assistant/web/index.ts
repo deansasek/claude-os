@@ -25,6 +25,7 @@ import { manifest } from '../manifest.ts';
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 15e3;
 const READ_TIMEOUT_MS = 10_000;   // a read the PC never answers gives up, so the next refresh can run
+const POST_TIMEOUT_MS = 15_000;   // a tile toggle or scene the PC never answers gives up, so the tile is not busy for good
 let layoutGen = 0;                // bumped by each layout edit (saveLayout, setOnHome)
 const DEVICES_STALE_MS = 30e3;
 const HOLD_MS = 520;          // a long-press opens a tile's settings
@@ -255,7 +256,7 @@ async function setScene(id: string): Promise<void> {
   flash.delete(id);
   render();
   let r: HaResult;
-  try { r = await postJson<HaResult>(`${API}/scene`, { entity_id: id }); }
+  try { r = await postJson<HaResult>(`${API}/scene`, { entity_id: id }, POST_TIMEOUT_MS); }
   catch { r = { ok: false, error: 'Can’t reach the PC right now.' }; }
   busy.delete(id);
   flash.set(id, r.ok);
@@ -272,7 +273,7 @@ async function tap(id: string): Promise<void> {
   busy.add(id);
   render();
   let r: HaResult;
-  try { r = await postJson<HaResult>(`${API}/toggle`, { entity_id: id, on: !e.on }); }
+  try { r = await postJson<HaResult>(`${API}/toggle`, { entity_id: id, on: !e.on }, POST_TIMEOUT_MS); }
   catch { r = { ok: false, error: 'Can’t reach the PC right now.' }; }
   busy.delete(id);
   if (r.ok && r.entity && dash) dash.entities = dash.entities.map(x => (x.entity_id === id ? r.entity! : x));
