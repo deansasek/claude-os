@@ -403,6 +403,7 @@ function openSheet(): void {
 }
 
 function closeSheet(): void {
+  if (Keyboard.isOpen) Keyboard.close('nav');   // the shelf search's keyboard goes with its sheet
   sheetOpen = false;
   shelfQuery = '';
   paintSheet();
