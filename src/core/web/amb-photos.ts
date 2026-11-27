@@ -84,9 +84,13 @@ function resume(fresh = false): void {
   });
 }
 
+// a list read the PC never answers gives up, so the frame tries again in five minutes instead of waiting for good
+const LIST_TIMEOUT_MS = 20e3;
 async function loadList(): Promise<void> {
+  const g = gen;   // a list read from before a stop or start must not replace the list of the new run
   try {
-    const r = await getJson<PhotoList>('/api/photos/list?limit=500');
+    const r = await getJson<PhotoList>('/api/photos/list?limit=500', LIST_TIMEOUT_MS);
+    if (g !== gen) return;
     if (!r || r.ok !== true || !Array.isArray(r.days)) throw new Error('bad list');
     const seen = new Set<string>();
     for (const d of r.days) for (const p of d.photos || []) if (p && typeof p.id === 'string') seen.add(p.id);
@@ -95,6 +99,7 @@ async function loadList(): Promise<void> {
     listAt = Date.now();
     misses = 0;
   } catch {
+    if (g !== gen) return;
     // the PC is away: keep the last list and try again in five minutes
     listAt = Date.now() - LIST_MS + 5 * 60e3;
   }
