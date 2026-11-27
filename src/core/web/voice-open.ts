@@ -23,6 +23,9 @@ add('lists', 'Lists', ['lists', 'list']);
 add('calendar', 'Calendar', ['calendar', 'diary']);
 add('routines', 'Routines', ['routines', 'routine']);
 add('settings', 'Settings', ['settings', 'setting']);
+add('news', 'News', ['news']);
+add('radio', 'Radio', ['radio']);
+add('recipes', 'Recipes', ['recipes', 'recipe', 'cookbook']);
 
 const OPEN = /^(?:open(?: up)?|show(?: me)?|go to|switch to|take me to|launch)(?: the| my)? (.+?)(?: app| screen| page)?$/;
 
