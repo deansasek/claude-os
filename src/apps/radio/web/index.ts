@@ -304,16 +304,20 @@ function syncTitlePoll(): void {
   }
 }
 
+const TITLE_TIMEOUT_MS = 8e3;   // a title read the PC never answers gives up, so the next poll can run
+let titleSeq = 0;               // each read takes a number; an answer to an older read is dropped
+
 async function fetchTitle(): Promise<void> {
   const s = current;
   if (!s) return;
+  const seq = ++titleSeq;
   try {
-    const r = await getJson<TitleResult>(`${API}/title?url=${encodeURIComponent(s.url)}`);
-    if (current?.id !== s.id || state === 'off') return;
+    const r = await getJson<TitleResult>(`${API}/title?url=${encodeURIComponent(s.url)}`, TITLE_TIMEOUT_MS);
+    if (seq !== titleSeq || current?.id !== s.id || state === 'off') return;
     if ((r.title || '') !== streamTitle) { streamTitle = r.title || ''; syncMedia(); render(); }
   } catch {
-    // No title (the PC host cannot be reached): drop the old song, so the card says "Live radio".
-    if (current?.id === s.id && state !== 'off' && streamTitle !== '') { streamTitle = ''; syncMedia(); render(); }
+    // No title (the PC host cannot be reached, or it never answered): drop the old song, so the card says "Live radio".
+    if (seq === titleSeq && current?.id === s.id && state !== 'off' && streamTitle !== '') { streamTitle = ''; syncMedia(); render(); }
   }
 }
 
