@@ -18,7 +18,7 @@ const reply = read('src/apps/claude/web/reply.ts');
 const look = read('src/apps/camera/web/look.ts');
 const voice = read('src/apps/claude/web/voice.ts');
 
-const OFFLINE_CATCH = /catch \{ say\('I can’t reach your PC right now\. Check that it’s on and ClaudeOS is running\.'\); return null; \}/;
+const OFFLINE_CATCH = /const cantReach = \(\): void => \{ if \(on\) say\('I can’t reach your PC right now\. Check that it’s on and ClaudeOS is running\.'\); \};/;
 const VOICE_CATCH = /\.catch\(\(\) => \{ failed\('I can’t reach your PC right now\.'\); return undefined; \}\)/;
 
 test('unlocked() in reply.ts rejects when the action cannot run', () => {
@@ -28,9 +28,9 @@ test('unlocked() in reply.ts rejects when the action cannot run', () => {
 
 test('look.ts send() wraps both unlocked calls in a try/catch that says the PC is unreachable', () => {
   const body = between(look, 'async function send(', '\n}\n');
-  const wrapped = body.match(/try \{ r = await unlocked\([\s\S]*?catch \{ say\('I can’t reach your PC right now\. Check that it’s on and ClaudeOS is running\.'\); return null; \}/g) || [];
+  const wrapped = body.match(/try \{ r = await unlocked\([\s\S]*?catch \{ cantReach\(\); return null; \}/g) || [];
   assert.equal(wrapped.length, 2, 'both unlocked calls are wrapped');
-  assert.match(body, OFFLINE_CATCH, 'the catch says the offline line');
+  assert.match(look, OFFLINE_CATCH, 'the helper says the offline line, only while Look is on');
 });
 
 test('voice.ts send() and the new-session path catch an unreachable PC', () => {

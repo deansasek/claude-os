@@ -12,7 +12,7 @@ const body = src.slice(start, src.indexOf('\n}\n', start));
 
 test('a Look follow-up that cannot reach the PC says so', () => {
   assert.ok(start > 0, 'send() exists');
-  const offline = /catch \{ say\('I can’t reach your PC right now\./;
+  const offline = /catch \{ cantReach\(\)/;
   assert.match(body, offline);
   assert.ok(body.search(offline) < body.indexOf('v.canReply'), 'the offline catch comes before the canReply check');
 });

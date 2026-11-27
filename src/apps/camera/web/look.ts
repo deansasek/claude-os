@@ -118,18 +118,23 @@ async function ask(raw: string): Promise<void> {
   }
 }
 
+/** The PC could not be reached. Said only while Look is still on: a late failure after "Stop looking" is not spoken. */
+const cantReach = (): void => { if (on) say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); };
+
 /** Send the words and the photo: to the Look session if it can take a reply, else a new one in Scratch space. */
 async function send(text: string, photoIds: string[]): Promise<{ sessionId: string; turnId: string | null } | null> {
   if (sessionId) {
     // a failed read is not a finished session: say the PC could not be reached
     let v: SessionView;
-    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(sessionId)}`); }
-    catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
+    try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(sessionId)}`, READ_TIMEOUT_MS); }
+    catch { cantReach(); return null; }
+    if (!on) return null;   // Look was stopped while the read was out
     if (v.canReply) {
       const id = sessionId;
       let r: { ok: boolean; error?: string; turn?: HubTurn } | null;
       try { r = await unlocked(() => apiCall<{ ok: boolean; error?: string; turn?: HubTurn }>('reply', { id, text, photoIds, ...wantFor(id) })); }
-      catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
+      catch { cantReach(); return null; }
+      if (!on) return null;
       if (r == null) { say('Enter your PIN on the screen first.'); return null; }
       if (!r.ok) { say('I couldn’t send that. Try again in a moment.'); return null; }
       return { sessionId: id, turnId: r.turn?.id || null };
@@ -140,13 +145,15 @@ async function send(text: string, photoIds: string[]): Promise<{ sessionId: stri
   }
   // a failed read is not an empty list: only a read that worked can say there is no Scratch space
   let projects: Project[];
-  try { projects = await getJson<Project[]>('/api/claude/projects'); }
-  catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
+  try { projects = await getJson<Project[]>('/api/claude/projects', READ_TIMEOUT_MS); }
+  catch { cantReach(); return null; }
+  if (!on) return null;
   const scratch = projects.find(p => p.name === 'Scratch space');
   if (!scratch) { say('I need a Scratch space project on your PC first.'); return null; }
   let r: NewSessionResult | null;
   try { r = await unlocked(() => apiCall<NewSessionResult>('new', { project: scratch.id, text, photoIds, voice: true, ...voiceDefaults() })); }
-  catch { say('I can’t reach your PC right now. Check that it’s on and ClaudeOS is running.'); return null; }
+  catch { cantReach(); return null; }
+  if (!on) return null;
   if (r == null) { say('Enter your PIN on the screen first.'); return null; }
   if (!r.ok && r.error === 'too_many') { say('Two sessions are already working. Try again in a moment.'); return null; }
   if (!r.ok || !r.sessionId) { say('That didn’t start. Try again in a moment.'); return null; }
