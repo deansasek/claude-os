@@ -50,6 +50,7 @@ export function speakable(md: string, max = 340): string {
     .replace(/https?:\/\/\S+/g, 'a link')
     .replace(/`([^`\n]{1,32})`/g, '$1').replace(/`[^`\n]*`/g, 'that')
     .replace(/(?:[A-Za-z]:)?(?:[\\/][\w .@-]+){2,}/g, m => m.split(/[\\/]/).pop() || m)
+    .replace(/\b[\w.@-]+\/([\w@-]+\.[A-Za-z]\w{0,4})\b/g, '$1')   // a short path with a file name: only the name is spoken
     .replace(/^\s{0,3}#{1,6}\s*/gm, '').replace(/^\s*(?:[-*+]|\d+[.)])\s+/gm, '').replace(/^\s*>\s?/gm, '')
     .replace(/(\*\*|__|\*|_|~~)(\S(?:.*?\S)?)\1/g, '$2')
     .replace(/\p{Extended_Pictographic}/gu, '');
