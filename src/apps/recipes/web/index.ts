@@ -692,12 +692,19 @@ function onClick(ev: Event): void {
   render();
 }
 
+/** Open the saved recipe with this name (the Apps search names it). Nothing happens for a name that is not saved. */
+function openNamed(name: string): void {
+  const r = recipes.find(x => x.name === name);
+  if (r) go({ t: 'detail', r });
+}
+
 const app: HubApp = {
   ...manifest,
   icon: ICON,
   mount(c) {
     ctx = c;
     $('rcBody').addEventListener('click', onClick);
+    addEventListener('hub:open-recipe', e => openNamed((e as CustomEvent<string>).detail));   // a launcher result names the recipe
     ensureTick();
     render();
     void loadNames();

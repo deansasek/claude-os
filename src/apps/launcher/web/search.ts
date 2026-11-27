@@ -1,7 +1,7 @@
 // The Apps screen search (index.ts): finds apps, Settings rows, list names and items, and Claude sessions by name.
 // Pure: no DOM and no imports, so the test runs under node. The sources are passed in by the caller.
 
-export type HitKind = 'app' | 'setting' | 'list' | 'item' | 'session';
+export type HitKind = 'app' | 'setting' | 'list' | 'item' | 'recipe' | 'session';
 
 /** One result. `ref` is what the caller opens: an app tile key, a Settings section, a list id, or a session id. */
 export interface Hit { kind: HitKind; label: string; sub: string; ref: string }
@@ -10,6 +10,7 @@ export interface SearchSources {
   apps: { key: string; name: string }[];                       // tile keys as the grid has them ("c:photos", "a:com.x")
   lists: { id: string; name: string; items: string[] }[];
   sessions: { id: string; title: string; folder: string }[];
+  recipes?: { name: string }[];                                  // saved recipes (the Recipes app's list), found by name
   onTablet?: boolean;                                            // false on a Hub: the tablet-only Settings sections are not offered (default true)
 }
 
@@ -44,7 +45,7 @@ export function score(query: string, text: string): number {
   return tj.includes(qj) ? 1 : 0;
 }
 
-const KIND_ORDER: Record<HitKind, number> = { app: 0, setting: 1, list: 2, item: 3, session: 4 };
+const KIND_ORDER: Record<HitKind, number> = { app: 0, setting: 1, list: 2, item: 3, recipe: 4, session: 5 };
 const MAX_HITS = 30;
 
 /**
@@ -68,6 +69,7 @@ export function searchAll(query: string, src: SearchSources): Hit[] {
     for (const it of l.items) add('item', it, `In ${l.name}`, l.id, it);
   }
   for (const s of src.sessions) add('session', s.title || 'Claude session', s.folder || 'Claude', s.id, `${s.title} ${s.folder}`);
+  for (const r of src.recipes ?? []) add('recipe', r.name, 'Recipe', r.name);
   found.sort((a, b) => (b.s - a.s) || (KIND_ORDER[a.kind] - KIND_ORDER[b.kind]));
   return found.slice(0, MAX_HITS).map(({ kind, label, sub, ref }) => ({ kind, label, sub, ref }));
 }
