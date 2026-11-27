@@ -13,6 +13,7 @@ const dayOk = (v: unknown): v is number => typeof v === 'number' && Number.isInt
 export function readAlarmList(raw: unknown, newId: () => string): LoadedAlarm[] {
   if (!Array.isArray(raw)) return [];
   const out: LoadedAlarm[] = [];
+  const seen = new Set<string>();   // an id already used by an earlier alarm is not kept: the Clock app finds alarms by id
   for (const x of raw) {
     if (!x || typeof x !== 'object') continue;
     const a = x as Record<string, unknown>;
@@ -20,8 +21,11 @@ export function readAlarmList(raw: unknown, newId: () => string): LoadedAlarm[] 
     const days = Array.isArray(a.days) ? a.days.filter(dayOk) : [];
     if (Array.isArray(a.days) && a.days.length > 0 && days.length === 0) continue;
     const label = typeof a.label === 'string' ? a.label.trim().slice(0, LABEL_MAX) : '';
+    const stored = typeof a.id === 'string' && a.id && !seen.has(a.id) ? a.id : null;
+    const id = stored ?? newId();
+    seen.add(id);
     out.push({
-      id: typeof a.id === 'string' && a.id ? a.id : newId(),
+      id,
       h: a.h, m: a.m, on: a.on === true, days,
       snooze: typeof a.snooze === 'number' && Number.isFinite(a.snooze) ? a.snooze : null,
       fired: typeof a.fired === 'string' ? a.fired : null,

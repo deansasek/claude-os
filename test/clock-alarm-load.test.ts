@@ -34,3 +34,8 @@ test('a value that is not a list reads as no alarms', () => {
   assert.deepEqual(readAlarmList({ h: 6, m: 0 }, ids), []);
   assert.deepEqual(readAlarmList(null, ids), []);
 });
+
+test('an alarm whose id repeats an earlier alarm gets its own id, and both are kept', () => {
+  const out = readAlarmList([{ id: 'a', h: 6, m: 0 }, { id: 'a', h: 7, m: 0 }], ids);
+  assert.deepEqual(out.map(x => [x.id, x.h]), [['a', 6], ['new1', 7]]);
+});
