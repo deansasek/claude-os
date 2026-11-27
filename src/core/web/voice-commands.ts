@@ -438,7 +438,7 @@ async function voiceCustomLists(): Promise<{ id: string; name: string }[]> {
 }
 
 async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customName?: string): Promise<CommandResult> {
-  const name = c.list === 'shopping' ? 'the shopping list' : c.list === 'todo' ? 'the to-do list' : `the ${(customName ?? 'list').toLowerCase()} list`;
+  const name = c.list === 'shopping' ? 'the shopping list' : c.list === 'todo' ? 'the to-do list' : spokenList(customName ?? 'list');
   try {
     if (c.op === 'add') {
       let r: ListsResult;
@@ -517,8 +517,10 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
 }
 
 const lower = (s: string): string => s.replace(/^./, ch => ch.toLowerCase());
+/** A family list as a reply names it: "the camping list", or "the packing list" for a list already named "Packing list". */
+const spokenList = (name: string): string => /list$/i.test(name.trim()) ? `the ${name.trim().toLowerCase()}` : `the ${name.toLowerCase()} list`;
 const spokenName = (l: { id: string; name: string }): string =>
-  (l.id === 'shopping' ? 'the shopping list' : l.id === 'todo' ? 'the to-do list' : `the ${l.name.toLowerCase()} list`);
+  (l.id === 'shopping' ? 'the shopping list' : l.id === 'todo' ? 'the to-do list' : spokenList(l.name));
 
 /** POST /api/lists/edit and the reply to say. */
 async function editSay(list: string, id: string, was: string, to: string, name: string): Promise<CommandResult> {
