@@ -218,9 +218,12 @@ function render(d: Usage): void {
   tick();
 }
 
+// a usage read the PC never answers gives up before the 10 s poll would run again, so the approval check keeps running
+const USAGE_TIMEOUT_MS = 8e3;
+
 async function load(): Promise<void> {
   try {
-    render(await getJson<Usage>('/api/claude/usage'));
+    render(await getJson<Usage>('/api/claude/usage', USAGE_TIMEOUT_MS));
   } catch {
     pcDown = true;
     $('pill').className = 'live bad'; $('pillText').textContent = 'Offline'; $('pill').hidden = false;
