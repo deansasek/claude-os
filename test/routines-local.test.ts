@@ -115,10 +115,10 @@ test('a failed refresh warns that the routines may be out of date only when the 
 
 test('the tablet copy is restored only when the PC has no routines file', async () => {
   fs.rmSync(file, { force: true });
-  const r = R.restoreRoutines([morning, night]);
+  const r = await R.restoreRoutines([morning, night]);
   assert.equal(r.ok, true);
   assert.deepEqual(r.routines.map(x => x.id), ['morning', 'night']);
-  const again = R.restoreRoutines([morning]);
+  const again = await R.restoreRoutines([morning]);
   assert.equal(again.ok, false);
   assert.equal((await R.readRoutines()).routines.length, 2);
 });
