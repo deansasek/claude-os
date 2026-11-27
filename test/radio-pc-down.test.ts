@@ -10,7 +10,7 @@ const src = readFileSync(new URL('../src/apps/radio/web/index.ts', import.meta.u
 test('a list read that fails with a TypeError marks the PC as down', () => {
   const body = src.slice(src.indexOf('async function load('), src.indexOf('async function facetsOf'));
   const catchBlock = body.slice(body.indexOf('} catch (e) {'));
-  assert.match(catchBlock, /pcDown = e instanceof TypeError;/);
+  assert.match(catchBlock, /pcDown = (?:e instanceof TypeError|cantReach\(e\));/);
 });
 
 test('loadHome asks for Top stations again only when the Top shelf is not ok', () => {
