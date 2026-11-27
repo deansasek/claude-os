@@ -13,7 +13,9 @@ export const fmt = (n: number): string => {
     if (i > 0 && Number(text) >= 1000) return fmt(SCALES[i - 1].div);
     return text + suffix;
   }
-  return String(Math.round(n));
+  // 999.5 to 999.99 is below 1000 but rounds to it: show the next unit, as 1.0K
+  const r = Math.round(n);
+  return r >= 1000 ? fmt(1000) : String(r);
 };
 
 /** "claude-opus-5-5" → "Opus 5.5" */

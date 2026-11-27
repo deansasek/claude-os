@@ -25,6 +25,8 @@ test('rounding up to the next unit shows that unit, not 1000K or 1000M', () => {
   assert.equal(fmt(999_999), '1.0M');
   assert.equal(fmt(999_500), '1.0M');
   assert.equal(fmt(999_960_000), '1.0B');
+  assert.equal(fmt(999.5), '1.0K');
+  assert.equal(fmt(999.4), '999');
 });
 
 test('prettyModel shows a model id as a clean name, with or without a release date', () => {
