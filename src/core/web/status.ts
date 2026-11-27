@@ -222,7 +222,11 @@ export function initStatus(): void {
   onSystemChange(() => { if (controlCenterOpen()) markSeen(); readDevice(); recompute(); paint(); });
   onNotificationsChange(() => { recompute(); paint(); });
   // the Clock app's timer or ringing changed: pick up the new state now, and start (or stop) the one-second countdown
-  onStore(k => { if (k === CLOCK_TIMERS_KEY || k === CLOCK_TIMER_KEY || k === K_RING) tick(); });
+  // the 12/24-hour switch in Settings changes the time's text: forget the minute so the next tick repaints it
+  onStore(k => {
+    if (k === 'os.clock24') st.minute = -1;
+    if (k === 'os.clock24' || k === CLOCK_TIMERS_KEY || k === CLOCK_TIMER_KEY || k === K_RING) tick();
+  });
   addEventListener('hub:ambient-off', () => tick());   // the ambient screen went away: the time is right at once
   recompute();
   readVoice();
