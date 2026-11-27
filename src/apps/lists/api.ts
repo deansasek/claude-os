@@ -41,6 +41,7 @@ export interface ListsResult {
   item?: ListItem;                     // add / tick / edit: the item it touched
   list?: string;                       // new-list: the new list's id
   removed?: number;                    // clear-done: how many went
+  unticked?: number;                   // untick-all: how many were ticked and are now not
   stored?: boolean;                    // GET lists: the PC has a lists file (false: the tablet may restore its copy)
   retry?: boolean;                     // the PC couldn't read or save its file: send the change again later
 }

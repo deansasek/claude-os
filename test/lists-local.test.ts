@@ -101,3 +101,13 @@ test('a failed refresh warns that the lists may be out of date only when the PC 
   assert.match(catchBody, /local\(\)/);
   assert.match(catchBody, /Couldn’t reach the PC, so this may be out of date\. Trying again…/);
 });
+
+test('untick-all puts every ticked item back on the list, and reports how many', () => {
+  const lists: FamilyList[] = [{ id: 'pack', name: 'Packing', kind: 'check' as const, items: [
+    { id: 'a1', text: 'Socks', done: true }, { id: 'a2', text: 'Hat', done: false }, { id: 'a3', text: 'Map', done: true },
+  ] }];
+  const r = applyOp(lists, { path: 'untick-all', body: { list: 'pack' } });
+  assert.equal(r.ok, true);
+  assert.equal(r.unticked, 2);
+  assert.deepEqual(r.lists?.[0].items.map(i => i.done), [false, false, false]);
+});

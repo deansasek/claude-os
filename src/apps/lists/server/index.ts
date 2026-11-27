@@ -6,6 +6,7 @@
 //   POST restore-item {list, item, index}    Undo of a remove: the item back at index, with its id, tick and time
 //   POST edit         {list, id, text}       new text, up to 80 characters; the id and the tick stay
 //   POST clear-done   {list}                 removes the ticked items
+//   POST untick-all   {list}                 unticks every item, so the list can be used again
 //   POST new-list     {name, id?}            a new tick-off list (12 lists at most); id: the tablet's, if free
 //   POST delete-list  {list}                 a list the family made (Shopping, To-do and Notes stay)
 //   POST rename-list  {list, name}           a list the family made gets a new name (its id stays)
@@ -14,7 +15,7 @@
 // Kept in .lists.json on the PC (server/store.ts), where everything is checked again.
 import type { ServerApp } from '../../../core/server/app.ts';
 import { manifest } from '../manifest.ts';
-import { addItem, clearDone, deleteList, editItem, newList, readLists, removeItem, renameList, restoreItem, restoreLists, tickItem } from './store.ts';
+import { addItem, clearDone, deleteList, editItem, newList, readLists, removeItem, renameList, restoreItem, restoreLists, tickItem, untickAll } from './store.ts';
 import { suggestions } from './history.ts';
 import { findList } from '../api.ts';
 
@@ -30,6 +31,7 @@ const app: ServerApp = {
     { method: 'POST', path: 'restore-item', handle: ({ body }) => restoreItem(b(body).list, b(body).item, b(body).index) },
     { method: 'POST', path: 'edit', handle: ({ body }) => editItem(b(body).list, b(body).id, b(body).text) },
     { method: 'POST', path: 'clear-done', handle: ({ body }) => clearDone(b(body).list) },
+    { method: 'POST', path: 'untick-all', handle: ({ body }) => untickAll(b(body).list) },
     // what the family often buys and is not on this list now (history.ts): offered as tap-to-add suggestions
     { method: 'GET', path: 'suggest', handle: ({ query }) => {
       const r = readLists();

@@ -185,6 +185,7 @@ function render(): void {
     $('lsItems').innerHTML = '';
     $('lsEmpty').hidden = true;
     $('lsClear').hidden = true;
+    $('lsUntick').hidden = true;
     $('lsDelete').hidden = true;
     return;
   }
@@ -196,6 +197,7 @@ function render(): void {
   $('lsDelete').hidden = isBuiltIn(l.id);
   $('lsRename').hidden = isBuiltIn(l.id);
   $('lsClear').hidden = notes || !done.length;
+  $('lsUntick').hidden = notes || !done.length;
   $('lsClear').textContent = `Clear ticked (${done.length})`;
   $('lsAddText').textContent = l.items.length >= MAX_ITEMS ? `${l.name} is full` : notes ? 'Write a note' : `Add to ${l.name}`;
 
@@ -279,6 +281,15 @@ function edit(id: string): void {
       void send('edit', { list: l.id, id, text: t }).finally(() => { busy.delete(id); render(); });
     },
   });
+}
+
+/** Untick every item on the list at once, so a checklist can be used again. */
+function untickAll(): void {
+  const l = listNow();
+  if (!l || !l.items.some(i => i.done)) return;
+  for (const i of l.items) i.done = false;
+  render();
+  void send('untick-all', { list: l.id });
 }
 
 function clearTicked(): void {
@@ -437,6 +448,7 @@ const app: HubApp = {
     $('lsAdd').addEventListener('click', openAdd);
     $('lsNew').addEventListener('click', newList);
     $('lsClear').addEventListener('click', clearTicked);
+    $('lsUntick').addEventListener('click', untickAll);
     $('lsDelete').addEventListener('click', askDelete);
     $('lsRename').addEventListener('click', renameNow);
     $('lsUndoBtn').addEventListener('click', () => { void runUndo(); });

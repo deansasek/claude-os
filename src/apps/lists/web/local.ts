@@ -12,7 +12,7 @@ export const COPY_KEY = 'lists.copy';
 /** The changes the PC does not have yet, oldest first. Sent by the Lists page (index.ts flush). */
 export const QUEUE_KEY = 'lists.queue';
 
-export type OpPath = 'add' | 'tick' | 'remove' | 'restore-item' | 'edit' | 'clear-done' | 'new-list' | 'delete-list' | 'rename-list';
+export type OpPath = 'add' | 'tick' | 'remove' | 'restore-item' | 'edit' | 'clear-done' | 'untick-all' | 'new-list' | 'delete-list' | 'rename-list';
 /** One change, as the route and body the PC takes (server/index.ts). */
 export interface Op { path: OpPath; body: Record<string, unknown>; key?: string }   // key: this entry in lists.queue (queue.ts)
 
@@ -71,6 +71,11 @@ export function applyOp(lists: FamilyList[], op: Op): ListsResult {
     case 'edit': {
       const r = renameItem(l, b.id, b.text);
       return typeof r === 'string' ? fail(r) : { ok: true, lists: next, item: r };
+    }
+    case 'untick-all': {
+      const n = l.items.filter(i => i.done).length;
+      for (const i of l.items) i.done = false;
+      return { ok: true, lists: next, unticked: n };
     }
     case 'clear-done': {
       const n = l.items.length;
