@@ -12,6 +12,8 @@ export function parseDuration(phrase: string): number | null {
     .replace(/ (a|an|\d+) hours? and a quarter /g, ' $1 hours 15 minutes ')
     .replace(/ (a )?half (an |a )?hour /g, ' 30 minutes ')
     .replace(/ (a )?half (a )?minute /g, ' 30 seconds ')
+    // "three quarters of an hour" is 45 minutes; "3" is the form after normalise
+    .replace(/ (3|three) quarters (of )?(an |a )?hour /g, ' 45 minutes ')
     .replace(/ (a )?quarter (of )?(an |a )?hour /g, ' 15 minutes ')
     .replace(/ (a|an) (hour|minute|second)/g, ' 1 $2')
     .replace(/ and /g, ' ').replace(/\s+/g, ' ').trim();
