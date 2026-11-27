@@ -498,6 +498,14 @@ public class BrowserView {
       if (act.checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED && !missing.contains(perm)) missing.add(perm);
     }
     if (missing.isEmpty()) { finishPermission(p); return; }
+    if (act.isOwner()) {   // as device owner the grant is ours: re-apply it silently, so Android's own dialog never shows
+      for (String perm : missing) {
+        try { act.dpm().setPermissionGrantState(AdminReceiver.component(act), act.getPackageName(), perm, android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED); }
+        catch (RuntimeException e) { android.util.Log.w("HubBrowser", "grant " + perm, e); }
+      }
+      finishPermission(p);   // a grant that did not take ends as a deny
+      return;
+    }
     waitingRuntime = p;
     Kiosk.pause(5 * 60_000L);
     act.requestPermissions(missing.toArray(new String[0]), REQ_PERMS);
