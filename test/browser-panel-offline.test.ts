@@ -29,9 +29,9 @@ test('openSession says the PC is unreachable when the fetch fails and keeps its 
   const fetchAt = b.indexOf('await getJson<SessionView>');
   const offline = b.indexOf('Can’t reach your PC, so that session didn’t open.');
   assert.ok(fetchAt > 0, 'openSession fetches the session');
-  assert.match(b, /catch \{\s*rows = \[\{ kind: 'note', html: 'Can’t reach your PC, so that session didn’t open\.' \}\];/);
+  assert.match(b, /catch \{\s*(?:if \(sessionId !== id\) return;[^\n]*\n\s*)?rows = \[\{ kind: 'note', html: 'Can’t reach your PC, so that session didn’t open\.' \}\];/);
   assert.ok(offline > fetchAt, 'the offline message follows the fetch');
-  assert.match(b, /catch \{\s*rows = \[\{ kind: 'note', html: 'Couldn’t open that session\.' \}\];/, 'a bad answer keeps the old message');
+  assert.match(b, /catch \{\s*(?:if \(sessionId !== id\) return;[^\n]*\n\s*)?rows = \[\{ kind: 'note', html: 'Couldn’t open that session\.' \}\];/, 'a bad answer keeps the old message');
 });
 
 test('openRecent says the PC is unreachable when the fetch fails and keeps its fallback', () => {

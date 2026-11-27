@@ -340,11 +340,13 @@ async function openSession(id: string): Promise<void> {
   // no answer from the PC is not a bad answer: say the PC could not be reached
   try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`); }
   catch {
+    if (sessionId !== id) return;   // a newer choice (New chat, another session) came first: its screen stays
     rows = [{ kind: 'note', html: 'Can’t reach your PC, so that session didn’t open.' }];
     sessionId = null;
     paint();
     return;
   }
+  if (sessionId !== id) return;   // a newer choice came first: do not paint this session over it
   try {
     settings = settingsFor(id, v.settings);
     canReply = v.canReply;
