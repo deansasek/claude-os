@@ -49,8 +49,13 @@ let layout: LauncherLayout = { ...EMPTY };
 let unsynced = false;
 const setUnsynced = (on: boolean): void => { unsynced = on; store.set(UNSYNCED_KEY, on ? '1' : null); };
 
+// a PC call that never answers gives up, so the layout is sent again on the next show and the copy stands
+const LAYOUT_TIMEOUT_MS = 15e3;
+let edits = 0;   // counts each change; a layout read that started before one is old news
+
 /** Keep the change: the local copy at once, the PC shortly after (a burst of changes is sent once). */
 function saveLayout(): void {
+  edits++;
   layout = tidy(layout) ?? layout;
   store.set(LAYOUT_KEY, JSON.stringify(layout));
   setUnsynced(true);
@@ -65,6 +70,7 @@ async function push(): Promise<void> {
     const r = await fetch(API, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ screen: SCREEN, layout, ...(allowed ? { allowed: [...allowed] } : {}) }),
+      signal: AbortSignal.timeout(LAYOUT_TIMEOUT_MS),
     });
     // a server error (5xx) or a save the PC could not make is sent again later; any other refusal is final
     const j = (r.ok ? await r.json() : { ok: false, error: `HTTP ${r.status}`, retry: r.status >= 500 }) as LauncherLayoutResult;
@@ -75,8 +81,10 @@ async function push(): Promise<void> {
 /** The PC's layout replaces the copy, unless the copy has changes of its own (then those are sent instead). */
 async function pull(): Promise<void> {
   if (unsynced) { await push(); return; }
+  const at = edits;   // a change made while this read is out makes its answer old news
   let j: LauncherLayoutResult;
-  try { j = await getJson<LauncherLayoutResult>(`${API}?screen=${SCREEN}`); } catch { return; }   // offline: the copy stands
+  try { j = await getJson<LauncherLayoutResult>(`${API}?screen=${SCREEN}`, LAYOUT_TIMEOUT_MS); } catch { return; }   // offline: the copy stands
+  if (at !== edits) return;
   if (!j?.ok || unsynced || drag || press) return;
   if (!j.layout) {   // nothing on the PC yet: this screen's copy (from before the PC kept it) goes there
     if (layout.order.length || layout.hidden.length) await push();
