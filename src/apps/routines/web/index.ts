@@ -142,7 +142,7 @@ function cardHtml(r: Routine, i: number): string {
 function stepHtml(s: Step, i: number, n: number): string {
   const sceneMissing = s.kind === 'scene' && loaded && scenes.length > 0 && !sceneName(s.entity_id);
   let main: string;
-  if (s.kind === 'say' || s.kind === 'scene') {
+  if (s.kind === 'say' || s.kind === 'scene' || s.kind === 'quiet') {
     main = `<button class="rt-step-main" data-act="edit"><span class="rt-step-text">${esc(stepLabel(s, s.kind === 'scene' ? sceneName(s.entity_id) : undefined))}`
       + `${sceneMissing ? ' (not on Home now)' : ''}</span></button><span class="rt-step-edit">Change</span>`;
   } else if (s.kind === 'timer' || s.kind === 'pause') {
@@ -314,7 +314,11 @@ function onStepsClick(ev: Event): void {
     case 'remove': draft.steps.splice(i, 1); break;
     case 'less': bump(i, false); return;
     case 'more': bump(i, true); return;
-    case 'edit': if (s.kind === 'say') editSay(i); else if (s.kind === 'scene') pickScene(i); return;
+    case 'edit':
+      if (s.kind === 'say') editSay(i);
+      else if (s.kind === 'scene') pickScene(i);
+      else if (s.kind === 'quiet') { s.on = !s.on; render(); }   // a tap turns Do Not Disturb on or off
+      return;
   }
   render();
 }
