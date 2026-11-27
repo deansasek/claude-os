@@ -21,6 +21,7 @@ import { addManyReply } from '../../lists/web/voice-match.ts';
 import type { FamilyList } from '../../lists/api.ts';
 import {
   RECIPE_PROMPT, adaptPrompt, cookFromStored, cookStep, countWord, fromStored, keepPhoto, pantryPrompt, parseRecipe, recipeOfDay, shoppingItems, stepMinutes, textRecipe, tonightPrompt, type Recipe,
+  sameRecipe,
 } from './recipe.ts';
 
 const API = `/api/${manifest.id}`;
@@ -100,8 +101,8 @@ const saveTimers = (): void => store.set(TIMERS_KEY, JSON.stringify(timers));
 const savePantry = (): void => store.set(PANTRY_KEY, JSON.stringify(pantry));
 const meta = (r: Recipe): string => [r.serves && `Serves ${r.serves}`, r.time].filter(Boolean).join(' · ');
 
-/** The saved copy of a recipe: the same object, or the saved recipe with the same TheMealDB id. */
-const savedIndex = (r: Recipe): number => recipes.findIndex(x => x === r || (!!r.mealId && x.mealId === r.mealId));
+/** The saved copy of a recipe: the same object, the saved recipe with the same TheMealDB id, or the same contents after a reload. */
+const savedIndex = (r: Recipe): number => recipes.findIndex(x => sameRecipe(x, r));
 const pick = (src: Src | undefined, i: number): Recipe | undefined =>
   (src === 'saved' ? recipes[i] : src === 'pan' ? found[i] : results[i]);
 
