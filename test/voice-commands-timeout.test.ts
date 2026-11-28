@@ -25,6 +25,11 @@ test('every PC read and post in a quick command passes the timeout', () => {
   for (const c of calls) assert.match(src, c, `has ${c.source}`);
 });
 
+test('every list read in a quick command passes the timeout', () => {
+  assert.doesNotMatch(src, /readLists\(\)/, 'no bare readLists() call is left');
+  assert.equal(src.match(/readLists\(READ_TIMEOUT_MS\)/g)?.length, 6, 'all six list reads pass the timeout');
+});
+
 test('the connector read stays without a timeout, since it can run a slow Claude read on purpose', () => {
   assert.match(src, /getJson<\{ status\?: string; events\?: Ev\[\] \}>\(`\/api\/calendar\/connector\?day=\$\{day\}\$\{cachedOnly \? '&cached=1' : ''\}`\)/);
 });
