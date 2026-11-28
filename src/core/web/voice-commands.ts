@@ -180,7 +180,9 @@ function normalise(s: string): string {
 // ---------- times of day ----------
 
 
-const clockText = (h: number, m: number) => new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/^0/, '');
+/** A spoken clock time, as the alarms say it: "9:05 AM", no leading zero (timeText). */
+const timeText = (d: Date): string => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/^0/, '');
+const clockText = (h: number, m: number) => timeText(new Date(2000, 0, 1, h, m));
 
 // ---------- weather ----------
 interface Wx {
@@ -521,7 +523,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const left = clock.timerLeft();
     if (left == null) return { say: 'There’s no timer running.' };
     if (clock.timerPaused()) return { say: `The timer is paused, with ${sayDuration(Math.ceil(left / 1000) * 1000)} left.` };
-    const at = new Date(Date.now() + left).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const at = timeText(new Date(Date.now() + left));
     return { say: `At ${at}.`, react: 'look' };
   }
   if (/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)(?: on (?:the|my) timer)?|how much longer(?: is it)?(?: on (?:the|my) timer)?|how many (?:minutes|seconds)(?: are)? left(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
@@ -626,7 +628,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // "how many days until Christmas": calendar days, on this tablet's clock (voice-countdown.ts)
   if (countdownWord(t)) return { say: christmasSay(new Date(), /sleeps/.test(t)), react: 'look' };
   if (/^(?:what(?:'s| is) the time(?: now| right now)?|what time is it(?: now| right now)?|(?:tell me )?the time|time)$/.test(t)) {
-    return { say: `It's ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` };
+    return { say: `It's ${timeText(new Date())}.` };
   }
   if (/^(?:what(?:'s| is) (?:the date(?: now| right now)?|today'?s date|the date today)|what date is it(?: today)?|what(?:'s| is) the day(?: today)?|what day is (?:it|today)(?: today)?|what(?:'s| is) today)$/.test(t)) {
     return { say: `It's ${new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}.` };
@@ -835,7 +837,7 @@ async function eventWhenCommand(want: string): Promise<CommandResult | null> {
   const hit = findEventWhen(r.events ?? [], want, Date.now());
   if (!hit) return null;   // no such event: the phrase goes on
   const day = new Date(hit.start).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
-  const when = hit.allDay ? `on ${day}` : `on ${day} at ${new Date(hit.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`;
+  const when = hit.allDay ? `on ${day}` : `on ${day} at ${timeText(new Date(hit.start))}`;
   return { say: `${hit.title} is ${when}.`, react: 'look', app: 'calendar' };
 }
 
@@ -851,7 +853,7 @@ async function calendarDayCommand(cal: CalDay): Promise<CommandResult> {
   // every event that overlaps the day: a multi-day event, or one that began the day before, is still on it
   const items = overlapsDay(r.events ?? [], start.getTime(), end.getTime())
     .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start - b.start)
-    .map(e => (e.allDay ? `${e.title}, all day` : `${e.title} at ${new Date(e.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`));
+    .map(e => (e.allDay ? `${e.title}, all day` : `${e.title} at ${timeText(new Date(e.start))}`));
   return { say: calendarDaySay(items, cal.name), react: 'look', app: 'calendar' };
 }
 
@@ -864,7 +866,7 @@ export async function calendarCommand(day: 'today' | 'tomorrow' = 'today', cache
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
   // the PC serves its last good copy when a read fails (up to 12 hours old): say so, never read it as current
   const old = r.stale ? 'The calendar may be out of date. ' : '';
-  const at = (e: CalEvent) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${new Date(e.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+  const at = (e: CalEvent) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${timeText(new Date(e.start))}`);
   if (day === 'tomorrow') {
     const tmr = r.events.filter(e => e.day === 'tomorrow').slice(0, 3).map(at);
     if (!tmr.length) return { say: `${old}Nothing on your calendar tomorrow.`, react: 'hop' };
@@ -891,7 +893,7 @@ async function connectorCommand(day: 'today' | 'tomorrow', cachedOnly = false): 
   // a routine must not start a Claude read: with nothing cached it says so instead
   if (r?.status === 'miss') return { say: 'I haven’t read the calendar yet today.' };
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
-  const at = (e: Ev) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${new Date(e.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`);
+  const at = (e: Ev) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${timeText(new Date(e.start))}`);
   const now = Date.now();
   const shown = (day === 'today' ? r.events.filter(e => e.end > now) : r.events).slice(0, 3).map(at);
   if (!shown.length) return { say: day === 'today' ? 'Nothing more on your calendar today.' : 'Nothing on your calendar tomorrow.', react: 'hop' };

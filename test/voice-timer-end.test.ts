@@ -22,7 +22,7 @@ test('how long is left and other timer questions are not the end time', () => {
 
 test('the reply gives the clock time, and says a paused timer is paused with its time left', () => {
   assert.ok(voice.includes('if (timerEndWord(t)) {'));
-  assert.ok(voice.includes('const at = new Date(Date.now() + left).toLocaleTimeString'));
+  assert.ok(voice.includes('const at = timeText(new Date(Date.now() + left));'));
   assert.ok(voice.includes('`The timer is paused, with ${sayDuration(Math.ceil(left / 1000) * 1000)} left.`'));
   assert.ok(voice.includes("'There’s no timer running.'"));
 });
