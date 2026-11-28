@@ -21,6 +21,13 @@ test('"convert N unit to unit" is converted too', () => {
   assert.equal(convertSay('convert 1 cup to millilitres'), '1 cup is 236.59 millilitres.');
 });
 
+test('a below-zero temperature keeps its minus sign, said as a minus or a negative, or with the sign', () => {
+  assert.equal(convertSay("what's -10 celsius in fahrenheit"), '-10 degrees Celsius is 14 degrees Fahrenheit.');
+  assert.equal(convertSay("what's minus 40 celsius in fahrenheit"), '-40 degrees Celsius is -40 degrees Fahrenheit.');
+  assert.equal(convertSay('what is negative 5 celsius in fahrenheit'), '-5 degrees Celsius is 23 degrees Fahrenheit.');
+  assert.equal(convertSay("what's −10 celsius in fahrenheit"), '-10 degrees Celsius is 14 degrees Fahrenheit.');
+});
+
 test('a unit pair that cannot convert, a sum, and other phrases are not conversions', () => {
   assert.equal(convertSay("what's 5 cups in celsius"), null);
   assert.equal(convertSay("what's 12 times 7"), null);

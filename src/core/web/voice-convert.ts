@@ -23,12 +23,13 @@ const num = (s: string): number => (s === 'a' || s === 'an' || s === 'one' ? 1 :
 
 /** The spoken conversion, or null when the phrase is not a conversion or the two units cannot convert. */
 export function convertSay(raw: string): string | null {
-  const s = raw.toLowerCase().replace(/’/g, "'").replace(/[?.!]+$/, '').trim();
+  // "minus 10", "negative 5", "−10": a minus sign for the number that follows
+  const s = raw.toLowerCase().replace(/’/g, "'").replace(/\b(?:minus|negative)\s+(?=\d)/g, '-').replace(/−/g, '-').replace(/[?.!]+$/, '').trim();
   // "what's 180 celsius in fahrenheit", "how much is 2 cups in millilitres"
-  let m = /^(?:what(?:'s| is)|how much is) (\d+(?:\.\d+)?) (.+?) in (.+)$/.exec(s);
+  let m = /^(?:what(?:'s| is)|how much is) (-?\d+(?:\.\d+)?) (.+?) in (.+)$/.exec(s);
   if (m) return answer(Number(m[1]), m[2], m[3], 'is');
   // "convert 2 cups to millilitres"
-  m = /^convert (\d+(?:\.\d+)?) (.+?) (?:to|into) (.+)$/.exec(s);
+  m = /^convert (-?\d+(?:\.\d+)?) (.+?) (?:to|into) (.+)$/.exec(s);
   if (m) return answer(Number(m[1]), m[2], m[3], 'is');
   // "how many tablespoons in a cup", "how many cups in 250 millilitres"
   m = /^how many (.+?) in (?:(a|an|one|\d+(?:\.\d+)?) )?(.+)$/.exec(s);
