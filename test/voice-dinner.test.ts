@@ -34,6 +34,8 @@ test('the reply names the planned dinner, or says none is planned', () => {
   assert.equal(dinnerSay('Tacos', tonight), 'Tonight it’s tacos.');
   assert.equal(dinnerSay('Fish pie', tomorrow), 'Tomorrow it’s fish pie.');
   assert.equal(dinnerSay('Tacos', friday), 'On Friday it’s tacos.');
+  assert.equal(dinnerSay('BBQ ribs', tonight), 'Tonight it’s BBQ ribs.');
+  assert.equal(dinnerSay('KFC', tomorrow), 'Tomorrow it’s KFC.');
   assert.equal(dinnerSay(null, tonight), 'Nothing planned for dinner tonight.');
   assert.equal(dinnerSay(null, friday), 'Nothing planned for dinner on Friday.');
 });
