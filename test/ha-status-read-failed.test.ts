@@ -12,7 +12,7 @@ const src = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 test('loadStatus sets the status-failed flag when the read fails', () => {
   const start = src.indexOf('async function loadStatus(');
   const body = src.slice(start, src.indexOf('// keepNote:', start));
-  assert.match(body, /catch \{ statusFailed = true;/);
+  assert.match(body, /catch \{ if \(gen !== statusGen\) return; statusFailed = true;/);
   assert.match(body, /statusFailed = false;/);
 });
 
