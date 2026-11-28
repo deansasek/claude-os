@@ -213,3 +213,4 @@
 #app-recipes .rc-plan-row:disabled { cursor: default; color: var(--t3); background: var(--card-2); }
 #app-recipes .rc-plan-taken { font-family: var(--serif); color: var(--t2); }
 #app-recipes .rc-plan-weeks { display: flex; gap: 8px; }
+#app-recipes .rc-step-hit { all: unset; display: block; width: 100%; position: relative; cursor: pointer; }

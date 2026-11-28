@@ -611,7 +611,7 @@ function detailHtml(r: Recipe): string {
       + `<span class="rc-scale-n">Serves ${servings}</span><button class="rc-btn" data-act="serve-plus" aria-label="More servings">+</button></div>`
     : '';
   const ings = r.ingredients.map(g => `<li><span class="rc-amt">${esc(scaleAmount(g.amount, factor))}</span> ${esc(g.item)}</li>`).join('');
-  const steps = r.steps.map(s => `<li>${esc(s)}</li>`).join('');
+  const steps = r.steps.map((s, k) => `<li><button class="rc-step-hit" data-act="cook" data-step="${k}">${esc(s)}</button></li>`).join('');
   const own = saved && !r.mealId;   // a recipe from Claude or saved as text can be deleted; a TheMealDB one is un-saved
   return `<div class="rc-top"><button class="rc-btn" data-act="discover">Back</button></div>`
     + noticesHtml()
@@ -768,7 +768,7 @@ function onClick(ev: Event): void {
     case 'serve-minus': if (servings > 1) servings--; break;
     case 'serve-plus': if (servings < 99) servings++; break;
     case 'detail': if (screen.t === 'cook') go({ t: 'detail', r: screen.r }); break;
-    case 'cook': if (screen.t === 'detail') go({ t: 'cook', r: screen.r, step: 0 }); break;
+    case 'cook': if (screen.t === 'detail') go({ t: 'cook', r: screen.r, step: Math.max(0, Math.min(screen.r.steps.length - 1, Number(b.dataset.step) || 0)) }); break;
     case 'step':
       if (screen.t === 'cook') {
         const next = cookStep(screen.r, screen.step + Number(b.dataset.d)).index;
