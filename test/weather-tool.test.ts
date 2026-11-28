@@ -19,3 +19,10 @@ test('a failed forecast read gives the plain message, not the raw error', async 
   assert.equal(reply.content[0].text, 'The weather couldn’t be read just now. Try again in a little while.');
   assert.ok(!reply.content[0].text.includes('fetch failed'));
 });
+
+test('a sky word matches the Weather app: mostly clear, cloudy, freezing drizzle', () => {
+  assert.equal(skyWords(1), 'mostly clear');
+  assert.equal(skyWords(3), 'cloudy');
+  assert.equal(skyWords(56), 'freezing drizzle');
+  assert.equal(skyWords(999), 'cloudy');
+});
