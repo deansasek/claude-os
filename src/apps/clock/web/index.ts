@@ -1137,7 +1137,8 @@ const clockApi: ClockApi = {
   /** Add (or switch on) an alarm; days as Date.getDay() values, [] = once. Returns when it next rings. */
   addAlarm(h: number, m: number, days: number[]): { when: string; at: number } | null {
     unlockAudio();
-    let a = alarms.find(x => x.h === h && x.m === m);
+    // only the user's own unlabelled alarm at this time is reused; a reminder Claude set, or a labelled one, stays as it is
+    let a = alarms.find(x => x.h === h && x.m === m && !x.claude && !labelOf(x));
     if (!a) {
       if (alarms.length >= MAX_ALARMS) return null;
       a = { id: newId(), h, m, on: true, days: [], snooze: null, fired: null };
