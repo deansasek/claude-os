@@ -48,3 +48,8 @@ test('the voice reads the calendar for that night and picks its dinner, with a r
   assert.match(src, /dinnersIn\(r\.events \?\? \[\]\)\.find\(x => x\.start === day\.getTime\(\)\)/);
   assert.match(src, /catch \{ return \{ say: 'I can’t reach the calendar right now\.' \}; \}/);
 });
+
+test('"what\'s for dinner today" is heard, as tonight is', () => {
+  assert.deepEqual(dinnerWord("what's for dinner today"), { ahead: 0, name: 'tonight', lead: 'Tonight' });
+  assert.deepEqual(dinnerWord('what are we having for dinner today'), { ahead: 0, name: 'tonight', lead: 'Tonight' });
+});
