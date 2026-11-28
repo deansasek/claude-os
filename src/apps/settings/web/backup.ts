@@ -1,6 +1,7 @@
 // Settings → Storage → Settings backup: the tablet's settings go to the PC, and come back on request. The keys are
 // filtered on both sides (backup-keys.ts), so a token, a key, the sign-in or the PIN state never leaves the tablet.
 import { getJson, postJson, store } from '../../../core/web/dom.ts';
+import { dayTimeText } from '../../../core/web/time-format.ts';
 import { backupKey, backupValues } from './backup-keys.ts';
 
 export interface BackupState { ok?: boolean; saved: string | null; values: Record<string, string>; error?: string }
@@ -35,15 +36,15 @@ export async function loadSettings(): Promise<BackupState | null> {
 }
 
 /** The note under the Save button: the saved time and the count, or a reason when there is no backup to show. */
-export function backupNote(b: BackupState | null): string {
+export function backupNote(b: BackupState | null, h24?: string | null): string {
   if (!b) return 'Can’t reach your PC';
   if (b.ok === false) return b.error ?? 'The PC couldn’t read its settings backup.';
-  return b.saved ? savedNote(b.saved, Object.keys(b.values).length) : 'Not saved yet';
+  return b.saved ? savedNote(b.saved, Object.keys(b.values).length, h24) : 'Not saved yet';
 }
 
 /** The note for a backup saved at `saved` (ISO time) holding `count` settings. */
-export function savedNote(saved: string, count: number): string {
-  const when = new Date(saved).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+export function savedNote(saved: string, count: number, h24?: string | null): string {
+  const when = dayTimeText(new Date(saved), h24);   // the hour as Settings → Date & time sets it
   return `${when} · ${count} settings`;
 }
 
