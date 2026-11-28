@@ -166,8 +166,10 @@ const resultText = (kind: 'install' | 'remove', name: string, r: MarketResult): 
   return detail && r.error === 'failed' ? `${base} ${detail.slice(0, 140)}` : base;
 };
 
+// an install, remove or update check runs the Claude CLI on the PC for up to 120 s (server/market.ts), so the tablet waits longer than that
+const CHANGE_TIMEOUT_MS = 150e3;
 async function post(path: string, body: unknown): Promise<MarketResult> {
-  try { return await postJson<MarketResult>(`/api/settings/plugins/market/${path}`, body); }
+  try { return await postJson<MarketResult>(`/api/settings/plugins/market/${path}`, body, CHANGE_TIMEOUT_MS); }
   catch { return { ok: false, error: 'network', output: '' }; }
 }
 
