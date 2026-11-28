@@ -30,10 +30,10 @@
 // The Clock app provides timers and alarms (provideClock), the Routines app its routines (provideRoutines);
 // the rest uses core only.
 import { getJson, postJson, store } from './dom.ts';
-import type { HaDashboard, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
+import type { HaDashboard, HaEntity, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
 // a quick command the PC never answers gives up, so the voice still says it cannot reach the PC
 const READ_TIMEOUT_MS = 20e3;
-import { matchHome, matchScene, onOffReply, parseIsOn, parseOnOff, parseScene, sayName, stateReply, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
+import { lightsOnReply, matchHome, matchScene, onOffReply, parseIsOn, parseLightsOn, parseOnOff, parseScene, sayName, stateReply, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
 import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
@@ -653,6 +653,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // "is the porch light on": the device's state, read only (no switch). Home Assistant on/off comes after it.
   const asked = homeState(raw);
   if (asked) return asked;
+  // "are any lights on": every light the dashboard shows, read only (homeLightsOn)
+  const lightsAsked = await homeLightsOn(raw);
+  if (lightsAsked) return lightsAsked;
   // Home Assistant on/off, then scenes: last, so "turn off the timer" / "set a timer" are still the ones above
   return (await homeOnOff(raw)) ?? sceneCommand(raw);
 }
@@ -1022,6 +1025,18 @@ async function homeState(raw: string): Promise<CommandResult | null> {
   const entity = shown.find(e => e.entity_id === d.entity_id);
   if (!entity) return null;
   return { say: stateReply(d, entity.state), react: 'look' };
+}
+
+/** "Are any lights on", "are the lights all off": the lights the dashboard shows, read only. A failed read leaves it to the next step. */
+async function homeLightsOn(raw: string): Promise<CommandResult | null> {
+  const kind = parseLightsOn(raw);
+  if (!kind) return null;   // not a question about the lights: don't ask the PC at all
+  let dash: HaDashboard;
+  try { dash = await getJson<HaDashboard>('/api/home-assistant/layout', READ_TIMEOUT_MS); } catch { return null; }
+  if (!dash?.layout || !Array.isArray(dash.entities)) return null;
+  const lights = dash.entities.filter(e => !e.missing && e.domain === 'light');
+  const nameOf = (e: HaEntity) => dash.layout.names?.[e.entity_id] || e.name;
+  return { say: lightsOnReply(kind, lights.map(nameOf), lights.filter(e => e.on).map(nameOf)), react: 'look' };
 }
 
 async function homeOnOff(raw: string): Promise<CommandResult | null> {
