@@ -1145,6 +1145,7 @@ const clockApi: ClockApi = {
   },
   /** ms left on a running (or paused) timer, null when none is set. */
   timerLeft(): number | null { const t = actionTimer(); return t.end ? Math.max(0, t.end - Date.now()) : t.left; },
+  timerPaused(): boolean { const t = actionTimer(); return !t.end && t.left != null; },
   /** Add (or switch on) an alarm; days as Date.getDay() values, [] = once. Returns when it next rings. */
   addAlarm(h: number, m: number, days: number[]): { when: string; at: number } | null {
     unlockAudio();

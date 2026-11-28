@@ -74,6 +74,8 @@ export interface ClockApi {
   /** Add (positive) or take off (negative) whole minutes. False when no timer is set. */
   nudgeTimer(minutes: number): boolean;
   timerLeft(): number | null;
+  /** True when the timer the voice means is paused (its time stays where it was). */
+  timerPaused(): boolean;
   addAlarm(h: number, m: number, days: number[]): { when: string; at: number } | null;
   /** A new one-off alarm with a label (Claude's set_alarm and set_reminder); never changes an alarm already there.
    *  null when the Clock's list is full. */
@@ -314,7 +316,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
     if (!clock) return null;
     const left = clock.timerLeft();
-    return { say: left == null ? 'There’s no timer running.' : `${sayDuration(Math.ceil(left / 1000) * 1000)} left.`.replace(/^./, c => c.toUpperCase()) };
+    // a paused timer's time does not count down: say so, rather than read it like a running one
+    const paused = clock.timerPaused();
+    return { say: left == null ? 'There’s no timer running.' : `${sayDuration(Math.ceil(left / 1000) * 1000)} left${paused ? ', and the timer is paused' : ''}.`.replace(/^./, c => c.toUpperCase()) };
   }
 
   if (/^(?:when(?:'s| is) my (?:next )?alarm|what time(?:'s| is) my alarm|is my alarm (?:on|set)|do i have an alarm(?: set)?)$/.test(t)) {
