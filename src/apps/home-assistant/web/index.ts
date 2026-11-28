@@ -243,12 +243,18 @@ async function refresh(keepNote = false): Promise<void> {
   appSettingsChanged();
 }
 
-async function loadDevices(): Promise<void> {
-  if (devicesBusy) return;
+let devicesGen = 0;   // each device read takes a number; a read started before a save or allow switch cannot set the list
+async function loadDevices(fresh = false): Promise<void> {   // fresh: a save or allow switch changed the devices, so start a new read even while one runs
+  if (devicesBusy && !fresh) return;
+  const gen = ++devicesGen;
   devicesBusy = true;
-  try { devices = await getJson<HaDevices>(`${API}/devices`, READ_TIMEOUT_MS); devicesFailed = false; devicesAt = Date.now(); }
-  catch { devicesFailed = true; if (!devices) devices = { status: 'error', demo: false, devices: [], error: 'Can’t reach the PC right now.' }; devicesAt = Date.now(); /* keep the last good list */ }
-  finally { devicesBusy = false; }
+  try {
+    const d = await getJson<HaDevices>(`${API}/devices`, READ_TIMEOUT_MS);
+    if (gen !== devicesGen) return;   // a newer read started: its answer is the one that counts
+    devices = d; devicesFailed = false; devicesAt = Date.now();
+  }
+  catch { if (gen !== devicesGen) return; devicesFailed = true; if (!devices) devices = { status: 'error', demo: false, devices: [], error: 'Can’t reach the PC right now.' }; devicesAt = Date.now(); /* keep the last good list */ }
+  finally { if (gen === devicesGen) devicesBusy = false; }
   await loadScenes();
   await loadStatus();
   if (sheet) renderSheet();
@@ -334,7 +340,7 @@ async function saveConfig(body: { address?: string; token?: string }): Promise<v
     testMsg = r.ok ? '' : r.message ?? 'That wasn’t saved.';
   } catch { testMsg = 'Can’t reach the PC right now.'; }
   appSettingsChanged();
-  void loadDevices();
+  void loadDevices(true);
   void refresh();
 }
 
@@ -386,9 +392,9 @@ async function setAllowed(id: string, on: boolean): Promise<void> {
   appSettingsChanged();
   let r: HaResult | undefined;
   try { r = await postJson<HaResult>(`${API}/allow`, { entity_id: id, allowed: on }, POST_TIMEOUT_MS); } catch { r = undefined; }
-  if (r?.ok === true) { await loadDevices(); return; }
+  if (r?.ok === true) { await loadDevices(true); return; }
   if (d) d.allowed = before;   // the PC did not save it: the switch goes back
-  await loadDevices();
+  await loadDevices(true);
   throw new Error(r?.error || 'Can’t reach the PC right now, so that wasn’t saved.');
 }
 

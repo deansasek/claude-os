@@ -35,7 +35,7 @@ test('settingRows checks the status-failed flag before it shows Not set', () => 
 test('loadDevices keeps the last good device list when the read fails', () => {
   const start = src.indexOf('async function loadDevices(');
   const body = src.slice(start, src.indexOf('\n}\n', start));
-  assert.match(body, /catch \{ devicesFailed = true; if \(!devices\) devices = \{ status: 'error'/);
+  assert.match(body, /catch \{ if \(gen !== devicesGen\) return; devicesFailed = true; if \(!devices\) devices = \{ status: 'error'/);
   assert.match(body, /devicesFailed = false;/);
   assert.doesNotMatch(body, /catch \{ devices = \{ status: 'error'/);
 });
