@@ -39,7 +39,7 @@ import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { sceneFailText } from '../../apps/home/web/scene-words.ts';
 import { device, onTablet } from './device.ts';
-import { openApp, prefs, sleep } from './system.ts';
+import { autoBrightness, openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
@@ -241,6 +241,8 @@ const pct = (v: number) => `${Math.round(v * 100)} percent`;
 
 function brightness(to: number | 'up' | 'down'): CommandResult {
   if (!onTablet) return { say: 'I can only change the screen on the tablet.' };
+  // with Android's auto-brightness on, the backlight is Android's to set: say so, and change nothing (as the drawer does)
+  if (autoBrightness.on) return { say: 'Auto-brightness is on, so the screen sets its own brightness.' };
   const cur = prefs.brightness;
   const v = to === 'up' ? clamp(cur + .25, .05) : to === 'down' ? clamp(cur - .25, .05) : clamp(to, .05);
   prefs.brightness = v;
