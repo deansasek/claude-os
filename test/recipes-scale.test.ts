@@ -29,6 +29,12 @@ test('an amount with no number, or a range, is left as it is', () => {
   assert.equal(scaleAmount('2-3 cups', 2), '2-3 cups');
 });
 
+test('amounts written with a fraction character scale too', () => {
+  assert.equal(scaleAmount('½ cup', 2), '1 cup');
+  assert.equal(scaleAmount('1½ cups', 2), '3 cups');
+  assert.equal(scaleAmount('1 ¾ tsp', 2), '3 1/2 tsp');
+});
+
 test('one serving, or a factor of nothing, changes nothing', () => {
   assert.equal(scaleAmount('1/2 cup', 1), '1/2 cup');
   assert.equal(scaleAmount('2 tbsp', 0), '2 tbsp');
