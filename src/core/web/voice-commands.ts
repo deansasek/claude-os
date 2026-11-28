@@ -1145,7 +1145,8 @@ async function homeLightsOn(raw: string): Promise<CommandResult | null> {
   try { dash = await getJson<HaDashboard>('/api/home-assistant/layout', READ_TIMEOUT_MS); } catch { return null; }
   if (!dash?.layout || !Array.isArray(dash.entities)) return null;
   const lights = dash.entities.filter(e => !e.missing && e.domain === 'light');
-  const nameOf = (e: HaEntity) => dash.layout.names?.[e.entity_id] || e.name;
+  // sayName adds the kind word, so a light called "Kitchen" is spoken as "Kitchen light", as the single-light reply does
+  const nameOf = (e: HaEntity) => sayName({ entity_id: e.entity_id, domain: e.domain, name: dash.layout.names?.[e.entity_id] || e.name });
   return { say: lightsOnReply(kind, lights.map(nameOf), lights.filter(e => e.on).map(nameOf)), react: 'look' };
 }
 

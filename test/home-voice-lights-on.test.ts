@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { lightsOnReply, parseLightsOn } from '../src/apps/home-assistant/web/voice-match.ts';
+import { lightsOnReply, parseLightsOn, sayName } from '../src/apps/home-assistant/web/voice-match.ts';
 
 const voice = readFileSync(new URL('../src/core/web/voice-commands.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
@@ -32,6 +32,12 @@ test('no light on, one on, several on, and many on are each said in words', () =
   assert.equal(lightsOnReply('any-on', many, many), 'The A, B, C, and 2 more are on.');
 });
 
+test('a bare light name gets its kind word, as the single-light reply does', () => {
+  const kitchen = { entity_id: 'light.kitchen', domain: 'light', name: 'Kitchen' };
+  assert.equal(sayName(kitchen), 'Kitchen light');
+  assert.equal(lightsOnReply('any-on', ['Kitchen light'], ['Kitchen light']), 'The Kitchen light is on.');
+});
+
 test('all off says so, and names any light still on', () => {
   const all = ['Kitchen light', 'Porch light'];
   assert.equal(lightsOnReply('all-off', all, []), 'All the lights are off.');
@@ -43,4 +49,5 @@ test('the read is the dashboard read with the missing devices left out, and a fa
   assert.ok(voice.includes("const lights = dash.entities.filter(e => !e.missing && e.domain === 'light');"));
   assert.ok(voice.includes("if (!dash?.layout || !Array.isArray(dash.entities)) return null;"));
   assert.ok(voice.includes('const lightsAsked = await homeLightsOn(raw);'));
+  assert.ok(voice.includes('sayName({ entity_id: e.entity_id, domain: e.domain, name: dash.layout.names?.[e.entity_id] || e.name })'));
 });
