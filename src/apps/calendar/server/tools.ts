@@ -115,7 +115,7 @@ export const calendarServer = createSdkMcpServer({
   tools: [
     tool('calendar_today',
       'Read the family calendar on the ClaudeOS tablet: today’s and tomorrow’s events with their times (local time). Read-only; '
-        + 'nothing can be added or changed. day: "today", "tomorrow" or "both" (the default).',
+        + 'nothing can be changed here (to add an event, use calendar_add). day: "today", "tomorrow" or "both" (the default).',
       { day: z.enum(['today', 'tomorrow', 'both']).optional() },
       ({ day }) => calendarTodayReply(day)),
     tool('calendar_range',
@@ -129,9 +129,9 @@ export const calendarServer = createSdkMcpServer({
         + 'Use it when the user asks to put something on the calendar.',
       {
         title: z.string().min(1).max(80),
-        date: z.string().regex(/^d{4}-d{2}-d{2}$/),
-        start: z.string().regex(/^d{2}:d{2}$/).optional(),
-        end: z.string().regex(/^d{2}:d{2}$/).optional(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        start: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+        end: z.string().regex(/^\d{2}:\d{2}$/).optional(),
         allDay: z.boolean().optional(),
         location: z.string().max(80).optional(),
       },

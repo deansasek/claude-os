@@ -37,3 +37,11 @@ test('the window keeps the day and the times, and the card shows the date and ti
   assert.ok(describe.includes("if (n === 'calendar_add' && typeof i.title === 'string' && typeof i.date === 'string')"));
   assert.ok(cards.includes("'mcp__claudeos_calendar__calendar_add': { now: 'Add to your calendar', past: 'Added to your calendar', doing: 'Adding to your calendar' },"));
 });
+
+test('the calendar_add date and time patterns keep their digit classes (a real date and time pass)', () => {
+  const src = readFileSync(new URL('../src/apps/calendar/server/tools.ts', import.meta.url), 'utf8');
+  assert.ok(src.includes('date: z.string().regex(/^\\d{4}-\\d{2}-\\d{2}$/),'));
+  assert.ok(src.includes('start: z.string().regex(/^\\d{2}:\\d{2}$/).optional(),'));
+  assert.ok(src.includes('end: z.string().regex(/^\\d{2}:\\d{2}$/).optional(),'));
+  assert.ok(/^\d{4}-\d{2}-\d{2}$/.test('2026-12-03') && /^\d{2}:\d{2}$/.test('09:30'));
+});
