@@ -12,6 +12,12 @@ export function mondayOf(d: Date): Date {
   return new Date(m.getFullYear(), m.getMonth(), m.getDate() - ((m.getDay() + 6) % 7));
 }
 
+/** The Monday of the week that is `weeks` weeks from the one holding d (0 is this week, 1 is next week). */
+export function mondayAfter(d: Date, weeks: number): Date {
+  const m = mondayOf(d);
+  return new Date(m.getFullYear(), m.getMonth(), m.getDate() + 7 * weeks);
+}
+
 /** A date as YYYY-MM-DD in local time. */
 export const isoDay = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
