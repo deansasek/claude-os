@@ -130,9 +130,14 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
   return null;
 }
 
+/** The first letter in lower case, as a spoken item reads mid-sentence. Only when the second letter is lower case: "Milk" is "milk", but "AA batteries" and "DVD" keep their capitals. */
+export function lowerFirst(s: string): string {
+  return s.replace(/^([A-Z])(?=[a-z])/, c => c.toLowerCase());
+}
+
 /** What the voice says after several items were added: how many went, and how many wait for the PC to be back. */
 export function addManyReply(texts: string[], ok: number, waiting: number, name: string): string {
-  const words = texts.map(t => t.replace(/^./, ch => ch.toLowerCase()));
+  const words = texts.map(t => lowerFirst(t));
   const n = words.length;
   if (waiting === 0) {
     const said = n === 1 ? words[0] : `${words.slice(0, -1).join(', ')} and ${words[n - 1]}`;

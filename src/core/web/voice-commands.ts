@@ -67,7 +67,7 @@ import { convertSay } from './voice-convert.ts';
 import { nextRun, nextRunSay } from '../../apps/routines/web/next-run.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, nowPlaying, pauseMedia } from './media.ts';
-import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
+import { addManyReply, findExact, lowerFirst, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { articleFor, durationAndLabel, labelledTimer, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
@@ -994,7 +994,7 @@ async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>,
         throw e;
       }
       if (!r?.ok) return { say: r?.error ?? `I couldn’t add that to ${name}.` };
-      return { say: `Added ${c.text.replace(/^./, ch => ch.toLowerCase())} to ${name}.`, react: 'hop' };
+      return { say: `Added ${lowerFirst(c.text)} to ${name}.`, react: 'hop' };
     }
     if (c.op === 'tick') {
       // find the one unticked item by its words (exact, or the only partial match); never a guess between several
@@ -1005,9 +1005,9 @@ async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>,
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
       let r: ListsResult;
       try { r = await writeList('tick', { list: c.list, id: hit.id, done: true }); }
-      catch (e) { return queuedReply(e, `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`); }
+      catch (e) { return queuedReply(e, `Ticked off ${lowerFirst(hit.text)} on ${name}.`); }
       if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
-      return { say: `Ticked off ${hit.text.replace(/^./, ch => ch.toLowerCase())} on ${name}.`, react: 'hop' };
+      return { say: `Ticked off ${lowerFirst(hit.text)} on ${name}.`, react: 'hop' };
     }
     if (c.op === 'addMany') {
       // one add per item, the same route the Lists app uses; the reply says what went on
@@ -1048,9 +1048,9 @@ async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>,
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
       let r: ListsResult;
       try { r = await writeList('remove', { list: c.list, id: hit.id }); }
-      catch (e) { return queuedReply(e, `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`); }
+      catch (e) { return queuedReply(e, `Removed ${lowerFirst(hit.text)} from ${name}.`); }
       if (!r?.ok) return { say: r?.error ?? `I couldn’t remove that from ${name}.` };
-      return { say: `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`, react: 'hop' };
+      return { say: `Removed ${lowerFirst(hit.text)} from ${name}.`, react: 'hop' };
     }
     if (c.op === 'has') {
       // read only: one item by its words (ticked or not), never a guess between several
@@ -1059,9 +1059,9 @@ async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>,
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, false);
       if (ambiguous) return { say: `More than one item matches ${c.text} on ${name}. Say which one.` };
-      const word = c.text.replace(/^./, ch => ch.toLowerCase());
+      const word = lowerFirst(c.text);
       if (!hit) return { say: `No, ${word} isn’t on ${name}.`, react: 'look' };
-      const shown = hit.text.replace(/^./, ch => ch.toLowerCase());
+      const shown = lowerFirst(hit.text);
       return { say: hit.done ? `${shown} is on ${name}, but it’s ticked off.` : `Yes, ${shown} is on ${name}.`, react: 'look', app: 'lists' };
     }
     if (c.op === 'edit') {
@@ -1084,7 +1084,7 @@ async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>,
   } catch { return { say: `I can’t reach ${name} right now.` }; }
 }
 
-const lower = (s: string): string => s.replace(/^./, ch => ch.toLowerCase());
+const lower = (s: string): string => lowerFirst(s);
 /** A family list as a reply names it: "the camping list", or "the packing list" for a list already named "Packing list". */
 const spokenList = (name: string): string => /list$/i.test(name.trim()) ? `the ${name.trim().toLowerCase()}` : `the ${name.toLowerCase()} list`;
 const spokenName = (l: { id: string; name: string }): string =>
@@ -1122,7 +1122,7 @@ async function tickAnywhere(text: string): Promise<CommandResult | null> {
   if (hits.length > 1) return { say: `${text} is on more than one list. Say which list.` };
   const { list, item } = hits[0];
   const name = spokenName(list);
-  const said = text.replace(/^./, ch => ch.toLowerCase());
+  const said = lowerFirst(text);
   let r: ListsResult;
   try { r = await writeList('tick', { list: list.id, id: item.id, done: true }); }
   catch (e) { return queuedReply(e, `Ticked off ${said} on ${name}.`); }
@@ -1138,7 +1138,7 @@ async function removeAnywhere(text: string): Promise<CommandResult | null> {
   if (hits.length > 1) return { say: `${text} is on more than one list. Say which list.` };
   const { list, item } = hits[0];
   const name = spokenName(list);
-  const said = text.replace(/^./, ch => ch.toLowerCase());
+  const said = lowerFirst(text);
   let r: ListsResult;
   try { r = await writeList('remove', { list: list.id, id: item.id }); }
   catch (e) { return queuedReply(e, `Removed ${said} from ${name}.`); }
@@ -1151,7 +1151,7 @@ async function removeAnywhere(text: string): Promise<CommandResult | null> {
 async function hasAnywhere(text: string): Promise<CommandResult | null> {
   const lists = await readLists(READ_TIMEOUT_MS).catch(() => null);
   if (!lists) return null;
-  const said = text.replace(/^./, ch => ch.toLowerCase());
+  const said = lowerFirst(text);
   const found = lists.flatMap(l => { const { hit } = pickItem(l.items, text, false); return hit ? [{ l, hit }] : []; });
   if (!found.length) {
     if (lists.some(l => pickItem(l.items, text, false).ambiguous)) return { say: `More than one item matches ${text}. Say which one.` };
@@ -1160,7 +1160,7 @@ async function hasAnywhere(text: string): Promise<CommandResult | null> {
   if (found.length > 1) return { say: `${text} is on more than one list. Say which list.` };
   const { l, hit } = found[0];
   const name = spokenName(l);
-  const word = hit.text.replace(/^./, ch => ch.toLowerCase());
+  const word = lowerFirst(hit.text);
   return hit.done
     ? { say: `${word} is on ${name}, but it’s ticked off.`, react: 'look', app: 'lists' }
     : { say: `Yes, ${word} is on ${name}.`, react: 'look', app: 'lists' };
