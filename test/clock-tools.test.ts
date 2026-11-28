@@ -38,3 +38,10 @@ test('pause_timer and resume_timer are Claude tools, with the replies the voice 
   assert.ok(relay.includes("'Timer resumed.'"));
   assert.ok(relay.includes("'There’s no paused timer.'"));
 });
+
+test('adjust_timer adds or takes minutes off the timer in front, and says the time left', () => {
+  assert.ok(tablet.includes("tool('adjust_timer',"));
+  assert.ok(tablet.includes("Math.abs(m) > 60) return { ok: false"));
+  assert.ok(relay.includes("if (!m || !clock.nudgeTimer(m)) return { ok: true, data: 'There’s no timer running.' };"));
+  assert.ok(relay.includes("return { ok: true, data: `${m > 0 ? 'Added' : 'Took off'} ${amount}.${now}` };"));
+});

@@ -55,7 +55,13 @@ function daysFrom(v: unknown): number[] | { error: string } {
 /** Check a tool's arguments; the error is a plain sentence for Claude. */
 export function check(op: TabletOp, input: Record<string, unknown>): Checked {
   // the Clock's status and cancels take no arguments; they run on the tablet, where the Clock's state is
-  if (op === 'cancel_timer' || op === 'pause_timer' || op === 'resume_timer') return { ok: true, op, args: { label: cleanText(input.label) } };   // a timer by its name, or the one in front
+  if (op === 'cancel_timer' || op === 'pause_timer' || op === 'resume_timer') return { ok: true, op, args: { label: cleanText(input.label) } };
+  // whole minutes, added (plus) or taken off (minus), and not zero; the Clock caps the change too (nudgeTimer)
+  if (op === 'adjust_timer') {
+    const m = input.minutes;
+    if (typeof m !== 'number' || !Number.isInteger(m) || m === 0 || Math.abs(m) > 60) return { ok: false, error: 'The change is whole minutes, from -60 to 60, and not zero.' };
+    return { ok: true, op, args: { minutes: m } };
+  }   // a timer by its name, or the one in front
   if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status') return { ok: true, op, args: {} };
   if (op === 'dnd') return typeof input.on === 'boolean' ? { ok: true, op, args: { on: input.on } } : { ok: false, error: 'Say whether Do Not Disturb is on or off.' };
   if (op === 'notify') {
@@ -133,6 +139,11 @@ export const tabletServer = createSdkMcpServer({
         + 'The time left is kept, and resume_timer starts it again. Use it when the user says to pause a timer.',
       { label: z.string().optional() },
       async ({ label }) => run('pause_timer', label ? { label } : {})),
+    tool('adjust_timer',
+      'Add minutes to the timer in front on the user’s ClaudeOS tablet, or take minutes off it. minutes: whole minutes from -60 to 60; '
+        + 'a minus takes minutes off. Use it when the user says to add to or cut back a timer.',
+      { minutes: z.number().int().min(-60).max(60) },
+      async ({ minutes }) => run('adjust_timer', { minutes })),
     tool('resume_timer',
       'Resume a paused timer on the user’s ClaudeOS tablet, from where it stopped. label: optional, the timer’s name when several are set; '
         + 'with none, the paused timer is resumed. Use it when the user says to start a paused timer again.',
