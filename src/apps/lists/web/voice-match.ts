@@ -6,7 +6,7 @@
 /** A list id: "shopping", "todo", or a list the family made (its id, as the Lists app keeps it). */
 export type VoiceList = string;
 export type ListCommand = { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string }
-  | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList }
+  | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList } | { op: 'has'; list: VoiceList; text: string }
   | { op: 'addMany'; list: VoiceList; texts: string[] }
   | { op: 'edit'; list: VoiceList | null; text: string; to: string };   // list null: no list was said (see findExact)
 
@@ -75,6 +75,13 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
     const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
     if (!text || /^(it|that|this|them)$/.test(text)) return null;
     return { op: 'remove', list: which(m[2], custom), text: text.charAt(0).toUpperCase() + text.slice(1) };
+  }
+  // "is milk on the shopping list", "do we have milk on the list": read-only, looked up on the tablet
+  m = t.match(new RegExp(`^(?:is|are|do we have) (.+?) on ${LIST}$`));
+  if (m) {
+    const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
+    if (!text || /^(it|that|this|them)$/.test(text)) return null;
+    return { op: 'has', list: which(m[2], custom), text: text.charAt(0).toUpperCase() + text.slice(1) };
   }
   // "change milk to oat milk (on the shopping list)", "rename milk to oat milk": the old item is looked up on the tablet.
   // With no list said, only an item with exactly those words on some list is changed (voice-commands.ts); else Claude gets it.

@@ -538,6 +538,18 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       if (!r?.ok) return { say: r?.error ?? `I couldn’t remove that from ${name}.` };
       return { say: `Removed ${hit.text.replace(/^./, ch => ch.toLowerCase())} from ${name}.`, react: 'hop' };
     }
+    if (c.op === 'has') {
+      // read only: one item by its words (ticked or not), never a guess between several
+      const lists = await readLists(READ_TIMEOUT_MS);
+      const l = lists.find(x => x.id === c.list);
+      if (!l) return { say: `I can’t reach ${name} right now.` };
+      const { hit, ambiguous } = pickItem(l.items, c.text, false);
+      if (ambiguous) return { say: `More than one item matches ${c.text} on ${name}. Say which one.` };
+      const word = c.text.replace(/^./, ch => ch.toLowerCase());
+      if (!hit) return { say: `No, ${word} isn’t on ${name}.`, react: 'look' };
+      const shown = hit.text.replace(/^./, ch => ch.toLowerCase());
+      return { say: hit.done ? `${shown} is on ${name}, but it’s ticked off.` : `Yes, ${shown} is on ${name}.`, react: 'look', app: 'lists' };
+    }
     if (c.op === 'edit') {
       // same rule as remove: one item by its words, never a guess between several; POST /api/lists/edit checks the new text
       const lists = await readLists(READ_TIMEOUT_MS);
