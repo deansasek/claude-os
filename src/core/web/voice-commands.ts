@@ -38,7 +38,8 @@ import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { sceneFailText } from '../../apps/home/web/scene-words.ts';
-import { device, onTablet } from './device.ts';
+import { device, onTablet, type Battery } from './device.ts';
+import { batterySay, batteryWord } from './voice-battery.ts';
 import { autoBrightness, openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
@@ -307,6 +308,14 @@ function brightness(to: number | 'up' | 'down'): CommandResult {
   const v = to === 'up' ? clamp(cur + .25, .05) : to === 'down' ? clamp(cur - .25, .05) : clamp(to, .05);
   prefs.brightness = v;
   return { say: to === 'up' ? (v >= 1 ? 'That’s as bright as it goes.' : 'Brighter.') : to === 'down' ? (v <= .05 ? 'That’s as dim as it goes.' : 'Dimmer.') : `Brightness ${pct(v)}.` };
+}
+
+/** "What's the battery": the charge the tablet reports, read only (batterySay in voice-battery.ts). */
+function batteryCommand(): CommandResult {
+  if (!onTablet) return { say: 'I can only check the battery on the tablet.' };
+  let b: Battery;
+  try { b = device.battery(); } catch { return { say: 'I can’t read the battery right now.' }; }
+  return { say: batterySay(b), react: 'look' };
 }
 
 /** "What's the volume": the media level now, read from the same value the Radio app reads. It changes nothing. */
@@ -637,6 +646,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (radio === 'stop' && radioStopHeard(mediaState())) { pauseMedia(); return { say: 'Stopped.' }; }
   if (radio === 'whats-playing') return { say: playingSay(nowPlaying(), mediaState()), react: 'look', app: 'radio' };
   // sound
+  if (batteryWord(t)) return batteryCommand();
   if (/^(?:what(?:'s| is) the volume(?: right now| now)?|how loud is it(?: right now| now)?|what volume is it(?: on)?)$/.test(t)) return volumeLevel();
   if (/^(?:turn |turn it |turn the volume |volume |sound )?up$|^louder$|^(?:turn|make)(?: it| the volume| the sound)? louder$|^(?:raise|increase)(?: the)? volume$/.test(t) && /up|loud|raise|increase/.test(t)) return volume('up');
   if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
