@@ -6,7 +6,7 @@ import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { manifest } from '../manifest.ts';
 import { drawBoard } from './draw.ts';
 import { exportJpeg, savePhoto } from './save.ts';
-import { EMPTY, begin, extend, undo, type Board, type Pt, type Tool } from './strokes.ts';
+import { EMPTY, begin, extend, hasInk, undo, type Board, type Pt, type Tool } from './strokes.ts';
 
 let canvas: HTMLCanvasElement | null = null;
 let g: CanvasRenderingContext2D | null = null;
@@ -45,8 +45,10 @@ function paintTools(c: AppContext): void {
 /** Send the drawing to Photos. One save runs at a time; the status line says how it went. */
 async function save(c: AppContext): Promise<void> {
   if (saving || !canvas) return;
-  saving = true;
   const status = c.$('skStatus');
+  // nothing drawn: a blank card must not reach the family's Photos
+  if (!hasInk(board)) { status.textContent = 'Nothing to save yet'; return; }
+  saving = true;
   status.textContent = 'Saving…';
   const blob = await exportJpeg(board, canvas.clientWidth, canvas.clientHeight, window.devicePixelRatio || 1);
   const ok = blob ? await savePhoto(blob) : false;
