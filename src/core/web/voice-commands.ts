@@ -38,7 +38,12 @@ import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { sceneFailText } from '../../apps/home/web/scene-words.ts';
-import { device, onTablet, type Battery } from './device.ts';
+import { device, nativeHas, newsFetch, onTablet, type Battery } from './device.ts';
+import { FEEDS } from '../../apps/news/web/feeds.ts';
+import { feedSource, tabletFeed, type KeyValue } from '../../apps/news/web/tablet.ts';
+import { store as newsStoreRaw } from './dom.ts';
+/** The store the News app keeps its saved stories in, as the tablet's feed reader expects it. */
+const newsStore: KeyValue = { getItem: k => newsStoreRaw.get(k), setItem: (k, v) => newsStoreRaw.set(k, v) };
 import { batterySay, batteryWord } from './voice-battery.ts';
 import { autoBrightness, openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
@@ -586,7 +591,12 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // "what's the news": the top headlines from the News feed (voice-news.ts); a feed that did not answer says so
   if (newsWord(t)) {
     let r: NewsFeedResponse;
-    try { r = await getJson<NewsFeedResponse>('/api/news/feed', READ_TIMEOUT_MS); } catch { return { say: 'I can’t reach your PC right now.' }; }
+    // on the tablet, the feeds are read on the tablet as the News app reads them (tablet.ts); the PC route is the fallback
+    if (feedSource(nativeHas('newsFetch')) === 'tablet') {
+      r = tabletFeed(newsFetch, newsStore, Date.now(), FEEDS);
+    } else {
+      try { r = await getJson<NewsFeedResponse>('/api/news/feed', READ_TIMEOUT_MS); } catch { return { say: 'I can’t reach your PC right now.' }; }
+    }
     const titles = (r?.items ?? []).map(i => i.title).filter(Boolean);
     if (r?.status === 'error' || !titles.length) return { say: 'I can’t get the news right now.', app: 'news' };
     return { say: newsSay(titles), react: 'look', app: 'news' };
