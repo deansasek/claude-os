@@ -27,6 +27,9 @@ test('an amount with no number, or a range, is left as it is', () => {
   assert.equal(scaleAmount('a pinch', 2), 'a pinch');
   assert.equal(scaleAmount('to taste', 3), 'to taste');
   assert.equal(scaleAmount('2-3 cups', 2), '2-3 cups');
+  assert.equal(scaleAmount('2 to 3 cups', 2), '2 to 3 cups');
+  assert.equal(scaleAmount('1 or 2 cloves', 2), '1 or 2 cloves');
+  assert.equal(scaleAmount('1 to 2 tbsp', 3), '1 to 2 tbsp');
 });
 
 test('amounts written with a fraction character scale too', () => {
