@@ -56,6 +56,13 @@ export const listsServer = createSdkMcpServer({
       { list: z.string().max(40), id: z.string().max(40).optional(), text: z.string().max(400).optional(), done: z.boolean().optional() },
       async ({ list, id, text: t, done }) => {
         if (!id && !t) return text('Say which item: its id or its text.', true);
+        // the list must exist (and say which do), and an item already in the asked state says so, rather than "Done"
+        const before = readLists();
+        if (!before.ok) return text(before.error ?? 'Couldn’t read the lists.', true);
+        const l = findList(before.lists, list);
+        if (!l) return text(`There’s no list called “${list}”. The lists are: ${before.lists.map(x => x.name).join(', ')}.`, true);
+        const same = id ? l.items.find(i => i.id === id) : l.items.find(i => i.text.trim().toLowerCase() === (t ?? '').trim().toLowerCase());
+        if (same && (done !== false) === same.done) return text(done !== false ? `“${same.text}” was already ticked off.` : `“${same.text}” was not ticked, so nothing changed.`);
         const r = tickItem(list, id ? { id } : { text: t }, done !== false);
         if (!r.ok) return text(r.error ?? 'That didn’t work.', true);
         return text(`Done. “${r.item?.text}” is ${r.item?.done ? 'ticked off' : 'back on the list'}.`);
