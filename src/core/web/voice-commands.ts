@@ -582,6 +582,8 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
       try { r = await writeList('clear-done', { list: c.list }); }
       catch (e) { return queuedReply(e, `Cleared the ticked items on ${name}.`); }
       if (!r?.ok) return { say: r?.error ?? `I couldn’t clear ${name}.` };
+      // nothing was ticked: say so, rather than claim a clear that removed nothing
+      if (r.removed === 0) return { say: `There’s nothing ticked on ${name}.` };
       return { say: `Cleared the ticked items on ${name}.`, react: 'hop' };
     }
     if (c.op === 'remove') {
