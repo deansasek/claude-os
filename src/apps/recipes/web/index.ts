@@ -717,6 +717,7 @@ function saveCook(): void {
 function go(next: Screen): void {
   screen = next;
   saveCook();
+  planning = false;   // the Plan this panel belongs to the recipe page it was opened on
   confirmDelete = false;
   toTop();
 }
