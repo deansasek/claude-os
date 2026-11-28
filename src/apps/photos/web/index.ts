@@ -3,6 +3,7 @@
 // or hold a photo) to delete them together, or to ask Claude about up to three.
 // Nothing is removed from the list until the PC says it is gone: a delete that fails leaves the photo where it was.
 import { esc, getJson, postJson, report } from '../../../core/web/dom.ts';
+import { clock } from '../../../core/web/format.ts';
 import { hubReachable, onHubReachable } from '../../../core/web/hub-link.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -54,7 +55,8 @@ const dayLabel = (day: string): string => {
   if (dt.getTime() >= monday.getTime() && dt.getTime() < yest.getTime()) return 'Earlier this week';
   return dt.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: dt.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 };
-const timeOf = (at: string): string => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+// the photo's time as Settings → Date & time sets it (clock() in format.ts reads the 24-hour setting)
+const timeOf = (at: string): string => clock(new Date(at));
 /** The day a photo was taken, for the full-size view: "Today" and "Yesterday" as in the grid, otherwise the real date. */
 const viewerDayLabel = (day: string): string => {
   const label = dayLabel(day);
