@@ -61,6 +61,15 @@ function sourceCredit(item: NewsItem): HTMLElement {
   return b;
 }
 
+/** Redraw the "5 min ago" labels on the screen, from each story's publish time (no fetch). */
+function refreshAgo(): void {
+  if (!ctx) return;
+  const now = Date.now();
+  ctx.root.querySelectorAll<HTMLElement>('[data-published]').forEach(w => {
+    const text = ago(w.dataset.published || null, now);
+    w.textContent = text;
+  });
+}
 function hero(item: NewsItem): HTMLElement {
   const b = el('div', 'nw-hero');
   b.dataset.id = storyKey(item);
@@ -68,7 +77,7 @@ function hero(item: NewsItem): HTMLElement {
   const m = el('span', 'nw-meta');
   m.append(sourceCredit(item));
   const when = ago(item.published, Date.now());
-  if (when) m.append(el('span', 'nw-when', when));
+  if (when) { const w = el('span', 'nw-when', when); w.dataset.published = item.published ?? ''; m.append(w); }
   body.append(el('span', 'nw-kicker', 'Top story'), el('span', 'nw-hero-title', item.title), m);
   b.append(media(item, 'nw-hero-media'), body);
   return b;
@@ -80,7 +89,9 @@ function tile(item: NewsItem): HTMLElement {
   b.dataset.id = storyKey(item);
   const top = el('span', 'nw-tile-top');
   top.append(media(item, 'nw-tile-media'), sourceCredit(item));
-  b.append(top, el('span', 'nw-tile-title', item.title), el('span', 'nw-tile-when', ago(item.published, Date.now())));
+  const w = el('span', 'nw-tile-when', ago(item.published, Date.now()));
+  w.dataset.published = item.published ?? '';
+  b.append(top, el('span', 'nw-tile-title', item.title), w);
   return b;
 }
 
@@ -311,6 +322,7 @@ const app: HubApp = {
   onShow() {
     startPolling();
     if (topicsDirty || Date.now() - loadedAt >= POLL_MS) void load();
+    else refreshAgo();   // the labels say how long ago each story was; they are redrawn when News comes back on screen
   },
   onHide() { stopPolling(); closeSheet(); },
   onClose() { stopPolling(); closeSheet(); },
