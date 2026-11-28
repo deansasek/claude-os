@@ -1,5 +1,6 @@
 // Temperature questions by voice: "how cold is it", "do I need a jacket", "is it hot outside". Pure, so Node tests load it.
 import type { CommandResult } from './voice-commands.ts';
+import { aqiLabel } from '../../apps/weather/web/air.ts';
 
 // The forecast's local time ("2026-11-27T16:21") said as the Weather app says it: "4:21 PM". Same output as format.ts localHour.
 const clock12 = (iso: string): string => {
@@ -53,6 +54,17 @@ export function nowSay(code: number, asked: 'raining' | 'snowing' | 'foggy'): st
   }
   const wet = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || (code >= 95 && code <= 99);
   return wet ? 'Yes, it’s raining.' : 'No, it’s not raining right now.';
+}
+
+// Air quality questions by voice: "what's the air quality", "how's the air today", "is the air good".
+export function airWord(t: string): boolean {
+  return /^(?:what(?:'s| is) the air quality(?: today| outside| like| right now| now)?|how(?:'s| is) the air(?: quality)?(?: today| outside| right now)?|is the air (?:good|bad|clean|ok)(?: today| outside)?)$/.test(t);
+}
+
+/** The air quality from the Weather screen's US AQI, with the same band words as its air line. */
+export function airSay(aqi: number | null): string {
+  if (aqi == null || !Number.isFinite(aqi)) return 'I can’t get the air quality right now.';
+  return `Air quality is ${Math.round(aqi)}: ${aqiLabel(aqi)}.`;
 }
 
 // Frost and freezing questions for tonight: "will it freeze tonight", "will there be a frost". "Is it freezing" is left out: in speech it means "very cold".

@@ -46,7 +46,7 @@ import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
-import { frostSay, frostTonight, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
+import { airSay, airWord, frostSay, frostTonight, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -171,6 +171,7 @@ interface Wx {
   status: string; units?: string; place?: string | null; city?: string; wind_unit?: string;
   current?: { time?: string; temperature_2m: number; weather_code: number; wind_speed_10m?: number };
   hourly?: { time: string[]; temperature_2m: number[] };
+  air?: { aqi: number | null } | null;
   daily?:{ weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; wind_speed_10m_max?: number[]; sunrise?: string[]; sunset?: string[] };
 }
 function sky(code: number): string {
@@ -208,6 +209,15 @@ async function frostCommand(): Promise<CommandResult> {
   const low = w.current?.time && w.hourly ? overnightLow(w.hourly.time, w.hourly.temperature_2m, w.current.time) : null;
   if (low == null) return { say: 'I can’t get the temperatures right now.' };
   return { say: frostSay(low, units), react: 'look' };
+}
+
+/** "What's the air quality": the US AQI now, from the forecast's air block (the Weather screen's own number). */
+async function airCommand(): Promise<CommandResult> {
+  let w: Wx;
+  try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
+  if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
+  if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
+  return { say: airSay(w.air?.aqi ?? null), react: 'look' };
 }
 
 /** "What time is sunset": the day's sunrise or sunset from the forecast, said the way the Weather app's tip says it. */
@@ -508,6 +518,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const falling = rainingNow(t);
   if (falling !== null) return rainingNowCommand(falling);
   if (frostTonight(t)) return frostCommand();
+  if (airWord(t)) return airCommand();
   const sun = sunDay(t);
   if (sun !== null) return sunCommand(sun.which, sun.day);
   if (/^(?:what(?:'s| is| will be) the weather(?: like)?(?: today| now| right now| outside)?|how(?:'s| is) the weather(?: today)?|weather(?: today)?|what(?:'s| is) it like outside|what(?:'s| is) the forecast(?: today)?)$/.test(t)) return weather(0, null);
