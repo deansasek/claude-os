@@ -1208,6 +1208,8 @@ const clockApi: ClockApi = {
   },
   /** The ring now: 'alarm' or 'timer', null when nothing rings. */
   ringing(): 'alarm' | 'timer' | null { return ringing ? ringing.kind : null; },
+  /** The label of the timer that rings (a finished timer leaves the list, so only the ring remembers it), or null. */
+  ringingName: (): string | null => (ringing?.kind === 'timer' ? ringing.name ?? null : null),
   /** Silence and dismiss the ring. False when nothing rings. */
   stopRinging(): boolean { if (!ringing) return false; stopRing(); return true; },
   /** Snooze a ringing alarm. False when nothing rings or a timer does. */

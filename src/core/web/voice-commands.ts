@@ -102,6 +102,8 @@ export interface ClockApi {
   switchOnAlarm(h: number, m: number): number;
   /** The ring now: 'alarm' or 'timer', null when nothing rings. */
   ringing(): 'alarm' | 'timer' | null;
+  /** The label of the timer that rings, or null. */
+  ringingName(): string | null;
   /** Silence and dismiss the ring. False when nothing rings. */
   stopRinging(): boolean;
   /** Snooze a ringing alarm. False when nothing rings or a timer does. */
@@ -391,6 +393,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     }
     if (tw.op === 'cancel-named') {
       const shown = tw.label.charAt(0).toUpperCase() + tw.label.slice(1);
+      // a timer that has finished is no longer listed: "stop the pasta timer" silences its ring when that is the one ringing
+      const ringName = clock.ringingName();
+      if (ringName && ringName.trim().toLowerCase() === tw.label.trim().toLowerCase() && clock.stopRinging()) return { say: `${shown} timer stopped.`, react: 'look' };
       return clock.cancelNamedTimer(tw.label) ? { say: `${shown} timer cancelled.`, react: 'look' } : { say: `You don’t have a ${tw.label} timer.`, react: 'look' };
     }
     if (tw.op === 'cancel-all') {
