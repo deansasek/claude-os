@@ -36,6 +36,22 @@ export function sunDay(t: string): { which: 'sunrise' | 'sunset'; day: 0 | 1 } |
   return null;
 }
 
+// "Is it raining" or "is it snowing" right now (not the chance later on). Returns what is asked about, or null.
+export function rainingNow(t: string): 'raining' | 'snowing' | null {
+  if (/^is it raining(?: outside| right now| now)?$/.test(t)) return 'raining';
+  if (/^is it snowing(?: outside| right now| now)?$/.test(t)) return 'snowing';
+  return null;
+}
+
+/** The yes or no for what is falling now, from the forecast's current weather code (WMO: 51-67 and 80-82 rain, 95-99 storms, 71-77 and 85-86 snow). */
+export function nowSay(code: number, asked: 'raining' | 'snowing'): string {
+  if (asked === 'snowing') {
+    return (code >= 71 && code <= 77) || (code >= 85 && code <= 86) ? 'Yes, it’s snowing.' : 'No, it’s not snowing right now.';
+  }
+  const wet = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || (code >= 95 && code <= 99);
+  return wet ? 'Yes, it’s raining.' : 'No, it’s not raining right now.';
+}
+
 // Wind questions by voice: "is it windy", "is it going to be windy tomorrow". Returns the day (0 today, 1 tomorrow), or null.
 export function windDay(t: string): 0 | 1 | null {
   if (/^(?:is it|will it be|is it going to be) windy tomorrow$|^how windy (?:is it|will it be|is it going to be) tomorrow$/.test(t)) return 1;
