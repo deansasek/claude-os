@@ -2,7 +2,25 @@
 // what is on. Pure: no DOM, so Node tests it (test/voice-radio.test.ts). The command handler (voice-commands.ts) does the
 // play and the pause, and reads what is on from the app's now-playing line.
 
+import type { Station } from '../../apps/radio/api.ts';
+
 export type RadioWord = 'play' | 'stop' | 'whats-playing';
+
+/** "play Radio 2", "put on Jazz FM": the station name said, or null when the phrase is not a station request. */
+export function stationWord(t: string): string | null {
+  const m = /^(?:play|put on|switch to|tune to) (.+?)(?: on the radio)?$/.exec(t);
+  if (!m || /^(?:the |my )?radio$/.test(m[1])) return null;
+  return m[1];
+}
+
+/** The one saved station with this name (any case). Null when none has it, or when two different stations do: it never guesses. */
+export function matchStation(name: string, stations: Station[]): Station | null {
+  const want = name.trim().toLowerCase();
+  const byId = new Map<string, Station>();
+  for (const s of stations) if (s?.id && !byId.has(s.id)) byId.set(s.id, s);
+  const hits = [...byId.values()].filter(s => (s.name ?? '').trim().toLowerCase() === want);
+  return hits.length === 1 ? hits[0] : null;
+}
 
 /** "play the radio", "stop the radio" or "what's playing" (the caller has already cleaned the phrase), or null. */
 export function radioWord(t: string): RadioWord | null {
