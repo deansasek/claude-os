@@ -129,12 +129,13 @@ export const tabletServer = createSdkMcpServer({
       { minutes: z.number(), label: z.string().optional() },
       async input => run('timer', input)),
     tool('set_alarm',
-      'Set a one-off alarm in the Clock on the user’s ClaudeOS tablet. time: HH:MM on the 24-hour clock, in the tablet’s local time; '
-        + 'the next time it comes round (today, or tomorrow if it has passed). label: optional, a few words shown when it rings.',
+      'Set an alarm in the Clock on the user’s ClaudeOS tablet. time: HH:MM on the 24-hour clock, in the tablet’s local time. '
+        + 'days: leave out for one time only (it rings today, or tomorrow if that time has passed); give days to repeat it, e.g. [1,2,3,4,5] every weekday. '
+        + 'label: optional, a few words shown when it rings.',
       { time: z.string(), label: z.string().optional(), days: z.array(z.number()).max(7).optional().describe('Repeat on these days: 0 = Sunday … 6 = Saturday, e.g. [1,2,3,4,5] for weekdays. Leave out for one time only.') },
       async input => run('alarm', input)),
     tool('set_reminder',
-      'Set a reminder on the user’s ClaudeOS tablet: at time (HH:MM, 24-hour, the next time it comes round) the Clock rings and shows text. '
+      'Set a reminder on the user’s ClaudeOS tablet: at time (HH:MM, 24-hour; one time only, or repeat it with days) the Clock rings and shows text. '
         + 'Use it for “remind me at 5 to take the chicken out”. text: what to show, up to 80 characters.',
       { time: z.string(), text: z.string(), days: z.array(z.number()).max(7).optional().describe('Repeat on these days: 0 = Sunday … 6 = Saturday, e.g. [1,2,3,4,5] for weekdays. Leave out for one time only.') },
       async input => run('reminder', input)),
