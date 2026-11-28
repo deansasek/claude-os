@@ -1,6 +1,7 @@
 // Temperature questions by voice: "how cold is it", "do I need a jacket", "is it hot outside". Pure, so Node tests load it.
 import type { CommandResult } from './voice-commands.ts';
 import { aqiLabel } from '../../apps/weather/web/air.ts';
+import { DAY_WORDS } from './voice-parse.ts';
 
 // The forecast's local time ("2026-11-27T16:21") said as the Weather app says it: "4:21 PM". Same output as format.ts localHour.
 const clock12 = (iso: string): string => {
@@ -54,6 +55,23 @@ export function nowSay(code: number, asked: 'raining' | 'snowing' | 'foggy'): st
   }
   const wet = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || (code >= 95 && code <= 99);
   return wet ? 'Yes, it’s raining.' : 'No, it’s not raining right now.';
+}
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** The weekday name for a getDay() number (0 Sunday to 6 Saturday). */
+export const weekdayName = (dow: number): string => DAY_NAMES[((dow % 7) + 7) % 7];
+
+/** A weather question about a named weekday: "what's the weather on Saturday", "will it rain on Friday".
+ *  todayDow is today's getDay() number. Returns how many days ahead (0 is today) and the rain or snow asked about, or null. */
+export function forecastDay(t: string, todayDow: number): { day: number; rainOnly: 'rain' | 'snow' | null } | null {
+  const m = t.match(/^(.+) on ([a-z]+)$/);
+  if (!m) return null;
+  const target = DAY_WORDS[m[2]];
+  if (target === undefined) return null;
+  const prefix = m[1];
+  if (!/^(?:what(?:'s| is) the weather(?: like)?|how(?:'s| is) the weather|weather|will it (?:rain|snow|be (?:sunny|cold|hot|windy|wet))|is it going to (?:rain|snow|be (?:sunny|cold|hot|windy|wet))|is it (?:sunny|cold|hot|windy|wet)|do i need an umbrella|do i need a (?:jacket|coat))$/.test(prefix)) return null;
+  const rainOnly = /\brain\b|umbrella/.test(prefix) ? 'rain' : /\bsnow\b/.test(prefix) ? 'snow' : null;
+  return { day: (target - todayDow + 7) % 7, rainOnly };
 }
 
 // Air quality questions by voice: "what's the air quality", "how's the air today", "is the air good".
