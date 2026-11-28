@@ -70,3 +70,10 @@ test('"more" or "extra" before the minutes is still a timer nudge', () => {
   assert.deepEqual(timerWord('take 2 more minutes off the timer'), { op: 'nudge', minutes: -2 });
   assert.deepEqual(timerWord('add 5 minutes to the timer'), { op: 'nudge', minutes: 5 });
 });
+
+test('an hour and half an hour are a 60 and a 30 minute timer nudge, both ways', () => {
+  assert.deepEqual(timerWord('add an hour to the timer'), { op: 'nudge', minutes: 60 });
+  assert.deepEqual(timerWord('add half an hour to the timer'), { op: 'nudge', minutes: 30 });
+  assert.deepEqual(timerWord('take an hour off the timer'), { op: 'nudge', minutes: -60 });
+  assert.deepEqual(timerWord('take half an hour off my timer'), { op: 'nudge', minutes: -30 });
+});
