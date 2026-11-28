@@ -14,6 +14,13 @@ test('the overnight low questions are matched, with the common phrasings', () =>
   assert.equal(lowTonightWord('how low will it go tonight'), true);
 });
 
+test('the everyday tonight phrasings for the overnight low are matched too', () => {
+  assert.equal(lowTonightWord("what's the temperature tonight"), true);
+  assert.equal(lowTonightWord('how cold is it tonight'), true);
+  assert.equal(lowTonightWord('is it going to be cold tonight'), true);
+  assert.equal(lowTonightWord('how cold does it get tonight'), true);
+});
+
 test('questions for tomorrow, frost, and other weather are not the overnight low', () => {
   assert.equal(lowTonightWord("what's the temperature tomorrow"), false);
   assert.equal(lowTonightWord('will it freeze tonight'), false);
