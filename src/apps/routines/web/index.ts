@@ -63,11 +63,14 @@ function edit(r: Routine | null): void {
 }
 
 // ---------- talking to the PC ----------
+const LIST_TIMEOUT_MS = 10e3;    // a list the PC never answers gives up, so the page shows its note
+const WRITE_TIMEOUT_MS = 15e3;   // a save or delete the PC never answers gives up, so Save and Delete work again
+
 async function refresh(): Promise<void> {
   try {
     if (hasCopy()) { await pull(); routines = localRoutines() ?? routines; loaded = true; if (note === refreshNote) note = ''; refreshNote = ''; }   // the copy, with Claude's edits
     else {
-      const r = await getJson<RoutinesResult>(`${API}/list`);   // the first run: the PC's routines, until the copy exists
+      const r = await getJson<RoutinesResult>(`${API}/list`, LIST_TIMEOUT_MS);   // the first run: the PC's routines, until the copy exists
       if (Array.isArray(r?.routines)) { routines = r.routines; loaded = true; if (note === refreshNote) note = ''; refreshNote = ''; }
       if (!r.ok && r.error) note = refreshNote = r.error;
     }
@@ -111,7 +114,7 @@ async function save(): Promise<void> {
   }
   busy = true; render();
   try {
-    const r = await postJson<RoutinesResult>(`${API}/save`, { routine });
+    const r = await postJson<RoutinesResult>(`${API}/save`, { routine }, WRITE_TIMEOUT_MS);
     if (Array.isArray(r?.routines)) routines = r.routines;
     if (r?.ok) {
       const mine = routines.find(x => x.id === r.id);
@@ -127,7 +130,7 @@ async function remove(id: string): Promise<void> {
   if (mine) { routines = mine.routines; edit(routines[0] ?? null); render(); return; }
   busy = true; render();
   try {
-    const r = await postJson<RoutinesResult>(`${API}/delete`, { id });
+    const r = await postJson<RoutinesResult>(`${API}/delete`, { id }, WRITE_TIMEOUT_MS);
     if (Array.isArray(r?.routines)) routines = r.routines;
     if (r?.ok) { edit(routines[0] ?? null); changed(); } else note = r?.error ?? 'That didn’t delete.';
   } catch { note = 'Couldn’t reach the PC. Try again in a moment.'; }
