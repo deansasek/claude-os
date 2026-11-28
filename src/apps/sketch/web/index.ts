@@ -1,21 +1,19 @@
 // The Sketch app: draw with a finger or a stylus. The pen and the clay pen draw ink; the eraser paints over in the
-// card colour. Undo takes the last stroke back, Clear empties the page. The strokes are data (strokes.ts); this file
-// only draws them and reads the pointer. Colours come from the page's tokens, so the page still matches the theme.
+// card colour. Undo takes the last stroke back, Clear empties the page, and Save sends the drawing to Photos.
+// The strokes are data (strokes.ts); draw.ts paints them and save.ts sends them. This file reads the pointer.
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { manifest } from '../manifest.ts';
+import { drawBoard } from './draw.ts';
+import { exportJpeg, savePhoto } from './save.ts';
 import { EMPTY, begin, extend, undo, type Board, type Pt, type Tool } from './strokes.ts';
-
-const WIDTH: Record<Tool, number> = { ink: 3, clay: 6, erase: 26 };
-const TOKEN: Record<Tool, string> = { ink: '--text', clay: '--clay', erase: '--card' };
 
 let canvas: HTMLCanvasElement | null = null;
 let g: CanvasRenderingContext2D | null = null;
 let board: Board = EMPTY;
 let tool: Tool = 'ink';
 let drawing = false;
-
-const token = (name: string): string => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+let saving = false;
 
 /** Size the drawing surface to its box, sharp on high-density screens. */
 function fit(): void {
@@ -27,24 +25,9 @@ function fit(): void {
   redraw();
 }
 
-/** Paint the page, then every stroke in order. */
 function redraw(): void {
   if (!canvas || !g) return;
-  g.fillStyle = token('--card');
-  g.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-  g.lineCap = 'round';
-  g.lineJoin = 'round';
-  for (const s of board) {
-    g.strokeStyle = g.fillStyle = token(TOKEN[s.tool]);
-    g.lineWidth = WIDTH[s.tool];
-    const [first, ...rest] = s.pts;
-    if (!first) continue;
-    if (!rest.length) { g.beginPath(); g.arc(first.x, first.y, WIDTH[s.tool] / 2, 0, Math.PI * 2); g.fill(); continue; }
-    g.beginPath();
-    g.moveTo(first.x, first.y);
-    for (const p of rest) g.lineTo(p.x, p.y);
-    g.stroke();
-  }
+  drawBoard(g, board, canvas.clientWidth, canvas.clientHeight);
 }
 
 function at(e: PointerEvent): Pt {
@@ -54,6 +37,18 @@ function at(e: PointerEvent): Pt {
 
 function paintTools(c: AppContext): void {
   c.$('skBar').querySelectorAll<HTMLElement>('[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === tool));
+}
+
+/** Send the drawing to Photos. One save runs at a time; the status line says how it went. */
+async function save(c: AppContext): Promise<void> {
+  if (saving || !canvas) return;
+  saving = true;
+  const status = c.$('skStatus');
+  status.textContent = 'Saving…';
+  const blob = await exportJpeg(board, canvas.clientWidth, canvas.clientHeight, window.devicePixelRatio || 1);
+  const ok = blob ? await savePhoto(blob) : false;
+  status.textContent = ok ? 'Saved to Photos' : 'Could not save';
+  saving = false;
 }
 
 const app: HubApp = {
@@ -80,8 +75,9 @@ const app: HubApp = {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (!b) return;
       if (b.dataset.tool) { tool = b.dataset.tool as Tool; paintTools(c); return; }
+      if (b.dataset.act === 'save') { void save(c); return; }
       if (b.dataset.act === 'undo') board = undo(board);
-      if (b.dataset.act === 'clear') board = EMPTY;
+      if (b.dataset.act === 'clear') { board = EMPTY; c.$('skStatus').textContent = ''; }
       redraw();
     });
     paintTools(c);
