@@ -94,10 +94,34 @@ function distanceAnswer(amount: number, fromWord: string, toWord: string, shape:
   return `${roundResult(v)} ${distName(to, v)} in ${amount === 1 ? 'a' : roundResult(amount)} ${distName(from, amount)}.`;
 }
 
+// time, for voice only: seconds per unit. Time converts only to time (an hour is not a gram or a metre).
+type TimeUnit = 's' | 'min' | 'h' | 'd' | 'wk' | 'yr';
+const SECONDS: Record<TimeUnit, number> = { s: 1, min: 60, h: 3600, d: 86400, wk: 604800, yr: 31536000 };
+const TIME_WORDS: Record<string, TimeUnit> = {
+  second: 's', seconds: 's', sec: 's', secs: 's',
+  minute: 'min', minutes: 'min', min: 'min', mins: 'min',
+  hour: 'h', hours: 'h', hr: 'h', hrs: 'h',
+  day: 'd', days: 'd', week: 'wk', weeks: 'wk', year: 'yr', years: 'yr',
+};
+const TIME_SAY: Record<TimeUnit, [string, string]> = {
+  s: ['second', 'seconds'], min: ['minute', 'minutes'], h: ['hour', 'hours'],
+  d: ['day', 'days'], wk: ['week', 'weeks'], yr: ['year', 'years'],
+};
+const timeName = (u: TimeUnit, n: number): string => TIME_SAY[u][Math.abs(n - 1) < 1e-9 ? 0 : 1];
+
+/** Time to time, or null (including a time to a weight, a distance or a volume). */
+function timeAnswer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
+  const from = TIME_WORDS[fromWord.trim()], to = TIME_WORDS[toWord.trim()];
+  if (!from || !to) return null;
+  const v = amount * SECONDS[from] / SECONDS[to];
+  if (shape === 'is') return `${roundResult(amount)} ${timeName(from, amount)} is ${roundResult(v)} ${timeName(to, v)}.`;
+  return `${roundResult(v)} ${timeName(to, v)} in ${amount === 1 ? 'a' : roundResult(amount)} ${timeName(from, amount)}.`;
+}
+
 function answer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
   if (!Number.isFinite(amount)) return null;
   const from = unitOf(fromWord), to = unitOf(toWord);
-  if (!from || !to) return weightAnswer(amount, fromWord, toWord, shape) ?? distanceAnswer(amount, fromWord, toWord, shape);
+  if (!from || !to) return weightAnswer(amount, fromWord, toWord, shape) ?? distanceAnswer(amount, fromWord, toWord, shape) ?? timeAnswer(amount, fromWord, toWord, shape);
   const v = convert(amount, from, to);
   if (v === null) return null;
   if (shape === 'is') return `${roundResult(amount)} ${name(from, amount)} is ${roundResult(v)} ${name(to, v)}.`;

@@ -90,7 +90,15 @@ test('a unit pair that cannot convert, a sum, and other phrases are not conversi
   assert.equal(convertSay("what's 5 cups in celsius"), null);
   assert.equal(convertSay("what's 12 times 7"), null);
   assert.equal(convertSay("what's the time in london"), null);
-  assert.equal(convertSay('how many hours in a day'), null);
+  assert.equal(convertSay('how many grams in an hour'), null);
+});
+
+test('time converts to time: minutes, hours, days, weeks and years', () => {
+  assert.equal(convertSay('how many minutes in 2 hours'), '120 minutes in 2 hours.');
+  assert.equal(convertSay('convert 90 minutes to hours'), '90 minutes is 1.5 hours.');
+  assert.equal(convertSay('how many days in a week'), '7 days in a week.');
+  assert.equal(convertSay('how many weeks in a year'), '52.14 weeks in a year.');
+  assert.equal(convertSay('how many hours in a day'), '24 hours in a day.');
 });
 
 test('the conversion is tried before the sum check, so "in" is not read as a sum', () => {
