@@ -219,8 +219,14 @@ function render(): void {
 }
 
 // ---------- talking to the PC ----------
+let statusGen = 0;   // each status read takes a number; a config save bumps it, so an older read cannot undo the save
 async function loadStatus(): Promise<void> {
-  try { status = await getJson<HaStatus>(`${API}/status`, READ_TIMEOUT_MS); statusFailed = false; } catch { statusFailed = true; /* keep the last one */ }
+  const gen = ++statusGen;
+  try {
+    const s = await getJson<HaStatus>(`${API}/status`, READ_TIMEOUT_MS);
+    if (gen !== statusGen) return;   // a newer read or a save started: its answer is the one that counts
+    status = s; statusFailed = false;
+  } catch { if (gen !== statusGen) return; statusFailed = true; /* keep the last one */ }
 }
 
 // keepNote: the caller's message (a save that failed) stays on screen after the reload
@@ -323,6 +329,7 @@ async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
 async function saveConfig(body: { address?: string; token?: string }): Promise<void> {
   try {
     const r = await postJson<HaStatus & { ok: boolean; message?: string }>(`${API}/config`, body, POST_TIMEOUT_MS);
+    statusGen++;   // a status read that was already waiting is older than this save
     status = r;
     testMsg = r.ok ? '' : r.message ?? 'That wasn’t saved.';
   } catch { testMsg = 'Can’t reach the PC right now.'; }
