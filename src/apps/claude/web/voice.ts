@@ -164,7 +164,7 @@ async function handle(raw: string): Promise<void> {
   // otherwise a new session
   // a failed read is not an empty list: only a read that worked can say there is no Scratch space
   let projects: Project[];
-  try { projects = await getJson<Project[]>('/api/claude/projects'); }
+  try { projects = await getJson<Project[]>('/api/claude/projects', READ_TIMEOUT_MS); }
   catch { voiceUi.notice('Can’t reach your PC', 'ClaudeOS runs there; is it on?', 4000); say('I can’t reach your PC right now.'); return; }
   const { project, rest } = folderFrom(text, projects);
   // the folder you named, else the one the mic / new-session screen points at, else Scratch space
