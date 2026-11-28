@@ -22,3 +22,9 @@ test('a ClaudeOS tool with nothing to show has an empty detail, not {}', () => {
 test('other tools keep their JSON detail', () => {
   assert.equal(askFor('SomeOtherTool', { a: 1 }).detail, '{"a":1}');
 });
+
+test('a Home Assistant card names the device and the service, and the scene', () => {
+  assert.equal(askFor('mcp__claudeos_ha__ha_call_service', { domain: 'light', service: 'turn_on', entity_id: 'light.kitchen' }).detail, 'light.turn_on on light.kitchen');
+  assert.equal(askFor('mcp__claudeos_ha__ha_call_service', { domain: 'climate', service: 'set_temperature', entity_id: 'climate.hall', temperature: 21 }).detail, 'climate.set_temperature on climate.hall, 21°');
+  assert.equal(askFor('mcp__claudeos_ha__ha_activate_scene', { scene: 'Movie night' }).detail, 'Movie night');
+});

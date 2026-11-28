@@ -20,6 +20,9 @@ function plainDetail(tool: string, i: Record<string, any>): string | null {
   if (n === 'set_timer' && typeof i.minutes === 'number') return `${i.minutes} minutes${typeof i.label === 'string' && i.label ? ` (${i.label})` : ''}`;
   if (n === 'set_alarm' && typeof i.time === 'string') return i.time;
   if ((n === 'weather_forecast' || n === 'calendar_range') && typeof i.days === 'number') return `${i.days} days`;
+  // the device and the service, so the approval shows what will change: "light.turn_on on light.kitchen", and the set temperature
+  if (n === 'ha_call_service' && typeof i.entity_id === 'string') return `${i.domain}.${i.service} on ${i.entity_id}${typeof i.temperature === 'number' ? `, ${i.temperature}°` : ''}`;
+  if (n === 'ha_activate_scene' && typeof i.scene === 'string') return i.scene;
   return '';
 }
 
