@@ -1,6 +1,17 @@
 // Pure voice parsing for the Clock, Routines and calendar phrases: durations, times of day and day lists.
 // No browser imports, so Node tests load it (test/voice-parse.test.ts). core/web/voice-commands.ts imports it.
 
+/** "a" or "an" before a spoken word or number: "an egg timer", "an 80 percent chance", "a 30 percent chance".
+ *  A number takes "an" when it is said with a vowel sound: 8, 11, 18 and 80 to 89. */
+export function articleFor(word: string | number): 'a' | 'an' {
+  const s = String(word).trim();
+  if (/^\d+$/.test(s)) {
+    const n = Number(s);
+    return n === 8 || n === 11 || n === 18 || (n >= 80 && n <= 89) ? 'an' : 'a';
+  }
+  return /^[aeiou]/i.test(s) ? 'an' : 'a';
+}
+
 export function parseDuration(phrase: string): number | null {
   let s = ` ${phrase} `
     // "a couple of minutes" is 2 minutes; only before a time unit

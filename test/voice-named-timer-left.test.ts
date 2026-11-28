@@ -23,7 +23,7 @@ test('a bare timer, a timer with a time in it, and other phrases are not a named
 
 test('the reply reads the named timer’s own time, and the clock answers for that label', () => {
   assert.ok(voice.includes('clock.namedTimerLeft(namedLeft)'));
-  assert.ok(voice.includes('You don’t have a ${namedLeft} timer.'));
+  assert.ok(voice.includes('You don’t have ${articleFor(namedLeft)} ${namedLeft} timer.'));
   assert.ok(voice.includes('left on the ${namedLeft} timer'));
   assert.ok(clock.includes('namedTimerLeft(label: string): { ms: number; paused: boolean } | null'));
 });
