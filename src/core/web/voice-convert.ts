@@ -25,6 +25,8 @@ const num = (s: string): number => (s === 'a' || s === 'an' || s === 'one' ? 1 :
 export function convertSay(raw: string): string | null {
   // "minus 10", "negative 5", "−10": a minus sign for the number that follows
   const s = raw.toLowerCase().replace(/’/g, "'").replace(/\b(?:minus|negative)\s+(?=\d)/g, '-').replace(/−/g, '-')
+    // "5 foot 10", "5 feet 10 inches": a height in feet and inches becomes decimal feet (5 foot 10 is 5.83 feet)
+    .replace(/(\d+)\s*(?:foot|feet|ft)\s+(\d+(?:\.\d+)?)(?:\s*(?:inches|inch))?\b/g, (_, f: string, i: string) => `${+f + +i / 12} feet`)
     // "1/2 cup", "3/4 cup": a fraction amount becomes its decimal (a zero denominator is left as Infinity, and answer() refuses it)
     .replace(/(\d+)\/(\d+)\b/g, (_, a: string, b: string) => String(Number(a) / Number(b)))
     // "200g", "500ml": a unit joined to its number gets a space (the unit list is explicit, so "1c" or "2f" are left alone)

@@ -41,6 +41,11 @@ test('a fraction amount is worked out: 1/2 cup, 3/4 cup and 1/4 cup', () => {
   assert.equal(convertSay("what's 1/0 cup in millilitres"), null);
 });
 
+test('a height in feet and inches is worked out: 5 foot 10 and 5 feet 10 inches in centimetres', () => {
+  assert.equal(convertSay("what's 5 foot 10 in centimetres"), '5.83 feet is 177.8 centimetres.');
+  assert.equal(convertSay("what's 5 feet 10 inches in centimetres"), '5.83 feet is 177.8 centimetres.');
+});
+
 test('a distance with its unit joined to the number is worked out: 5km, 100m, 30cm and 6ft', () => {
   assert.equal(convertSay("what's 5km in miles"), '5 kilometres is 3.11 miles.');
   assert.equal(convertSay("what's 100m in feet"), '100 metres is 328.08 feet.');
