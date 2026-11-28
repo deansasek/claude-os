@@ -54,7 +54,7 @@ import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmDayWord, alarmInMs, alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilSay, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
-import { airSay, airWord, degSay, feelsSay, feelsWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, uvSay, uvWord, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
+import { airSay, airWord, degSay, pollenSay, pollenWord, feelsSay, feelsWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, uvSay, uvWord, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -192,7 +192,7 @@ interface Wx {
   status: string; units?: string; place?: string | null; city?: string; wind_unit?: string;
   current?: { time?: string; temperature_2m: number; weather_code: number; wind_speed_10m?: number; relative_humidity_2m?: number; apparent_temperature?: number };
   hourly?: { time: string[]; temperature_2m: number[] };
-  air?: { aqi: number | null } | null;
+  air?: { aqi: number | null; pollen?: { name: string; value: number }[] } | null;
   daily?:{ weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; wind_speed_10m_max?: number[]; uv_index_max?: number[]; sunrise?: string[]; sunset?: string[] };
 }
 function sky(code: number): string {
@@ -239,6 +239,15 @@ async function airCommand(): Promise<CommandResult> {
   if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
   if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
   return { say: airSay(w.air?.aqi ?? null), react: 'look' };
+}
+
+/** "What's the pollen count": the pollen types the forecast's air block has (pollenSay in voice-weather.ts). */
+async function pollenCommand(): Promise<CommandResult> {
+  let w: Wx;
+  try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
+  if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
+  if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
+  return { say: pollenSay(w.air ? (w.air.pollen ?? []) : null), react: 'look' };
 }
 
 /** "How humid is it": the relative humidity now, from the forecast's current block. */
@@ -694,6 +703,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const onDay = forecastDay(t, new Date().getDay());
   if (onDay !== null) return weather(onDay.day, onDay.rainOnly);
   if (airWord(t)) return airCommand();
+  if (pollenWord(t)) return pollenCommand();
   if (humidWord(t)) return humidCommand();
   if (uvWord(t)) return uvCommand();
   if (feelsWord(t)) return feelsCommand();
