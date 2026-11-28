@@ -11,11 +11,11 @@ import { batterySay } from '../../../core/web/voice-battery.ts';
 import { wifiSay } from '../../../core/web/voice-wifi.ts';
 import { notify, prefs } from '../../../core/web/system.ts';
 import { getClock, getRoutines } from '../../../core/web/voice-commands.ts';
-import { articleFor, sayDuration } from '../../../core/web/voice-parse.ts';
+import { articleFor, daysText, sayDuration } from '../../../core/web/voice-parse.ts';
 import { call } from './sessions/pin.ts';
 import { cur, getControl } from '../../browser/web/state.ts';
 
-type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer';
+type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer' | 'list_alarms';
 interface Job { id: string; op: Op; ref?: string; text?: string; args?: Record<string, unknown> }
 interface NextReply { ok: boolean; job?: Job | null; error?: string }
 type Answer = { ok: boolean; data: string };
@@ -53,7 +53,7 @@ async function loop(): Promise<void> {
 
 function run(job: Job): Promise<Answer> | Answer {
   if (job.op === 'routine') return runRoutine(job.args || {});
-  if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms' || job.op === 'pause_timer' || job.op === 'resume_timer' || job.op === 'adjust_timer') return runClock(job.op, job.args || {});
+  if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms' || job.op === 'pause_timer' || job.op === 'resume_timer' || job.op === 'adjust_timer' || job.op === 'list_alarms') return runClock(job.op, job.args || {});
   if (job.op === 'tablet_status') return runStatus();
   if (job.op === 'dnd') return runDnd(job.args || {});
   if (job.op === 'timer' || job.op === 'alarm' || job.op === 'reminder' || job.op === 'notify') return runTablet(job.op, job.args || {});
@@ -76,7 +76,7 @@ function runDnd(a: Record<string, unknown>): Answer {
 }
 
 /** The Clock's status and cancels for Claude: the Clock's own state, read or changed here on the tablet. */
-function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause_timer' | 'resume_timer' | 'adjust_timer', args: Record<string, unknown> = {}): Answer {
+function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause_timer' | 'resume_timer' | 'adjust_timer' | 'list_alarms', args: Record<string, unknown> = {}): Answer {
   const clock = getClock();
   if (!clock) return { ok: false, data: 'The tablet’s Clock isn’t ready. Try again in a moment.' };
   if (op === 'cancel_timer') {
@@ -122,6 +122,15 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
     if (pausing) return { ok: true, data: clock.pauseTimer() ? 'Timer paused.' : clock.timerPaused() ? 'The timer is already paused.' : 'There’s no timer running.' };
     if (clock.resumeTimer()) return { ok: true, data: 'Timer resumed.' };
     return { ok: true, data: clock.timerLeft() != null && !clock.timerPaused() ? 'The timer is already running.' : 'There’s no paused timer.' };
+  }
+  if (op === 'list_alarms') {
+    // the alarms that are on, soonest first, as the voice lists them: up to four, then "and N more"; 24-hour times
+    const all = clock.alarmsOn();
+    if (!all.length) return { ok: true, data: 'No alarms are on.' };
+    const parts = all.slice(0, 4).map(a => `${hhmm(a.h, a.m)}${a.days.length ? daysText(a.days) : ` ${a.when}`}`);
+    const more = all.length - parts.length;
+    const joined = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join('; ')}; and ${parts[parts.length - 1]}`;
+    return { ok: true, data: `${all.length} alarm${all.length === 1 ? '' : 's'} on: ${joined}${more ? `, and ${more} more` : ''}.` };
   }
   if (op === 'cancel_alarms') {
     const n = clock.cancelClaudeAlarms();
