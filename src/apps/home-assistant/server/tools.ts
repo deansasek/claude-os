@@ -54,7 +54,9 @@ export const haServer = createSdkMcpServer({
         const r = await callService(domain, service, entity_id, temperature);
         if (!r.ok) return text(r.error ?? 'That didn’t work.', true);
         const e = r.entity;
-        return text(e ? `Done. ${e.name} (${e.entity_id}) is now ${e.state}${e.target != null ? `, set to ${e.target}${e.unit ?? ''}` : ''}.` : 'Done.');
+        // in the demo house nothing real changes, so the reply says so, as ha_activate_scene does
+        const demo = isDemo() ? ' (demo house: nothing real was switched)' : '';
+        return text(e ? `Done. ${e.name} (${e.entity_id}) is now ${e.state}${e.target != null ? `, set to ${e.target}${e.unit ?? ''}` : ''}${demo}.` : `Done.${demo}`);
       }),
     tool('ha_activate_scene',
       'Activate one Home Assistant scene (a saved set of device states, e.g. "Movie night"), by its entity id '
