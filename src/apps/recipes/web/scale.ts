@@ -11,7 +11,12 @@ export function servesCount(serves: string): number | null {
 }
 
 /** The amount as a number, and the text after it: "1 1/2 cups" → [1.5, " cups"]. Null when no number starts it. */
+const UNICODE_FRACTIONS: Record<string, number> = { '⅛': 1 / 8, '¼': 1 / 4, '⅓': 1 / 3, '⅜': 3 / 8, '½': 1 / 2, '⅝': 5 / 8, '⅔': 2 / 3, '¾': 3 / 4, '⅞': 7 / 8 };
+
 function leadingQuantity(amount: string): [number, string] | null {
+  // "½ cup", "1½ cups", "1 ¾ tsp": a single-character fraction, with or without a whole number before it
+  const uni = /^\s*(\d+)?\s*([⅛¼⅓⅜½⅝⅔¾⅞])/.exec(amount);
+  if (uni) return [(uni[1] ? +uni[1] : 0) + UNICODE_FRACTIONS[uni[2]], amount.slice(uni[0].length)];
   const mixed = /^\s*(\d+)\s+(\d+)\/(\d+)(?!\d)/.exec(amount);
   if (mixed && +mixed[3] > 0) return [+mixed[1] + +mixed[2] / +mixed[3], amount.slice(mixed[0].length)];
   const frac = /^\s*(\d+)\/(\d+)(?!\d)/.exec(amount);
