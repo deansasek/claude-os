@@ -1165,6 +1165,17 @@ const clockApi: ClockApi = {
     if (!hit || !hit.end) return false;
     timer = hit; timerPause(); return true;
   },
+  /** Add or take minutes off the timer with this label (running or paused), as nudgeTimer does for the one in front. */
+  nudgeNamedTimer(label: string, minutes: number): boolean {
+    focusAction();
+    const want = label.trim().toLowerCase();
+    const hit = timers.find(x => (x.name ?? '').trim().toLowerCase() === want && (x.end || x.left != null));
+    if (!hit) return false;
+    timer = hit;
+    const steps = Math.min(60, Math.abs(Math.round(minutes)));
+    for (let i = 0; i < steps; i++) timerNudge(minutes > 0 ? 1 : -1);
+    return true;
+  },
   /** Resume the paused timer with this label (its name, any case). Returns whether there was one paused. */
   resumeNamedTimer(label: string): boolean {
     const want = label.trim().toLowerCase();

@@ -107,6 +107,7 @@ export interface ClockApi {
   resumeTimer(): boolean;
   /** Add (positive) or take off (negative) whole minutes. False when no timer is set. */
   nudgeTimer(minutes: number): boolean;
+  nudgeNamedTimer(label: string, minutes: number): boolean;
   timerLeft(): number | null;
   /** True when the timer the voice means is paused (its time stays where it was). */
   timerPaused(): boolean;
