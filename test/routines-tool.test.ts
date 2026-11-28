@@ -34,3 +34,8 @@ test('the tool is wired into each session, and its approval card has plain words
   assert.ok(tools.includes("tool('routines_list',"));
   assert.ok(cards.includes("'mcp__claudeos_routines__routines_list': { now: 'List the routines', past: 'Listed the routines', doing: 'Listing the routines' },"));
 });
+
+test('a routine saved with no days, as the editor saves every day, says every day', async () => {
+  const r = await routinesListReply(async () => ({ ok: true, routines: [{ id: 'w', name: 'Wake', phrases: [], steps: [{ kind: 'weather' }], at: { h: 7, m: 0, days: [] } }] }) as never);
+  assert.equal(r.content[0].text, 'Wake (runs at 07:00 every day): Say the weather');
+});

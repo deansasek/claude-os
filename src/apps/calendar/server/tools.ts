@@ -67,16 +67,19 @@ export async function calendarRangeReply(
   const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + n);
   const localEvents = local(start.getTime(), end.getTime());
   const r = mergeRange(await read(start.getTime(), end.getTime()), localEvents ?? [], null);
-  if (r.status === 'not_set') return text(NOT_SET);
+  // the notes say when an answer may be out of date, or when the ClaudeOS calendar could not be read: they go on every reply, empty or not
+  const notes = [r.stale ? 'The calendar couldn’t be read just now, so this may be a little out of date.' : '', localEvents === null ? 'The ClaudeOS calendar couldn’t be read just now, so its events are not included.' : ''].filter(Boolean);
+  const noteText = notes.length ? `\n(${notes.join(' ')})` : '';
+  // no ICS calendar and no ClaudeOS events we could read: say that, not that no calendar is set up
+  if (r.status === 'not_set') return localEvents === null ? text('The ClaudeOS calendar couldn’t be read just now, so there is nothing to show.', true) : text(NOT_SET);
   if (r.status === 'error') return text(`Couldn’t read the calendar: ${r.error ?? 'unknown error'}`, true);
-  if (!r.events.length) return text(`Nothing on the calendar from ${dayFmt.format(start)} for ${n} day${n === 1 ? '' : 's'}.`);
+  if (!r.events.length) return text(`Nothing on the calendar from ${dayFmt.format(start)} for ${n} day${n === 1 ? '' : 's'}.${noteText}`);
   const lines = r.events.map(e => {
     const s = new Date(e.start), en = new Date(e.end);
     const when = e.allDay ? `${dayShort.format(s)}, all day` : `${dayShort.format(s)}, ${hm.format(s)}${en.getTime() > s.getTime() ? ` to ${hm.format(en)}` : ''}`;
     return `- ${when}: ${e.title}${e.location ? ` (at ${e.location})` : ''}`;
   });
-  const notes = [r.stale ? 'The calendar couldn’t be read just now, so this may be a little out of date.' : '', localEvents === null ? 'The ClaudeOS calendar couldn’t be read just now, so its events are not included.' : ''].filter(Boolean);
-  return text(`${r.events.length} event${r.events.length === 1 ? '' : 's'} from ${dayFmt.format(start)}:\n${lines.join('\n')}${notes.length ? `\n(${notes.join(' ')})` : ''}`);
+  return text(`${r.events.length} event${r.events.length === 1 ? '' : 's'} from ${dayFmt.format(start)}:\n${lines.join('\n')}${noteText}`);
 }
 
 /** The start and end of a new ClaudeOS event: a whole day with no start or allDay, else the times on that date. Null with a reason when they don't add up. */
