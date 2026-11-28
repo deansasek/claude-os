@@ -21,6 +21,10 @@ test('the reply says the top three titles, with no doubled full stops', () => {
   assert.equal(newsSay(['Only one']), 'Top headlines: Only one.');
 });
 
+test('a story carried by two feeds is said once, and the next title moves up', () => {
+  assert.equal(newsSay(['Storm hits coast', 'storm  hits coast', 'Trains delayed', 'New park opens']), 'Top headlines: Storm hits coast; Trains delayed; and New park opens.');
+});
+
 test('the voice reads the News feed and says so when it cannot', () => {
   assert.match(voice, /if \(newsWord\(t\)\) \{/);
   assert.match(voice, /getJson<NewsFeedResponse>\('\/api\/news\/feed', READ_TIMEOUT_MS\)/);
