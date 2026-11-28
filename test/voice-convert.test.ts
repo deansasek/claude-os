@@ -41,6 +41,14 @@ test('a fraction amount is worked out: 1/2 cup, 3/4 cup and 1/4 cup', () => {
   assert.equal(convertSay("what's 1/0 cup in millilitres"), null);
 });
 
+test('distance converts to distance: miles, kilometres, feet, metres, inches and centimetres', () => {
+  assert.equal(convertSay("what's 5 miles in km"), '5 miles is 8.05 kilometres.');
+  assert.equal(convertSay('how many feet in a metre'), '3.28 feet in a metre.');
+  assert.equal(convertSay('convert 30 cm to inches'), '30 centimetres is 11.81 inches.');
+  assert.equal(convertSay('how many grams in a mile'), null);
+  assert.equal(convertSay('how many cups in a mile'), null);
+});
+
 test('weight does not convert to a volume, and fluid ounces are still a volume', () => {
   assert.equal(convertSay('how many cups in grams'), null);
   assert.equal(convertSay('how many ounces in a cup'), null);
