@@ -11,7 +11,7 @@ import { batterySay } from '../../../core/web/voice-battery.ts';
 import { wifiSay } from '../../../core/web/voice-wifi.ts';
 import { notify, prefs } from '../../../core/web/system.ts';
 import { getClock, getRoutines } from '../../../core/web/voice-commands.ts';
-import { sayDuration } from '../../../core/web/voice-parse.ts';
+import { articleFor, sayDuration } from '../../../core/web/voice-parse.ts';
 import { call } from './sessions/pin.ts';
 import { cur, getControl } from '../../browser/web/state.ts';
 
@@ -81,7 +81,8 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
   if (!clock) return { ok: false, data: 'The tablet’s Clock isn’t ready. Try again in a moment.' };
   if (op === 'cancel_timer') {
     const label = str(args.label);
-    if (label) return { ok: true, data: clock.cancelNamedTimer(label) ? `${label} timer cancelled.` : `There’s no ${label} timer.` };
+    // the named timer's words as the voice says them: the capital first, "You don’t have a pasta timer." when there is none
+    if (label) return { ok: true, data: clock.cancelNamedTimer(label) ? `${cap(label)} timer cancelled.` : `You don’t have ${articleFor(label)} ${label} timer.` };
     return { ok: true, data: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.' };
   }
   if (op === 'adjust_timer') {
@@ -97,8 +98,13 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
     // the same replies the voice gives (voice-commands.ts), named timer first, then the one in front
     const label = str(args.label), pausing = op === 'pause_timer';
     if (label) {
+      // the timer's own state first, as the voice does: "already paused", "already running", or no such timer
+      const left = clock.namedTimerLeft(label);
+      if (!left) return { ok: true, data: `You don’t have ${articleFor(label)} ${label} timer.` };
+      if (pausing && left.paused) return { ok: true, data: `The ${label} timer is already paused.` };
+      if (!pausing && !left.paused) return { ok: true, data: `The ${label} timer is already running.` };
       const done = pausing ? clock.pauseNamedTimer(label) : clock.resumeNamedTimer(label);
-      return { ok: true, data: done ? `${label} timer ${pausing ? 'paused' : 'resumed'}.` : `The ${label} timer ${pausing ? 'isn’t running' : 'isn’t paused'}.` };
+      return { ok: true, data: done ? `${cap(label)} timer ${pausing ? 'paused' : 'resumed'}.` : `The ${label} timer ${pausing ? 'isn’t running' : 'isn’t paused'}.` };
     }
     if (pausing) return { ok: true, data: clock.pauseTimer() ? 'Timer paused.' : clock.timerPaused() ? 'The timer is already paused.' : 'There’s no timer running.' };
     if (clock.resumeTimer()) return { ok: true, data: 'Timer resumed.' };
@@ -124,6 +130,8 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
 /** "17:05" for the answer, as Claude gave it (24-hour). */
 const hhmm = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+/** The first letter in capitals, for the start of a reply ("Pasta timer paused."). */
+const cap = (w: string): string => w.charAt(0).toUpperCase() + w.slice(1);
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : NaN);
 
 /** A tablet job: the arguments were checked on the server; checked again here where the Clock's state lives. */
