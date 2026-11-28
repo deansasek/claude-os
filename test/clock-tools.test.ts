@@ -79,7 +79,7 @@ test('list_alarms is a Claude tool: the alarms that are on, soonest first, with 
 test('clock_status names the named timers, so Claude can give one by its label', () => {
   const clockSrc = readFileSync(new URL('../src/apps/clock/web/index.ts', import.meta.url), 'utf8');
   assert.ok(clockSrc.includes("timerNames: (): string[] => timers.filter(t => t.name && (t.end || t.left != null)).map(t => (t.name ?? '').trim()),"));
-  assert.ok(relay.includes("const nameSay = names.length ? ` Named timers: ${names.join(', ')}.` : '';"));
+  assert.ok(relay.includes("const nameSay = names.length ? ` Named timers: ${names.map(n => { const l = clock.namedTimerLeft(n); return l ? `${n} (${l.paused ? 'paused, ' : ''}${sayDuration(Math.floor(l.ms / 1000) * 1000)} left)` : n; }).join(', ')}.` : '';"));
   assert.ok(relay.includes("${alarmSay}${swSay}${nameSay}` };"));
 });
 
