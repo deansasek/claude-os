@@ -52,7 +52,7 @@ import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmDayWord, alarmInMs, alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilSay, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
-import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
+import { airSay, airWord, degSay, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -204,7 +204,7 @@ function sky(code: number): string {
   if (code <= 86) return 'snow showers';
   return 'stormy';
 }
-const deg = (n: number) => `${Math.round(n)} degrees`;
+const deg = degSay;
 
 /** "Is it raining": what is falling now, from the forecast's current weather code. */
 async function rainingNowCommand(asked: 'raining' | 'snowing' | 'foggy'): Promise<CommandResult> {

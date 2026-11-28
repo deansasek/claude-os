@@ -116,21 +116,27 @@ export function overnightLow(times: string[], temps: number[], nowIso: string): 
   return low;
 }
 
+/** A temperature in degrees, singular for one: "1 degree", "-1 degree", "0 degrees", "2 degrees". */
+export function degSay(n: number): string {
+  const v = Math.round(n);
+  return `${v} ${Math.abs(v) === 1 ? 'degree' : 'degrees'}`;
+}
+
 /** "What's the low tonight", "how cold will it get tonight": the overnight low as a number. */
 export function lowTonightWord(t: string): boolean {
   return /^(?:how cold (?:will it get|is it going to get|will it be|is it going to be|is it|does it get|does it go) tonight|is it (?:going to be )?cold tonight|what(?:'s| is) the (?:temperature|low)(?: temperature)? tonight|how low will it go tonight|what will the low be tonight|what(?:'s| is) the overnight low)$/.test(t);
 }
 
 export function lowTonightSay(low: number): string {
-  return `Down to ${Math.round(low)} degrees tonight.`;
+  return `Down to ${degSay(low)} tonight.`;
 }
 
 /** The answer for a frost question. The freezing point is 0 degrees Celsius or 32 Fahrenheit, by the user's units. */
 export function frostSay(low: number, units: 'celsius' | 'fahrenheit'): string {
   const freezing = units === 'celsius' ? 0 : 32;
   const v = Math.round(low);
-  if (low <= freezing) return `Yes, down to ${v} degrees tonight: below freezing.`;
-  return `No, the low tonight is ${v} degrees.`;
+  if (low <= freezing) return `Yes, down to ${degSay(v)} tonight: below freezing.`;
+  return `No, the low tonight is ${degSay(v)}.`;
 }
 
 // Wind questions by voice: "is it windy", "is it going to be windy tomorrow". Returns the day (0 today, 1 tomorrow), or null.
