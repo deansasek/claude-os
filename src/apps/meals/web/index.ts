@@ -43,7 +43,7 @@ function paint(c: AppContext): void {
       return `<div class="mp-day"><div class="mp-dow">${esc(label)}</div><div class="mp-edit-wrap">
         ${chips ? `<div class="mp-chips">${chips}</div>` : ''}
         <div class="mp-edit">
-        <input class="mp-input" data-i="${i}" maxlength="60" placeholder="What’s for dinner?" value="${esc(dinner?.text ?? '')}">
+        <input class="mp-input" data-i="${i}" maxlength="60" enterkeyhint="done" placeholder="What’s for dinner?" value="${esc(dinner?.text ?? '')}">
         <button class="mp-btn primary" data-act="save" data-i="${i}">Save</button>
         ${dinner ? `<button class="mp-btn" data-act="remove" data-i="${i}">Remove</button>` : ''}
         <button class="mp-btn" data-act="cancel" data-i="${i}">Cancel</button></div></div></div>`;
@@ -167,6 +167,13 @@ const app: HubApp = {
     c.$('mpNext').addEventListener('click', () => shiftWeek(c, 1));
     c.$('mpShop').addEventListener('click', () => void addWeekShopping(c));
     c.$('mpCopy').addEventListener('click', () => void copyLastWeek(c));
+    c.$('mpDays').addEventListener('keydown', e => {   // the keyboard's Done (Enter) in the dinner box saves that night, as Save does
+      if (e.key !== 'Enter') return;
+      const input = (e.target as HTMLElement).closest<HTMLInputElement>('.mp-input');
+      if (!input) return;
+      e.preventDefault();
+      void save(c, Number(input.dataset.i));
+    });
     c.$('mpDays').addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
       if (!b) return;
