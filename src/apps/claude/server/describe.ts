@@ -13,6 +13,16 @@ function keyArg(i: Record<string, any>): string | null {
   return null;
 }
 
+/** A plain detail for the ClaudeOS tools, from the facts in the call: "10 minutes (pasta)", "07:00", "7 days". Null for other tools. */
+function plainDetail(tool: string, i: Record<string, any>): string | null {
+  if (!tool.startsWith('mcp__claudeos_')) return null;
+  const n = tool.split('__').pop() ?? '';
+  if (n === 'set_timer' && typeof i.minutes === 'number') return `${i.minutes} minutes${typeof i.label === 'string' && i.label ? ` (${i.label})` : ''}`;
+  if (n === 'set_alarm' && typeof i.time === 'string') return i.time;
+  if ((n === 'weather_forecast' || n === 'calendar_range') && typeof i.days === 'number') return `${i.days} days`;
+  return '';
+}
+
 /** The name and the key argument, as the transcript shows them: "Read notes/todo.txt", "Ran a command". */
 export function describeTool(tool: string, input: Record<string, any>): { summary: string; detail: string } {
   const i = input || {};
@@ -25,7 +35,7 @@ export function describeTool(tool: string, input: Record<string, any>): { summar
     return { summary: `${w.past} ${shown}`, detail: short(arg, 600) };
   }
   if (arg) return { summary: w.past, detail: short(arg, 600) };
-  return { summary: w.past, detail: short(JSON.stringify(i), 600) };
+  return { summary: w.past, detail: plainDetail(tool, i) ?? short(JSON.stringify(i), 600) };
 }
 
 /** Present tense, for approval cards: "Write notes.txt", "Run a command" with the command as the detail. */
@@ -38,5 +48,5 @@ export function askFor(tool: string, input: Record<string, any>): { summary: str
     const shown = w.arg === 'file' ? short(fileName(arg), 60) : short(arg, 50);
     return { summary: `${w.now} ${shown}`, detail: short(arg, 600) };
   }
-  return { summary: w.now, detail: arg ? short(arg, 600) : short(JSON.stringify(i), 600) };
+  return { summary: w.now, detail: arg ? short(arg, 600) : (plainDetail(tool, i) ?? short(JSON.stringify(i), 600)) };
 }
