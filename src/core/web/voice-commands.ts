@@ -45,7 +45,7 @@ import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
-import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerWord } from './voice-alarm.ts';
+import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
 import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
@@ -498,6 +498,15 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const hit = clock.namedTimerLeft(namedLeft);
     if (!hit) return { say: `You don’t have a ${namedLeft} timer.`, react: 'look' };
     return { say: `${sayDuration(Math.ceil(hit.ms / 1000) * 1000)} left on the ${namedLeft} timer${hit.paused ? ', and it is paused' : ''}.`.replace(/^./, c => c.toUpperCase()), react: 'look' };
+  }
+  // "what time will the timer go off": the clock time it ends (timerEndWord in voice-alarm.ts); a paused timer has no end yet
+  if (timerEndWord(t)) {
+    if (!clock) return null;
+    const left = clock.timerLeft();
+    if (left == null) return { say: 'There’s no timer running.' };
+    if (clock.timerPaused()) return { say: `The timer is paused, with ${sayDuration(Math.ceil(left / 1000) * 1000)} left.` };
+    const at = new Date(Date.now() + left).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return { say: `At ${at}.`, react: 'look' };
   }
   if (/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)(?: on (?:the|my) timer)?|how much longer(?: is it)?(?: on (?:the|my) timer)?|how many (?:minutes|seconds)(?: are)? left(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
     if (!clock) return null;
