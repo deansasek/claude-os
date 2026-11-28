@@ -55,7 +55,8 @@ function daysFrom(v: unknown): number[] | { error: string } {
 /** Check a tool's arguments; the error is a plain sentence for Claude. */
 export function check(op: TabletOp, input: Record<string, unknown>): Checked {
   // the Clock's status and cancels take no arguments; they run on the tablet, where the Clock's state is
-  if (op === 'clock_status' || op === 'cancel_timer' || op === 'cancel_alarms') return { ok: true, op, args: {} };
+  if (op === 'cancel_timer') return { ok: true, op, args: { label: cleanText(input.label) } };   // a timer by its name, or the one in front
+  if (op === 'clock_status' || op === 'cancel_alarms') return { ok: true, op, args: {} };
   if (op === 'notify') {
     const title = cleanText(input.title), body = cleanText(input.body);
     if (!title) return { ok: false, error: 'The notification needs a title.' };
@@ -100,7 +101,7 @@ export const tabletServer = createSdkMcpServer({
   tools: [
     tool('set_timer',
       'Start a countdown timer in the Clock on the user’s ClaudeOS tablet; it rings when it ends. minutes: 1 to 720 (may be fractional, '
-        + 'e.g. 1.5). label: optional, a few words shown when it rings. The Clock has one timer: this fails if one is already running.',
+        + 'e.g. 1.5). label: optional, a few words shown when it rings. The Clock keeps a list of timers, each with its own label: this fails only when the list is full.',
       { minutes: z.number(), label: z.string().optional() },
       async input => run('timer', input)),
     tool('set_alarm',
@@ -123,9 +124,9 @@ export const tabletServer = createSdkMcpServer({
       {},
       async () => run('clock_status', {})),
     tool('cancel_timer',
-      'Cancel the timer on the user’s ClaudeOS tablet, if one is running. Use it when the user says to stop or cancel the timer.',
-      {},
-      async () => run('cancel_timer', {})),
+      'Cancel a timer on the user’s ClaudeOS tablet. label: optional, the timer’s name when several are set (as set_timer gave it); with none, the timer in front is cancelled. Use it when the user says to stop or cancel a timer.',
+      { label: z.string().optional() },
+      async ({ label }) => run('cancel_timer', label ? { label } : {})),
     tool('cancel_alarms',
       'Switch off the alarms and reminders you set on the user’s ClaudeOS tablet (set_alarm, set_reminder). It keeps the user’s own alarms '
         + 'and does not delete anything; they can be turned on again in the Clock.',

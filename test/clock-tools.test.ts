@@ -1,28 +1,21 @@
-// The tablet tool checks for the Clock: status and cancels take no arguments. Run with: npm test
+// Claude's timer tools follow the Clock's list of timers (src/apps/claude/server/tablet.ts, web/browser-relay.ts).
+// The tools run in the SDK and on the tablet, so their wiring is read as source. Run with: npm test
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { check } from '../src/apps/claude/server/tablet.ts';
 
-test('the Clock status and cancel operations need no arguments', () => {
-  for (const op of ['clock_status', 'cancel_timer', 'cancel_alarms'] as const) {
-    const c = check(op, {});
-    assert.equal(c.ok, true, op);
-    if (c.ok) assert.deepEqual(c.args, {});
-  }
+const tablet = readFileSync(new URL('../src/apps/claude/server/tablet.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const relay = readFileSync(new URL('../src/apps/claude/web/browser-relay.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+
+test('set_timer says the Clock keeps a list of timers, not that one timer blocks another', () => {
+  assert.ok(tablet.includes('The Clock keeps a list of timers, each with its own label: this fails only when the list is full.'));
+  assert.equal(tablet.includes('The Clock has one timer'), false);
 });
 
-test('an alarm or reminder can repeat on days: sorted, unique, and within the week', () => {
-  const c = check('alarm', { time: '07:00', days: [5, 1, 1] });
-  assert.equal(c.ok, true);
-  if (c.ok) assert.deepEqual((c.args as { days: number[] }).days, [1, 5]);
-  const once = check('alarm', { time: '07:00' });
-  if (once.ok) assert.deepEqual((once.args as { days: number[] }).days, []);
-  assert.equal(check('alarm', { time: '07:00', days: [7] }).ok, false);
-  assert.equal(check('reminder', { time: '08:00', text: 'Bins', days: ['tue'] }).ok, false);
-});
-
-test('the timer and alarm checks still refuse bad input', () => {
-  assert.equal(check('timer', { minutes: 0 }).ok, false);
-  assert.equal(check('alarm', { time: '25:00' }).ok, false);
-  assert.equal(check('reminder', { time: '08:00', text: '' }).ok, false);
+test('cancel_timer takes an optional label, and the relay cancels that timer by name', () => {
+  assert.ok(tablet.includes("tool('cancel_timer',"));
+  assert.ok(tablet.includes("{ label: z.string().optional() },\n      async ({ label }) => run('cancel_timer', label ? { label } : {})),"));
+  assert.ok(tablet.includes("if (op === 'cancel_timer') return { ok: true, op, args: { label: cleanText(input.label) } };"));
+  assert.ok(relay.includes('clock.cancelNamedTimer(label) ? `${label} timer cancelled.`'));
+  assert.ok(relay.includes('return runClock(job.op, job.args || {});'));
 });

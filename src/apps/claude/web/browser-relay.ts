@@ -50,16 +50,20 @@ async function loop(): Promise<void> {
 
 function run(job: Job): Promise<Answer> | Answer {
   if (job.op === 'routine') return runRoutine(job.args || {});
-  if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms') return runClock(job.op);
+  if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms') return runClock(job.op, job.args || {});
   if (job.op === 'timer' || job.op === 'alarm' || job.op === 'reminder' || job.op === 'notify') return runTablet(job.op, job.args || {});
   return runBrowser(job);
 }
 
 /** The Clock's status and cancels for Claude: the Clock's own state, read or changed here on the tablet. */
-function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms'): Answer {
+function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms', args: Record<string, unknown> = {}): Answer {
   const clock = getClock();
   if (!clock) return { ok: false, data: 'The tablet’s Clock isn’t ready. Try again in a moment.' };
-  if (op === 'cancel_timer') return { ok: true, data: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.' };
+  if (op === 'cancel_timer') {
+    const label = str(args.label);
+    if (label) return { ok: true, data: clock.cancelNamedTimer(label) ? `${label} timer cancelled.` : `There’s no ${label} timer.` };
+    return { ok: true, data: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.' };
+  }
   if (op === 'cancel_alarms') {
     const n = clock.cancelClaudeAlarms();
     return { ok: true, data: n ? `Switched off ${n} alarm${n === 1 ? '' : 's'} and reminder${n === 1 ? '' : 's'} that Claude set. Your own alarms are unchanged.` : 'Claude has no alarms or reminders on.' };
