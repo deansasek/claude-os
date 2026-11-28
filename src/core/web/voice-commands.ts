@@ -61,7 +61,7 @@ import type { Station } from '../../apps/radio/api.ts';
 import { canStepFavourites } from '../../apps/radio/web/player.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWeekSay, dinnerWeekWord, dinnerWord, type Night } from './voice-dinner.ts';
-import { calendarDay, calendarDaySay, dayWordFor, listSay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
+import { calendarDay, calendarDaySay, calendarDaysUntil, dayWordFor, eventCountdownSay, eventCountdownWord, listSay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
 import { convertSay } from './voice-convert.ts';
 import { nextRun, nextRunSay } from '../../apps/routines/web/next-run.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
@@ -682,6 +682,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // "when is the dentist": an event on the local calendar by its words (eventWhenWord in voice-calendar.ts); none: the phrase goes on
   const eventWant = eventWhenWord(t);
   if (eventWant !== null) { const r = await eventWhenCommand(eventWant); if (r) return r; }
+  // "how many days until the dentist": the count to the next event by its words (eventCountdownWord in voice-calendar.ts)
+  const countWant = eventCountdownWord(t);
+  if (countWant !== null) { const r = await eventCountdownCommand(countWant, /sleeps/.test(t)); if (r) return r; }
   if (/^(?:what(?:'s| is| will be) the weather(?: like)?(?: today| now| right now| outside)?|how(?:'s| is) the weather(?: today)?|weather(?: today)?|what(?:'s| is) it like outside|what(?:'s| is) the forecast(?: today)?)$/.test(t)) return weather(0, null);
   if (/^(?:what(?:'s| is| will be) the weather(?: like)? tomorrow|what(?:'s| is) the forecast (?:for )?tomorrow|weather tomorrow|how(?:'s| is| will) the weather (?:be )?tomorrow)$/.test(t)) return weather(1, null);
   if ((r = t.match(/^(?:will it|is it going to|is it gonna|should i expect|do i need an umbrella|is there going to be)(?: (rain|snow))?(?: (today|tomorrow|later|tonight))?$/))) {
@@ -864,6 +867,20 @@ async function dinnerCommand(night: Night): Promise<CommandResult> {
 }
 
 /** "When is the dentist": the next local event (within 60 days) whose title holds those words, said with its day and time. */
+/** "How many days until the dentist": the count to the next matching event on the local calendar. Null when none matches. */
+async function eventCountdownCommand(want: string, sleeps: boolean): Promise<CommandResult | null> {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 60);
+  let r: { status?: string; events?: { title: string; start: number; end: number; allDay: boolean }[] };
+  try { r = await getJson(`/api/calendar/local?from=${isoDay(start)}&to=${isoDay(end)}`, READ_TIMEOUT_MS); }
+  catch { return { say: 'I can’t reach the calendar right now.' }; }
+  if (r?.status !== 'ok') return { say: 'I can’t read the calendar right now.' };
+  const hit = findEventWhen(r.events ?? [], want, Date.now());
+  if (!hit) return null;   // no such event: the phrase goes on
+  return { say: eventCountdownSay(hit.title, calendarDaysUntil(hit.start, new Date()), sleeps), react: 'look', app: 'calendar' };
+}
+
 async function eventWhenCommand(want: string): Promise<CommandResult | null> {
   const d = new Date();
   const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());

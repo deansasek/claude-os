@@ -29,6 +29,29 @@ export function eventWhenWord(t: string): string | null {
   return want;
 }
 
+/** "How many days until the dentist", "how many sleeps until swimming": the words to find in an event's title, or null.
+ *  Christmas is left to the Christmas countdown (countdownWord in voice-countdown.ts). */
+export function eventCountdownWord(t: string): string | null {
+  const m = /^(?:how many (?:more )?(?:days|sleeps)(?: left)? (?:until|till|til|to|before)|(?:days|sleeps)(?: left)? (?:until|till|til)) (.+)$/.exec(t);
+  if (!m) return null;
+  const want = m[1].replace(/^(?:the |my |our )/, '').trim();
+  if (!want || NOT_AN_EVENT.test(want)) return null;
+  return want;
+}
+
+/** Calendar days from today's date to the start's date (0 on the same day). */
+export function calendarDaysUntil(startMs: number, now: Date): number {
+  const s = new Date(startMs);
+  return Math.round((new Date(s.getFullYear(), s.getMonth(), s.getDate()).getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 864e5);
+}
+
+/** The count to an event, said with its title: "3 days until Dentist.", "Dentist is today.". Sleeps counts nights. */
+export function eventCountdownSay(title: string, days: number, sleeps: boolean): string {
+  if (days <= 0) return `${title} is today.`;
+  if (days === 1) return sleeps ? `One more sleep until ${title}.` : `${title} is tomorrow.`;
+  return sleeps ? `${days} sleeps until ${title}.` : `${days} days until ${title}.`;
+}
+
 /** "today" or "tomorrow" when the start falls on that local day, else null (the caller then says the weekday and date). */
 export function dayWordFor(startMs: number, now: Date): 'today' | 'tomorrow' | null {
   const ymd = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
