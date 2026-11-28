@@ -183,7 +183,7 @@ async function toggleCal(id: string): Promise<void> {
   c.shown = next;
   render();
   let r: { status?: string; error?: string; calendars?: CalendarInfo[] } | null = null;
-  try { r = await postJson<{ status?: string; error?: string; calendars?: CalendarInfo[] }>(`${API}/calendar-shown`, { id, shown: next }); } catch { r = null; }
+  try { r = await postJson<{ status?: string; error?: string; calendars?: CalendarInfo[] }>(`${API}/calendar-shown`, { id, shown: next }, WRITE_TIMEOUT_MS); } catch { r = null; }
   if (r?.status === 'ok' && r.calendars) calendars = r.calendars;
   else { c.shown = !next; msg = r?.error ?? 'Couldn’t reach the PC. Try again in a moment.'; }
   render();
@@ -218,7 +218,7 @@ async function loadConnector(): Promise<void> {
 
 async function saveAddress(address: string): Promise<void> {
   let r: CalConfigResult | null = null;
-  try { r = await postJson<CalConfigResult>(`${API}/config`, { address }); } catch { /* below */ }
+  try { r = await postJson<CalConfigResult>(`${API}/config`, { address }, WRITE_TIMEOUT_MS); } catch { /* below */ }
   if (r) { statusSeq++; status = { configured: r.configured, address: r.address }; statusFailed = false; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; addressMsg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
   else { msg = 'Couldn’t reach the PC. Try again in a moment.'; addressMsg = 'Couldn’t reach the PC. Try again in a moment.'; }
   appSettingsChanged();
