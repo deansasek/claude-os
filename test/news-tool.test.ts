@@ -29,3 +29,15 @@ test('the tool is wired into each session, and its approval card has plain words
   assert.ok(turns.includes('claudeos_news: newsServer'));
   assert.ok(cards.includes("'mcp__claudeos_news__news_headlines': { now: 'Read the headlines', past: 'Read the headlines', doing: 'Reading the headlines' },"));
 });
+
+test('when every feed failed, the reply says the feeds did not answer, not that the topics are off', async () => {
+  const r = await newsHeadlines({}, async () => ({ status: 'error', items: [], sources: [], updated: null }) as never);
+  assert.equal(r.isError, true);
+  assert.match(r.content[0].text, /The news feeds did not answer/);
+  assert.doesNotMatch(r.content[0].text, /switched off/);
+});
+
+test('a feed that failed is named after the headlines, and a saved one says it is showing the old stories', async () => {
+  const r = await newsHeadlines({ count: 1 }, async () => ({ status: 'partial', items: [item('BBC News', 'Ships return')], sources: [{ id: 'a', name: 'AP', status: 'error', stale: true }, { id: 'b', name: 'BBC News', status: 'ok', stale: false }], updated: null }) as never);
+  assert.equal(r.content[0].text, 'BBC News: Ships return\n(AP did not load (showing its stories from before).)');
+});
