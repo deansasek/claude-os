@@ -25,7 +25,7 @@ test('score ranks a prefix above a word start above a plain contains', () => {
 test('a query without spaces finds a dashed name', () => {
   assert.equal(score('wifi', 'Wi-Fi'), 3);
   const wifi = searchAll('wifi', src).map(h => [h.kind, h.label]);
-  assert.deepEqual(wifi, [['setting', 'Wi-Fi'], ['item', 'Wi-Fi router batteries']]);
+  assert.deepEqual(wifi, [['setting', 'Network'], ['item', 'Wi-Fi router batteries']]);
 });
 
 test('an empty query finds nothing', () => {
@@ -37,7 +37,7 @@ test('searchAll finds apps, Settings rows, lists, list items and sessions by nam
   assert.deepEqual(app.map(h => [h.kind, h.label, h.ref]), [['app', 'Photos', 'c:photos']]);
 
   const wifi = searchAll('wi-fi', src).map(h => [h.kind, h.label]);
-  assert.deepEqual(wifi, [['setting', 'Wi-Fi'], ['item', 'Wi-Fi router batteries']]);
+  assert.deepEqual(wifi, [['setting', 'Network'], ['item', 'Wi-Fi router batteries']]);
 
   assert.deepEqual(searchAll('shop', src).map(h => [h.kind, h.label, h.ref]), [['list', 'Shopping', 'shopping']]);
   assert.deepEqual(searchAll('milk', src).map(h => [h.kind, h.sub]), [['item', 'In Shopping']]);
@@ -70,4 +70,12 @@ test('the Apps search opens a saved recipe through hub:open-recipe, and Recipes 
   const recipes = readFileSync(new URL('../src/apps/recipes/web/index.ts', import.meta.url), 'utf8');
   assert.match(launcher, /hub:open-recipe/);
   assert.match(recipes, /addEventListener\('hub:open-recipe'/);
+});
+
+test('the Settings rows use the names the nav shows, and still find the older names', () => {
+  const found = (q: string) => searchAll(q, { ...src, onTablet: true }).filter(h => h.kind === 'setting').map(h => h.label);
+  assert.deepEqual(found('network'), ['Network']);
+  assert.deepEqual(found('wifi'), ['Network']);
+  assert.deepEqual(found('data'), ['Privacy & data']);
+  assert.deepEqual(found('privacy'), ['Privacy & data']);
 });

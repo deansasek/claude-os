@@ -18,14 +18,14 @@ export interface SearchSources {
 const TABLET_ONLY_SECTIONS = new Set(['wifi', 'google', 'bluetooth', 'display', 'sound', 'battery', 'keyboard', 'apps', 'storage', 'datetime', 'security', 'developer']);
 
 /** The Settings sections a search can open (the names the Settings nav shows). */
-export const SETTINGS_ROWS: { section: string; label: string }[] = [
+export const SETTINGS_ROWS: { section: string; label: string; alt?: string }[] = [
   { section: 'profile', label: 'Profile' }, { section: 'usage', label: 'Usage' }, { section: 'yourclaude', label: 'Your Claude' },
   { section: 'sessions', label: 'Sessions' }, { section: 'plugins', label: 'Plugins' }, { section: 'voice', label: 'Voice' },
-  { section: 'notifications', label: 'Notifications' }, { section: 'wifi', label: 'Wi-Fi' }, { section: 'google', label: 'Google account' },
+  { section: 'notifications', label: 'Notifications' }, { section: 'wifi', label: 'Network', alt: 'Wi-Fi' }, { section: 'google', label: 'Google account' },
   { section: 'bluetooth', label: 'Bluetooth' }, { section: 'display', label: 'Display' }, { section: 'appearance', label: 'Appearance' },
   { section: 'sound', label: 'Sound' }, { section: 'battery', label: 'Battery' }, { section: 'keyboard', label: 'Keyboard' },
   { section: 'apps', label: 'Apps' }, { section: 'storage', label: 'Storage' }, { section: 'datetime', label: 'Date and time' },
-  { section: 'privacy', label: 'Privacy' }, { section: 'wellbeing', label: 'Wellbeing' }, { section: 'security', label: 'Security' },
+  { section: 'privacy', label: 'Privacy & data', alt: 'Privacy' }, { section: 'wellbeing', label: 'Wellbeing' }, { section: 'security', label: 'Security' },
   { section: 'about', label: 'About' }, { section: 'developer', label: 'Developer' }, { section: 'monitor', label: 'System monitor' },
 ];
 
@@ -62,7 +62,8 @@ export function searchAll(query: string, src: SearchSources): Hit[] {
   for (const a of src.apps) add('app', a.name, 'App', a.key);
   for (const r of SETTINGS_ROWS) {
     if (src.onTablet === false && TABLET_ONLY_SECTIONS.has(r.section)) continue;
-    add('setting', r.label, 'Settings', r.section);
+    // the nav's name is shown; the older name is also searched, so "wifi" still finds Network
+    add('setting', r.label, 'Settings', r.section, r.alt ? `${r.alt} ${r.label}` : r.label);
   }
   for (const l of src.lists) {
     add('list', l.name, 'List', l.id);
