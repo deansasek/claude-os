@@ -55,7 +55,7 @@ function daysFrom(v: unknown): number[] | { error: string } {
 /** Check a tool's arguments; the error is a plain sentence for Claude. */
 export function check(op: TabletOp, input: Record<string, unknown>): Checked {
   // the Clock's status and cancels take no arguments; they run on the tablet, where the Clock's state is
-  if (op === 'cancel_timer') return { ok: true, op, args: { label: cleanText(input.label) } };   // a timer by its name, or the one in front
+  if (op === 'cancel_timer' || op === 'pause_timer' || op === 'resume_timer') return { ok: true, op, args: { label: cleanText(input.label) } };   // a timer by its name, or the one in front
   if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status') return { ok: true, op, args: {} };
   if (op === 'dnd') return typeof input.on === 'boolean' ? { ok: true, op, args: { on: input.on } } : { ok: false, error: 'Say whether Do Not Disturb is on or off.' };
   if (op === 'notify') {
@@ -128,6 +128,16 @@ export const tabletServer = createSdkMcpServer({
       'Read the ClaudeOS tablet’s Clock: whether a timer is running and how long is left, when the next alarm rings, how many timers and alarms are on, and the stopwatch’s time and whether it runs. Read-only.',
       {},
       async () => run('clock_status', {})),
+    tool('pause_timer',
+      'Pause a timer on the user’s ClaudeOS tablet. label: optional, the timer’s name when several are set; with none, the timer in front is paused. '
+        + 'The time left is kept, and resume_timer starts it again. Use it when the user says to pause a timer.',
+      { label: z.string().optional() },
+      async ({ label }) => run('pause_timer', label ? { label } : {})),
+    tool('resume_timer',
+      'Resume a paused timer on the user’s ClaudeOS tablet, from where it stopped. label: optional, the timer’s name when several are set; '
+        + 'with none, the paused timer is resumed. Use it when the user says to start a paused timer again.',
+      { label: z.string().optional() },
+      async ({ label }) => run('resume_timer', label ? { label } : {})),
     tool('cancel_timer',
       'Cancel a timer on the user’s ClaudeOS tablet. label: optional, the timer’s name when several are set (as set_timer gave it); with none, the timer in front is cancelled. Use it when the user says to stop or cancel a timer.',
       { label: z.string().optional() },
