@@ -213,6 +213,7 @@ function render(): void {
     $('lsUntick').hidden = true;
     $('lsWeek').hidden = true;
     $('lsDelete').hidden = true;
+    $('lsRename').hidden = true;
     return;
   }
   const notes = l.kind === 'notes';
