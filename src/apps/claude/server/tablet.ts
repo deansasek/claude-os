@@ -56,7 +56,7 @@ function daysFrom(v: unknown): number[] | { error: string } {
 export function check(op: TabletOp, input: Record<string, unknown>): Checked {
   // the Clock's status and cancels take no arguments; they run on the tablet, where the Clock's state is
   if (op === 'cancel_timer') return { ok: true, op, args: { label: cleanText(input.label) } };   // a timer by its name, or the one in front
-  if (op === 'clock_status' || op === 'cancel_alarms') return { ok: true, op, args: {} };
+  if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status') return { ok: true, op, args: {} };
   if (op === 'notify') {
     const title = cleanText(input.title), body = cleanText(input.body);
     if (!title) return { ok: false, error: 'The notification needs a title.' };
@@ -119,6 +119,10 @@ export const tabletServer = createSdkMcpServer({
         + 'Use it for “tell me when the build is done”. title and body: up to 80 characters each.',
       { title: z.string(), body: z.string() },
       async input => run('notify', input)),
+    tool('tablet_status',
+      'Read the ClaudeOS tablet’s battery (the charge, and whether it is charging) and the Wi-Fi it is on. Read-only.',
+      {},
+      async () => run('tablet_status', {})),
     tool('clock_status',
       'Read the ClaudeOS tablet’s Clock: whether a timer is running and how long is left, and how many timers and alarms are on. Read-only.',
       {},
