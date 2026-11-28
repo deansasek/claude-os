@@ -48,6 +48,12 @@ export function timerWord(t: string): TimerWord | null {
 }
 
 /** "what alarms do I have", "which alarms are on", "list my alarms": every alarm that is on, not only the next one. */
+/** "is my alarm set for tomorrow", "do I have an alarm tomorrow": a question about tomorrow's alarms. */
+export function alarmTomorrowWord(t: string): boolean {
+  return /^(?:is my alarm (?:set )?(?:for )?tomorrow|do i have an alarm (?:set )?(?:for )?tomorrow|what time is my alarm tomorrow|is there an alarm tomorrow)$/.test(t);
+}
+
+/** "what alarms do I have", "which alarms are on", "list my alarms": every alarm that is on, not only the next one. */
 export function alarmsListWord(t: string): boolean {
   return /^(?:what alarms (?:do i have|are on|are set)(?: set| on)?|which alarms are on|list my alarms|what are my alarms)$/.test(t);
 }
