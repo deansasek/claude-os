@@ -42,6 +42,8 @@ import { device, onTablet } from './device.ts';
 import { autoBrightness, openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
+import { newsSay, newsWord } from './voice-news.ts';
+import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
@@ -446,6 +448,14 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   }
 
   // time and date
+  // "what's the news": the top headlines from the News feed (voice-news.ts); a feed that did not answer says so
+  if (newsWord(t)) {
+    let r: NewsFeedResponse;
+    try { r = await getJson<NewsFeedResponse>('/api/news/feed', READ_TIMEOUT_MS); } catch { return { say: 'I can’t reach your PC right now.' }; }
+    const titles = (r?.items ?? []).map(i => i.title).filter(Boolean);
+    if (r?.status === 'error' || !titles.length) return { say: 'I can’t get the news right now.', app: 'news' };
+    return { say: newsSay(titles), react: 'look', app: 'news' };
+  }
   // "how many days until Christmas": calendar days, on this tablet's clock (voice-countdown.ts)
   if (countdownWord(t)) return { say: christmasSay(new Date(), /sleeps/.test(t)), react: 'look' };
   if (/^(?:what(?:'s| is) the time(?: now| right now)?|what time is it(?: now| right now)?|(?:tell me )?the time|time)$/.test(t)) {
