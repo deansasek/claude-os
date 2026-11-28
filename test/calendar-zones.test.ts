@@ -35,3 +35,12 @@ test('London in winter matches UTC', () => {
 test('an unknown zone is read as the PC local time, as before', () => {
   assert.equal(startOf('Mars/Olympus', '20260101T100000'), new Date(2026, 0, 1, 10, 0, 0).getTime());
 });
+
+test('more Outlook Windows zone names give the time in that zone, not the PC’s own', () => {
+  // 10:00 local in each zone, as UTC: Budapest in winter is UTC+1, Moscow UTC+3, Phoenix UTC-7 (no summer time), Darwin UTC+9:30, Dubai UTC+4
+  assert.equal(startOf('Central Europe Standard Time', '20260101T100000'), Date.UTC(2026, 0, 1, 9, 0, 0));
+  assert.equal(startOf('Russian Standard Time', '20260701T100000'), Date.UTC(2026, 6, 1, 7, 0, 0));
+  assert.equal(startOf('US Mountain Standard Time', '20260701T100000'), Date.UTC(2026, 6, 1, 17, 0, 0));
+  assert.equal(startOf('AUS Central Standard Time', '20260101T100000'), Date.UTC(2026, 0, 1, 0, 30, 0));
+  assert.equal(startOf('Arabian Standard Time', '20260101T100000'), Date.UTC(2026, 0, 1, 6, 0, 0));
+});
