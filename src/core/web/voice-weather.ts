@@ -90,6 +90,17 @@ export function humidWord(t: string): boolean {
   return /^(?:how humid is it(?: today| outside| right now)?|what(?:'s| is) the humidity(?: today| outside| right now| now)?|is it humid(?: today| outside| right now)?)$/.test(t);
 }
 
+// UV questions by voice: "what's the UV index", "how strong is the sun", "is the UV high today".
+export function uvWord(t: string): boolean {
+  return /^(?:what(?:'s| is) the uv(?: index)?(?: today| right now| now)?|what(?:'s| is) the uv index(?: today| right now| now)?|how strong is the (?:uv|sun)(?: today| right now| now)?|is the uv (?:high|strong|bad|low)(?: today| right now| now)?)$/.test(t);
+}
+
+/** Today's maximum UV index from the forecast, said as the Weather tip says it: "UV index 6 today." */
+export function uvSay(uv: number | null | undefined): string {
+  if (uv == null || !Number.isFinite(uv)) return 'I can’t get the UV index right now.';
+  return `UV index ${Math.round(uv)} today.`;
+}
+
 /** The relative humidity now, from the forecast's current block. */
 export function humidSay(pct: number | null): string {
   if (pct == null || !Number.isFinite(pct)) return 'I can’t get the humidity right now.';

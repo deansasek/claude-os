@@ -52,7 +52,7 @@ import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmDayWord, alarmInMs, alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilSay, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
-import { airSay, airWord, degSay, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
+import { airSay, airWord, degSay, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, uvSay, uvWord, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -190,7 +190,7 @@ interface Wx {
   current?: { time?: string; temperature_2m: number; weather_code: number; wind_speed_10m?: number; relative_humidity_2m?: number };
   hourly?: { time: string[]; temperature_2m: number[] };
   air?: { aqi: number | null } | null;
-  daily?:{ weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; wind_speed_10m_max?: number[]; sunrise?: string[]; sunset?: string[] };
+  daily?:{ weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; wind_speed_10m_max?: number[]; uv_index_max?: number[]; sunrise?: string[]; sunset?: string[] };
 }
 function sky(code: number): string {
   if (code === 0) return 'clear';
@@ -245,6 +245,15 @@ async function humidCommand(): Promise<CommandResult> {
   if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
   if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
   return { say: humidSay(w.current?.relative_humidity_2m ?? null), react: 'look' };
+}
+
+/** "What's the UV index": today's maximum from the forecast, said as the Weather app's tip says it. */
+async function uvCommand(): Promise<CommandResult> {
+  let w: Wx;
+  try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
+  if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
+  if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
+  return { say: uvSay(w.daily.uv_index_max?.[0]), react: 'look' };
 }
 
 /** "What time is sunset": the day's sunrise or sunset from the forecast, said the way the Weather app's tip says it. */
@@ -656,6 +665,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (onDay !== null) return weather(onDay.day, onDay.rainOnly);
   if (airWord(t)) return airCommand();
   if (humidWord(t)) return humidCommand();
+  if (uvWord(t)) return uvCommand();
   const sun = sunDay(t);
   if (sun !== null) return sunCommand(sun.which, sun.day);
   // "when is the dentist": an event on the local calendar by its words (eventWhenWord in voice-calendar.ts); none: the phrase goes on
