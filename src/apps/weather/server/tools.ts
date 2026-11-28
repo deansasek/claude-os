@@ -12,18 +12,19 @@ export function hourMinute(iso: string | undefined): string {
   return iso ? iso.slice(11, 16) : '';
 }
 
-/** One short phrase for a WMO weather code (what Open-Meteo sends). */
+// The sky words the Weather app shows for each WMO code (its table in web/art.ts, in lower case), so Claude says the same
+// as the screen: "mostly clear" for 1, "cloudy" for 3, "freezing drizzle" for 56.
+const SKY: Record<number, string> = {
+  0: 'clear', 1: 'mostly clear', 2: 'partly cloudy', 3: 'cloudy', 45: 'fog', 48: 'freezing fog',
+  51: 'light drizzle', 53: 'drizzle', 55: 'heavy drizzle', 56: 'freezing drizzle', 57: 'freezing drizzle',
+  61: 'light rain', 63: 'rain', 65: 'heavy rain', 66: 'freezing rain', 67: 'freezing rain',
+  71: 'light snow', 73: 'snow', 75: 'heavy snow', 77: 'snow grains', 80: 'light showers', 81: 'showers', 82: 'heavy showers',
+  85: 'snow showers', 86: 'heavy snow showers', 95: 'thunderstorms', 96: 'thunderstorms, hail', 99: 'thunderstorms, hail',
+};
+
+/** One short phrase for a WMO weather code (what Open-Meteo sends), as the Weather app says it. */
 export function skyWords(code: number): string {
-  if (code === 0) return 'clear';
-  if (code <= 3) return 'partly cloudy';
-  if (code === 45 || code === 48) return 'fog';
-  if (code >= 51 && code <= 57) return 'drizzle';
-  if (code >= 61 && code <= 67) return 'rain';
-  if (code >= 71 && code <= 77) return 'snow';
-  if (code >= 80 && code <= 82) return 'showers';
-  if (code >= 85 && code <= 86) return 'snow showers';
-  if (code >= 95) return 'thunderstorms';
-  return 'cloudy';
+  return SKY[code] ?? 'cloudy';
 }
 
 const dayShort = new Intl.DateTimeFormat([], { weekday: 'short', day: 'numeric', month: 'short' });
