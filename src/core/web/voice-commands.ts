@@ -43,11 +43,11 @@ import { openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
 import { alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay, weatherTrouble } from './voice-weather.ts';
-import { radioStopHeard, radioWord } from './voice-radio.ts';
+import { playingSay, radioStopHeard, radioWord } from './voice-radio.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
-import { mediaState, pauseMedia } from './media.ts';
+import { mediaState, nowPlaying, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { durationAndLabel, labelledTimer, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
@@ -405,6 +405,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     return { say: '' };
   }
   if (radio === 'stop' && radioStopHeard(mediaState())) { pauseMedia(); return { say: 'Stopped.' }; }
+  if (radio === 'whats-playing') return { say: playingSay(nowPlaying(), mediaState()), react: 'look', app: 'radio' };
   // sound
   if (/^(?:turn |turn it |turn the volume |volume |sound )?up$|^louder$|^(?:turn|make)(?: it| the volume| the sound)? louder$|^(?:raise|increase)(?: the)? volume$/.test(t) && /up|loud|raise|increase/.test(t)) return volume('up');
   if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
