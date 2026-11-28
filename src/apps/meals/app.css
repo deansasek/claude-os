@@ -33,3 +33,5 @@
   font-family: var(--serif); font-size: 20px; color: var(--text);
   border: 1px solid var(--line); border-radius: 12px; background: var(--card-2);
 }
+.mp-range-wrap { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.mp-count { font-family: var(--sans); font-size: 14px; color: var(--t3); }

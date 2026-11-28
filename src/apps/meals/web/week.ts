@@ -85,5 +85,12 @@ export function copyPlan(days: Day[], lastDays: Day[], thisDinners: Dinner[], la
   });
 }
 
+/** The words for how many of the week's nights have a dinner: "5 of 7 dinners planned", "All 7 dinners planned". */
+export function plannedWords(days: Day[], dinners: Dinner[]): string {
+  const n = days.filter(d => dinnerOn(dinners, d)).length;
+  if (n === days.length) return `All ${n} dinners planned`;
+  return `${n} of ${days.length} dinners planned`;
+}
+
 /** The dinner for one day, if there is one. */
 export const dinnerOn = (dinners: Dinner[], day: Day): Dinner | null => dinners.find(d => d.start === day.start) ?? null;
