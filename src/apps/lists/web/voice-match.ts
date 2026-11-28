@@ -5,10 +5,11 @@
 
 /** A list id: "shopping", "todo", or a list the family made (its id, as the Lists app keeps it). */
 export type VoiceList = string;
-export type ListCommand = { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string }
+export type ListCommand = RemoveAnyway | { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string }
   | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList } | { op: 'has'; list: VoiceList; text: string }
   | { op: 'addMany'; list: VoiceList; texts: string[] }
   | { op: 'edit'; list: VoiceList | null; text: string; to: string };   // list null: no list was said (see findExact)
+export type RemoveAnyway = { op: 'remove-any'; text: string };   // "remove milk from the list": no list said; findExact picks it
 
 /** Every item whose text is exactly these words (any case), on any list: for "change milk to oat milk" with no list said. */
 export function findExact<L extends { id: string; items: { id: string; text: string }[] }>(lists: L[], want: string): { list: L; item: L['items'][number] }[] {
@@ -76,6 +77,13 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
     const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
     if (!text || /^(it|that|this|them)$/.test(text)) return null;
     return { op: 'remove', list: which(m[2], custom), text: text.charAt(0).toUpperCase() + text.slice(1) };
+  }
+  // "remove milk from the list", "take milk off the list": no list named, so the item is found by its exact words on some list
+  m = t.match(/^(?:remove|delete|take) (.+?) (?:from|off) (?:the |my |our )?list$/);
+  if (m) {
+    const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
+    if (!text || /^(it|that|this|them)$/.test(text)) return null;
+    return { op: 'remove-any', text: text.charAt(0).toUpperCase() + text.slice(1) };
   }
   // "is milk on the shopping list", "do we have milk on the list": read-only, looked up on the tablet
   m = t.match(new RegExp(`^(?:is|are|do we have) (.+?) on ${LIST}$`));
