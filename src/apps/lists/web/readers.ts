@@ -25,6 +25,9 @@ export const readLists = (timeoutMs?: number): Promise<FamilyList[]> =>
  *  change will be added when the PC is back. A write with no tablet copy (the Nest Hub) is never queued: no flag. */
 export const isQueued = (e: unknown): boolean => (e as { queued?: boolean } | null)?.queued === true;
 
+// a PC write that never answers gives up, so the change is queued (when the tablet has a copy) and the caller is not left waiting
+const WRITE_TIMEOUT_MS = 20e3;
+
 /** One change to the PC (the same route the Lists page uses), then the tablet's copy. When the PC cannot take it, the
  *  change waits in the queue the Lists page sends (once the tablet has a copy). Throws when the PC cannot be reached,
  *  as postJson does, so the caller's message stays the same; a queued change throws with queued: true (isQueued). */
@@ -33,7 +36,7 @@ export async function writeList(path: OpPath, body: Record<string, unknown>): Pr
   let r: ListsResult | null = null;
   let err: unknown = null;
   let queued = false;
-  try { r = await postJson<ListsResult>(`/api/lists/${path}`, body); } catch (e) { err = e; }
+  try { r = await postJson<ListsResult>(`/api/lists/${path}`, body, WRITE_TIMEOUT_MS); } catch (e) { err = e; }
   const copy = tabletCopy();
   if (copy) {
     const next = afterWrite(copy, op, r);
