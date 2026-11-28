@@ -66,7 +66,8 @@ function run(job: Job): Promise<Answer> | Answer {
 /** The tablet's battery and Wi-Fi for Claude: the same words the voice gives (batterySay, wifiSay). Read only. */
 function runStatus(): Answer {
   try {
-    return { ok: true, data: `${batterySay(device.battery())} ${wifiSay(device.wifi())}` };
+    // Do Not Disturb is the same flag the Control Center tile and the voice set (prefs.dnd), read here so Claude can tell
+    return { ok: true, data: `${batterySay(device.battery())} ${wifiSay(device.wifi())} Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.` };
   } catch { return { ok: false, data: 'I can’t read the tablet’s battery or Wi-Fi right now.' }; }
 }
 

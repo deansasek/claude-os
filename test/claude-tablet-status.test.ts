@@ -17,10 +17,17 @@ test('tablet_status is a read-only tool, passed to the tablet with no arguments'
 
 test('the tablet answers with the battery and Wi-Fi words the voice uses', () => {
   assert.ok(relay.includes("if (job.op === 'tablet_status') return runStatus();"));
-  assert.ok(relay.includes('`${batterySay(device.battery())} ${wifiSay(device.wifi())}`'));
+  assert.ok(relay.includes("`${batterySay(device.battery())} ${wifiSay(device.wifi())} Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.`"));
   assert.ok(relay.includes("import { batterySay } from '../../../core/web/voice-battery.ts';"));
 });
 
 test('the approval card names the tablet_status tool', () => {
   assert.ok(cards.includes("'mcp__claudeos_tablet__tablet_status': { now: 'Check the tablet’s battery and Wi-Fi', past: 'Checked the tablet’s battery and Wi-Fi', doing: 'Checking the battery and Wi-Fi' },"));
+});
+
+test('tablet_status also says whether Do Not Disturb is on, read from prefs.dnd', () => {
+  const relay = read('web/browser-relay.ts');
+  const tablet = read('server/tablet.ts');
+  assert.ok(relay.includes("Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.` };"));
+  assert.ok(tablet.includes("the Wi-Fi it is on, and whether Do Not Disturb is on. Read-only."));
 });

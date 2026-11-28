@@ -144,7 +144,7 @@ export const tabletServer = createSdkMcpServer({
       { title: z.string(), body: z.string() },
       async input => run('notify', input)),
     tool('tablet_status',
-      'Read the ClaudeOS tablet’s battery (the charge, and whether it is charging) and the Wi-Fi it is on. Read-only.',
+      'Read the ClaudeOS tablet’s battery (the charge, and whether it is charging), the Wi-Fi it is on, and whether Do Not Disturb is on. Read-only.',
       {},
       async () => run('tablet_status', {})),
     tool('clock_status',
