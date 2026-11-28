@@ -70,6 +70,7 @@ const BUILT_IN: Record<string, ToolWords> = {
   'mcp__claudeos_news__news_headlines': { now: 'Read the headlines', past: 'Read the headlines', doing: 'Reading the headlines' },
   // ClaudeOS's Meals (meals/server/tools.ts, the claudeos_meals MCP server), read-only
   'mcp__claudeos_meals__meals_week': { now: 'Look at the dinner plan', past: 'Looked at the dinner plan', doing: 'Looking at the dinner plan' },
+  'mcp__claudeos_meals__meals_plan': { now: 'Plan a dinner', past: 'Planned a dinner', doing: 'Planning a dinner' },
   // ClaudeOS's weather (weather/server/tools.ts, the claudeos_weather MCP server), read-only
   'mcp__claudeos_weather__weather_forecast': { now: 'Look at the weather', past: 'Looked at the weather', doing: 'Looking at the weather' },
   // ClaudeOS's routines (routines/server/tools.ts, the claudeos_routines MCP server)
