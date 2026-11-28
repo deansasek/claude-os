@@ -41,6 +41,7 @@ const PC_DOWN = 'Can’t reach your PC just now. Try again.';   // the shared te
 const NAMES_TIMEOUT_MS = 15e3;   // the ingredient names give up after this long, so the pantry sheet can retry (a sleeping PC can leave a connection open)
 const SEARCH_TIMEOUT_MS = 20e3;  // a Discover search gives up after this long (the PC's one TheMealDB call gives up at 15 s)
 const PANTRY_TIMEOUT_MS = 35e3;  // a pantry search gives up after this long (the PC makes two 15 s calls, one after the other)
+const LISTS_TIMEOUT_MS = 20e3;   // the Shopping list read gives up after this long, so Add to Shopping can say it could not reach the PC
 
 const HEART = (on: boolean) => `<svg viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/></svg>`;
 const LENS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg>';
@@ -601,7 +602,7 @@ function cookHtml(r: Recipe, step: number): string {
 /** Put this recipe's ingredients on the Shopping list (the items already there are left out). */
 async function addToShopping(r: Recipe): Promise<void> {
   let shopping: FamilyList | undefined;
-  try { shopping = (await readLists()).find(l => l.id === 'shopping'); }
+  try { shopping = (await readLists(LISTS_TIMEOUT_MS)).find(l => l.id === 'shopping'); }
   catch { msg = 'Couldn’t reach your PC, so nothing was added. Try again.'; render(); return; }
   const onList = (shopping?.items ?? []).filter(i => !i.done).map(i => i.text);
   const items = shoppingItems(r.ingredients.map(i => i.item), onList);
