@@ -296,22 +296,24 @@ async function tap(id: string): Promise<void> {
 
 /** Save the whole layout: it shows at once, and the PC's cleaned copy settles it. */
 async function saveLayout(l: HaLayout): Promise<void> {
-  layoutGen++;
+  const gen = ++layoutGen;
   const prev = dash?.layout;
   if (dash) dash.layout = l;
   render();
   try {
     const r = await postJson<HaLayoutResult>(`${API}/layout`, { layout: l }, POST_TIMEOUT_MS);
-    if (r.ok && r.layout && typeof r.layout === 'object') { if (dash) dash.layout = r.layout; }
-    else if (dash && prev) dash.layout = prev;
+    if (gen === layoutGen) {   // a newer edit started: an older reply must not undo it
+      if (r.ok && r.layout && typeof r.layout === 'object') { if (dash) dash.layout = r.layout; }
+      else if (dash && prev) dash.layout = prev;
+    }
     note = r.ok ? '' : r.error ?? 'That wasn’t saved.';
-  } catch { if (dash && prev) dash.layout = prev; note = 'Can’t reach the PC right now, so that wasn’t saved.'; }
+  } catch { if (gen === layoutGen && dash && prev) dash.layout = prev; note = 'Can’t reach the PC right now, so that wasn’t saved.'; }
   render();
 }
 
 /** Add a device to Home (into `room`) or take it off. The state of a new device comes with the next refresh. */
 async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
-  layoutGen++;
+  const gen = ++layoutGen;
   const prev = dash ? copy() : undefined;   // the optimistic edit below changes dash.layout in place
   const d = devices?.devices.find(x => x.entity_id === id);
   const before = d?.dashboard === true;
@@ -324,11 +326,13 @@ async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
   render();
   try {
     const r = await postJson<HaLayoutResult>(`${API}/dashboard`, { entity_id: id, on, ...(room !== OTHER ? { room } : {}) }, POST_TIMEOUT_MS);
-    if (r.ok && r.layout && typeof r.layout === 'object') { if (dash) dash.layout = r.layout; }
-    else if (dash && prev) dash.layout = prev;
+    if (gen === layoutGen) {   // a newer edit started: an older reply must not undo it
+      if (r.ok && r.layout && typeof r.layout === 'object') { if (dash) dash.layout = r.layout; }
+      else if (dash && prev) dash.layout = prev;
+    }
     if (!r.ok && d) d.dashboard = before;   // the PC did not save it: the device value goes back
     note = r.ok ? '' : r.error ?? 'That wasn’t saved.';
-  } catch { if (dash && prev) dash.layout = prev; if (d) d.dashboard = before; note = 'Can’t reach the PC right now, so that wasn’t saved.'; }
+  } catch { if (gen === layoutGen && dash && prev) dash.layout = prev; if (d) d.dashboard = before; note = 'Can’t reach the PC right now, so that wasn’t saved.'; }
   await refresh(note !== '');
 }
 

@@ -20,7 +20,7 @@ test('saveLayout keeps the previous layout and restores it in the failure branch
   const body = fnBody('saveLayout');
   assert.match(body, /const prev = dash\?\.layout;/);
   assert.match(body, /else if \(dash && prev\) dash\.layout = prev;/);
-  assert.match(body, /catch \{ if \(dash && prev\) dash\.layout = prev;/);
+  assert.match(body, /catch \{ if \(gen === layoutGen && dash && prev\) dash\.layout = prev;/);
 });
 
 test('refresh keeps the caller note when the reload fails', () => {
@@ -38,7 +38,7 @@ test('setOnHome saves the old dashboard value first and restores it when the PC 
   assert.notEqual(change, -1, 'setOnHome sets the new dashboard value');
   assert.ok(save < change, 'the old value is saved before the change');
   assert.match(body, /if \(!r\.ok && d\) d\.dashboard = before;/);
-  assert.match(body, /catch \{ if \(dash && prev\) dash\.layout = prev; if \(d\) d\.dashboard = before;/);
+  assert.match(body, /catch \{ if \(gen === layoutGen && dash && prev\) dash\.layout = prev; if \(d\) d\.dashboard = before;/);
 });
 
 test('saveLayout and setOnHome assign r.layout only when r is ok and the layout is an object', () => {
