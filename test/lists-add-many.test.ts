@@ -117,8 +117,8 @@ test('tick, remove, edit and clear say the PC will get a queued change, through 
 
 test('other errors from those writes are rethrown to the outer catch, which says can’t reach', () => {
   const src = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'src/core/web/voice-commands.ts'), 'utf8').replace(/\r\n/g, '\n');
-  // exactly the six writes go through the helper (the six: tick, remove, edit, clear, remove-anywhere and tick-anywhere): no other catch swallows an error
-  assert.equal((src.match(/catch \(e\) \{ return queuedReply\(e, /g) ?? []).length, 6);
+  // exactly the seven writes go through the helper (tick, remove, edit, clear, untick, remove-anywhere and tick-anywhere): no other catch swallows an error
+  assert.equal((src.match(/catch \(e\) \{ return queuedReply\(e, /g) ?? []).length, 7);
   assert.match(src, /\} catch \{ return \{ say: `I can’t reach \$\{name\} right now\.` \}; \}/);
 });
 
