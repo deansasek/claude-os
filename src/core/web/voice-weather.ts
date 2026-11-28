@@ -116,6 +116,15 @@ export function overnightLow(times: string[], temps: number[], nowIso: string): 
   return low;
 }
 
+/** "What's the low tonight", "how cold will it get tonight": the overnight low as a number. */
+export function lowTonightWord(t: string): boolean {
+  return /^(?:how cold (?:will it get|is it going to get|will it be|is it going to be) tonight|what(?:'s| is) the low(?: temperature)? tonight|how low will it go tonight|what will the low be tonight|what(?:'s| is) the overnight low)$/.test(t);
+}
+
+export function lowTonightSay(low: number): string {
+  return `Down to ${Math.round(low)} degrees tonight.`;
+}
+
 /** The answer for a frost question. The freezing point is 0 degrees Celsius or 32 Fahrenheit, by the user's units. */
 export function frostSay(low: number, units: 'celsius' | 'fahrenheit'): string {
   const freezing = units === 'celsius' ? 0 : 32;

@@ -46,7 +46,7 @@ import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
-import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
+import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -204,7 +204,7 @@ async function rainingNowCommand(asked: 'raining' | 'snowing' | 'foggy'): Promis
 }
 
 /** "Will it freeze tonight": the lowest hourly temperature from now until 08:00 tomorrow, against freezing. */
-async function frostCommand(): Promise<CommandResult> {
+async function overnightCommand(say: (low: number, units: Units) => string): Promise<CommandResult> {
   let w: Wx;
   try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
   if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
@@ -212,7 +212,7 @@ async function frostCommand(): Promise<CommandResult> {
   const units: Units = w.units === 'celsius' ? 'celsius' : 'fahrenheit';
   const low = w.current?.time && w.hourly ? overnightLow(w.hourly.time, w.hourly.temperature_2m, w.current.time) : null;
   if (low == null) return { say: 'I can’t get the temperatures right now.' };
-  return { say: frostSay(low, units), react: 'look' };
+  return { say: say(low, units), react: 'look' };
 }
 
 /** "What's the air quality": the US AQI now, from the forecast's air block (the Weather screen's own number). */
@@ -548,7 +548,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (windy !== null) return windCommand(windy);
   const falling = rainingNow(t);
   if (falling !== null) return rainingNowCommand(falling);
-  if (frostTonight(t)) return frostCommand();
+  if (frostTonight(t)) return overnightCommand(frostSay);
+  // "what's the low tonight": the same overnight low, said as a number (lowTonightWord in voice-weather.ts)
+  if (lowTonightWord(t)) return overnightCommand((low) => lowTonightSay(low));
   // a named weekday: "what's the weather on Saturday", "will it rain on Friday" (forecastDay in voice-weather.ts)
   const onDay = forecastDay(t, new Date().getDay());
   if (onDay !== null) return weather(onDay.day, onDay.rainOnly);
