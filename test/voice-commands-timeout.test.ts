@@ -27,7 +27,7 @@ test('every PC read and post in a quick command passes the timeout', () => {
 
 test('every list read in a quick command passes the timeout', () => {
   assert.doesNotMatch(src, /readLists\(\)/, 'no bare readLists() call is left');
-  assert.equal(src.match(/readLists\(READ_TIMEOUT_MS\)/g)?.length, 8, 'all eight list reads pass the timeout');
+  assert.equal(src.match(/readLists\(READ_TIMEOUT_MS\)/g)?.length, 9, 'all nine list reads pass the timeout');
 });
 
 test('the connector read stays without a timeout, since it can run a slow Claude read on purpose', () => {

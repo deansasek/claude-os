@@ -7,6 +7,7 @@
 export type VoiceList = string;
 export type ListCommand = RemoveAnyway | { op: 'add'; list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string }
   | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList } | { op: 'has'; list: VoiceList; text: string }
+  | { op: 'has-any'; text: string }   // "is milk on the list": no list named; every list is looked at
   | { op: 'addMany'; list: VoiceList; texts: string[] }
   | { op: 'edit'; list: VoiceList | null; text: string; to: string };   // list null: no list was said (see findExact)
 export type RemoveAnyway = { op: 'remove-any'; text: string };   // "remove milk from the list": no list said; findExact picks it
@@ -84,6 +85,13 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
     const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
     if (!text || /^(it|that|this|them)$/.test(text)) return null;
     return { op: 'remove-any', text: text.charAt(0).toUpperCase() + text.slice(1) };
+  }
+  // "is milk on the list" with no list named: read-only, looked up by its words on every list
+  m = t.match(/^(?:is|are|do we have) (.+?) on (?:the |my |our )?list$/);
+  if (m) {
+    const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
+    if (!text || /^(it|that|this|them)$/.test(text)) return null;
+    return { op: 'has-any', text: text.charAt(0).toUpperCase() + text.slice(1) };
   }
   // "is milk on the shopping list", "do we have milk on the list": read-only, looked up on the tablet
   m = t.match(new RegExp(`^(?:is|are|do we have) (.+?) on ${LIST}$`));
