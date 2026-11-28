@@ -125,6 +125,8 @@ const TENS: Record<string, number> = { twenty: 20, thirty: 30, forty: 40, fourty
 /** Lower-case, no punctuation, number words as digits ("twenty five" → "25", "a hundred" → "100"). */
 function normalise(s: string): string {
   let t = ` ${s.toLowerCase().replace(/(\d):(\d\d)/g, '$1 $2').replace(/[’']/g, "'").replace(/[^a-z0-9.' ]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
+  // speech often drops the apostrophe: "whats the time" is "what's the time"
+  t = t.replace(/ (what|when|how)s(?= )/g, ' $1\'s');
   t = t.replace(/ (a|one) hundred /g, ' 100 ');
   t = t.replace(new RegExp(` (${Object.keys(TENS).join('|')})(?:[ -](${Object.keys(UNITS).filter(k => UNITS[k] > 0 && UNITS[k] < 10).join('|')}))? `, 'g'),
     (_m, a: string, b?: string) => ` ${TENS[a] + (b ? UNITS[b] : 0)} `);
