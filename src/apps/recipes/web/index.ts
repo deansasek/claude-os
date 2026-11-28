@@ -6,7 +6,8 @@
 // Adapt with Claude, Suggest for tonight and Create with Claude send a prompt (recipe.ts) into the tablet's Claude chat
 // (claude/web/native.ts). The reply is read when it arrives. A recipe is saved only after the user taps Save; a reply
 // that is not JSON can be saved as text.
-import { esc, getJson, onStore, store } from '../../../core/web/dom.ts';
+import { esc, getJson, onStore, postJson, store } from '../../../core/web/dom.ts';
+import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayOf, weekDays, type Day, type Dinner } from '../../meals/web/week.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -27,6 +28,7 @@ import {
 
 const API = `/api/${manifest.id}`;
 const LIST_KEY = 'recipes.list';
+const PLAN_TIMEOUT_MS = 10e3;   // the week's calendar read and the Plan this save give up after this long
 const PENDING_KEY = 'recipes.pending';         // when the last Claude request was sent (ISO time)
 const PENDING_KIND_KEY = 'recipes.pendingKind'; // which request: create, adapt or tonight
 const PENDING_PHOTO_KEY = 'recipes.pendingPhoto'; // the photo of the recipe an adapt request changes ('' for none)
@@ -543,11 +545,62 @@ function discoverHtml(): string {
 
 // ---------- the recipe page ----------
 let scaleKey = '', servings = 0;   // the servings wanted on the recipe page; reset when another recipe opens
+// "Plan this": the week's seven nights, with the dinners already there; a free night takes the recipe as a Meals dinner
+let planning = false, planDays: Day[] = [], planTaken: Dinner[] | null = null, planBusy = false;
+async function openPlan(): Promise<void> {
+  planning = true;
+  planDays = weekDays(mondayOf(new Date()));
+  planTaken = null;
+  msg = '';
+  render();
+  const from = isoDay(planDays[0].date), to = isoDay(new Date(planDays[6].date.getFullYear(), planDays[6].date.getMonth(), planDays[6].date.getDate() + 1));
+  try {
+    const r = await getJson<{ status?: string; events?: { id: string; title: string; start: number; allDay: boolean }[]; error?: string }>(
+      `/api/calendar/local?from=${from}&to=${to}`, PLAN_TIMEOUT_MS);
+    if (!planning) return;
+    if (r.status !== 'ok') { msg = r.error || 'Couldn’t read the week from your PC.'; planning = false; }
+    else planTaken = dinnersIn(r.events ?? []);
+  } catch {
+    if (!planning) return;
+    msg = 'Couldn’t reach your PC to check the week.';
+    planning = false;
+  }
+  render();
+}
+async function planPick(i: number): Promise<void> {
+  if (planBusy || screen.t !== 'detail') return;
+  const day = planDays[i];
+  if (!day || planTaken === null || dinnerOn(planTaken, day)) return;
+  planBusy = true;
+  try {
+    const r = await postJson<{ error?: string }>('/api/calendar/local-add',
+      { title: dinnerTitle(screen.r.name), start: day.start, end: day.end, allDay: true }, PLAN_TIMEOUT_MS);
+    if (r.error) msg = r.error;
+    else { planning = false; msg = `Planned ${screen.r.name} for ${day.date.toLocaleDateString(undefined, { weekday: 'long' })}.`; }
+  } catch {
+    msg = 'Couldn’t reach your PC. Try again in a moment.';
+  } finally {
+    planBusy = false;
+    render();
+  }
+}
+function planHtml(): string {
+  if (planTaken === null) return `<div class="rc-plan"><p class="rc-sub">Checking the week…</p></div>`;
+  const rows = planDays.map((d, i) => {
+    const taken = dinnerOn(planTaken as Dinner[], d);
+    const label = d.date.toLocaleDateString(undefined, { weekday: 'long' });
+    return taken
+      ? `<button class="rc-plan-row" disabled><span>${esc(label)}</span><span class="rc-plan-taken">${esc(taken.text)}</span></button>`
+      : `<button class="rc-plan-row" data-act="plan-pick" data-i="${i}"><span>${esc(label)}</span><span>Free</span></button>`;
+  }).join('');
+  return `<div class="rc-plan"><span class="rc-kicker">Plan this week</span>${rows}`
+    + `<button class="rc-btn" data-act="plan-cancel">Cancel</button></div>`;
+}
 function detailHtml(r: Recipe): string {
   const saved = savedIndex(r) >= 0;
   const base = servesCount(r.serves);
   const key = `${r.name}|${r.serves}`;
-  if (scaleKey !== key) { scaleKey = key; servings = base ?? 0; }
+  if (scaleKey !== key) { scaleKey = key; servings = base ?? 0; planning = false; }
   const factor = base && servings ? servings / base : 1;
   const stepper = base
     ? `<div class="rc-scale"><button class="rc-btn" data-act="serve-minus" aria-label="Fewer servings">−</button>`
@@ -563,10 +616,12 @@ function detailHtml(r: Recipe): string {
     + `<h2 class="rc-display">${esc(r.name)}</h2><p class="rc-sub">${esc(meta(r)) || 'Serves and time not given'}</p>${stepper}`
     + `<div class="rc-actions"><button class="rc-btn pri" data-act="cook">Start cooking</button>`
     + `<button class="rc-btn" data-act="shop">Add to shopping list</button>`
+    + `<button class="rc-btn" data-act="plan">Plan this</button>`
     + (own
       ? `<button class="rc-btn danger" data-act="delete">${confirmDelete ? 'Tap again to delete' : 'Delete'}</button>`
       : `<button class="rc-btn rc-save${saved ? ' on' : ''}" data-act="save-this" aria-pressed="${saved}">${HEART(saved)}${saved ? 'Saved' : 'Save'}</button>`)
     + `</div></div></div>`
+    + (planning ? planHtml() : '')
     + `<div class="rc-claude"><span class="rc-kicker">With Claude</span>`
     + `<button class="rc-btn" data-act="adapt">Adapt with Claude</button>`
     + `<button class="rc-btn" data-act="ask-time">Suggest for tonight</button>`
@@ -702,6 +757,9 @@ function onClick(ev: Event): void {
     case 'open': { const r = pick(src, i); if (r) go({ t: 'detail', r }); break; }
     case 'heart': { const r = pick(src, i); if (r) toggleSave(r); break; }
     case 'save-this': if (screen.t === 'detail') toggleSave(screen.r); break;
+    case 'plan': if (screen.t === 'detail') void openPlan(); break;
+    case 'plan-cancel': planning = false; break;
+    case 'plan-pick': void planPick(i); break;
     case 'serve-minus': if (servings > 1) servings--; break;
     case 'serve-plus': if (servings < 99) servings++; break;
     case 'detail': if (screen.t === 'cook') go({ t: 'detail', r: screen.r }); break;
