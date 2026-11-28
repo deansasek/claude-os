@@ -114,7 +114,7 @@ export interface ClockApi {
   timerPaused(): boolean;
   /** A one-off set "for tomorrow" (tomorrow true) does not ring today, even when today's time is still ahead. */
   addAlarm(h: number, m: number, days: number[], tomorrow?: boolean): { when: string; at: number } | null;
-  /** A new one-off alarm with a label (Claude's set_alarm and set_reminder); never changes an alarm already there.
+  /** A new alarm with a label, one time or repeating on days (Claude's set_alarm and set_reminder); never changes an alarm already there.
    *  null when the Clock's list is full. */
   /** days: repeat on these (Date.getDay values); none means once. */
   addLabelled(h: number, m: number, label: string, days?: number[]): { when: string; at: number } | null;
