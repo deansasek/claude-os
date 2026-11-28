@@ -95,7 +95,7 @@ function loadWeatherPlace(
     .replace(/<Weather>/g, '');
   const esc = (s: unknown): string => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
   const $ = () => ({ set textContent(v: string) { note.value = v; }, set innerHTML(v: string) { note.value = v; } });
-  return new Function('getJson', 'postJson', 'confirmSheet', '$', 'esc', 'report', `const WX_TIMEOUT_MS = 20e3;\nlet wxSeq = 0;\n${body}\nreturn { paintWeatherPlace, saveWeatherPlace };`)(
+  return new Function('getJson', 'postJson', 'confirmSheet', '$', 'esc', 'report', `const WX_TIMEOUT_MS = 20e3;\nlet wxSeq = 0;\nlet wxSaveSeq = 0;\n${body}\nreturn { paintWeatherPlace, saveWeatherPlace };`)(
     getJson, postJson, confirmSheet, $, esc, () => {},
   ) as { paintWeatherPlace: () => Promise<void>; saveWeatherPlace: (p: { name: string; lat: number; lon: number }) => Promise<void> };
 }

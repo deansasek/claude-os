@@ -1317,15 +1317,18 @@ async function findWeatherCity(q: string): Promise<void> {
     id => { void saveWeatherPlace(res[+id]); });
 }
 
+let wxSaveSeq = 0;   // each place save takes a number: an older save's reply cannot change the note, the forecast or the sheet
 async function saveWeatherPlace(p: Place): Promise<void> {
+  const seq = ++wxSaveSeq;
   try {
     const w = await postJson<Weather>('/api/weather/location', { lat: p.lat, lon: p.lon, place: p.name }, WX_TIMEOUT_MS);
+    if (seq !== wxSaveSeq) return;   // a newer city was picked: its answer is the one that counts
     wxSeq++;   // a forecast read still out is for the old city: it must not put that city back
     report('settings:privacy:weather');
     if (w.status === 'error' && w.saved === false) { confirmSheet('Couldn’t save', w.error ?? 'The PC couldn’t save the place.', 'OK', () => {}); void paintWeatherPlace(); return; }
     // The city is saved. A forecast that did not load still names it, and the repaint is skipped so this text stays.
     if (w.status !== 'ok') { $('stWxNote').innerHTML = `The weather is for ${esc(p.name)}.`; return; }
-  } catch { confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
+  } catch { if (seq !== wxSaveSeq) return; confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
   void paintWeatherPlace();
 }
 
