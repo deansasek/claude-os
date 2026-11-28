@@ -11,6 +11,7 @@
 // The rail icon is a little clock showing the time; the rail label is the time, or the countdown while a timer runs.
 // For testing, ?hour=23 (and &min=59) shifts this app's clock.
 import { esc, getJson, onStore, params, report, store } from '../../../core/web/dom.ts';
+import { hourMinuteFormat } from '../../../core/web/time-format.ts';
 import { clockIcon } from '../../../core/web/app-icons.ts';
 import { INK, inkSay, inkedBlob, inkedShape, rng } from '../../../core/web/ink.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -63,7 +64,8 @@ const offset = (() => {
 })();
 const now = (): Date => new Date(Date.now() + offset);
 
-const hmFmt = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });
+// the hour and minute as Settings → Date & time sets them (24-hour, or the locale when unset); read at each use
+const hmFmt = { formatToParts: (d: Date) => hourMinuteFormat(store.get('os.clock24')).formatToParts(d) };
 function timeParts(d: Date): { hour: string; minute: string; period: string } {
   let hour = '', minute = '', period = '';
   for (const p of hmFmt.formatToParts(d)) {

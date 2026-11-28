@@ -26,6 +26,7 @@ import { isOffHome, sceneActsAfterRead, sceneFailText, type SceneAct } from './s
 import { busyOf, liveSessions, needsYou, pillText, type NeedTurn } from './needs.ts';
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
+import { hourMinuteFormat } from '../../../core/web/time-format.ts';
 import { readLists } from '../../lists/web/readers.ts';
 import { dinnerRow } from './dinner-row.ts';
 import { nextRun, nextRunWords } from '../../routines/web/next-run.ts';
@@ -49,7 +50,8 @@ const offset = (() => {
 })();
 const now = (): Date => new Date(Date.now() + offset);
 
-const hmFmt = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });
+// the hour and minute as Settings → Date & time sets them (24-hour, or the locale when unset); read at each use
+const hmFmt = { formatToParts: (d: Date) => hourMinuteFormat(store.get('os.clock24')).formatToParts(d) };
 function timeParts(d: Date): { hour: string; minute: string; period: string } {
   let hour = '', minute = '', period = '';
   for (const p of hmFmt.formatToParts(d)) {
@@ -491,7 +493,7 @@ function paintLists(): void {
 function paintCalendar(): void {
   const val = $('hmCalVal'), sub = $('hmCalSub');
   $('hmCalKick').textContent = 'Today';
-  const row = calendarRow(cal, calFailed, calMiss, now().getTime());   // the words live in calendar-row.ts
+  const row = calendarRow(cal, calFailed, calMiss, now().getTime(), store.get('os.clock24'));   // the words live in calendar-row.ts
   val.className = row.cls;
   val.textContent = row.val;
   sub.textContent = row.sub;
