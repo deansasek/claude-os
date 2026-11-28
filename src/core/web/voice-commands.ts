@@ -257,7 +257,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
       return { say: ms < 1000 ? 'The stopwatch is at zero.' : `The stopwatch says ${sayDuration(Math.floor(ms / 1000) * 1000)}.` };
     }
     if (sws === 'reset') { clock.stopwatchReset(); return { say: 'Stopwatch reset.' }; }
-    if (sws === 'start') { clock.stopwatch(true); return { say: '' }; }
+    // starts it with no spoken reply (the tablet's own tap says "and... go!"); when it already runs, say so
+    if (sws === 'start') return clock.stopwatch(true) ? { say: '' } : { say: 'The stopwatch is already running.' };
     if (clock.stopwatchRunning()) { clock.stopwatch(false); return { say: 'Stopped.' }; }
   }
   // timers: the first of these shapes whose duration parses wins
