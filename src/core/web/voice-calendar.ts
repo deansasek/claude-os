@@ -12,6 +12,11 @@ export function calendarDay(t: string, today = new Date().getDay()): CalDay | nu
   return { ahead: (DAY_WORDS[w[1]] - today + 7) % 7, name: `on ${w[1].replace(/^./, c => c.toUpperCase())}` };
 }
 
+/** "What's next on my calendar": the next event today, read by calendarCommand('today'). */
+export function nextEventWord(t: string): boolean {
+  return /^(?:what(?:'s|s| is) next(?: on my calendar| on the calendar| today)?|when(?:'s|s| is) my next (?:appointment|event|meeting)|what(?:'s|s| is) my next (?:appointment|event|meeting)|what have i got next)$/.test(t);
+}
+
 /** What the voice says: the events for that day (already worded, "Dentist at 9:00 AM"), up to three, or that nothing is on. */
 export function calendarDaySay(items: string[], name: string): string {
   if (!items.length) return `Nothing on your calendar ${name}.`;
