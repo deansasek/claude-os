@@ -4,6 +4,7 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { weather } from './weather.ts';
+import { nowIndex } from '../web/now-index.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -30,7 +31,7 @@ export function skyWords(code: number): string {
 const dayShort = new Intl.DateTimeFormat([], { weekday: 'short', day: 'numeric', month: 'short' });
 
 /** The weather_forecast reply. read defaults to weather; a throw counts as an error status. */
-export async function weatherForecast({ days }: { days?: number }, read: typeof weather = weather) {
+export async function weatherForecast({ days, hours }: { days?: number; hours?: number }, read: typeof weather = weather) {
   let r;
   try { r = await read(); } catch { r = { status: 'error' as const }; }
   if (r.status === 'no_location') return text('No place is set for the weather yet. The user can pick one in Settings > Apps > Weather.', true);
@@ -60,7 +61,18 @@ export async function weatherForecast({ days }: { days?: number }, read: typeof 
     ? `This forecast is from ${new Date(r.updated!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}, `
       + `${Math.floor(ageMin / 60)} ${Math.floor(ageMin / 60) === 1 ? 'hour' : 'hours'} ago; the weather service could not be reached. `
     : '';
-  return text(`${stale}Weather for ${r.place ?? 'the set place'}. ${now}\n${rows.join('\n')}`);
+  // the next hours, from the hourly forecast, starting at the hour that is now (nowIndex, as the Weather app's strip does)
+  let hourRows = '';
+  if (hours && r.hourly && r.hourly.time?.length) {
+    const first = nowIndex(r as never);
+    const lines: string[] = [];
+    const h = r.hourly;
+    for (let i = first; i < Math.min(first + hours, h.time.length); i++) {
+      lines.push(`${h.time[i].slice(11, 16)}: ${Math.round(h.temperature_2m[i])}${unit}, ${skyWords(h.weather_code[i])}, rain ${Math.round(h.precipitation_probability?.[i] ?? 0)}%, wind ${Math.round(h.wind_speed_10m?.[i] ?? 0)} ${r.wind_unit}`);
+    }
+    if (lines.length) hourRows = `\nNext hours:\n${lines.join('\n')}`;
+  }
+  return text(`${stale}Weather for ${r.place ?? 'the set place'}. ${now}\n${rows.join('\n')}${hourRows}`);
 }
 
 export const weatherServer = createSdkMcpServer({
@@ -69,8 +81,9 @@ export const weatherServer = createSdkMcpServer({
   tools: [
     tool('weather_forecast',
       'Read the weather forecast for the place set in Settings > Apps > Weather on the ClaudeOS tablet: now, and the next days (highs, lows, '
-        + 'chance of rain, wind, sunrise and sunset, UV index). Read-only. days: how many days, 1 to 7 (the default is 7).',
-      { days: z.number().int().min(1).max(7).optional() },
-      (args) => weatherForecast(args)),
+        + 'chance of rain, wind, sunrise and sunset, UV index). Read-only. days: how many days, 1 to 7 (the default is 7). '
+        + 'hours: optional, how many of the next hours to list, 1 to 24 (for "will it rain this afternoon").',
+      { days: z.number().int().min(1).max(7).optional(), hours: z.number().int().min(1).max(24).optional() },
+      async (args) => weatherForecast(args)),
   ],
 });
