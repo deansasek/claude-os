@@ -42,7 +42,7 @@ import { device, onTablet } from './device.ts';
 import { openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
-import { sunDay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
+import { sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -189,6 +189,8 @@ async function sunCommand(which: 'sunrise' | 'sunset', day: 0 | 1): Promise<Comm
   const iso = (which === 'sunset' ? w.daily.sunset : w.daily.sunrise)?.[day];
   if (!iso) return { say: 'I can’t get the sun times right now.' };
   const when = day ? 'tomorrow' : 'today';
+  // today's time may have passed: then say so, and give tomorrow's (sunSay in voice-weather.ts)
+  if (!day) return { say: sunSay(which, iso, (which === 'sunset' ? w.daily.sunset : w.daily.sunrise)?.[1], new Date()), react: 'look' };
   return { say: `${which === 'sunset' ? 'Sunset' : 'Sunrise'} is at ${localHour(iso, true)} ${when}.`, react: 'look' };
 }
 

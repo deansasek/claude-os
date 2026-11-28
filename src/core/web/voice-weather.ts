@@ -1,12 +1,30 @@
 // Temperature questions by voice: "how cold is it", "do I need a jacket", "is it hot outside". Pure, so Node tests load it.
 import type { CommandResult } from './voice-commands.ts';
 
+// The forecast's local time ("2026-11-27T16:21") said as the Weather app says it: "4:21 PM". Same output as format.ts localHour.
+const clock12 = (iso: string): string => {
+  const h = +iso.slice(11, 13), m = iso.slice(14, 16);
+  return `${h % 12 || 12}:${m} ${h < 12 ? 'AM' : 'PM'}`;
+};
+
 // Returns the day they are about (0 today, 1 tomorrow), or null when the phrase is not a temperature question.
 
 export function temperatureDay(t: string): 0 | 1 | null {
   if (/^(?:what(?:'s| is) the temperature tomorrow|how (?:cold|hot|warm) (?:is it|will it be|is it going to be) tomorrow|is it going to be (?:hot|cold|warm|chilly) tomorrow|do i need a (?:jacket|coat|sweater|hoodie) tomorrow)$/.test(t)) return 1;
   if (/^(?:what(?:'s| is) the temperature(?: today| now| right now| outside)?|how (?:cold|hot|warm) is it(?: today| now| right now| outside)?|is it (?:hot|cold|warm|chilly)(?: outside| today| right now)?|how (?:cold|hot|warm) (?:will it be|is it going to be)(?: today)?|is it going to be (?:hot|cold|warm|chilly)(?: today)?|how warm is it|do i need a (?:jacket|coat|sweater|hoodie)(?: today| now| outside)?)$/.test(t)) return 0;
   return null;
+}
+
+/** Today's sunrise or sunset: "is at ... today" while it is still to come, else "was at ... today" and tomorrow's time.
+ *  todayIso and tomorrowIso are the forecast's local times ("2026-11-27T16:21"); now is the tablet's clock (same place). */
+export function sunSay(which: 'sunrise' | 'sunset', todayIso: string, tomorrowIso: string | undefined, now: Date): string {
+  const label = which === 'sunset' ? 'Sunset' : 'Sunrise';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const nowHm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const todayHm = todayIso.slice(11, 16);
+  if (todayHm > nowHm) return `${label} is at ${clock12(todayIso)} today.`;
+  if (!tomorrowIso) return `${label} was at ${clock12(todayIso)} today.`;
+  return `${label} was at ${clock12(todayIso)} today. Tomorrow it’s at ${clock12(tomorrowIso)}.`;
 }
 
 // Sun questions by voice: "what time is sunset", "when does it get dark tomorrow". Returns the time asked about and the day.
