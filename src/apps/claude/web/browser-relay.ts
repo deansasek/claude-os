@@ -15,7 +15,7 @@ import { sayDuration } from '../../../core/web/voice-parse.ts';
 import { call } from './sessions/pin.ts';
 import { cur, getControl } from '../../browser/web/state.ts';
 
-type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer';
+type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer';
 interface Job { id: string; op: Op; ref?: string; text?: string; args?: Record<string, unknown> }
 interface NextReply { ok: boolean; job?: Job | null; error?: string }
 type Answer = { ok: boolean; data: string };
@@ -53,7 +53,7 @@ async function loop(): Promise<void> {
 
 function run(job: Job): Promise<Answer> | Answer {
   if (job.op === 'routine') return runRoutine(job.args || {});
-  if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms' || job.op === 'pause_timer' || job.op === 'resume_timer') return runClock(job.op, job.args || {});
+  if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms' || job.op === 'pause_timer' || job.op === 'resume_timer' || job.op === 'adjust_timer') return runClock(job.op, job.args || {});
   if (job.op === 'tablet_status') return runStatus();
   if (job.op === 'dnd') return runDnd(job.args || {});
   if (job.op === 'timer' || job.op === 'alarm' || job.op === 'reminder' || job.op === 'notify') return runTablet(job.op, job.args || {});
@@ -76,13 +76,22 @@ function runDnd(a: Record<string, unknown>): Answer {
 }
 
 /** The Clock's status and cancels for Claude: the Clock's own state, read or changed here on the tablet. */
-function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause_timer' | 'resume_timer', args: Record<string, unknown> = {}): Answer {
+function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause_timer' | 'resume_timer' | 'adjust_timer', args: Record<string, unknown> = {}): Answer {
   const clock = getClock();
   if (!clock) return { ok: false, data: 'The tablet’s Clock isn’t ready. Try again in a moment.' };
   if (op === 'cancel_timer') {
     const label = str(args.label);
     if (label) return { ok: true, data: clock.cancelNamedTimer(label) ? `${label} timer cancelled.` : `There’s no ${label} timer.` };
     return { ok: true, data: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.' };
+  }
+  if (op === 'adjust_timer') {
+    // the same change the voice makes (nudgeTimer on the Clock: the timer in front, capped at an hour)
+    const m = typeof args.minutes === 'number' ? args.minutes : 0;
+    if (!m || !clock.nudgeTimer(m)) return { ok: true, data: 'There’s no timer running.' };
+    const n = Math.abs(m), amount = n === 60 ? 'an hour' : n === 30 ? 'half an hour' : `${n} minute${n === 1 ? '' : 's'}`;
+    const left = clock.timerLeft();
+    const now = left == null ? '' : ` A timer has ${Math.ceil(left / 60e3)} minute${Math.ceil(left / 60e3) === 1 ? '' : 's'} left.`;
+    return { ok: true, data: `${m > 0 ? 'Added' : 'Took off'} ${amount}.${now}` };
   }
   if (op === 'pause_timer' || op === 'resume_timer') {
     // the same replies the voice gives (voice-commands.ts), named timer first, then the one in front
