@@ -208,7 +208,7 @@ function sky(code: number): string {
   if (code <= 67) return 'rainy';
   if (code <= 77) return 'snowy';
   if (code <= 82) return 'showery';
-  if (code <= 86) return 'snow showers';
+  if (code <= 86) return 'snowy';   // a snow shower reads as snowy: "It's 1 degree and snowy", not "snow showers"
   return 'stormy';
 }
 const deg = degSay;
