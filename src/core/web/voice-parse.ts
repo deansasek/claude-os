@@ -151,3 +151,9 @@ export const daysText = (d: number[]) => {
   return uniq.length === 7 ? ' every day' : key === '1,2,3,4,5' ? ' on weekdays' : key === '0,6' ? ' at weekends'
     : uniq.length ? ` on ${list}` : '';
 };
+
+/** A family member backing out of Claude: "stop", "never mind then", "oh never mind", "no thank you", "forget it then".
+ *  The text is already lower case. Whole phrases only; "cancel that" is left out (it could mean the timer just set). */
+export function isDismiss(t: string): boolean {
+  return /^(?:(?:oh|ok|okay|well|hmm|right) )?(?:stop(?: listening)?|cancel|never ?mind(?: then| please| now)?|nothing|forget it(?: then| please)?|that's all|thats all|no that's all|no thats all|no thanks|no thank you|thank you|thanks)$/.test(t.trim());
+}

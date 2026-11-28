@@ -16,6 +16,7 @@ import { getJson, report } from '../../../core/web/dom.ts';
 import { voice, type VoiceEvent } from '../../../core/web/device.ts';
 import type { AppContext } from '../../../core/web/shell.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
+import { isDismiss } from '../../../core/web/voice-parse.ts';
 import { runCommand } from '../../../core/web/voice-commands.ts';
 import type { HubTurn, Project, SessionView } from '../api.ts';
 import { flag, react, sayLine } from './critter.ts';
@@ -68,7 +69,8 @@ export function speakable(md: string, max = 340): string {
 }
 
 // ---------- what was said ----------
-const CANCEL = /^(stop|cancel|never ?mind|nothing|forget it|no thanks|that's all|thats all|thank you|thanks)$/;
+// backing out of Claude: the phrases live in voice-parse.ts (isDismiss), so "never mind then" and "no thank you" count too
+const CANCEL = { test: (s: string): boolean => isDismiss(s) };
 // Approvals by voice take a clear, whole answer only: a stray "okay" or a word misheard from the room
 // must never allow anything. ("no" is looser: denying is always safe.)
 const YES = /^(?:yes|yeah|yep|yes please|yes allow it|yes go ahead|allow|allow it|approve|approve it|go ahead|do it|please do)$/;
