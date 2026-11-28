@@ -501,9 +501,16 @@ async function removePhoto(): Promise<void> {
 const USAGE_MAX_AGE = 10 * 60e3;
 let usage: Usage | null = null;
 let usageFailed = false;   // the last PC read failed; `usage` then holds the last good read, if any
+const USAGE_TIMEOUT_MS = 20e3;   // a PC that never answers gives up, so the rows do not wait forever
+let usageSeq = 0;                // each PC read takes a number; only the newest read sets the usage
 async function loadUsage(): Promise<void> {
   if (onTablet) { checkUsage(USAGE_MAX_AGE); if (section === 'usage') paintUsage(); return; }
-  try { usage = await getJson<Usage>('/api/claude/usage'); usageFailed = false; } catch { usageFailed = true; }
+  const seq = ++usageSeq;
+  try {
+    const u = await getJson<Usage>('/api/claude/usage', USAGE_TIMEOUT_MS);
+    if (seq !== usageSeq) return;   // a newer read started: its answer is the one that counts
+    usage = u; usageFailed = false;
+  } catch { if (seq !== usageSeq) return; usageFailed = true; }
   if (section === 'usage') paintUsage();
 }
 
