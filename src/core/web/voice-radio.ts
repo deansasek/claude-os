@@ -37,7 +37,7 @@ export function matchStation(name: string, stations: Station[]): Station | null 
 
 /** "play the radio", "stop the radio" or "what's playing" (the caller has already cleaned the phrase), or null. */
 export function radioWord(t: string): RadioWord | null {
-  if (/^(?:play|turn on|start|resume)(?: the| my)? radio$/.test(t)) return 'play';
+  if (/^(?:play|turn on|switch on|start|resume)(?: the| my)? radio$|^(?:turn|switch)(?: the| my)? radio on$/.test(t)) return 'play';
   if (/^(?:stop|pause|turn off|switch off)(?: the| my)? radio$|^turn(?: the| my)? radio off$/.test(t)) return 'stop';
   if (/^(?:what(?:'s| is) playing|what station is this|what(?:'s| is) on the radio)$/.test(t)) return 'whats-playing';
   return null;
