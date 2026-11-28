@@ -13,7 +13,7 @@
 //   Weather  "what's the weather", "what's the weather tomorrow", "will it rain (today/tomorrow)"
 //   Radio    "play the radio" (the last station), "stop the radio" (pauses what is playing)
 //   Time     "what time is it", "what's the date", "what day is it"
-//   Screen   "dim the screen", "brighter", "brightness 50 percent", "dark mode", "light mode", "turn on do not disturb"
+//   Screen   "dim the screen", "brighter", "brightness 50 percent", "what's the brightness" (read-only), "dark mode", "light mode", "turn on do not disturb"
 //   Sound    "volume up/down", "louder", "quieter", "mute", "volume 30 percent", "what's the volume" (read-only)
 //   Apps     "open photos", "show the calendar", "go to home assistant", "open the settings app", "go home"
 //            (exactly one app name; see voice-open.ts)
@@ -334,6 +334,13 @@ function volumeLevel(): CommandResult {
   try { cur = device.volume().media; } catch { return { say: 'I can’t check the volume right now.' }; }
   const p = Math.round(cur * 100);
   return { say: p === 0 ? 'The tablet is muted.' : `The volume is at ${p} percent.`, react: 'look' };
+}
+
+/** "What's the brightness": the screen level from the saved preference, read only. With auto-brightness on, Android sets it, so say so. */
+function brightnessLevel(): CommandResult {
+  if (!onTablet) return { say: 'I can only check the screen on the tablet.' };
+  if (autoBrightness.on) return { say: 'Auto-brightness is on, so the screen sets its own brightness.', react: 'look' };
+  return { say: `The brightness is at ${pct(prefs.brightness)}.`, react: 'look' };
 }
 
 function volume(to: number | 'up' | 'down' | 'mute' | 'unmute'): CommandResult {
@@ -663,6 +670,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
 
   // "go to sleep": the clock screen, after the spoken "Okay." has finished (the same as the Control Center's Rest now tile)
   if (sleepWord(t)) { setTimeout(sleep, 1200); return { say: 'Okay.', react: 'look' }; }
+  // "what's the brightness": read only, before the dim and brighten phrases
+  if (/^(?:what(?:'s| is) the brightness(?: right now| now)?|how bright is the screen(?: right now| now)?)$/.test(t)) return brightnessLevel();
   // screen
   if (/^(?:dim|jim|darken)(?: the)? screen$|^(?:make|turn)(?: the)? (?:screen|it) (?:dimmer|darker|down)$|^(?:turn|bring)(?: the)? brightness down$|^dimmer$|^(?:screen )?darker$|^lower(?: the)? brightness$/.test(t)) return brightness('down');
   if (/^(?:brighten|light up)(?: the)? screen$|^(?:make|turn)(?: the)? (?:screen|it) (?:brighter|up)$|^(?:turn|bring)(?: the)? brightness up$|^(?:screen )?brighter$|^raise(?: the)? brightness$/.test(t)) return brightness('up');
