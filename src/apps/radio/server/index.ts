@@ -43,7 +43,7 @@ async function directory(pathAndQuery: string): Promise<unknown[]> {
   throw last;
 }
 
-async function stations(query: URLSearchParams): Promise<StationsResult> {
+export async function stations(query: URLSearchParams): Promise<StationsResult> {
   const name = cleanQuery(query.get('q') || '');
   const f = filtersFrom(query);
   const params = new URLSearchParams({ hidebroken: 'true', order: 'votes', reverse: 'true', limit: '60' });
