@@ -104,6 +104,22 @@ export function sayDuration(ms: number): string {
   return [part(h, 'hour'), part(m, 'minute'), part(sec, 'second')].filter(Boolean).join(' and ') || 'no time';
 }
 
+/** A named timer said with the label first ("set a pasta timer for 10 minutes") or the duration first ("set a 10 minute timer for the pasta"). */
+export function labelledTimer(t: string): { ms: number; label: string } | null {
+  const labelFirst = /^(?:set|start)(?: me)?(?: a| an| the)? (.+?) timer (?:for|of) (.+)$/.exec(t);
+  // a plain "set a timer for 10 minutes" has no label: the "a" is not one
+  if (labelFirst && !/^(?:a|an|the)$/.test(labelFirst[1])) {
+    const ms = parseDuration(labelFirst[2].replace(/^(a|an) (?=\d)/, ''));
+    if (ms != null) return { ms, label: labelFirst[1] };
+  }
+  const durationFirst = /^(?:set|start)(?: a| an)? (.+?) timer for (?:the )?(.+)$/.exec(t);
+  if (durationFirst) {
+    const ms = parseDuration(durationFirst[1].replace(/^(a|an) (?=\d)/, ''));
+    if (ms != null) return { ms, label: durationFirst[2] };
+  }
+  return null;
+}
+
 /** The reply for a named timer: the label with a capital first letter, then the duration. The stored label keeps the case heard. */
 export function namedTimerReply(label: string, ms: number): string {
   return `${label.charAt(0).toUpperCase()}${label.slice(1)} timer set for ${sayDuration(ms)}.`;
