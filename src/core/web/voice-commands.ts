@@ -45,7 +45,7 @@ import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
-import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
+import { alarmInMs, alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
 import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
@@ -550,6 +550,16 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (!clock) return null;
     const n = clock.nextAlarm();
     return { say: n ? `Your next alarm is ${clockText(n.h, n.m)} ${n.when}.` : 'You don’t have any alarms on.' };
+  }
+  // "wake me up in 30 minutes": a time from now, set as a one-off alarm (alarmInMs in voice-alarm.ts). Past midnight: tomorrow.
+  const inMs = alarmInMs(t);
+  if (inMs !== null) {
+    if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
+    const at = new Date(Date.now() + inMs);
+    const crossesMidnight = at.getDate() !== new Date().getDate();
+    const set = clock.addAlarm(at.getHours(), at.getMinutes(), [], crossesMidnight);
+    if (!set) return { say: 'You have too many alarms. Delete one in the Clock first.', app: 'clock' };
+    return { say: `Alarm set for ${clockText(at.getHours(), at.getMinutes())} ${set.when}.`, react: 'hop' };
   }
   if ((r = t.match(/^(?:(?:set|make|add|create)(?: me)?(?: an| the| my| a)? alarm (?:for |at )?|wake me(?: up)? (?:at )?|alarm (?:for |at )?)(.+)$/))) {
     const wakeUp = /^wake/.test(t);

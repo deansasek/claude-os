@@ -1,5 +1,6 @@
 // Voice words for the Clock's alarms: "stop" and "snooze" act on the ring that is sounding. Only "turn off all my
 // alarms" switches every alarm off. Pure text matching, so Node tests can load it (core/web/voice-commands.ts uses it).
+import { parseDuration } from './voice-parse.ts';
 
 export type AlarmWord = 'stop-ring' | 'snooze' | 'all-off' | 'one-alarm' | null;
 
@@ -33,6 +34,14 @@ const NUMBER_WORDS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, thre
 /** "What time will the timer go off", "when does the timer finish": the clock time the timer ends, asked for. */
 export function timerEndWord(t: string): boolean {
   return /^(?:what time (?:will|does) the timer (?:go off|finish|end|ring)|when (?:will|does) the timer (?:go off|finish|end|ring|be done)|when is the timer up)$/.test(t);
+}
+
+/** "wake me up in 30 minutes", "set an alarm in an hour": the time from now in ms, or null. Needs a unit (minutes, hours),
+ *  so "set an alarm for 7" is not this (it is a clock time). */
+export function alarmInMs(t: string): number | null {
+  const m = /^(?:wake me(?: up)? in|set (?:an |the )?alarm in|set (?:an |the )?alarm for|alarm in) (.+?)(?: from now)?$/.exec(t);
+  if (!m || !/\b(?:minutes?|mins?|hours?|hrs?)\b/.test(m[1])) return null;
+  return parseDuration(m[1]);
 }
 
 /** "How long is left on the pasta timer": the label of one timer, or null. A bare "the timer" or a time is not a label. */
