@@ -5,7 +5,7 @@ import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { manifest } from '../manifest.ts';
-import { copyPlan, dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayAfter, mondayOf, savedRecipeNames, weekDays, type Day, type Dinner } from './week.ts';
+import { copyPlan, dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayAfter, mondayOf, savedRecipeNames, plannedWords, weekDays, type Day, type Dinner } from './week.ts';
 import { addDinnersToShopping } from './week-shopping.ts';
 
 const API = '/api/calendar';
@@ -32,6 +32,7 @@ function paint(c: AppContext): void {
   const first = days[0].date, last = days[6].date;
   const fmt = (d: Date): string => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   c.$('mpRange').textContent = `${fmt(first)} – ${fmt(last)}`;
+  c.$('mpCount').textContent = plannedWords(days, dinners);
   c.$('mpDays').innerHTML = days.map((d, i) => {
     const dinner = dinnerOn(dinners, d);
     const label = d.date.toLocaleDateString(undefined, { weekday: 'long' });
