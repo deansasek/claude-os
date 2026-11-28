@@ -7,7 +7,7 @@
 // (claude/web/native.ts). The reply is read when it arrives. A recipe is saved only after the user taps Save; a reply
 // that is not JSON can be saved as text.
 import { esc, getJson, onStore, postJson, store } from '../../../core/web/dom.ts';
-import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayOf, weekDays, type Day, type Dinner } from '../../meals/web/week.ts';
+import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayAfter, weekDays, type Day, type Dinner } from '../../meals/web/week.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -547,9 +547,10 @@ function discoverHtml(): string {
 let scaleKey = '', servings = 0;   // the servings wanted on the recipe page; reset when another recipe opens
 // "Plan this": the week's seven nights, with the dinners already there; a free night takes the recipe as a Meals dinner
 let planning = false, planDays: Day[] = [], planTaken: Dinner[] | null = null, planBusy = false;
+let planWeek = 0;   // 0 is this week, 1 is next week
 async function openPlan(): Promise<void> {
   planning = true;
-  planDays = weekDays(mondayOf(new Date()));
+  planDays = weekDays(mondayAfter(new Date(), planWeek));
   planTaken = null;
   msg = '';
   render();
@@ -588,12 +589,15 @@ function planHtml(): string {
   if (planTaken === null) return `<div class="rc-plan"><p class="rc-sub">Checking the week…</p></div>`;
   const rows = planDays.map((d, i) => {
     const taken = dinnerOn(planTaken as Dinner[], d);
-    const label = d.date.toLocaleDateString(undefined, { weekday: 'long' });
+    const label = d.date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric' });
     return taken
       ? `<button class="rc-plan-row" disabled><span>${esc(label)}</span><span class="rc-plan-taken">${esc(taken.text)}</span></button>`
       : `<button class="rc-plan-row" data-act="plan-pick" data-i="${i}"><span>${esc(label)}</span><span>Free</span></button>`;
   }).join('');
-  return `<div class="rc-plan"><span class="rc-kicker">Plan this week</span>${rows}`
+  const weeks = `<div class="rc-plan-weeks">`
+    + `<button class="rc-btn${planWeek === 0 ? ' on' : ''}" data-act="plan-week" data-w="0">This week</button>`
+    + `<button class="rc-btn${planWeek === 1 ? ' on' : ''}" data-act="plan-week" data-w="1">Next week</button></div>`;
+  return `<div class="rc-plan"><span class="rc-kicker">${planWeek === 1 ? 'Plan next week' : 'Plan this week'}</span>${weeks}${rows}`
     + `<button class="rc-btn" data-act="plan-cancel">Cancel</button></div>`;
 }
 function detailHtml(r: Recipe): string {
@@ -757,7 +761,8 @@ function onClick(ev: Event): void {
     case 'open': { const r = pick(src, i); if (r) go({ t: 'detail', r }); break; }
     case 'heart': { const r = pick(src, i); if (r) toggleSave(r); break; }
     case 'save-this': if (screen.t === 'detail') toggleSave(screen.r); break;
-    case 'plan': if (screen.t === 'detail') void openPlan(); break;
+    case 'plan': if (screen.t === 'detail') { planWeek = 0; void openPlan(); } break;
+    case 'plan-week': planWeek = b.dataset.w === '1' ? 1 : 0; void openPlan(); break;
     case 'plan-cancel': planning = false; break;
     case 'plan-pick': void planPick(i); break;
     case 'serve-minus': if (servings > 1) servings--; break;

@@ -8,7 +8,7 @@ const src = readFileSync(new URL('../src/apps/recipes/web/index.ts', import.meta
 
 test('the recipe page has a Plan this button, and the picker lists the week’s nights', () => {
   assert.match(src, /data-act="plan">Plan this</);
-  assert.match(src, /case 'plan': if \(screen\.t === 'detail'\) void openPlan\(\); break;/);
+  assert.match(src, /case 'plan': if \(screen\.t === 'detail'\) \{ planWeek = 0; void openPlan\(\); \} break;/);
   assert.match(src, /`\/api\/calendar\/local\?from=\$\{from\}&to=\$\{to\}`, PLAN_TIMEOUT_MS/);
 });
 

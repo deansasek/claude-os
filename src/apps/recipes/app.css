@@ -212,3 +212,4 @@
 #app-recipes .rc-plan-row { display: flex; justify-content: space-between; align-items: center; min-height: 48px; padding: 0 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); font: 500 16px var(--sans); cursor: pointer; }
 #app-recipes .rc-plan-row:disabled { cursor: default; color: var(--t3); background: var(--card-2); }
 #app-recipes .rc-plan-taken { font-family: var(--serif); color: var(--t2); }
+#app-recipes .rc-plan-weeks { display: flex; gap: 8px; }
