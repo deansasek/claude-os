@@ -2,7 +2,7 @@
 // Pure (no DOM, no fetch) so it can be tested in Node. core/web/voice-commands.ts feeds it the devices on the Home
 // dashboard and calls POST /api/home-assistant/toggle with {voice: true}, which checks everything again on the PC.
 // It never guesses: anything that isn't clearly one dashboard device (or "the lights") returns null and goes to Claude.
-import { plain, VOICE_DOMAINS, type HaResult } from '../api.ts';
+import { climateLabel, plain, VOICE_DOMAINS, type HaResult } from '../api.ts';
 
 export interface VoiceDevice { entity_id: string; domain: string; name: string }
 export interface VoiceMatch { on: boolean; targets: VoiceDevice[]; all: boolean; label: string }
@@ -107,7 +107,9 @@ export function findDevice(target: string, devices: VoiceDevice[]): VoiceDevice 
 export function stateReply(d: VoiceDevice, state: string): string {
   // a door, window, gate or garage sensor reads on and off as open and closed, as Home Assistant shows them
   const opening = d.domain === 'binary_sensor' && /door|window|gate|garage|opening/i.test(d.name);
-  const words = opening ? (state === 'on' ? 'open' : state === 'off' ? 'closed' : state.replace(/_/g, ' ')) : state.replace(/_/g, ' ');
+  // a thermostat's state is its mode: "heat" reads as heating, "heat_cool" as auto, as the tiles show it
+  const words = d.domain === 'climate' ? climateLabel(state).toLowerCase()
+    : opening ? (state === 'on' ? 'open' : state === 'off' ? 'closed' : state.replace(/_/g, ' ')) : state.replace(/_/g, ' ');
   const name = lowerFirst(sayName(d));
   return `The ${name} is ${words}.`.replace(/^./, c => c.toUpperCase());
 }
