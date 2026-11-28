@@ -9,6 +9,15 @@ export function temperatureDay(t: string): 0 | 1 | null {
   return null;
 }
 
+// Sun questions by voice: "what time is sunset", "when does it get dark tomorrow". Returns the time asked about and the day.
+export function sunDay(t: string): { which: 'sunrise' | 'sunset'; day: 0 | 1 } | null {
+  const day: 0 | 1 = / tomorrow$/.test(t) ? 1 : 0;
+  const base = t.replace(/ tomorrow$/, '');
+  if (/^(?:what time is (?:the )?sunset|when (?:is|does) (?:the )?sunset|when does the sun set|when does it get dark)$/.test(base)) return { which: 'sunset', day };
+  if (/^(?:what time is (?:the )?sunrise|when (?:is|does) (?:the )?sunrise|when does the sun rise)$/.test(base)) return { which: 'sunrise', day };
+  return null;
+}
+
 // Wind questions by voice: "is it windy", "is it going to be windy tomorrow". Returns the day (0 today, 1 tomorrow), or null.
 export function windDay(t: string): 0 | 1 | null {
   if (/^(?:is it|will it be|is it going to be) windy tomorrow$|^how windy (?:is it|will it be|is it going to be) tomorrow$/.test(t)) return 1;
