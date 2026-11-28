@@ -45,7 +45,7 @@ import { alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-a
 import { temperatureDay, weatherTrouble } from './voice-weather.ts';
 import { radioStopHeard, radioWord } from './voice-radio.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
-import { dinnerSay, dinnerWord } from './voice-dinner.ts';
+import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
@@ -463,9 +463,9 @@ async function sceneCommand(raw: string): Promise<CommandResult | null> {
 
 // ---------- Calendar: "what's on today", "what's on my calendar" ----------
 /** The Meals dinner on a night, read from the calendar's "Dinner: …" events (the same events Home's Tonight row reads). */
-async function dinnerCommand(night: 'tonight' | 'tomorrow'): Promise<CommandResult> {
+async function dinnerCommand(night: Night): Promise<CommandResult> {
   const d = new Date();
-  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + (night === 'tomorrow' ? 1 : 0));
+  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + night.ahead);
   const from = isoDay(day), to = isoDay(new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1));
   let r: { status?: string; events?: { id: string; title: string; start: number; end: number; allDay: boolean }[] };
   try { r = await getJson(`/api/calendar/local?from=${from}&to=${to}`, READ_TIMEOUT_MS); }
