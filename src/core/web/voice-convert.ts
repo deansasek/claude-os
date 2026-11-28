@@ -66,10 +66,34 @@ function weightAnswer(amount: number, fromWord: string, toWord: string, shape: '
   return `${roundResult(v)} ${weightName(to, v)} in ${amount === 1 ? 'a' : roundResult(amount)} ${weightName(from, amount)}.`;
 }
 
+// distance, for voice only: metres per unit. Distance converts only to distance (a mile is not a pound).
+type DistUnit = 'm' | 'km' | 'mi' | 'ft' | 'in' | 'cm';
+const METRES: Record<DistUnit, number> = { m: 1, km: 1000, mi: 1609.344, ft: 0.3048, in: 0.0254, cm: 0.01 };
+const DIST_WORDS: Record<string, DistUnit> = {
+  m: 'm', metre: 'm', metres: 'm', meter: 'm', meters: 'm',
+  km: 'km', kilometre: 'km', kilometres: 'km', kilometer: 'km', kilometers: 'km',
+  mi: 'mi', mile: 'mi', miles: 'mi', ft: 'ft', foot: 'ft', feet: 'ft',
+  inch: 'in', inches: 'in', cm: 'cm', centimetre: 'cm', centimetres: 'cm', centimeter: 'cm', centimeters: 'cm',
+};
+const DIST_SAY: Record<DistUnit, [string, string]> = {
+  m: ['metre', 'metres'], km: ['kilometre', 'kilometres'], mi: ['mile', 'miles'], ft: ['foot', 'feet'],
+  in: ['inch', 'inches'], cm: ['centimetre', 'centimetres'],
+};
+const distName = (u: DistUnit, n: number): string => DIST_SAY[u][Math.abs(n - 1) < 1e-9 ? 0 : 1];
+
+/** Distance to distance, or null (including a distance to a weight or a volume). */
+function distanceAnswer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
+  const from = DIST_WORDS[fromWord.trim()], to = DIST_WORDS[toWord.trim()];
+  if (!from || !to) return null;
+  const v = amount * METRES[from] / METRES[to];
+  if (shape === 'is') return `${roundResult(amount)} ${distName(from, amount)} is ${roundResult(v)} ${distName(to, v)}.`;
+  return `${roundResult(v)} ${distName(to, v)} in ${amount === 1 ? 'a' : roundResult(amount)} ${distName(from, amount)}.`;
+}
+
 function answer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
   if (!Number.isFinite(amount)) return null;
   const from = unitOf(fromWord), to = unitOf(toWord);
-  if (!from || !to) return weightAnswer(amount, fromWord, toWord, shape);
+  if (!from || !to) return weightAnswer(amount, fromWord, toWord, shape) ?? distanceAnswer(amount, fromWord, toWord, shape);
   const v = convert(amount, from, to);
   if (v === null) return null;
   if (shape === 'is') return `${roundResult(amount)} ${name(from, amount)} is ${roundResult(v)} ${name(to, v)}.`;
