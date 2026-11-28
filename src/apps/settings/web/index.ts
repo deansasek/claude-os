@@ -632,14 +632,17 @@ async function editInstructions(): Promise<void> {
     onDone: text => { void saveInstructions(text); },
   });
 }
+let instrSaveSeq = 0;   // each instructions save takes a number: an older save's reply cannot change the text or show a stale sheet
 async function saveInstructions(text: string): Promise<void> {
+  const seq = ++instrSaveSeq;
   try {
     const r = await postJson<{ text: string; ok?: boolean }>('/api/settings/instructions', { text: text.trim() }, INSTR_TIMEOUT_MS);
+    if (seq !== instrSaveSeq) return;   // a newer save started: its answer is the one that counts
     if (r.ok === false) throw new Error('not saved');   // the PC kept the old text: say so, do not clear the box
     instrSeq++;   // a read still out is older than this save: it must not bring the old text back
     instructions = r.text || ''; instructionsLoaded = true; instructionsReadFailed = false; instructionsFailed = false;
     report('settings:instructions');
-  } catch { confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
+  } catch { if (seq !== instrSaveSeq) return; confirmSheet('Couldn’t save', 'Check the connection to your PC, then try again.', 'OK', () => {}); }
   paintInstructions();
 }
 

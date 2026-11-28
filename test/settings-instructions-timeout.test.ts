@@ -34,3 +34,10 @@ test('a successful save drops any read still out', () => {
   assert.match(save, /instrSeq\+\+;/);
   assert.ok(save.indexOf('instrSeq++;') > save.indexOf("throw new Error('not saved')"), 'the bump comes after the save is checked');
 });
+
+test('a late older instructions save does not change the text or show a stale sheet', () => {
+  assert.match(src, /let instrSaveSeq = 0;/);
+  assert.match(save, /const seq = \+\+instrSaveSeq;/);
+  const guards = save.match(/if \(seq !== instrSaveSeq\) return;/g) ?? [];
+  assert.equal(guards.length, 2, 'the success path and the failure path both check the number');
+});
