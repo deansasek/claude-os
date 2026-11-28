@@ -11,7 +11,7 @@ import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayAfter, weekDays, type D
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
-import { alertFor } from '../../../core/web/system.ts';
+import { alertFor, onBack } from '../../../core/web/system.ts';
 import { dur, lengthWords } from '../../clock/web/timer-text.ts';
 import { nativeBusy, nativeOn, nativeSend, nativeView } from '../../claude/web/native.ts';
 import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
@@ -809,6 +809,15 @@ const app: HubApp = {
     ctx = c;
     $('rcBody').addEventListener('click', onClick);
     addEventListener('hub:open-recipe', e => openNamed((e as CustomEvent<string>).detail));   // a launcher result names the recipe
+    // Back goes up one level: a sheet or the Plan panel closes first, cook mode returns to its recipe, and a recipe returns to Discover
+    onBack(() => {
+      if (!ctx?.isVisible()) return false;
+      if (sheetOpen) { closeSheet(); return true; }
+      if (planning) { planning = false; render(); return true; }
+      if (screen.t === 'cook') { go({ t: 'detail', r: screen.r }); render(); return true; }
+      if (screen.t === 'detail') { go({ t: 'discover' }); render(); return true; }
+      return false;
+    }, 10);
     ensureTick();
     render();
     void loadNames();
