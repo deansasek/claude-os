@@ -8,7 +8,7 @@ import { manifest } from '../manifest.ts';
 import { fromStored, shoppingItems } from '../../recipes/web/recipe.ts';
 import { isQueued, readLists, writeList } from '../../lists/web/readers.ts';
 import { addManyReply } from '../../lists/web/voice-match.ts';
-import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayOf, savedRecipeNames, weekDays, weekIngredients, type Day, type Dinner } from './week.ts';
+import { copyPlan, dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayAfter, mondayOf, savedRecipeNames, weekDays, weekIngredients, type Day, type Dinner } from './week.ts';
 
 const API = '/api/calendar';
 const RECIPES_KEY = 'recipes.list';   // the Recipes app's saved list, on the tablet's own store
@@ -108,6 +108,37 @@ async function remove(c: AppContext, i: number): Promise<void> {
   }
 }
 
+/** Fill this week's free nights with last week's dinners, weekday for weekday. Nights with a dinner are kept. */
+async function copyLastWeek(c: AppContext): Promise<void> {
+  if (busy) return;
+  busy = true;
+  try {
+    const lastDays = weekDays(mondayAfter(days[0].date, -1));
+    const from = isoDay(lastDays[0].date), to = isoDay(new Date(days[0].date.getFullYear(), days[0].date.getMonth(), days[0].date.getDate()));
+    let lastEvents: LocalRead;
+    try {
+      lastEvents = await getJson<LocalRead>(`${API}/local?from=${from}&to=${to}`, READ_TIMEOUT_MS);
+    } catch {
+      setStatus(c, 'Couldn’t reach your PC to read last week.');
+      return;
+    }
+    if (lastEvents.status !== 'ok') { setStatus(c, lastEvents.error || 'Couldn’t read last week from your PC.'); return; }
+    const plan = copyPlan(days, lastDays, dinners, dinnersIn(lastEvents.events ?? []));
+    if (!plan.length) { setStatus(c, 'Nothing to copy: last week has no dinners for the free nights.'); return; }
+    let added = 0;
+    for (const p of plan) {
+      try {
+        const r = await postJson<{ error?: string }>(`${API}/local-add`, { title: p.title, start: p.start, end: p.end, allDay: true }, WRITE_TIMEOUT_MS);
+        if (!r.error) added++;
+      } catch { break; }
+    }
+    setStatus(c, added ? `Copied ${added} dinner${added === 1 ? '' : 's'} from last week.` : 'Couldn’t copy the dinners. Try again.');
+    await load(c);
+  } finally {
+    busy = false;
+  }
+}
+
 /** Put the week's ingredients on Shopping: the matched dinners' ingredients, minus what is already on the list. */
 async function addWeekShopping(c: AppContext): Promise<void> {
   if (busy) return;
@@ -154,6 +185,7 @@ const app: HubApp = {
     c.$('mpPrev').addEventListener('click', () => shiftWeek(c, -1));
     c.$('mpNext').addEventListener('click', () => shiftWeek(c, 1));
     c.$('mpShop').addEventListener('click', () => void addWeekShopping(c));
+    c.$('mpCopy').addEventListener('click', () => void copyLastWeek(c));
     c.$('mpDays').addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
       if (!b) return;
