@@ -13,6 +13,11 @@ test('the Christmas countdown phrases are heard, including the short forms peopl
   assert.equal(countdownWord('how many days till christmas'), true);
   assert.equal(countdownWord("how many days 'til christmas"), true);
   assert.equal(countdownWord('how long till christmas'), true);
+  assert.equal(countdownWord('how many days left until christmas'), true);
+  assert.equal(countdownWord('days left till christmas'), true);
+  assert.equal(countdownWord('how long until christmas day'), true);
+  assert.equal(countdownWord('is it christmas day yet'), true);
+  assert.equal(countdownWord('how many days left on the timer'), false);
   assert.equal(countdownWord('how long is it until christmas'), true);
   assert.equal(countdownWord('is it christmas yet'), true);
   assert.equal(countdownWord('days til christmas'), true);

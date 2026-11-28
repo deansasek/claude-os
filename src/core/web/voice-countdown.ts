@@ -3,7 +3,7 @@
 
 /** The phrase is a Christmas countdown question (the caller has already cleaned it), or false. */
 export function countdownWord(t: string): boolean {
-  return /^(?:how many (?:more )?(?:days|sleeps) (?:until|till|til|'til|to|before) christmas|how long (?:is it )?(?:until|till|til|'til|to) christmas|is it christmas yet|(?:days|sleeps) (?:until|till|til|'til) christmas)$/.test(t);
+  return /^(?:how many (?:more )?(?:days|sleeps)(?: left)? (?:until|till|til|'til|to|before) christmas(?: day)?|how long (?:is it )?(?:until|till|til|'til|to) christmas(?: day)?|is it christmas(?: day)? yet|(?:days|sleeps)(?: left)? (?:until|till|til|'til) christmas(?: day)?)$/.test(t);
 }
 
 /** Calendar days from today until the next 25 December (0 on the day itself). */
