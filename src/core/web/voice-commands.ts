@@ -304,8 +304,15 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // timer: pause, resume, add or take off minutes (core/web/voice-alarm.ts)
   const tw = timerWord(t);
   if (tw && clock) {
-    if (tw.op === 'pause') return clock.pauseTimer() ? { say: 'Timer paused.', react: 'look' } : { say: 'There’s no timer running.' };
-    if (tw.op === 'resume') return clock.resumeTimer() ? { say: 'Timer resumed.', react: 'hop' } : { say: 'There’s no paused timer.' };
+    // a timer that is already paused (or already running) says so, rather than "no timer running" (or "no paused timer")
+    if (tw.op === 'pause') {
+      if (clock.pauseTimer()) return { say: 'Timer paused.', react: 'look' };
+      return clock.timerPaused() ? { say: 'The timer is already paused.', react: 'look' } : { say: 'There’s no timer running.' };
+    }
+    if (tw.op === 'resume') {
+      if (clock.resumeTimer()) return { say: 'Timer resumed.', react: 'hop' };
+      return clock.timerLeft() != null && !clock.timerPaused() ? { say: 'The timer is already running.', react: 'look' } : { say: 'There’s no paused timer.' };
+    }
     if (tw.op === 'cancel-named') {
       const shown = tw.label.charAt(0).toUpperCase() + tw.label.slice(1);
       return clock.cancelNamedTimer(tw.label) ? { say: `${shown} timer cancelled.`, react: 'look' } : { say: `You don’t have a ${tw.label} timer.`, react: 'look' };
