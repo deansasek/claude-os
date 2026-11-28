@@ -62,8 +62,9 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
     if (parts.length > 1) return { op: 'addMany', list, texts: parts.map(cap) };
     return { op: 'add', list, text: cap(parts[0]) };
   }
-  // "tick off milk on the shopping list": the item is looked up by its words on the tablet, not guessed here
-  m = t.match(new RegExp(`^(?:tick off|cross off|check off|mark) (.+?) (?:from|on|in) ${LIST}$`));
+  // "tick off milk on the shopping list", "cross milk off the shopping list": the item is looked up by its words on the tablet, not guessed here
+  m = t.match(new RegExp(`^(?:tick off|cross off|check off|mark) (.+?) (?:from|on|in) ${LIST}$`))
+    ?? t.match(new RegExp(`^(?:tick|cross|check) (.+?) off ${LIST}$`));
   if (m) {
     const text = m[1].replace(/^(?:a|an|the|some) (?=\S)/, '').trim();
     if (!text || /^(it|that|this|them)$/.test(text)) return null;
