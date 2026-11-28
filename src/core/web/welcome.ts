@@ -21,6 +21,8 @@ type Step = 'welcome' | 'you' | 'look' | 'network' | 'voice' | 'done';
 
 const NAME_MAX = 30;   // the same limit as Settings' "what Claude should call you" (apps/settings/api.ts)
 const JOIN_WAIT_MS = 25e3;
+// the welcome's reads and saves give up on a PC that does not answer, so Home never waits on them
+const WELCOME_TIMEOUT_MS = 10_000;
 const LOOKS: { id: ThemeMode; name: string; note: string }[] = [
   { id: 'light', name: 'Light', note: 'Warm paper, dark ink' },
   { id: 'dark', name: 'Dark', note: 'Dark ink, warm light' },
@@ -114,7 +116,7 @@ export async function maybeWelcome(): Promise<void> {
   if (params.get('welcome') === '1') { whenUnlocked(() => showWelcome(false)); return; }
   if (!onTablet) return;
   let r: { done?: boolean } | null = null;
-  try { r = await getJson<{ done?: boolean }>('/api/settings/welcome'); } catch { return; }   // PC unreachable, or no route yet
+  try { r = await getJson<{ done?: boolean }>('/api/settings/welcome', WELCOME_TIMEOUT_MS); } catch { return; }   // PC unreachable, or no route yet
   if (r && r.done === false) whenUnlocked(() => showWelcome(false));
 }
 
@@ -345,8 +347,8 @@ async function finish(): Promise<void> {
   root.hidden = true;
   root.innerHTML = '';
   report('welcome:done');
-  try { await postJson('/api/settings/welcome', { done: true }); } catch { /* offline: it may ask once more */ }
-  if (!fromSettings) openApp('home');
+  if (!fromSettings) openApp('home');   // Home opens at once; the done flag below does not hold it up
+  postJson('/api/settings/welcome', { done: true }, WELCOME_TIMEOUT_MS).catch(() => { /* offline: it may ask once more */ });
 }
 
 function pickLook(id: ThemeMode): void {
@@ -369,7 +371,7 @@ function editName(): void {
 async function saveNick(): Promise<void> {
   const v = nickDraft.trim();
   if (!v || v === profile().nickname) return;
-  try { applyProfile(await postJson<Profile>('/api/settings/profile', { nickname: v })); } catch { /* offline: not saved this time */ }
+  try { applyProfile(await postJson<Profile>('/api/settings/profile', { nickname: v }, WELCOME_TIMEOUT_MS)); } catch { /* offline: not saved this time */ }
 }
 
 function toggleWake(): void {
