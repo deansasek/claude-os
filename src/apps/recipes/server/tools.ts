@@ -1,6 +1,6 @@
-// Claude's Recipes tool, as one in-process MCP server (claudeos_recipes) that turns.ts adds to each session.
-// Read-only: recipes whose name matches a search, from TheMealDB (the same read the Recipes app makes, search in index.ts).
-// Each call is an ordinary tool call, so it goes through canUseTool (the approval card on the tablet) first.
+// Claude's Recipes tools, as one in-process MCP server (claudeos_recipes) that turns.ts adds to each session.
+// Read-only: recipes whose name matches a search, and one recipe in full, from TheMealDB (the same reads the Recipes app makes,
+// search in index.ts). Each call is an ordinary tool call, so it goes through canUseTool (the approval card on the tablet) first.
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { search } from './index.ts';
@@ -21,6 +21,20 @@ export async function recipesSearchReply({ q, count }: { q?: string; count?: num
   }).join('\n'));
 }
 
+/** The recipes_get reply: one recipe by its name (an exact name first, else the first match), with every ingredient and its numbered method. */
+export async function recipesGetReply({ name }: { name: string }, read: (q: string) => Promise<MealsResult> = search) {
+  let r;
+  try { r = await read(name); } catch { return text('The recipes couldn’t be read just now. Try again in a little while.', true); }
+  if (r.status === 'error') return text('The recipes couldn’t be read just now. Try again in a little while.', true);
+  const want = name.trim().toLowerCase();
+  const rc = r.recipes.find(x => x.name.trim().toLowerCase() === want) ?? r.recipes[0];
+  if (!rc) return text(`No recipe matches “${name}”.`, true);
+  const facts = [rc.serves ? `serves ${rc.serves}` : '', rc.time].filter(Boolean).join(', ');
+  const items = rc.ingredients.map(i => `${i.amount ? `${i.amount} ` : ''}${i.item}`).join('; ') || 'no ingredients listed';
+  const steps = rc.steps.length ? rc.steps.map((s, i) => `${i + 1}. ${s}`).join('\n') : 'No method is listed.';
+  return text(`${rc.name}${facts ? ` (${facts})` : ''}\nIngredients: ${items}.\nMethod:\n${steps}`);
+}
+
 export const recipesServer = createSdkMcpServer({
   name: 'claudeos_recipes',
   version: '1.0.0',
@@ -31,5 +45,10 @@ export const recipesServer = createSdkMcpServer({
         + 'count: how many, 1 to 10 (the default is 5).',
       { q: z.string().max(60).optional(), count: z.number().int().min(1).max(10).optional() },
       (args) => recipesSearchReply(args)),
+    tool('recipes_get',
+      'Get one recipe from the ClaudeOS Recipes app (TheMealDB) by its name, with every ingredient and its numbered method. Read-only. '
+        + 'Use it after recipes_search, to say how to cook a dish.',
+      { name: z.string().min(1).max(60) },
+      (args) => recipesGetReply(args)),
   ],
 });
