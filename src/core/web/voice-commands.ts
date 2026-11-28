@@ -41,6 +41,7 @@ import { sceneFailText } from '../../apps/home/web/scene-words.ts';
 import { device, onTablet } from './device.ts';
 import { autoBrightness, openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
+import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
@@ -433,6 +434,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   }
 
   // time and date
+  // "how many days until Christmas": calendar days, on this tablet's clock (voice-countdown.ts)
+  if (countdownWord(t)) return { say: christmasSay(new Date()), react: 'look' };
   if (/^(?:what(?:'s| is) the time(?: now| right now)?|what time is it(?: now| right now)?|(?:tell me )?the time|time)$/.test(t)) {
     return { say: `It's ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` };
   }
