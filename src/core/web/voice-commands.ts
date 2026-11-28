@@ -22,7 +22,7 @@
 //   Lists    "add milk to the shopping list", "put bin day on my to-do list", "what's on the shopping list",
 //            "change milk to oat milk"
 //            (Shopping and To-do only; see apps/lists/web/voice-match.ts)
-//   Calendar "what's on today", "what's on my calendar": the next three events today (read-only);
+//   Calendar "what's on today", "what's on my calendar", "what's next on my calendar": the next three events today (read-only);
 //            "what's on tomorrow": the first three events tomorrow
 //   Routines any phrase a routine has ("good morning"), "run the good night routine", "start good morning",
 //            "good night routine" (apps/routines: the Routines app speaks each step itself)
@@ -53,7 +53,7 @@ import type { Units } from '../../apps/weather/api.ts';
 import { alreadyPlayingSay, playingSay, radioStopHeard, radioWord } from './voice-radio.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
-import { calendarDay, calendarDaySay, type CalDay } from './voice-calendar.ts';
+import { calendarDay, calendarDaySay, nextEventWord, type CalDay } from './voice-calendar.ts';
 import { convertSay } from './voice-convert.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, nowPlaying, pauseMedia } from './media.ts';
@@ -337,6 +337,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (routine) return routine;
 
   // calendar: "what's on today", "what's on my calendar" (before the lists, so "what's on ..." is ours)
+  if (nextEventWord(t)) return calendarCommand();
   if (/^(?:what(?:'s|s| is) on (?:for )?(?:today|(?:my|the) calendar(?: today| for today)?|today'?s calendar)|what do i have (?:on )?today|do i have anything (?:on )?today|have i got (?:anything )?on today|what have i got on today|what(?:'s|s| is) on my schedule today)$/.test(t)) return calendarCommand();
   if (/^(?:what(?:'s|s| is) on (?:for )?tomorrow|what(?:'s|s| is) on (?:my|the) calendar (?:for )?tomorrow|what do i have (?:on )?tomorrow|have i got (?:anything )?on tomorrow|what have i got on tomorrow)$/.test(t)) return calendarCommand('tomorrow');
   // "what's on Saturday": the local calendar for that weekday (voice-calendar.ts)
