@@ -38,12 +38,16 @@ export const listsServer = createSdkMcpServer({
         + `text: the item or note, up to ${MAX_TEXT} characters. Call once per item. An item already there isn’t added twice.`,
       { list: z.string().max(40), text: z.string().max(400) },
       async ({ list, text: t }) => {
+        // an item already on the list is not added twice: say so, rather than "Done" (addItem unticks a ticked one)
+        const before = readLists();
+        const same = before.ok ? findList(before.lists, list)?.items.find(i => i.text.trim().toLowerCase() === t.trim().toLowerCase()) : undefined;
         const r = addItem(list, t);
         if (!r.ok) return text(`${r.error ?? 'That didn’t work.'}${/no list/.test(r.error ?? '') ? ` The lists are: ${names(r)}.` : ''}`, true);
         const l = findList(r.lists, list);
         // a notes list has no ticks: it says how many notes, not "to do" (show() words it the same way)
         const open = l ? l.items.filter(i => !i.done).length : 0;
         const count = l?.kind === 'notes' ? ` (${l.items.length} note${l.items.length === 1 ? '' : 's'})` : l ? ` (${open} to do)` : '';
+        if (same) return text(same.done ? `“${same.text}” was ticked, so it is back on ${l?.name ?? list}.` : `“${same.text}” is already on ${l?.name ?? list}.`);
         return text(`Done. “${r.item?.text}” is on ${l?.name ?? list}${count}.`);
       }),
     tool('lists_tick',
@@ -118,7 +122,11 @@ export const listsServer = createSdkMcpServer({
         const r = clearDone(list);
         if (!r.ok) return text(`${r.error ?? 'That didn’t work.'}${/no list/.test(r.error ?? '') ? ` The lists are: ${names(r)}.` : ''}`, true);
         const l = findList(r.lists, list);
-        return text(`Cleared the ticked items from ${l?.name ?? list}.${l ? ` ${l.items.length} left.` : ''}`);
+        // the number actually cleared (clearDone's removed): nothing ticked means nothing was cleared
+        const removed = (r as { removed?: number }).removed ?? 0;
+        const left = l ? ` ${l.items.length} left.` : '';
+        if (!removed) return text(`Nothing on ${l?.name ?? list} was ticked, so nothing was cleared.${left}`);
+        return text(`Cleared ${removed} ticked item${removed === 1 ? '' : 's'} from ${l?.name ?? list}.${left}`);
       }),
   ],
 });
