@@ -57,3 +57,9 @@ test('a named timer reply capitalises the name, says already paused or running, 
   assert.ok(relay.includes("const left = clock.namedTimerLeft(label);"));
   assert.ok(relay.includes("if (pausing && left.paused) return { ok: true, data: `The ${label} timer is already paused.` };"));
 });
+
+test('adjust_timer takes an optional timer name, and the relay changes that timer', () => {
+  assert.ok(tablet.includes("{ minutes: z.number().int().min(-60).max(60), label: z.string().optional() },"));
+  assert.ok(tablet.includes("return { ok: true, op, args: { minutes: m, label: cleanText(input.label) } };"));
+  assert.ok(relay.includes("if (!m || !clock.nudgeNamedTimer(label, m)) return { ok: true, data: `The ${label} timer can’t be changed.` };"));
+});

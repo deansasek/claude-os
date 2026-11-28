@@ -88,6 +88,15 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
   if (op === 'adjust_timer') {
     // the same change the voice makes (nudgeTimer on the Clock: the timer in front, capped at an hour)
     const m = typeof args.minutes === 'number' ? args.minutes : 0;
+    const label = str(args.label);
+    if (label) {
+      // a named timer: its words first ("You don’t have a pasta timer."), then the change and the time it has left
+      if (!clock.namedTimerLeft(label)) return { ok: true, data: `You don’t have ${articleFor(label)} ${label} timer.` };
+      if (!m || !clock.nudgeNamedTimer(label, m)) return { ok: true, data: `The ${label} timer can’t be changed.` };
+      const after = clock.namedTimerLeft(label);
+      const mins = after ? Math.ceil(after.ms / 60e3) : 0;
+      return { ok: true, data: `${m > 0 ? 'Added' : 'Took off'} ${Math.abs(m) === 60 ? 'an hour' : `${Math.abs(m)} minute${Math.abs(m) === 1 ? '' : 's'}`} to the ${label} timer. It has ${mins} minute${mins === 1 ? '' : 's'} left.` };
+    }
     if (!m || !clock.nudgeTimer(m)) return { ok: true, data: 'There’s no timer running.' };
     const n = Math.abs(m), amount = n === 60 ? 'an hour' : n === 30 ? 'half an hour' : `${n} minute${n === 1 ? '' : 's'}`;
     const left = clock.timerLeft();
