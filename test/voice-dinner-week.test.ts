@@ -14,6 +14,12 @@ test('the week’s dinner questions are matched, and a single night’s question
   assert.equal(dinnerWeekWord("what's for dinner on friday"), false);
 });
 
+test('a list that starts with a weekday keeps its capital, and Tomorrow is lower case as Tonight is', () => {
+  assert.equal(dinnerWeekSay([{ name: 'Friday', text: 'pizza' }]), 'This week, Friday: pizza.');
+  assert.equal(dinnerWeekSay([{ name: 'Friday', text: 'pizza' }, { name: 'Saturday', text: 'curry' }]), 'This week, Friday: pizza; and Saturday: curry.');
+  assert.equal(dinnerWeekSay([{ name: 'Tomorrow', text: 'soup' }, { name: 'Friday', text: 'pizza' }]), 'This week, tomorrow: soup; and Friday: pizza.');
+});
+
 test('the reply lists each planned night, and says so when nothing is planned', () => {
   assert.equal(dinnerWeekSay([]), 'Nothing is planned for dinner this week.');
   assert.equal(dinnerWeekSay([{ name: 'Tonight', text: 'lasagne' }]), 'This week, tonight: lasagne.');

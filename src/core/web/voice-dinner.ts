@@ -27,9 +27,10 @@ export function dinnerWeekWord(t: string): boolean {
 /** The week's dinners that are planned: each with its night's name ("Tonight", "Tomorrow", "Friday") and its dinner. */
 export function dinnerWeekSay(items: { name: string; text: string }[]): string {
   if (!items.length) return 'Nothing is planned for dinner this week.';
-  const parts = items.map(i => `${i.name}: ${i.text}`);
+  // only "Tonight" and "Tomorrow" start the sentence in lower case; a weekday keeps its capital
+  const parts = items.map((i, k) => `${k === 0 && /^(?:Tonight|Tomorrow)$/.test(i.name) ? i.name.toLowerCase() : i.name}: ${i.text}`);
   const words = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join('; ')}; and ${parts[parts.length - 1]}`;
-  return `This week, ${words.charAt(0).toLowerCase()}${words.slice(1)}.`;
+  return `This week, ${words}.`;
 }
 
 /** What the voice says: the dinner planned for that night, or that nothing is planned. */
