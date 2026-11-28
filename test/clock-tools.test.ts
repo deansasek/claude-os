@@ -22,5 +22,11 @@ test('cancel_timer takes an optional label, and the relay cancels that timer by 
 
 test('clock_status says when the next alarm rings', () => {
   assert.ok(relay.includes('const alarmSay = next ? ` Next alarm: ${hhmm(next.h, next.m)} ${next.when}.` : \'\';'));
-  assert.ok(tablet.includes('when the next alarm rings, and how many timers and alarms are on.'));
+  assert.ok(tablet.includes('when the next alarm rings, how many timers and alarms are on, and the stopwatch’s time and whether it runs.'));
+});
+
+test('clock_status says the stopwatch’s time and whether it runs, as the voice does', () => {
+  assert.ok(relay.includes("import { sayDuration } from '../../../core/web/voice-parse.ts';"));
+  assert.ok(relay.includes("const swSay = sw >= 1000 ? ` The stopwatch is ${clock.stopwatchRunning() ? 'running' : 'stopped'} at ${sayDuration(Math.floor(sw / 1000) * 1000)}.` : '';"));
+  assert.ok(relay.includes('${alarmSay}${swSay}` };'));
 });

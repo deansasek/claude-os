@@ -11,6 +11,7 @@ import { batterySay } from '../../../core/web/voice-battery.ts';
 import { wifiSay } from '../../../core/web/voice-wifi.ts';
 import { notify, prefs } from '../../../core/web/system.ts';
 import { getClock, getRoutines } from '../../../core/web/voice-commands.ts';
+import { sayDuration } from '../../../core/web/voice-parse.ts';
 import { call } from './sessions/pin.ts';
 import { cur, getControl } from '../../browser/web/state.ts';
 
@@ -94,7 +95,10 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms', args: R
   // the next alarm, with its time and whether it is today, tomorrow or a weekday (nextAlarm on the Clock)
   const next = clock.nextAlarm();
   const alarmSay = next ? ` Next alarm: ${hhmm(next.h, next.m)} ${next.when}.` : '';
-  return { ok: true, data: `${timer} ${on ? `${on} timer or alarm${on === 1 ? '' : 's'} on.` : 'No timers or alarms are on.'}${alarmSay}` };
+  // the stopwatch's time and whether it runs, as the voice says it; nothing when it is at zero
+  const sw = clock.stopwatchTime();
+  const swSay = sw >= 1000 ? ` The stopwatch is ${clock.stopwatchRunning() ? 'running' : 'stopped'} at ${sayDuration(Math.floor(sw / 1000) * 1000)}.` : '';
+  return { ok: true, data: `${timer} ${on ? `${on} timer or alarm${on === 1 ? '' : 's'} on.` : 'No timers or alarms are on.'}${alarmSay}${swSay}` };
 }
 
 /** "17:05" for the answer, as Claude gave it (24-hour). */

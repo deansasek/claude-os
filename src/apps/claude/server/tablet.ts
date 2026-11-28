@@ -125,7 +125,7 @@ export const tabletServer = createSdkMcpServer({
       {},
       async () => run('tablet_status', {})),
     tool('clock_status',
-      'Read the ClaudeOS tablet’s Clock: whether a timer is running and how long is left, when the next alarm rings, and how many timers and alarms are on. Read-only.',
+      'Read the ClaudeOS tablet’s Clock: whether a timer is running and how long is left, when the next alarm rings, how many timers and alarms are on, and the stopwatch’s time and whether it runs. Read-only.',
       {},
       async () => run('clock_status', {})),
     tool('cancel_timer',
