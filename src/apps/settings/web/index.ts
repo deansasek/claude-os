@@ -1162,14 +1162,21 @@ async function paintBackupNote(): Promise<void> {
   $('stBkNote').textContent = backupNote(b);
 }
 function initBackup(): void {
+  let backupSaving = false;   // a second tap while a save runs does nothing: it would send a second save
   $('stBkSave').addEventListener('click', async () => {
-    $('stBkMsg').textContent = 'Saving…';
-    const r = await saveSettings();
-    backupSeq++;   // a note read that started before this save is out of date
-    $('stBkMsg').textContent = r.ok ? `Saved ${r.count} settings to your PC.` : (r.error ?? 'Couldn’t save.');
-    // A good save answers with its own time and count, so the note needs no second read.
-    if (r.ok && r.saved) $('stBkNote').textContent = savedNote(r.saved, r.count ?? 0);
-    else void paintBackupNote();
+    if (backupSaving) return;
+    backupSaving = true;
+    try {
+      $('stBkMsg').textContent = 'Saving…';
+      const r = await saveSettings();
+      backupSeq++;   // a note read that started before this save is out of date
+      $('stBkMsg').textContent = r.ok ? `Saved ${r.count} settings to your PC.` : (r.error ?? 'Couldn’t save.');
+      // A good save answers with its own time and count, so the note needs no second read.
+      if (r.ok && r.saved) $('stBkNote').textContent = savedNote(r.saved, r.count ?? 0);
+      else void paintBackupNote();
+    } finally {
+      backupSaving = false;
+    }
   });
   $('stBkRestore').addEventListener('click', () => {
     confirmSheet('Restore settings from your PC?', 'The settings on this tablet are replaced with the ones saved on your PC. The page then reloads.', 'Restore', async () => {
