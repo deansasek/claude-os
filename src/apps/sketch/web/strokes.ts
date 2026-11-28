@@ -19,3 +19,6 @@ export function extend(b: Board, p: Pt): Board {
 
 /** Undo: the newest stroke goes. */
 export const undo = (b: Board): Board => b.slice(0, -1);
+
+/** True when the board has a drawn stroke (ink or clay). Eraser strokes alone leave nothing to save. */
+export const hasInk = (b: Board): boolean => b.some(s => s.tool === 'ink' || s.tool === 'clay');

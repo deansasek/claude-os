@@ -35,3 +35,11 @@ test('undo takes the newest stroke back, and an empty board stays empty', () => 
   assert.equal(undo(undo(b)).length, 0);
   assert.deepEqual(undo(EMPTY), []);
 });
+
+test('hasInk is true only for a drawn ink or clay stroke, so an empty or eraser-only board is not saved', async () => {
+  const { hasInk, begin, EMPTY } = await import('../src/apps/sketch/web/strokes.ts');
+  assert.equal(hasInk(EMPTY), false);
+  assert.equal(hasInk(begin(EMPTY, 'erase', { x: 1, y: 1 })), false);
+  assert.equal(hasInk(begin(EMPTY, 'ink', { x: 1, y: 1 })), true);
+  assert.equal(hasInk(begin(EMPTY, 'clay', { x: 1, y: 1 })), true);
+});

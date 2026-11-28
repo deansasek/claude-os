@@ -20,6 +20,12 @@ test('the export draws the same board the screen shows, onto the card colour', (
 });
 
 test('one save runs at a time, and the Save button is wired', () => {
-  assert.match(index, /if \(saving \|\| !canvas\) return;\s*saving = true;/);
+  assert.match(index, /if \(saving \|\| !canvas\) return;\s*const status = c\.\$\('skStatus'\);\s*\/\/[^\n]*\n\s*if \(!hasInk\(board\)\) \{ status\.textContent = 'Nothing to save yet'; return; \}\s*saving = true;/);
   assert.match(index, /if \(b\.dataset\.act === 'save'\) \{ void save\(c\); return; \}/);
+});
+
+test('save() returns before exporting when there is nothing drawn', () => {
+  const src = readFileSync(new URL('../src/apps/sketch/web/index.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.ok(src.includes("if (!hasInk(board)) { status.textContent = 'Nothing to save yet'; return; }"));
+  assert.ok(src.indexOf('if (!hasInk(board))') < src.indexOf('const blob = await exportJpeg('));
 });
