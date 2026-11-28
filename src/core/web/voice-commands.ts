@@ -257,6 +257,10 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     // "remove milk from the list" with no list said: the same rule as the rename above
     const r = await removeAnywhere(list.text);
     if (r) return r;
+  } else if (list?.op === 'has-any') {
+    // "is milk on the list" with no list said: read only; null lets the phrase go on
+    const r = await hasAnywhere(list.text);
+    if (r) return r;
   } else if (list) return listCommand(list, customs.find(c => c.id === list.list)?.name);
 
   // stopwatch: start it, stop it, read it or reset it; a stop when it is not running says so
@@ -545,7 +549,7 @@ async function voiceCustomLists(): Promise<{ id: string; name: string }[]> {
   } catch { return []; }
 }
 
-async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>, { op: 'remove-any' }>, customName?: string): Promise<CommandResult> {
+async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>, { op: 'remove-any' } | { op: 'has-any' }>, customName?: string): Promise<CommandResult> {
   const name = c.list === 'shopping' ? 'the shopping list' : c.list === 'todo' ? 'the to-do list' : spokenList(customName ?? 'list');
   try {
     if (c.op === 'add') {
@@ -681,6 +685,26 @@ async function removeAnywhere(text: string): Promise<CommandResult | null> {
   catch (e) { return queuedReply(e, `Removed ${said} from ${name}.`); }
   if (!r?.ok) return { say: r?.error ?? `I couldn’t remove that from ${name}.` };
   return { say: `Removed ${said} from ${name}.`, react: 'hop' };
+}
+
+/** "is milk on the list" with no list said: the item is looked up by its words on every list. Read only. Null when the
+ *  lists cannot be read, so the phrase goes on to Claude. */
+async function hasAnywhere(text: string): Promise<CommandResult | null> {
+  const lists = await readLists(READ_TIMEOUT_MS).catch(() => null);
+  if (!lists) return null;
+  const said = text.replace(/^./, ch => ch.toLowerCase());
+  const found = lists.flatMap(l => { const { hit } = pickItem(l.items, text, false); return hit ? [{ l, hit }] : []; });
+  if (!found.length) {
+    if (lists.some(l => pickItem(l.items, text, false).ambiguous)) return { say: `More than one item matches ${text}. Say which one.` };
+    return { say: `No, ${said} isn’t on any of your lists.`, react: 'look' };
+  }
+  if (found.length > 1) return { say: `${text} is on more than one list. Say which list.` };
+  const { l, hit } = found[0];
+  const name = spokenName(l);
+  const word = hit.text.replace(/^./, ch => ch.toLowerCase());
+  return hit.done
+    ? { say: `${word} is on ${name}, but it’s ticked off.`, react: 'look', app: 'lists' }
+    : { say: `Yes, ${word} is on ${name}.`, react: 'look', app: 'lists' };
 }
 
 // ---------- Home Assistant: "turn off the kitchen light", "lights on" ----------
