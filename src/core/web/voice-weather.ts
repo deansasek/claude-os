@@ -112,6 +112,19 @@ export function feelsSay(apparent: number | null | undefined): string {
   return `It feels like ${degSay(apparent)}.`;
 }
 
+// Pollen questions by voice: "what's the pollen count", "how much pollen is there today".
+export function pollenWord(t: string): boolean {
+  return /^(?:what(?:'s| is) the pollen(?: count| level)?(?: today| now| right now| outside)?|how much pollen is there(?: today| outside)?|is the pollen (?:high|bad|low)(?: today)?)$/.test(t);
+}
+
+/** The pollen count from the forecast's air block, as the Weather screen's pollen line gives it (the types the API sent).
+ *  Outside Europe the API sends no pollen: that is said, not read as a failure. null: the air block did not come back. */
+export function pollenSay(pollen: { name: string; value: number }[] | null): string {
+  if (pollen === null) return 'I can’t get the pollen count right now.';
+  if (!pollen.length) return 'There’s no pollen count here.';
+  return `Pollen: ${pollen.map(p => `${p.name} ${Math.round(p.value)}`).join(' · ')} grains per cubic metre.`;
+}
+
 /** The relative humidity now, from the forecast's current block. */
 export function humidSay(pct: number | null): string {
   if (pct == null || !Number.isFinite(pct)) return 'I can’t get the humidity right now.';
