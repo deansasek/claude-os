@@ -11,7 +11,7 @@
 //   Alarms   "wake me up at 7", "set an alarm for 6:30 on weekdays", "alarm for half past six",
 //            "turn off my alarms", "when is my alarm"
 //   Weather  "what's the weather", "what's the weather tomorrow", "will it rain (today/tomorrow)"
-//   Radio    "play the radio" (the last station), "stop the radio" (pauses what is playing)
+//   Radio    "play the radio" (the last station), "stop the radio" (pauses what is playing), "next station" and "previous station" (favourites)
 //   Time     "what time is it", "what's the date", "what day is it"
 //   Screen   "dim the screen", "brighter", "brightness 50 percent", "what's the brightness" (read-only), "dark mode", "light mode", "turn on do not disturb"
 //   Sound    "volume up/down", "louder", "quieter", "mute", "volume 30 percent", "what's the volume" (read-only)
@@ -58,6 +58,7 @@ import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
 import { alreadyPlayingSay, matchStation, playingSay, radioSleepWord, radioStopHeard, radioWord, stationWord } from './voice-radio.ts';
 import type { Station } from '../../apps/radio/api.ts';
+import { canStepFavourites } from '../../apps/radio/web/player.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWeekSay, dinnerWeekWord, dinnerWord, type Night } from './voice-dinner.ts';
 import { calendarDay, calendarDaySay, dayWordFor, listSay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
@@ -711,6 +712,14 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
 
   // radio: play the last station the Radio app kept, or pause what is playing (a stop when nothing plays is not heard)
   const radio = radioWord(t);
+  // "next station" and "previous station": step through the favourites, as the Radio app's skip buttons do
+  if (radio === 'next' || radio === 'prev') {
+    let favs: unknown[] = [];
+    try { favs = JSON.parse(store.get('radio.favs') || '[]') as unknown[]; } catch { /* none kept */ }
+    if (!canStepFavourites(favs)) return { say: 'Save two or more favourite stations in the Radio app to step between them.', app: 'radio' };
+    dispatchEvent(new CustomEvent('hub:radio-step', { detail: radio === 'next' ? 1 : -1 }));
+    return { say: '', react: 'look', app: 'radio' };
+  }
   if (radio === 'play') {
     let last: unknown[] = [];
     try { last = JSON.parse(store.get('radio.recent') || '[]') as unknown[]; } catch { /* none kept */ }

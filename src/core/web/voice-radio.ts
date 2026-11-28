@@ -6,7 +6,7 @@ import type { Station } from '../../apps/radio/api.ts';
 import { SLEEP_CHOICES } from '../../apps/radio/web/player.ts';
 import { parseDuration } from './voice-parse.ts';
 
-export type RadioWord = 'play' | 'stop' | 'whats-playing';
+export type RadioWord = 'play' | 'stop' | 'whats-playing' | 'next' | 'prev';
 
 /** "turn the radio off in 30 minutes", "radio sleep timer 15 minutes": the sleep length (15, 30 or 60 minutes), or null.
  *  A length that is not one of the Radio app's sleep choices is left to Claude. */
@@ -40,6 +40,9 @@ export function radioWord(t: string): RadioWord | null {
   if (/^(?:play|turn on|switch on|start|resume)(?: the| my)? radio$|^(?:turn|switch)(?: the| my)? radio on$/.test(t)) return 'play';
   if (/^(?:stop|pause|turn off|switch off)(?: the| my)? radio$|^turn(?: the| my)? radio off$/.test(t)) return 'stop';
   if (/^(?:what(?:'s| is) playing|what station is this|what(?:'s| is) on the radio)$/.test(t)) return 'whats-playing';
+  // the next or previous favourite: "next station", "skip station", "previous radio station"
+  if (/^(?:next|skip|skip to the next|play the next|play next)(?: radio)? station$|^skip(?: the)? radio$/.test(t)) return 'next';
+  if (/^(?:previous|go back to the previous|play the previous|play previous)(?: radio)? station$/.test(t)) return 'prev';
   return null;
 }
 
