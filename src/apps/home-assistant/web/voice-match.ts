@@ -59,6 +59,24 @@ export function onOffReply(m: VoiceMatch, results: (HaResult | null)[]): OnOffRe
   return { say: `Couldn’t ${verb} ${subject}. ${plain(reason)}` };
 }
 
+/** "is the porch light on", "are the lights off", "is the front door open": the device's words and the state asked about,
+ *  or null. A pronoun is never a device ("is it on"). Only the question is read; nothing is switched. */
+export function parseIsOn(raw: string): { target: string; word: string } | null {
+  const t = clean(raw).replace(POLITE, '').trim().replace(POLITE, '').trim();
+  const m = t.match(/^(?:is|are) (.+) (on|off|open|closed)$/);
+  if (!m) return null;
+  const target = noArticles(m[1]);
+  if (!target || ['it', 'that', 'this', 'them'].includes(target)) return null;
+  return { target, word: m[2] };
+}
+
+/** The spoken answer for a device's state: "The porch light is on.", "The front door is open.". */
+export function stateReply(d: VoiceDevice, state: string): string {
+  const words = state.replace(/_/g, ' ');
+  const name = sayName(d).replace(/^./, c => c.toLowerCase());
+  return `The ${name} is ${words}.`.replace(/^./, c => c.toUpperCase());
+}
+
 // ---------- scenes: "set movie night", "activate the good morning scene" ----------
 export interface VoiceScene { entity_id: string; name: string }
 

@@ -33,7 +33,7 @@ import { getJson, postJson, store } from './dom.ts';
 import type { HaDashboard, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
 // a quick command the PC never answers gives up, so the voice still says it cannot reach the PC
 const READ_TIMEOUT_MS = 20e3;
-import { matchHome, matchScene, onOffReply, parseOnOff, parseScene, sayName, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
+import { matchHome, matchScene, onOffReply, parseIsOn, parseOnOff, parseScene, sayName, stateReply, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
 import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
@@ -421,6 +421,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const opened = open(t);
   if (opened) return opened;
 
+  // "is the porch light on": the device's state, read only (no switch). Home Assistant on/off comes after it.
+  const asked = homeState(raw);
+  if (asked) return asked;
   // Home Assistant on/off, then scenes: last, so "turn off the timer" / "set a timer" are still the ones above
   return (await homeOnOff(raw)) ?? sceneCommand(raw);
 }
@@ -661,6 +664,24 @@ async function editAnywhere(text: string, to: string): Promise<CommandResult | n
 
 // ---------- Home Assistant: "turn off the kitchen light", "lights on" ----------
 /** Only devices on the Home dashboard; no match (or no dashboard) means null, and Claude gets it as before. */
+/** "is the porch light on": reads that one device's state from the dashboard. Nothing is switched. A phrase that names no
+ *  single dashboard device (or a PC that does not answer) is left to the next step. */
+async function homeState(raw: string): Promise<CommandResult | null> {
+  const q = parseIsOn(raw);
+  if (!q) return null;   // not a question about a device: don't ask the PC at all
+  let dash: HaDashboard;
+  try { dash = await getJson<HaDashboard>('/api/home-assistant/layout', READ_TIMEOUT_MS); } catch { return null; }
+  if (!dash?.layout || !Array.isArray(dash.entities)) return null;
+  const shown = dash.entities.filter(e => !e.missing);
+  const list: VoiceDevice[] = shown.map(e => ({ entity_id: e.entity_id, domain: e.domain, name: dash.layout.names?.[e.entity_id] || e.name }));
+  const m = matchHome(`turn on ${q.target}`, list);
+  if (!m || m.targets.length !== 1) return null;
+  const d = m.targets[0];
+  const entity = shown.find(e => e.entity_id === d.entity_id);
+  if (!entity) return null;
+  return { say: stateReply(d, entity.state), react: 'look' };
+}
+
 async function homeOnOff(raw: string): Promise<CommandResult | null> {
   if (!parseOnOff(raw)) return null;   // not an on/off phrase: don't ask the PC at all
   let dash: HaDashboard;
