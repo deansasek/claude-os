@@ -750,8 +750,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // "minimum brightness": the lowest step (brightness() clamps it to 5 percent)
   if (/^(?:minimum|min|lowest) brightness$|^(?:turn )?(?:the )?brightness all the way down$/.test(t)) return brightness(0);
   if ((r = t.match(/^(?:set )?(?:the )?brightness (?:to )?(\d{1,3})(?: percent| %)?$/))) return +r[1] <= 100 ? brightness(+r[1] / 100) : null;
-  if (/^(?:turn on |switch to |go |use |enable )?(?:the )?(?:dark|night) (?:mode|theme)$|^(?:turn off|disable)(?: the)? light (?:mode|theme)$/.test(t)) { setThemeMode('dark'); return { say: 'Dark mode.', react: 'look' }; }
-  if (/^(?:turn on |switch to |go |use |enable )?(?:the )?(?:light|day) (?:mode|theme)$|^(?:turn off|disable)(?: the)? (?:dark|night) (?:mode|theme)$/.test(t)) { setThemeMode('light'); return { say: 'Light mode.', react: 'hop' }; }
+  if (/^(?:turn on |switch to |go |use |enable )?(?:the )?(?:dark|night) (?:mode|theme)$|^(?:turn off|disable)(?: the)? light (?:mode|theme)$|^(?:turn|switch) (?:the )?(?:dark|night) (?:mode|theme) on$|^(?:turn|switch) (?:the )?(?:light|day) (?:mode|theme) off$/.test(t)) { setThemeMode('dark'); return { say: 'Dark mode.', react: 'look' }; }
+  if (/^(?:turn on |switch to |go |use |enable )?(?:the )?(?:light|day) (?:mode|theme)$|^(?:turn off|disable)(?: the)? (?:dark|night) (?:mode|theme)$|^(?:turn|switch) (?:the )?(?:light|day) (?:mode|theme) on$|^(?:turn|switch) (?:the )?(?:dark|night) (?:mode|theme) off$/.test(t)) { setThemeMode('light'); return { say: 'Light mode.', react: 'hop' }; }
   // Do Not Disturb: the same flag the Control Center tile sets (prefs.dnd, voice-dnd.ts)
   const dnd = dndWord(t);
   if (dnd) {

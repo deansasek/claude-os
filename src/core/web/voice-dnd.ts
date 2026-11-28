@@ -5,8 +5,8 @@ export type DndWord = 'on' | 'off' | 'ask' | null;
 
 /** The Do Not Disturb phrase: switch it on, switch it off, or ask whether it is on. Null when the phrase is not about it. */
 export function dndWord(t: string): DndWord {
-  if (/^(?:turn on|switch on|enable|put on|set)(?: the)? (?:do not disturb|dnd)(?: mode)?$|^(?:do not disturb|dnd)(?: mode)? on$/.test(t)) return 'on';
-  if (/^(?:turn off|switch off|disable|cancel)(?: the)? (?:do not disturb|dnd)(?: mode)?$|^(?:do not disturb|dnd)(?: mode)? off$/.test(t)) return 'off';
+  if (/^(?:turn on|switch on|enable|put on|set)(?: the)? (?:do not disturb|dnd)(?: mode)?$|^(?:turn|switch)(?: the)? (?:do not disturb|dnd)(?: mode)? on$|^(?:do not disturb|dnd)(?: mode)? on$/.test(t)) return 'on';
+  if (/^(?:turn off|switch off|disable|cancel)(?: the)? (?:do not disturb|dnd)(?: mode)?$|^(?:turn|switch)(?: the)? (?:do not disturb|dnd)(?: mode)? off$|^(?:do not disturb|dnd)(?: mode)? off$/.test(t)) return 'off';
   if (/^is (?:do not disturb|dnd)(?: mode)?(?: on| off)?$/.test(t)) return 'ask';
   return null;
 }
