@@ -18,7 +18,7 @@ import { micAvailable, micTap, onMicChange } from './sessions/mic.ts';
 import { call, hidePin, initPin, withPin } from './sessions/pin.ts';
 import { historyArchivedCount, historyArchivedView, loadHistory, setArchivedView } from './sessions/history.ts';
 import { historyTitle, initSidebar, sidebarHtml, toggleFolder } from './sessions/sidebar.ts';
-import { initManage, openSessionMenu } from './sessions/manage.ts';
+import { closeSessionMenu, initManage, openSessionMenu } from './sessions/manage.ts';
 import { msgKey, type MsgUi, openClips, openGroups, quickReplies, relAgo, SPARK, SPARK_RAYS, transcriptHtml } from './sessions/transcript.ts';
 import { speakable } from './voice.ts';
 import { initNative, NATIVE_ID, nativeListed, nativeMetaText, nativeOn, nativeSend, nativeStop, nativeView } from './native.ts';
@@ -241,6 +241,7 @@ export function closeSession(): void {
   $('svNudge').hidden = true;
   clearInterval(poll);
   $('sv').hidden = true; hidePin();
+  closeSessionMenu(); $('ncConfirm').hidden = true; replaceText = null; hidePhoto();   // the overlays inside Sessions go with it
   ctx.root.classList.remove('sv-open');
   if (Keyboard.isOpen) Keyboard.close('nav');
 }

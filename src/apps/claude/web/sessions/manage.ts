@@ -45,6 +45,9 @@ async function tryCall<T extends { ok: boolean; error?: string }>(path: string, 
 }
 
 /** Open the menu for one session (from its row's ⋯). */
+/** Close the ⋯ menu (and its confirm), when the Sessions screen is left. */
+export function closeSessionMenu(): void { close(); }
+
 export function openSessionMenu(id: string, title: string, archived: boolean): void {
   target = { id, title, archived };
   const tablet = id === NATIVE_ID;
