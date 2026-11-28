@@ -25,3 +25,8 @@
 .calc-key.eq { background: var(--text); color: var(--bg); border-color: var(--text); }
 .calc-key.eq:active { opacity: .85; }
 @media (prefers-reduced-motion: reduce) { .calc-key { transition: none; } }
+.calc-conv { display: flex; flex-direction: column; gap: 6px; }
+.calc-conv-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.calc-chip { min-height: 40px; padding: 0 12px; font-family: var(--sans); font-size: 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); cursor: pointer; }
+.calc-chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.calc-out { font-family: var(--serif); font-size: 20px; color: var(--t2); min-height: 1.2em; }
