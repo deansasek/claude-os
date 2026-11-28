@@ -13,7 +13,7 @@
 //   Weather  "what's the weather", "what's the weather tomorrow", "will it rain (today/tomorrow)"
 //   Radio    "play the radio" (the last station), "stop the radio" (pauses what is playing)
 //   Time     "what time is it", "what's the date", "what day is it"
-//   Screen   "dim the screen", "brighter", "brightness 50 percent", "dark mode", "light mode"
+//   Screen   "dim the screen", "brighter", "brightness 50 percent", "dark mode", "light mode", "turn on do not disturb"
 //   Sound    "volume up/down", "louder", "quieter", "mute", "volume 30 percent", "what's the volume" (read-only)
 //   Apps     "open photos", "show the calendar", "go to home assistant", "open the settings app", "go home"
 //            (exactly one app name; see voice-open.ts)
@@ -68,6 +68,7 @@ import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-ma
 import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
 import { durationAndLabel, labelledTimer, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
+import { dndWord } from './voice-dnd.ts';
 import { matchOpenApp } from './voice-open.ts';
 
 export interface ClockApi {
@@ -655,6 +656,15 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if ((r = t.match(/^(?:set )?(?:the )?brightness (?:to )?(\d{1,3})(?: percent| %)?$/))) return +r[1] <= 100 ? brightness(+r[1] / 100) : null;
   if (/^(?:turn on |switch to |go |use |enable )?(?:the )?(?:dark|night) (?:mode|theme)$|^(?:turn off|disable)(?: the)? light (?:mode|theme)$/.test(t)) { setThemeMode('dark'); return { say: 'Dark mode.', react: 'look' }; }
   if (/^(?:turn on |switch to |go |use |enable )?(?:the )?(?:light|day) (?:mode|theme)$|^(?:turn off|disable)(?: the)? (?:dark|night) (?:mode|theme)$/.test(t)) { setThemeMode('light'); return { say: 'Light mode.', react: 'hop' }; }
+  // Do Not Disturb: the same flag the Control Center tile sets (prefs.dnd, voice-dnd.ts)
+  const dnd = dndWord(t);
+  if (dnd) {
+    if (dnd === 'ask') return { say: prefs.dnd ? 'Do Not Disturb is on.' : 'Do Not Disturb is off.', react: 'look' };
+    const want = dnd === 'on';
+    if (prefs.dnd === want) return { say: `Do Not Disturb is already ${want ? 'on' : 'off'}.`, react: 'look' };
+    prefs.dnd = want;
+    return { say: `Do Not Disturb is ${want ? 'on' : 'off'}.`, react: 'hop' };
+  }
 
   // radio: play the last station the Radio app kept, or pause what is playing (a stop when nothing plays is not heard)
   const radio = radioWord(t);
