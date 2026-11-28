@@ -232,7 +232,7 @@ async function send(): Promise<void> {
       if (projectId == null) {
         // a failed read is not an empty list: say the PC could not be reached, not that there is no folder
         let list: Project[];
-        try { list = await getJson<Project[]>('/api/claude/projects'); }
+        try { list = await getJson<Project[]>('/api/claude/projects', READ_TIMEOUT_MS); }
         catch { throw new Error('Can’t reach your PC just now.'); }
         projectId = list[0]?.id ?? null;
       }
@@ -345,7 +345,7 @@ async function openSession(id: string): Promise<void> {
   busy = false;
   let v: SessionView;
   // no answer from the PC is not a bad answer: say the PC could not be reached
-  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`); }
+  try { v = await getJson<SessionView>(`/api/claude/session?id=${encodeURIComponent(id)}`, READ_TIMEOUT_MS); }
   catch {
     if (sessionId !== id) return;   // a newer choice (New chat, another session) came first: its screen stays
     rows = [{ kind: 'note', html: 'Can’t reach your PC, so that session didn’t open.' }];
@@ -367,16 +367,21 @@ async function openSession(id: string): Promise<void> {
   paint();
 }
 
+// each Recent open takes a number; a list from an older open that answers late does not paint over the newer one
+let recentSeq = 0;
 async function openRecent(): Promise<void> {
+  const seq = ++recentSeq;
   el.clRecent.hidden = false;
   el.clList.innerHTML = '<div class="cl-muted">Loading…</div>';
   let h: History;
   // no answer from the PC is not a bad answer: say the PC could not be reached
-  try { h = await getJson<History>('/api/claude/history?limit=30'); }
+  try { h = await getJson<History>('/api/claude/history?limit=30', READ_TIMEOUT_MS); }
   catch {
+    if (seq !== recentSeq) return;
     el.clList.innerHTML = '<div class="cl-muted">Can’t reach your PC, so your sessions didn’t load.</div>';
     return;
   }
+  if (seq !== recentSeq) return;   // a newer open came first: its list is the one to show
   try {
     const items = h.groups.flatMap(g => g.items.map(i => ({ ...i, folder: g.name })));
     el.clList.innerHTML = items.length

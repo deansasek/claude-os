@@ -39,7 +39,7 @@ test('openRecent says the PC is unreachable when the fetch fails and keeps its f
   const fetchAt = b.indexOf('await getJson<History>');
   const offline = b.indexOf('Can’t reach your PC, so your sessions didn’t load.');
   assert.ok(fetchAt > 0, 'openRecent fetches the history');
-  assert.match(b, /catch \{\s*el\.clList\.innerHTML = '<div class="cl-muted">Can’t reach your PC, so your sessions didn’t load\.<\/div>';\s*return;/);
+  assert.match(b, /catch \{\s*(?:if \(seq !== recentSeq\) return;\s*)?el\.clList\.innerHTML = '<div class="cl-muted">Can’t reach your PC, so your sessions didn’t load\.<\/div>';\s*return;/);
   assert.ok(offline > fetchAt, 'the offline message follows the fetch');
   assert.match(b, /catch \{\s*el\.clList\.innerHTML = '<div class="cl-muted">Couldn’t load your sessions\.<\/div>';/, 'a bad answer keeps the old message');
 });
