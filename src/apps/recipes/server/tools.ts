@@ -3,8 +3,8 @@
 // search in index.ts). Each call is an ordinary tool call, so it goes through canUseTool (the approval card on the tablet) first.
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { search } from './index.ts';
-import type { MealsResult } from '../api.ts';
+import { pantry, search } from './index.ts';
+import type { MealsResult, PantryResult } from '../api.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -35,6 +35,15 @@ export async function recipesGetReply({ name }: { name: string }, read: (q: stri
   return text(`${rc.name}${facts ? ` (${facts})` : ''}\nIngredients: ${items}.\nMethod:\n${steps}`);
 }
 
+/** The recipes_pantry reply: the recipes that use the ingredients the user has, each with what it is missing (fewest first). read defaults to the Recipes pantry. */
+export async function recipesPantryReply({ have, want }: { have: string; want?: string }, read: (h: string, w: string) => Promise<PantryResult> = pantry) {
+  let r;
+  try { r = await read(have, want ?? ''); } catch { return text('The recipes couldn’t be read just now. Try again in a little while.', true); }
+  if (r.status === 'error') return text(r.error, true);
+  if (!r.recipes.length) return text('No recipes use those ingredients.', true);
+  return text(r.recipes.slice(0, 5).map(rc => `${rc.name}: ${rc.missing.length ? `missing ${rc.missing.join(', ')}` : 'you have everything'}`).join('\n'));
+}
+
 export const recipesServer = createSdkMcpServer({
   name: 'claudeos_recipes',
   version: '1.0.0',
@@ -45,6 +54,12 @@ export const recipesServer = createSdkMcpServer({
         + 'count: how many, 1 to 10 (the default is 5).',
       { q: z.string().max(60).optional(), count: z.number().int().min(1).max(10).optional() },
       (args) => recipesSearchReply(args)),
+    tool('recipes_pantry',
+      'Find recipes from the ClaudeOS Recipes app (TheMealDB) that use ingredients the user has. Read-only. have: the ingredients they have, '
+        + 'separated by commas, e.g. "chicken, rice". want: optional, ingredients they would like to use, separated by commas. '
+        + 'Each recipe comes with what it is missing, the fewest first.',
+      { have: z.string().min(1).max(200), want: z.string().max(200).optional() },
+      async (args) => recipesPantryReply(args)),
     tool('recipes_get',
       'Get one recipe from the ClaudeOS Recipes app (TheMealDB) by its name, with every ingredient and its numbered method. Read-only. '
         + 'Use it after recipes_search, to say how to cook a dish.',

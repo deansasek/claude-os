@@ -82,7 +82,7 @@ async function byIngredient(name: string): Promise<unknown[]> {
   return found;
 }
 
-async function pantry(haveText: string, wantText: string): Promise<PantryResult> {
+export async function pantry(haveText: string, wantText: string): Promise<PantryResult> {
   const p = parsePantry(haveText, wantText);
   if (!p.ok) return { status: 'error', recipes: [], error: p.error };
   if (!p.have.length) return { status: 'ok', recipes: [] };
