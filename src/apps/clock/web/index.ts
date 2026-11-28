@@ -1096,6 +1096,8 @@ const clockApi: ClockApi = {
   stopwatchRunning: (): boolean => sw.running,
   stopwatchTime: (): number => swTime(),
   stopwatchReset(): void { swReset(); },
+  // the Lap button's own action: the lap's number, or null when the stopwatch is not running
+  stopwatchLap(): number | null { if (!sw.running) return null; swLap(); return sw.laps.length; },
   // false when the list is full: the caller says so, rather than promising a timer that never runs
   startTimer(ms: number, label?: string): boolean {
     if (timers.length >= MAX_TIMERS) return false;

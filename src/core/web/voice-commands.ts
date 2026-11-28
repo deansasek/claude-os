@@ -85,6 +85,8 @@ export interface ClockApi {
   stopwatchTime(): number;
   /** Clear the stopwatch: stop it and drop its time and laps. */
   stopwatchReset(): void;
+  /** Mark a lap on the running stopwatch. Returns the lap's number, or null when it is not running. */
+  stopwatchLap(): number | null;
   /** Pause a running timer. False when none runs. */
   pauseTimer(): boolean;
   /** Resume a paused timer. False when none is paused. */
@@ -383,6 +385,10 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
       return { say: ms < 1000 ? 'The stopwatch is at zero.' : `The stopwatch says ${sayDuration(Math.floor(ms / 1000) * 1000)}.` };
     }
     if (sws === 'reset') { clock.stopwatchReset(); return { say: 'Stopwatch reset.' }; }
+    if (sws === 'lap') {
+      const n = clock.stopwatchLap();
+      return n === null ? { say: 'The stopwatch isn’t running.' } : { say: `Lap ${n}.`, react: 'hop' };
+    }
     // starts it with no spoken reply (the tablet's own tap says "and... go!"); when it already runs, say so
     if (sws === 'start') return clock.stopwatch(true) ? { say: '' } : { say: 'The stopwatch is already running.' };
     if (clock.stopwatchRunning()) { clock.stopwatch(false); return { say: 'Stopped.' }; }
