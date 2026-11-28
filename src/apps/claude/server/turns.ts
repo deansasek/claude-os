@@ -29,6 +29,7 @@ import { listsServer } from '../../lists/server/tools.ts';
 import { calendarServer } from '../../calendar/server/tools.ts';
 import { weatherServer } from '../../weather/server/tools.ts';
 import { newsServer } from '../../news/server/tools.ts';
+import { mealsServer } from '../../meals/server/tools.ts';
 import { routinesServer } from '../../routines/server/tools.ts';
 import { PcInbox, rewakeText, type PcDecision, type WaitAnswer } from './pclink.ts';
 import { openSessions } from './registry.ts';
@@ -382,7 +383,7 @@ function launch(o: LaunchOptions): { turn: Live; sessionId: Promise<string> } {
       // The Home Assistant tools (home-assistant/server/tools.ts) and the tablet tools (timers, alarms, reminders,
       // notices: server/tablet.ts), the family lists (lists/server/tools.ts) and the read-only calendar
       // (calendar/server/tools.ts) join the same way, under the same approvals.
-      mcpServers: { ...(pluginOpts.mcpServers ?? {}), claudeos_browser: browserServer, claudeos_ha: haServer, claudeos_tablet: tabletServer, claudeos_lists: listsServer, claudeos_calendar: calendarServer, claudeos_weather: weatherServer, claudeos_news: newsServer, claudeos_routines: routinesServer },
+      mcpServers: { ...(pluginOpts.mcpServers ?? {}), claudeos_browser: browserServer, claudeos_ha: haServer, claudeos_tablet: tabletServer, claudeos_lists: listsServer, claudeos_calendar: calendarServer, claudeos_weather: weatherServer, claudeos_news: newsServer, claudeos_meals: mealsServer, claudeos_routines: routinesServer },
       abortController: t.abort,
       // the PC link's hooks (scripts/claude-os-pc-hook.ts) load with the user's settings: this tells them the Hub runs this turn
       env: { ...process.env, CLAUDEOS_HOST_TURN: '1' },
