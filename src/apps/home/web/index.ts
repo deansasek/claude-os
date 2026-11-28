@@ -660,9 +660,12 @@ function fitActs(): void {
 // ---------- routines: the first four (the Routines app has them all); a tap runs one, a tap while it runs stops it ----------
 interface RoutineAct { id: string; name: string }
 let routineActs: RoutineAct[] = [];
+let routinesSeq = 0;   // each routine-button read takes a number; only the newest read sets the buttons
 async function loadRoutineActs(): Promise<void> {
+  const seq = ++routinesSeq;
   let next: RoutineAct[];
   try { next = (await loadRoutines()).slice(0, 4).map(r => ({ id: r.id, name: r.name })); } catch { return; }   // the PC is away: keep them
+  if (seq !== routinesSeq) return;   // a newer read started: an older answer must not put back a deleted or renamed button
   if (JSON.stringify(next) === JSON.stringify(routineActs)) return;
   routineActs = next;
   paintActs();
