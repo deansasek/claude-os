@@ -416,7 +416,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const shown = name ? `${name.charAt(0).toUpperCase()}${name.slice(1)} timer cancelled.` : 'Timer cancelled.';
     return { say: `${shown}${left}`, react: 'look' };
   }
-  if (/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
+  if (/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)(?: on (?:the|my) timer)?|how much longer(?: is it)?(?: on (?:the|my) timer)?|how many (?:minutes|seconds)(?: are)? left(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
     if (!clock) return null;
     const left = clock.timerLeft();
     // a paused timer's time does not count down: say so, rather than read it like a running one
