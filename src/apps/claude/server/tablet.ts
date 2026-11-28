@@ -57,6 +57,7 @@ export function check(op: TabletOp, input: Record<string, unknown>): Checked {
   // the Clock's status and cancels take no arguments; they run on the tablet, where the Clock's state is
   if (op === 'cancel_timer') return { ok: true, op, args: { label: cleanText(input.label) } };   // a timer by its name, or the one in front
   if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status') return { ok: true, op, args: {} };
+  if (op === 'dnd') return typeof input.on === 'boolean' ? { ok: true, op, args: { on: input.on } } : { ok: false, error: 'Say whether Do Not Disturb is on or off.' };
   if (op === 'notify') {
     const title = cleanText(input.title), body = cleanText(input.body);
     if (!title) return { ok: false, error: 'The notification needs a title.' };
@@ -131,6 +132,10 @@ export const tabletServer = createSdkMcpServer({
       'Cancel a timer on the user’s ClaudeOS tablet. label: optional, the timer’s name when several are set (as set_timer gave it); with none, the timer in front is cancelled. Use it when the user says to stop or cancel a timer.',
       { label: z.string().optional() },
       async ({ label }) => run('cancel_timer', label ? { label } : {})),
+    tool('set_dnd',
+      'Turn Do Not Disturb on or off on the user’s ClaudeOS tablet. On: no banners show, but notifications still go to the list. Use it when the user asks to silence the tablet or to turn its sound and banners back on.',
+      { on: z.boolean() },
+      async ({ on }) => run('dnd', { on })),
     tool('cancel_alarms',
       'Switch off the alarms and reminders you set on the user’s ClaudeOS tablet (set_alarm, set_reminder). It keeps the user’s own alarms '
         + 'and does not delete anything; they can be turned on again in the Clock.',
