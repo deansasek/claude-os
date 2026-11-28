@@ -97,8 +97,17 @@ function lowerFirst(s: string): string {
   return s.replace(/^([A-Z])(?=[a-z])/, c => c.toLowerCase());
 }
 
+/** The one device a question names, by its name or its voice name, any domain (a door sensor or a cover too). Null when none or several. */
+export function findDevice(target: string, devices: VoiceDevice[]): VoiceDevice | null {
+  const t = clean(target);
+  const hits = devices.filter(d => clean(d.name) === t || clean(sayName(d)) === t);
+  return hits.length === 1 ? hits[0] : null;
+}
+
 export function stateReply(d: VoiceDevice, state: string): string {
-  const words = state.replace(/_/g, ' ');
+  // a door, window, gate or garage sensor reads on and off as open and closed, as Home Assistant shows them
+  const opening = d.domain === 'binary_sensor' && /door|window|gate|garage|opening/i.test(d.name);
+  const words = opening ? (state === 'on' ? 'open' : state === 'off' ? 'closed' : state.replace(/_/g, ' ')) : state.replace(/_/g, ' ');
   const name = lowerFirst(sayName(d));
   return `The ${name} is ${words}.`.replace(/^./, c => c.toUpperCase());
 }

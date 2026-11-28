@@ -34,7 +34,7 @@ import { hourMinuteFormat } from './time-format.ts';
 import type { HaDashboard, HaEntity, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
 // a quick command the PC never answers gives up, so the voice still says it cannot reach the PC
 const READ_TIMEOUT_MS = 20e3;
-import { lightsOnReply, matchHome, matchScene, onOffReply, parseIsOn, parseLightsOn, parseOnOff, parseScene, sayName, stateReply, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
+import { findDevice, lightsOnReply, matchHome, matchScene, onOffReply, parseIsOn, parseLightsOn, parseOnOff, parseScene, sayName, stateReply, type VoiceDevice } from '../../apps/home-assistant/web/voice-match.ts';
 import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
@@ -1227,9 +1227,8 @@ async function homeState(raw: string): Promise<CommandResult | null> {
   if (!dash?.layout || !Array.isArray(dash.entities)) return null;
   const shown = dash.entities.filter(e => !e.missing);
   const list: VoiceDevice[] = shown.map(e => ({ entity_id: e.entity_id, domain: e.domain, name: dash.layout.names?.[e.entity_id] || e.name }));
-  const m = matchHome(`turn on ${q.target}`, list);
-  if (!m || m.targets.length !== 1) return null;
-  const d = m.targets[0];
+  const d = findDevice(q.target, list);   // any domain: a door sensor or a cover is asked about too
+  if (!d) return null;
   const entity = shown.find(e => e.entity_id === d.entity_id);
   if (!entity) return null;
   return { say: stateReply(d, entity.state), react: 'look' };
