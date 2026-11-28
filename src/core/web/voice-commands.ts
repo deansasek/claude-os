@@ -555,6 +555,15 @@ async function routineCommand(t: string): Promise<CommandResult | null> {
   if (!routines) return null;
   let list: RoutineRef[];
   try { list = await routines.list(); } catch { return null; }
+  // "what routines do I have": the names, read from the Routines app's own list (nothing is run)
+  if (/^(?:what routines (?:do i have|have i got|are there)|which routines (?:do i have|have i got)|list my routines|what are my routines)$/.test(t)) {
+    const names = list.map(r => r.name);
+    if (!names.length) return { say: 'You don’t have any routines yet.', app: 'routines' };
+    const shown = names.slice(0, 4);
+    const more = names.length - shown.length;
+    const words = shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`;
+    return { say: `You have ${names.length} routine${names.length === 1 ? '' : 's'}: ${words}${more ? `, and ${more} more` : ''}.`, app: 'routines' };
+  }
   if (!list.length) return null;
   const key = (s: string) => normalise(s).replace(/'/g, '');
   const said = t.replace(/'/g, '');
