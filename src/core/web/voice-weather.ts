@@ -118,7 +118,7 @@ export function overnightLow(times: string[], temps: number[], nowIso: string): 
 
 /** "What's the low tonight", "how cold will it get tonight": the overnight low as a number. */
 export function lowTonightWord(t: string): boolean {
-  return /^(?:how cold (?:will it get|is it going to get|will it be|is it going to be) tonight|what(?:'s| is) the low(?: temperature)? tonight|how low will it go tonight|what will the low be tonight|what(?:'s| is) the overnight low)$/.test(t);
+  return /^(?:how cold (?:will it get|is it going to get|will it be|is it going to be|is it|does it get|does it go) tonight|is it (?:going to be )?cold tonight|what(?:'s| is) the (?:temperature|low)(?: temperature)? tonight|how low will it go tonight|what will the low be tonight|what(?:'s| is) the overnight low)$/.test(t);
 }
 
 export function lowTonightSay(low: number): string {
