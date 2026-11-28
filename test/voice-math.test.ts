@@ -12,6 +12,12 @@ test('a plain sum is worked out and said with the Calculator’s result', () => 
   assert.equal(mathSay("how much is 9 minus 4"), '9 minus 4 is 5.');
 });
 
+test('a sum said with a thousands comma is worked out, and a comma between short numbers is not', () => {
+  assert.equal(mathSay("what's 1,500 divided by 3"), '1500 divided by 3 is 500.');
+  assert.equal(mathSay("what's 2,000 plus 1,250"), '2000 plus 1250 is 3250.');
+  assert.equal(mathSay("what's 1, 2"), null);
+});
+
 test('a division by zero, a number on its own, and a phrase with words in it are not sums', () => {
   assert.equal(mathSay("what's 5 divided by 0"), null);
   assert.equal(mathSay("what's 12"), null);
