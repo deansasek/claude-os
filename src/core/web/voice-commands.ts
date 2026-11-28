@@ -100,6 +100,8 @@ export interface ClockApi {
   stopwatchLap(): number | null;
   /** Pause a running timer. False when none runs. */
   pauseTimer(): boolean;
+  pauseNamedTimer(label: string): boolean;
+  resumeNamedTimer(label: string): boolean;
   /** Resume a paused timer. False when none is paused. */
   resumeTimer(): boolean;
   /** Add (positive) or take off (negative) whole minutes. False when no timer is set. */
@@ -523,6 +525,19 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const tw = timerWord(t);
   if (tw && clock) {
     // a timer that is already paused (or already running) says so, rather than "no timer running" (or "no paused timer")
+    if (tw.op === 'pause-named' || tw.op === 'resume-named') {
+      // a named timer: its own state is said ("already paused"), then the change is made by its label
+      const heard = labelAsHeard(tw.label, raw);
+      const shown = heard.charAt(0).toUpperCase() + heard.slice(1);
+      const left = clock.namedTimerLeft(tw.label);
+      if (!left) return { say: `You don’t have ${articleFor(tw.label)} ${heard} timer.`, react: 'look' };
+      if (tw.op === 'pause-named') {
+        if (left.paused) return { say: `The ${heard} timer is already paused.`, react: 'look' };
+        return clock.pauseNamedTimer(tw.label) ? { say: `${shown} timer paused.`, react: 'look' } : { say: `The ${heard} timer isn’t running.`, react: 'look' };
+      }
+      if (!left.paused) return { say: `The ${heard} timer is already running.`, react: 'look' };
+      return clock.resumeNamedTimer(tw.label) ? { say: `${shown} timer resumed.`, react: 'hop' } : { say: `The ${heard} timer isn’t paused.`, react: 'look' };
+    }
     if (tw.op === 'pause') {
       if (clock.pauseTimer()) return { say: 'Timer paused.', react: 'look' };
       return clock.timerPaused() ? { say: 'The timer is already paused.', react: 'look' } : { say: 'There’s no timer running.' };

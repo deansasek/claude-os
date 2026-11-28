@@ -28,7 +28,8 @@ export function alarmOnTimePhrase(t: string): string | null {
   return m && /\d/.test(m[1]) ? m[1] : null;
 }
 
-export type TimerWord ={ op: 'pause' } | { op: 'resume' } | { op: 'nudge'; minutes: number } | { op: 'cancel-all' } | { op: 'cancel-named'; label: string };
+export type TimerWord ={ op: 'pause' } | { op: 'resume' } | { op: 'nudge'; minutes: number } | { op: 'cancel-all' } | { op: 'cancel-named'; label: string }
+  | { op: 'pause-named'; label: string } | { op: 'resume-named'; label: string };
 const NUMBER_WORDS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, fifteen: 15, twenty: 20, thirty: 30 };
 
 /** "What time will the timer go off", "when does the timer finish": the clock time the timer ends, asked for. */
@@ -77,6 +78,12 @@ export function timerWord(t: string): TimerWord | null {
   // "cancel the pasta timer": one timer by its label. A bare "the timer" or a time ("10 minute timer") is not a label.
   const named = t.match(/^(?:cancel|stop|delete|clear|end|kill|turn off) (?:the |my )?(.+?) timer$/);
   if (named && !/^(?:the|my|all|a|an|one|this|that)$/.test(named[1]) && !/\d/.test(named[1])) return { op: 'cancel-named', label: named[1] };
+  // "pause the pasta timer", "resume the BBQ timer": one timer by its label, as cancel is
+  const pauseNamed = t.match(/^(?:pause|hold|freeze) (?:the |my )?(.+?) timer$/);
+  const resumeNamed = t.match(/^(?:resume|continue|restart|unpause) (?:the |my )?(.+?) timer$/);
+  const label = (m: RegExpMatchArray | null): string | null => (m && !/^(?:the|my|all|a|an|one|this|that)$/.test(m[1]) && !/\d/.test(m[1]) ? m[1] : null);
+  if (label(pauseNamed)) return { op: 'pause-named', label: label(pauseNamed)! };
+  if (label(resumeNamed)) return { op: 'resume-named', label: label(resumeNamed)! };
   // "add five more minutes to the timer", "give me two extra minutes on the timer": "more" or "extra" may come after the number
   const add = t.match(/^(?:add|give me) (\w+)(?: more| extra)? (?:minutes?|mins?) (?:to|on) (?:the|my) timer$/);
   const take = t.match(/^(?:take|remove) (\w+)(?: more| extra)? (?:minutes?|mins?) (?:off|from) (?:the|my) timer$/);

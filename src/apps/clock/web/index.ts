@@ -1156,6 +1156,20 @@ const clockApi: ClockApi = {
     return true;
   },
   pauseTimer(): boolean { focusAction(); if (!timer.end) return false; timerPause(); return true; },
+  /** Pause the running timer with this label (its name, any case). Returns whether there was one running. */
+  pauseNamedTimer(label: string): boolean {
+    const want = label.trim().toLowerCase();
+    const hit = timers.find(x => (x.name ?? '').trim().toLowerCase() === want);
+    if (!hit || !hit.end) return false;
+    timer = hit; timerPause(); return true;
+  },
+  /** Resume the paused timer with this label (its name, any case). Returns whether there was one paused. */
+  resumeNamedTimer(label: string): boolean {
+    const want = label.trim().toLowerCase();
+    const hit = timers.find(x => (x.name ?? '').trim().toLowerCase() === want && !x.end && x.left != null);
+    if (!hit) return false;
+    timer = hit; timerStart(); return true;
+  },
   /** Resume the paused timer in the list, even when another timer is running. */
   resumeTimer(): boolean { const paused = timers.find(t => !t.end && t.left != null); if (!paused) return false; timer = paused; timerStart(); return true; },
   nudgeTimer(minutes: number): boolean {
