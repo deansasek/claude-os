@@ -556,13 +556,14 @@ function send(text: string): void {
 function typeReply(): void {
   if (mode !== 'session' || !view?.canReply || activeTurn()) return;
   sendNote = '';
-  const kept = replyDraft.id === openId ? replyDraft.text : '';
+  const session = openId;   // the session this draft belongs to: openId may change while the keyboard closes
+  const kept = replyDraft.id === session ? replyDraft.text : '';
   replyDraft = { id: null, text: '' };
   Keyboard.open({
     value: kept, placeholder: photos.length ? 'Ask about the photo, or send it as it is' : 'Reply to Claude', autoCap: true, max: MAX_MESSAGE, done: 'Send',
     onDone: text => { if (text.trim() || photos.length) send(text.trim()); },
     // closed without Send: the text stays as this session's reply draft
-    onClose: (reason, text) => { if (reason !== 'done') replyDraft = { id: openId, text }; },
+    onClose: (reason, text) => { if (reason !== 'done') replyDraft = { id: session, text }; },
   });
 }
 
