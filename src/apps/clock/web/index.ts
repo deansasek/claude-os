@@ -1204,6 +1204,14 @@ const clockApi: ClockApi = {
     const n = nextAlarm();
     return n ? { h: n.a.h, m: n.a.m, when: whenWord(n.at) } : null;
   },
+  alarmsOn(): { h: number; m: number; days: number[]; when: string }[] {
+    const d = now();
+    return alarms
+      .map(a => ({ a, at: nextFire(a, d) }))
+      .filter((x): x is { a: Alarm; at: number } => (x.a.on || !!x.a.snooze) && x.at != null)
+      .sort((x, y) => x.at - y.at)
+      .map(x => ({ h: x.a.h, m: x.a.m, days: [...x.a.days], when: whenWord(x.at) }));
+  },
 };
 
 const app: HubApp = {

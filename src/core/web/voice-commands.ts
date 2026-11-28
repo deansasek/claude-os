@@ -41,7 +41,7 @@ import { sceneFailText } from '../../apps/home/web/scene-words.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
-import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
+import { alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay, weatherTrouble } from './voice-weather.ts';
 import { radioStopHeard, radioWord } from './voice-radio.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
@@ -97,6 +97,8 @@ export interface ClockApi {
   /** Switch off only the alarms and reminders Claude set (they stay in the list). Returns how many were on. */
   cancelClaudeAlarms(): number;
   nextAlarm(): { h: number; m: number; when: string } | null;
+  /** Every alarm that is on (or snoozed), soonest first; days as Date.getDay values, [] = once. */
+  alarmsOn(): { h: number; m: number; days: number[]; when: string }[];
 }
 let clock: ClockApi | null = null;
 export function provideClock(api: ClockApi): void { clock = api; }
@@ -337,6 +339,15 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     return { say: left == null ? 'There’s no timer running.' : `${sayDuration(Math.ceil(left / 1000) * 1000)} left${paused ? ', and the timer is paused' : ''}.`.replace(/^./, c => c.toUpperCase()) };
   }
 
+  if (alarmsListWord(t)) {
+    if (!clock) return null;
+    const all = clock.alarmsOn();
+    if (!all.length) return { say: 'You don’t have any alarms on.' };
+    const parts = all.slice(0, 4).map(a => `${clockText(a.h, a.m)}${a.days.length ? daysText(a.days) : ` ${a.when}`}`);
+    const more = all.length - parts.length;
+    const joined = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join('; ')}; and ${parts[parts.length - 1]}`;
+    return { say: `You have ${all.length} alarm${all.length === 1 ? '' : 's'} on: ${joined}${more ? `, and ${more} more` : ''}.`, react: 'look', app: 'clock' };
+  }
   if (/^(?:when(?:'s| is) my (?:next )?alarm|what time(?:'s| is) my alarm|is my alarm (?:on|set)|do i have an alarm(?: set)?)$/.test(t)) {
     if (!clock) return null;
     const n = clock.nextAlarm();
