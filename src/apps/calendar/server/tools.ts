@@ -33,10 +33,11 @@ export async function calendarTodayReply(
   const at = (add: number): number => new Date(now.getFullYear(), now.getMonth(), now.getDate() + add).getTime();
   const localDays = local(at(0), at(2));
   if (ans.status === 'not_set' && localDays !== null && !localDays.length) return text(NOT_SET);
-  if (ans.status === 'error') return text(`Couldn’t read the calendar: ${ans.error ?? 'unknown error'}`, true);
   // the ClaudeOS events are added to the day's list; a ClaudeOS calendar that can't be read is said, not hidden
   const base: CalEvents = ans.status === 'not_set' ? { ...ans, status: 'ok', events: [] } : ans;
   const merged = localDays === null ? base : withLocalDays(base, localDays, at(0), at(1), at(2));
+  // only an error with no ClaudeOS events to show is an error: the user's own events still show when the ICS calendar fails
+  if (merged.status === 'error') return text(`Couldn’t read the calendar: ${ans.error ?? 'unknown error'}`, true);
   const tmr = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const parts: string[] = [];
   for (const [d, date] of [['today', now], ['tomorrow', tmr]] as const) {
@@ -45,7 +46,10 @@ export async function calendarTodayReply(
     parts.push(`${d === 'today' ? 'Today' : 'Tomorrow'} (${dayFmt.format(date)}):\n${list.length ? list.map(row).join('\n') : '- Nothing on the calendar.'}`);
   }
   const unread = localDays === null ? ' (The ClaudeOS calendar couldn’t be read just now, so its events are not included.)' : '';
-  const head = `It is now ${hm.format(now)}.${merged.stale ? ` (The calendar couldn’t be read just now, so this is from ${hm.format(new Date(merged.fetchedAt ?? now))}.)` : ''}${unread}\n`;
+  // a stale answer says when it was read; a calendar that could not be read at all says so, without a made-up time
+  const staleSay = merged.stale ? (merged.fetchedAt ? ` (The calendar couldn’t be read just now, so this is from ${hm.format(new Date(merged.fetchedAt))}.)` : ' (The ICS calendar couldn’t be read just now, so its events are not included.)') : '';
+  const head = `It is now ${hm.format(now)}.${staleSay}${unread}
+`;
   return text(head + parts.join('\n\n'));
 }
 
