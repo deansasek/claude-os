@@ -18,6 +18,14 @@ test('a sum said with a thousands comma is worked out, and a comma between short
   assert.equal(mathSay("what's 1, 2"), null);
 });
 
+test('a number squared or cubed is worked out, and squared with no number is not a sum', () => {
+  assert.equal(mathSay("what's 7 squared"), '7 squared is 49.');
+  assert.equal(mathSay("what's 1.5 squared"), '1.5 squared is 2.25.');
+  assert.equal(mathSay("what's 3 cubed"), '3 cubed is 27.');
+  assert.equal(mathSay("what's 12 squared plus 1"), '12 squared plus 1 is 145.');
+  assert.equal(mathSay("what's squared"), null);
+});
+
 test('a division by zero, a number on its own, and a phrase with words in it are not sums', () => {
   assert.equal(mathSay("what's 5 divided by 0"), null);
   assert.equal(mathSay("what's 12"), null);
