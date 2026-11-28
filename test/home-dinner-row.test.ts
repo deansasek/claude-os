@@ -22,3 +22,17 @@ test('Home reads today’s calendar events, opens Meals on a tap, and paints the
   assert.match(src, /if \(seq !== dinnerSeq\) return;/);
   assert.match(html, /data-go="meals"[\s\S]*id="hmDnVal"/);
 });
+
+test('the detail counts the free nights left this week', () => {
+  assert.deepEqual(dinnerRow('Tacos', 'ok', false, 2), { val: 'Tacos', sub: 'Tonight · 2 free nights left' });
+  assert.deepEqual(dinnerRow(null, 'ok', false, 3), { val: 'Nothing planned', sub: '3 free nights left' });
+  assert.equal(dinnerRow(null, 'ok', false, 1).sub, '1 free night left');
+  assert.equal(dinnerRow('Tacos', 'ok', false, 0).sub, 'Tonight · No free nights left');
+});
+
+test('the week is read from its Monday to the next Monday, and the free nights are counted from today', () => {
+  const src = readFileSync(new URL('../src/apps/home/web/index.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(src, /const today = new Date\(\), week = weekDays\(mondayOf\(today\)\);/);
+  assert.match(src, /const todayIndex = \(today\.getDay\(\) \+ 6\) % 7;/);
+  assert.match(src, /dinnerFree = week\.slice\(todayIndex\)\.filter/);
+});
