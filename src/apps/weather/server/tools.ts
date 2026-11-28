@@ -7,6 +7,11 @@ import { weather } from './weather.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
+/** The clock time in a forecast's local time string ("2026-11-27T16:21"): "16:21". Empty when there is none. */
+export function hourMinute(iso: string | undefined): string {
+  return iso ? iso.slice(11, 16) : '';
+}
+
 /** One short phrase for a WMO weather code (what Open-Meteo sends). */
 export function skyWords(code: number): string {
   if (code === 0) return 'clear';
@@ -36,7 +41,8 @@ export async function weatherForecast({ days }: { days?: number }, read: typeof 
   for (let i = 0; i < n; i++) {
     const d = new Date(`${r.daily.time[i]}T12:00:00`);
     rows.push(`${dayShort.format(d)}: high ${Math.round(r.daily.temperature_2m_max[i])}${unit}, low ${Math.round(r.daily.temperature_2m_min[i])}${unit}, `
-      + `${skyWords(r.daily.weather_code[i])}, rain ${Math.round(r.daily.precipitation_probability_max[i])}%, wind up to ${Math.round(r.daily.wind_speed_10m_max[i])} ${r.wind_unit}`);
+      + `${skyWords(r.daily.weather_code[i])}, rain ${Math.round(r.daily.precipitation_probability_max[i])}%, wind up to ${Math.round(r.daily.wind_speed_10m_max[i])} ${r.wind_unit}`
+      + `, sunrise ${hourMinute(r.daily.sunrise?.[i])}, sunset ${hourMinute(r.daily.sunset?.[i])}, UV ${Math.round(r.daily.uv_index_max?.[i] ?? 0)}`);
   }
   const now = `Now ${Math.round(r.current.temperature_2m)}${unit}, ${skyWords(r.current.weather_code)}, feels like ${Math.round(r.current.apparent_temperature)}${unit}.`;
   return text(`Weather for ${r.place ?? 'the set place'}. ${now}\n${rows.join('\n')}`);
@@ -48,7 +54,7 @@ export const weatherServer = createSdkMcpServer({
   tools: [
     tool('weather_forecast',
       'Read the weather forecast for the place set in Settings > Apps > Weather on the ClaudeOS tablet: now, and the next days (highs, lows, '
-        + 'chance of rain, wind). Read-only. days: how many days, 1 to 7 (the default is 7).',
+        + 'chance of rain, wind, sunrise and sunset, UV index). Read-only. days: how many days, 1 to 7 (the default is 7).',
       { days: z.number().int().min(1).max(7).optional() },
       (args) => weatherForecast(args)),
   ],
