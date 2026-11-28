@@ -60,6 +60,8 @@ export interface ClockApi {
   cancelTimer(): boolean;
   /** Cancel every timer in the list. Returns how many there were. */
   cancelAllTimers(): number;
+  /** Cancel the timer with this label (its name, any case). False when there is none. */
+  cancelNamedTimer(label: string): boolean;
   /** Start the stopwatch (true) or stop it (false). False when it is already that way. */
   stopwatch(start: boolean): boolean;
   stopwatchRunning(): boolean;
@@ -304,6 +306,10 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (tw && clock) {
     if (tw.op === 'pause') return clock.pauseTimer() ? { say: 'Timer paused.', react: 'look' } : { say: 'There’s no timer running.' };
     if (tw.op === 'resume') return clock.resumeTimer() ? { say: 'Timer resumed.', react: 'hop' } : { say: 'There’s no paused timer.' };
+    if (tw.op === 'cancel-named') {
+      const shown = tw.label.charAt(0).toUpperCase() + tw.label.slice(1);
+      return clock.cancelNamedTimer(tw.label) ? { say: `${shown} timer cancelled.`, react: 'look' } : { say: `You don’t have a ${tw.label} timer.`, react: 'look' };
+    }
     if (tw.op === 'cancel-all') {
       const n = clock.cancelAllTimers();
       return n ? { say: n === 1 ? 'Timer cancelled.' : `All ${n} timers cancelled.`, react: 'look' } : { say: 'There’s no timer running.', react: 'look' };

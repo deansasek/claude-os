@@ -1133,6 +1133,16 @@ const clockApi: ClockApi = {
     saveTimers(); saveDraft(); renderTimer();
     return n;
   },
+  /** Cancel the listed timer with this label (its name, any case). Returns whether there was one. */
+  cancelNamedTimer(label: string): boolean {
+    const want = label.trim().toLowerCase();
+    const hit = timers.find(x => (x.name ?? '').trim().toLowerCase() === want);
+    if (!hit) return false;
+    if (timer === hit) timer = draftOf(timer.dur);
+    timers = timers.filter(x => x !== hit);
+    saveTimers(); saveDraft(); renderTimer();
+    return true;
+  },
   pauseTimer(): boolean { focusAction(); if (!timer.end) return false; timerPause(); return true; },
   /** Resume the paused timer in the list, even when another timer is running. */
   resumeTimer(): boolean { const paused = timers.find(t => !t.end && t.left != null); if (!paused) return false; timer = paused; timerStart(); return true; },
