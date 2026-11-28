@@ -6,12 +6,23 @@ import { christmasSay, countdownWord, daysUntilChristmas } from '../src/core/web
 
 const voice = readFileSync(new URL('../src/core/web/voice-commands.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
-test('the Christmas countdown phrases are heard, and other phrases are not', () => {
+test('the Christmas countdown phrases are heard, including the short forms people say', () => {
   assert.equal(countdownWord('how many days until christmas'), true);
   assert.equal(countdownWord('how many sleeps until christmas'), true);
+  assert.equal(countdownWord('how many more sleeps until christmas'), true);
+  assert.equal(countdownWord('how many days till christmas'), true);
+  assert.equal(countdownWord("how many days 'til christmas"), true);
+  assert.equal(countdownWord('how long till christmas'), true);
+  assert.equal(countdownWord('how long is it until christmas'), true);
   assert.equal(countdownWord('is it christmas yet'), true);
-  assert.equal(countdownWord('how many days until my birthday'), false);
+  assert.equal(countdownWord('days til christmas'), true);
+});
+
+test('other phrases are not Christmas countdown questions', () => {
+  assert.equal(countdownWord('how many more days until my birthday'), false);
+  assert.equal(countdownWord('how many days until new year'), false);
   assert.equal(countdownWord('what is christmas'), false);
+  assert.equal(countdownWord('how long until my alarm'), false);
 });
 
 test('the count is calendar days, 0 on 25 December, and next year’s after it has passed', () => {
