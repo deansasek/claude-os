@@ -92,6 +92,8 @@ let sleepMin = 0;                        // the sleep choice last made
 let audio: HTMLAudioElement | null = null;
 let seq = 0;                             // the latest catalogue load wins
 let playSeq = 0;                         // the latest play wins
+let homeSeq = 0;                         // the latest Home shelves load wins
+let browseSeq = 0;                       // the latest Browse lists load wins
 let titleTimer = 0;
 const facetCache = new Map<FacetKind, Facet[]>();
 
@@ -397,6 +399,7 @@ async function facetsOf(facet: FacetKind): Promise<Facet[]> {
 async function loadHome(force = false): Promise<void> {
   if (homeDone && !force) { render(); return; }
   homeDone = true;
+  const mine = ++homeSeq;   // a newer Home load started: only the newest answer sets the shelves
   // Keep a shelf that already loaded: its Top stations are not asked again, and its skeleton does not show.
   const keepTop = home.topState === 'ok';
   const keptTop = home.top;
@@ -411,6 +414,7 @@ async function loadHome(force = false): Promise<void> {
     : getJson<StationsResult>(`${API}/catalogue?path=${encodeURIComponent('stations/topvote/100')}`, CATALOGUE_TIMEOUT_MS)
       .then(r => { if (r.status !== 'ok') throw new Error(r.error); return playableStations(r.stations); });
   const [t, g, c] = await Promise.allSettled([top, facetsOf('tags'), facetsOf('countries')]);
+  if (mine !== homeSeq) return;   // a newer Home load started: its answer is the one that counts
   pcDown = [t, g, c].some(unreachable);
   home = {
     top: t.status === 'fulfilled' ? t.value : [], topState: t.status === 'fulfilled' ? 'ok' : 'error',
@@ -424,7 +428,9 @@ const isFiltering = (): boolean => !!(query || filters.country || filters.codec 
 
 async function loadBrowse(): Promise<void> {
   if (browse !== 'loading' && browse !== 'error') { render(); return; }
+  const mine = ++browseSeq;   // a newer Browse load started: only the newest answer sets the browse lists
   const [t, c, l] = await Promise.allSettled([facetsOf('tags'), facetsOf('countries'), facetsOf('languages')]);
+  if (mine !== browseSeq) return;
   pcDown = [t, c, l].some(unreachable);
   browse = t.status === 'fulfilled' && c.status === 'fulfilled' && l.status === 'fulfilled'
     ? { tags: t.value, countries: c.value, languages: l.value } : 'error';
