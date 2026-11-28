@@ -41,11 +41,16 @@ export function overlapsDay<E extends { start: number; end: number }>(events: E[
   return events.filter(e => e.start < endMs && e.end > startMs);
 }
 
-/** What the voice says: the events for that day (already worded, "Dentist at 9:00 AM"), up to three, or that nothing is on. */
-export function calendarDaySay(items: string[], name: string): string {
-  if (!items.length) return `Nothing on your calendar ${name}.`;
+/** The events in a spoken list (already worded, "Dentist at 9:00 AM"): up to three, then "and N more" for the rest. */
+export function listSay(items: string[]): string {
   const shown = items.slice(0, 3);
   const more = items.length - shown.length;
   const words = shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join('; ')}; and ${shown[shown.length - 1]}`;
-  return `${name.replace(/^./, c => c.toUpperCase())}: ${words}${more > 0 ? `, and ${more} more` : ''}.`;
+  return `${words}${more > 0 ? `, and ${more} more` : ''}`;
+}
+
+/** What the voice says: the events for that day (already worded, "Dentist at 9:00 AM"), up to three, or that nothing is on. */
+export function calendarDaySay(items: string[], name: string): string {
+  if (!items.length) return `Nothing on your calendar ${name}.`;
+  return `${name.replace(/^./, c => c.toUpperCase())}: ${listSay(items)}.`;
 }

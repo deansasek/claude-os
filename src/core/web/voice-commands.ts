@@ -60,7 +60,7 @@ import { alreadyPlayingSay, matchStation, playingSay, radioSleepWord, radioStopH
 import type { Station } from '../../apps/radio/api.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWeekSay, dinnerWeekWord, dinnerWord, type Night } from './voice-dinner.ts';
-import { calendarDay, calendarDaySay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
+import { calendarDay, calendarDaySay, listSay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
 import { convertSay } from './voice-convert.ts';
 import { nextRun, nextRunSay } from '../../apps/routines/web/next-run.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
@@ -897,19 +897,17 @@ export async function calendarCommand(day: 'today' | 'tomorrow' = 'today', cache
   const old = r.stale ? 'The calendar may be out of date. ' : '';
   const at = (e: CalEvent) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${timeText(new Date(e.start))}`);
   if (day === 'tomorrow') {
-    const tmr = r.events.filter(e => e.day === 'tomorrow').slice(0, 3).map(at);
+    const tmr = r.events.filter(e => e.day === 'tomorrow').map(at);
     if (!tmr.length) return { say: `${old}Nothing on your calendar tomorrow.`, react: 'hop' };
-    const w = tmr.length === 1 ? tmr[0] : `${tmr.slice(0, -1).join('; ')}; and ${tmr[tmr.length - 1]}`;
-    return { say: `${old}Tomorrow: ${w}.`, react: 'look', app: 'calendar' };
+    return { say: `${old}Tomorrow: ${listSay(tmr)}.`, react: 'look', app: 'calendar' };
   }
   const now = Date.now();
-  const next = r.events.filter(e => e.day === 'today' && Date.parse(e.end) > now).slice(0, 3).map(at);
+  const next = r.events.filter(e => e.day === 'today' && Date.parse(e.end) > now).map(at);
   if (!next.length) {
     const tmr = r.events.find(e => e.day === 'tomorrow');
     return { say: `${old}Nothing more on your calendar today.${tmr ? ` Tomorrow starts with ${at(tmr)}.` : ''}`, react: 'hop' };
   }
-  const words = next.length === 1 ? next[0] : `${next.slice(0, -1).join('; ')}; and ${next[next.length - 1]}`;
-  return { say: `${old}${next.length === 1 ? 'Next up' : 'Coming up'}: ${words}.`, react: 'look', app: 'calendar' };
+  return { say: `${old}${next.length === 1 ? 'Next up' : 'Coming up'}: ${listSay(next)}.`, react: 'look', app: 'calendar' };
 }
 
 // ---------- Lists: "add milk to the shopping list", "what's on the to-do list" ----------
@@ -924,10 +922,9 @@ async function connectorCommand(day: 'today' | 'tomorrow', cachedOnly = false): 
   if (r?.status !== 'ok' || !Array.isArray(r.events)) return { say: 'I can’t read the calendar right now.' };
   const at = (e: Ev) => (e.allDay ? `${e.title}, all day` : `${e.title} at ${timeText(new Date(e.start))}`);
   const now = Date.now();
-  const shown = (day === 'today' ? r.events.filter(e => e.end > now) : r.events).slice(0, 3).map(at);
+  const shown = (day === 'today' ? r.events.filter(e => e.end > now) : r.events).map(at);
   if (!shown.length) return { say: day === 'today' ? 'Nothing more on your calendar today.' : 'Nothing on your calendar tomorrow.', react: 'hop' };
-  const words = shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join('; ')}; and ${shown[shown.length - 1]}`;
-  return { say: `${day === 'today' ? 'Coming up' : 'Tomorrow'}: ${words}.`, react: 'look', app: 'calendar' };
+  return { say: `${day === 'today' ? 'Coming up' : 'Tomorrow'}: ${listSay(shown)}.`, react: 'look', app: 'calendar' };
 }
 
 /** A write the PC could not take: writeList queued it on the tablet and threw queued: true. Any other error is rethrown,
