@@ -68,6 +68,13 @@ export function weekIngredients(dinnerTexts: string[], recipes: { name: string; 
   return { items: [...items], unmatched };
 }
 
+/** How many of this week's dinner ingredients are not on the Shopping list yet (each counted once, names compared without case). */
+export function missingIngredients(dinnerTexts: string[], recipes: { name: string; ingredients: string[] }[], onList: string[]): number {
+  const have = new Set(onList.map(t => t.trim().toLowerCase()));
+  const missing = new Set(weekIngredients(dinnerTexts, recipes).items.map(i => i.trim().toLowerCase()));
+  return [...missing].filter(k => !have.has(k)).length;
+}
+
 /** Copy last week's dinners into this week's free nights, weekday for weekday. A night that already has a dinner is kept.
  *  Returns the dinners to add: this week's day index, and the event to write. */
 export function copyPlan(days: Day[], lastDays: Day[], thisDinners: Dinner[], lastDinners: Dinner[]): { i: number; title: string; start: number; end: number }[] {
