@@ -46,7 +46,7 @@ import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
-import { airSay, airWord, frostSay, frostTonight, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
+import { airSay, airWord, forecastDay, frostSay, frostTonight, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -253,12 +253,15 @@ async function windCommand(day: 0 | 1): Promise<CommandResult> {
 /** Today's weather, as "what's the weather" answers it (a routine's weather step speaks the same words). */
 export const weatherToday = (): Promise<CommandResult> => weather(0, null);
 
-async function weather(day: 0 | 1, rainOnly: 'rain' | 'snow' | null): Promise<CommandResult> {
+/** day is how many days ahead (0 today, 1 tomorrow, 2 to 7 a named weekday). */
+async function weather(day: number, rainOnly: 'rain' | 'snow' | null): Promise<CommandResult> {
   let w: Wx;
   try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
   if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
   if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
-  const d = w.daily, when = day ? 'tomorrow' : 'today';
+  const d = w.daily, dayName = weekdayName(new Date().getDay() + day);
+  const when = day === 0 ? 'today' : day === 1 ? 'tomorrow' : `on ${dayName}`;
+  const lead = day === 0 ? 'Today' : day === 1 ? 'Tomorrow' : dayName;
   const chance = d.precipitation_probability_max[day] ?? 0, code = d.weather_code[day];
   if (rainOnly) {
     const snowy = code >= 71 && code <= 86;
@@ -272,7 +275,7 @@ async function weather(day: 0 | 1, rainOnly: 'rain' | 'snow' | null): Promise<Co
   if (!day && w.current) {
     return { say: `It's ${deg(w.current.temperature_2m)} and ${sky(w.current.weather_code)}${w.place ? ` in ${w.place.split(',')[0]}` : ''}. Today, a high of ${deg(hi)} and a low of ${deg(lo)}${rain}.`, react: 'look' };
   }
-  return { say: `Tomorrow looks ${sky(code)}, with a high of ${deg(hi)} and a low of ${deg(lo)}${rain}.`, react: 'look' };
+  return { say: `${lead} looks ${sky(code)}, with a high of ${deg(hi)} and a low of ${deg(lo)}${rain}.`, react: 'look' };
 }
 
 // ---------- screen, sound, theme, apps ----------
@@ -518,6 +521,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const falling = rainingNow(t);
   if (falling !== null) return rainingNowCommand(falling);
   if (frostTonight(t)) return frostCommand();
+  // a named weekday: "what's the weather on Saturday", "will it rain on Friday" (forecastDay in voice-weather.ts)
+  const onDay = forecastDay(t, new Date().getDay());
+  if (onDay !== null) return weather(onDay.day, onDay.rainOnly);
   if (airWord(t)) return airCommand();
   const sun = sunDay(t);
   if (sun !== null) return sunCommand(sun.which, sun.day);
