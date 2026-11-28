@@ -26,3 +26,13 @@ test('the handler checks the weekday of tomorrow and the one-off alarms set for 
 test('the reply gives the earliest alarm tomorrow by time of day, not by the next ring', () => {
   assert.match(voice, /\.sort\(\(a, b\) => a\.h \* 60 \+ a\.m - \(b\.h \* 60 \+ b\.m\)\);/);
 });
+
+test('the contracted and British tomorrow-alarm phrases are heard; other alarm questions are not', () => {
+  assert.equal(alarmTomorrowWord("what time's my alarm tomorrow"), true);
+  assert.equal(alarmTomorrowWord("when's my alarm tomorrow"), true);
+  assert.equal(alarmTomorrowWord('when is my alarm tomorrow'), true);
+  assert.equal(alarmTomorrowWord('have i got an alarm tomorrow'), true);
+  assert.equal(alarmTomorrowWord('is there an alarm set for tomorrow'), true);
+  assert.equal(alarmTomorrowWord("when's my alarm"), false);
+  assert.equal(alarmTomorrowWord('what time is my alarm'), false);
+});
