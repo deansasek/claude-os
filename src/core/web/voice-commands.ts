@@ -56,7 +56,7 @@ import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWo
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
-import { alreadyPlayingSay, matchStation, playingSay, radioStopHeard, radioWord, stationWord } from './voice-radio.ts';
+import { alreadyPlayingSay, matchStation, playingSay, radioSleepWord, radioStopHeard, radioWord, stationWord } from './voice-radio.ts';
 import type { Station } from '../../apps/radio/api.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWeekSay, dinnerWeekWord, dinnerWord, type Night } from './voice-dinner.ts';
@@ -690,6 +690,13 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
       dispatchEvent(new CustomEvent('hub:radio-play', { detail: hit }));
       return { say: '' };
     }
+  }
+  // "turn the radio off in 30 minutes": the Radio app's own sleep timer (radioSleepWord in voice-radio.ts)
+  const sleepFor = radioSleepWord(t);
+  if (sleepFor !== null) {
+    if (!radioStopHeard(mediaState())) return { say: 'The radio isn’t playing.', app: 'radio' };
+    dispatchEvent(new CustomEvent('hub:radio-sleep', { detail: sleepFor }));
+    return { say: `The radio will stop in ${sleepFor} minutes.`, react: 'look', app: 'radio' };
   }
   if (radio === 'stop' && radioStopHeard(mediaState())) { pauseMedia(); return { say: 'Stopped.' }; }
   if (radio === 'whats-playing') return { say: playingSay(nowPlaying(), mediaState()), react: 'look', app: 'radio' };
