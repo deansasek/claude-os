@@ -46,7 +46,7 @@ import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
-import { nowSay, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
+import { frostSay, frostTonight, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -169,8 +169,9 @@ const clockText = (h: number, m: number) => new Date(2000, 0, 1, h, m).toLocaleT
 // ---------- weather ----------
 interface Wx {
   status: string; units?: string; place?: string | null; city?: string; wind_unit?: string;
-  current?: { temperature_2m: number; weather_code: number; wind_speed_10m?: number };
-  daily?: { weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; wind_speed_10m_max?: number[]; sunrise?: string[]; sunset?: string[] };
+  current?: { time?: string; temperature_2m: number; weather_code: number; wind_speed_10m?: number };
+  hourly?: { time: string[]; temperature_2m: number[] };
+  daily?:{ weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; wind_speed_10m_max?: number[]; sunrise?: string[]; sunset?: string[] };
 }
 function sky(code: number): string {
   if (code === 0) return 'clear';
@@ -195,6 +196,18 @@ async function rainingNowCommand(asked: 'raining' | 'snowing' | 'foggy'): Promis
   const code = w.current?.weather_code;
   if (code == null) return { say: 'I can’t get the weather right now.' };
   return { say: nowSay(code, asked), react: 'look' };
+}
+
+/** "Will it freeze tonight": the lowest hourly temperature from now until 08:00 tomorrow, against freezing. */
+async function frostCommand(): Promise<CommandResult> {
+  let w: Wx;
+  try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
+  if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
+  if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
+  const units: Units = w.units === 'celsius' ? 'celsius' : 'fahrenheit';
+  const low = w.current?.time && w.hourly ? overnightLow(w.hourly.time, w.hourly.temperature_2m, w.current.time) : null;
+  if (low == null) return { say: 'I can’t get the temperatures right now.' };
+  return { say: frostSay(low, units), react: 'look' };
 }
 
 /** "What time is sunset": the day's sunrise or sunset from the forecast, said the way the Weather app's tip says it. */
@@ -494,6 +507,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (windy !== null) return windCommand(windy);
   const falling = rainingNow(t);
   if (falling !== null) return rainingNowCommand(falling);
+  if (frostTonight(t)) return frostCommand();
   const sun = sunDay(t);
   if (sun !== null) return sunCommand(sun.which, sun.day);
   if (/^(?:what(?:'s| is| will be) the weather(?: like)?(?: today| now| right now| outside)?|how(?:'s| is) the weather(?: today)?|weather(?: today)?|what(?:'s| is) it like outside|what(?:'s| is) the forecast(?: today)?)$/.test(t)) return weather(0, null);
