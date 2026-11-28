@@ -25,6 +25,8 @@ const num = (s: string): number => (s === 'a' || s === 'an' || s === 'one' ? 1 :
 export function convertSay(raw: string): string | null {
   // "minus 10", "negative 5", "−10": a minus sign for the number that follows
   const s = raw.toLowerCase().replace(/’/g, "'").replace(/\b(?:minus|negative)\s+(?=\d)/g, '-').replace(/−/g, '-')
+    // "200g", "500ml": a unit joined to its number gets a space (the unit list is explicit, so "1c" or "2f" are left alone)
+    .replace(/(\d)(g|kg|oz|lbs?|ml|tbsps?|tsps?)\b/g, '$1 $2')
     // "180°C", "350 °F": the degree sign and its letter become the unit word
     .replace(/\s*°\s*c\b/g, ' celsius').replace(/\s*°\s*f\b/g, ' fahrenheit').replace(/\s+/g, ' ')
     .replace(/[?.!]+$/, '').trim();

@@ -27,6 +27,13 @@ test('weight converts to weight: grams, kilos, ounces and pounds', () => {
   assert.equal(convertSay("what's 2 kilos in pounds"), '2 kilograms is 4.41 pounds.');
 });
 
+test('a unit joined to its number is worked out: 200g, 8oz, 500ml and 2lb', () => {
+  assert.equal(convertSay("what's 200g in ounces"), '200 grams is 7.05 ounces.');
+  assert.equal(convertSay('convert 500ml to cups'), '500 millilitres is 2.11 cups.');
+  assert.equal(convertSay("what's 8oz in grams"), '8 ounces is 226.8 grams.');
+  assert.equal(convertSay('how many grams in 2lb'), '907.18 grams in 2 pounds.');
+});
+
 test('weight does not convert to a volume, and fluid ounces are still a volume', () => {
   assert.equal(convertSay('how many cups in grams'), null);
   assert.equal(convertSay('how many ounces in a cup'), null);
