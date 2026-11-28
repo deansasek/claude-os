@@ -398,7 +398,11 @@ function onSheetClick(ev: Event): void {
     const id = b.dataset.list;
     closeSheet();
     hideUndo();
-    void send('delete-list', { list: id });
+    void send('delete-list', { list: id }).then(() => {   // the page moves off a list that is gone, and the Shopping chips come back at once
+      if (current === id) current = 'shopping';
+      render();
+      void loadSuggest();
+    });
   } else closeSheet();
 }
 
