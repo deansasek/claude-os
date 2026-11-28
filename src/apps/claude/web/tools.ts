@@ -53,6 +53,7 @@ const BUILT_IN: Record<string, ToolWords> = {
   'mcp__claudeos_tablet__tablet_status': { now: 'Check the tablet’s battery and Wi-Fi', past: 'Checked the tablet’s battery and Wi-Fi', doing: 'Checking the battery and Wi-Fi' },
   'mcp__claudeos_tablet__cancel_timer': { now: 'Cancel the tablet timer', past: 'Cancelled the tablet timer', doing: 'Cancelling the timer' },
   'mcp__claudeos_tablet__set_dnd': { now: 'Change Do Not Disturb', past: 'Changed Do Not Disturb', doing: 'Changing Do Not Disturb' },
+  'mcp__claudeos_tablet__adjust_timer': { now: 'Change a timer', past: 'Changed a timer', doing: 'Changing a timer' },
   'mcp__claudeos_tablet__pause_timer': { now: 'Pause a timer', past: 'Paused a timer', doing: 'Pausing a timer' },
   'mcp__claudeos_tablet__resume_timer': { now: 'Resume a timer', past: 'Resumed a timer', doing: 'Resuming a timer' },
   'mcp__claudeos_tablet__cancel_alarms': { now: 'Switch off Claude’s alarms', past: 'Switched off Claude’s alarms', doing: 'Switching off alarms' },
