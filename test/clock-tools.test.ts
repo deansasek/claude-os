@@ -87,3 +87,9 @@ test('a named adjust reply says to the timer when adding and from it when taking
   const relay = readFileSync(new URL('../src/apps/claude/web/browser-relay.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   assert.ok(relay.includes("${m > 0 ? 'Added' : 'Took off'} ${amount} ${m > 0 ? 'to' : 'from'} the ${label} timer."));
 });
+
+test('clock_status says it names the named timers and their time left, and whether one is paused', () => {
+  const tablet = readFileSync(new URL('../src/apps/claude/server/tablet.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.ok(tablet.includes('the names of the named timers with their time left'));
+  assert.ok(tablet.includes('(and whether it is paused)'));
+});
