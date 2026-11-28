@@ -28,7 +28,7 @@ test('clock_status says when the next alarm rings', () => {
 test('clock_status says the stopwatch’s time and whether it runs, as the voice does', () => {
   assert.ok(relay.includes("import { articleFor, daysText, sayDuration } from '../../../core/web/voice-parse.ts';"));
   assert.ok(relay.includes("const swSay = sw >= 1000 ? ` The stopwatch is ${clock.stopwatchRunning() ? 'running' : 'stopped'} at ${sayDuration(Math.floor(sw / 1000) * 1000)}.` : '';"));
-  assert.ok(relay.includes('${alarmSay}${swSay}` };'));
+  assert.ok(relay.includes('${alarmSay}${swSay}${nameSay}` };'));
 });
 
 test('pause_timer and resume_timer are Claude tools, with the replies the voice gives', () => {
@@ -74,4 +74,11 @@ test('list_alarms is a Claude tool: the alarms that are on, soonest first, with 
   assert.ok(relay.includes("if (op === 'list_alarms') {"));
   assert.ok(relay.includes("const all = clock.alarmsOn();"));
   assert.ok(relay.includes("if (!all.length) return { ok: true, data: 'No alarms are on.' };"));
+});
+
+test('clock_status names the named timers, so Claude can give one by its label', () => {
+  const clockSrc = readFileSync(new URL('../src/apps/clock/web/index.ts', import.meta.url), 'utf8');
+  assert.ok(clockSrc.includes("timerNames: (): string[] => timers.filter(t => t.name && (t.end || t.left != null)).map(t => (t.name ?? '').trim()),"));
+  assert.ok(relay.includes("const nameSay = names.length ? ` Named timers: ${names.join(', ')}.` : '';"));
+  assert.ok(relay.includes("${alarmSay}${swSay}${nameSay}` };"));
 });

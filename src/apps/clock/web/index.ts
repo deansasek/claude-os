@@ -1131,6 +1131,8 @@ const clockApi: ClockApi = {
   cancelTimer(): boolean { focusAction(); const had = isListed(timer); timerReset(); return had; },
   actionTimerName: (): string | null => actionTimer().name || null,
   timerCount: (): number => timers.length,
+  /** The names of the named timers that are running or paused, so Claude can give one by its label. */
+  timerNames: (): string[] => timers.filter(t => t.name && (t.end || t.left != null)).map(t => (t.name ?? '').trim()),
   /** Cancel every timer in the list. Returns how many there were; the draft in front keeps its length. */
   cancelAllTimers(): number {
     const n = timers.length;

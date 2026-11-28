@@ -84,6 +84,7 @@ export interface ClockApi {
   actionTimerName(): string | null;
   /** How many timers are listed (set, running or paused). */
   timerCount(): number;
+  timerNames(): string[];
   /** Cancel every timer in the list. Returns how many there were. */
   cancelAllTimers(): number;
   /** Cancel the timer with this label (its name, any case). False when there is none. */
