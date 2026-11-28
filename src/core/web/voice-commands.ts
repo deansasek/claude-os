@@ -50,7 +50,8 @@ import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWo
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
-import { alreadyPlayingSay, playingSay, radioStopHeard, radioWord } from './voice-radio.ts';
+import { alreadyPlayingSay, matchStation, playingSay, radioStopHeard, radioWord, stationWord } from './voice-radio.ts';
+import type { Station } from '../../apps/radio/api.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
 import { calendarDay, calendarDaySay, nextEventWord, type CalDay } from './voice-calendar.ts';
@@ -595,6 +596,19 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (already) return { say: already, react: 'look', app: 'radio' };
     dispatchEvent(new CustomEvent('hub:radio-last'));
     return { say: '' };
+  }
+  // "play Radio 2": a saved station by name (favourites, then recent). An unknown name goes on to the rest of the commands.
+  const stationName = stationWord(t);
+  if (stationName !== null) {
+    let saved: Station[] = [];
+    try { saved = [...JSON.parse(store.get('radio.favs') || '[]'), ...JSON.parse(store.get('radio.recent') || '[]')] as Station[]; } catch { /* none kept */ }
+    const hit = matchStation(stationName, saved);
+    if (hit) {
+      const already = alreadyPlayingSay(nowPlaying(), mediaState());
+      if (already) return { say: already, react: 'look', app: 'radio' };
+      dispatchEvent(new CustomEvent('hub:radio-play', { detail: hit }));
+      return { say: '' };
+    }
   }
   if (radio === 'stop' && radioStopHeard(mediaState())) { pauseMedia(); return { say: 'Stopped.' }; }
   if (radio === 'whats-playing') return { say: playingSay(nowPlaying(), mediaState()), react: 'look', app: 'radio' };

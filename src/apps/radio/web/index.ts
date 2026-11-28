@@ -852,6 +852,8 @@ const app: HubApp = {
     ctx = c;
     // a routine's "play the last station" step: the most recent station plays (routines/web/run.ts)
     addEventListener('hub:radio-last', () => { if (recent[0]) play(recent[0]); });
+    // "play Radio 2" (voice-commands.ts): the saved station the voice matched plays
+    addEventListener('hub:radio-play', (e) => { const s = (e as CustomEvent<Station>).detail; if (s) play(s); });
     $('rdPrev').innerHTML = I.prev;
     $('rdNext').innerHTML = I.next;
     $('rdSearchIc').innerHTML = I.search;
