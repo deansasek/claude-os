@@ -960,6 +960,7 @@ export function notify(n: Notice, appVisible = false): void {
   notes = [{ ...n, at: nextNoticeAt(notes, Date.now()) }, ...notes.filter(x => x.title !== n.title || x.app !== n.app)];
   saveNotes();
   if (appVisible || !prefs.banners || (n.app && mutedApps().includes(n.app))) return;
+  if (quietNow() && ambientOn) return;   // quiet hours: a notice stays in Recent and does not wake the ambient screen
   wake();
   if (ccOpen) return;   // it's already in the open list
   const b = $s('banner');
