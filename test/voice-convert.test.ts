@@ -21,6 +21,11 @@ test('"convert N unit to unit" is converted too', () => {
   assert.equal(convertSay('convert 1 cup to millilitres'), '1 cup is 236.59 millilitres.');
 });
 
+test('a temperature said with a degree sign is worked out', () => {
+  assert.equal(convertSay("what's 180°c in °f"), '180 degrees Celsius is 356 degrees Fahrenheit.');
+  assert.equal(convertSay("what's 350 °F in °C"), '350 degrees Fahrenheit is 176.67 degrees Celsius.');
+});
+
 test('a below-zero temperature keeps its minus sign, said as a minus or a negative, or with the sign', () => {
   assert.equal(convertSay("what's -10 celsius in fahrenheit"), '-10 degrees Celsius is 14 degrees Fahrenheit.');
   assert.equal(convertSay("what's minus 40 celsius in fahrenheit"), '-40 degrees Celsius is -40 degrees Fahrenheit.');

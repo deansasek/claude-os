@@ -24,7 +24,10 @@ const num = (s: string): number => (s === 'a' || s === 'an' || s === 'one' ? 1 :
 /** The spoken conversion, or null when the phrase is not a conversion or the two units cannot convert. */
 export function convertSay(raw: string): string | null {
   // "minus 10", "negative 5", "−10": a minus sign for the number that follows
-  const s = raw.toLowerCase().replace(/’/g, "'").replace(/\b(?:minus|negative)\s+(?=\d)/g, '-').replace(/−/g, '-').replace(/[?.!]+$/, '').trim();
+  const s = raw.toLowerCase().replace(/’/g, "'").replace(/\b(?:minus|negative)\s+(?=\d)/g, '-').replace(/−/g, '-')
+    // "180°C", "350 °F": the degree sign and its letter become the unit word
+    .replace(/\s*°\s*c\b/g, ' celsius').replace(/\s*°\s*f\b/g, ' fahrenheit').replace(/\s+/g, ' ')
+    .replace(/[?.!]+$/, '').trim();
   // "what's 180 celsius in fahrenheit", "how much is 2 cups in millilitres"
   let m = /^(?:what(?:'s| is)|how much is) (-?\d+(?:\.\d+)?) (.+?) in (.+)$/.exec(s);
   if (m) return answer(Number(m[1]), m[2], m[3], 'is');
