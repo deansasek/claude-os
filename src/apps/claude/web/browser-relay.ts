@@ -82,7 +82,10 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms', args: R
   const mins = left == null ? 0 : Math.ceil(left / 60e3);
   const timer = left == null ? 'No timer is running.' : `A timer has ${mins} minute${mins === 1 ? '' : 's'} left.`;
   const on = clock.active();
-  return { ok: true, data: `${timer} ${on ? `${on} timer or alarm${on === 1 ? '' : 's'} on.` : 'No timers or alarms are on.'}` };
+  // the next alarm, with its time and whether it is today, tomorrow or a weekday (nextAlarm on the Clock)
+  const next = clock.nextAlarm();
+  const alarmSay = next ? ` Next alarm: ${hhmm(next.h, next.m)} ${next.when}.` : '';
+  return { ok: true, data: `${timer} ${on ? `${on} timer or alarm${on === 1 ? '' : 's'} on.` : 'No timers or alarms are on.'}${alarmSay}` };
 }
 
 /** "17:05" for the answer, as Claude gave it (24-hour). */
