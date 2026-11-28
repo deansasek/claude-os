@@ -1,21 +1,21 @@
 // The words on Home's Today (calendar) tile, kept free of the DOM so a test can read them (src/apps/home/web/index.ts).
 // The tile is narrow: the value is the next event, and the detail sits under it.
+import { hourMinuteFormat } from '../../../core/web/time-format.ts';
 
 export interface RowEvent { title: string; start: string; end: string; allDay: boolean; day: 'today' | 'tomorrow'; location?: string }
 export interface RowCal { status: 'ok' | 'not_set' | 'error' | string; events: RowEvent[]; stale?: boolean }
 
 export interface CalRow { cls: string; val: string; sub: string }
 
-const hmFmt = new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit' });
-/** "9:30 AM" for a time, built from parts as Home's clock does. */
-function hm(d: Date): string {
+/** "9:30 AM" (or "09:30" on the 24-hour setting) for a time, built from parts as Home's clock does. */
+function hm(d: Date, fmt: Intl.DateTimeFormat): string {
   let hour = '', minute = '', period = '';
-  for (const p of hmFmt.formatToParts(d)) {
+  for (const p of fmt.formatToParts(d)) {
     if (p.type === 'hour') hour = p.value; else if (p.type === 'minute') minute = p.value; else if (p.type === 'dayPeriod') period = p.value;
   }
   return `${hour}:${minute}${period ? ' ' + period : ''}`;
 }
-const calLine = (e: RowEvent): string => (e.allDay ? `${e.title} (all day)` : `${hm(new Date(e.start))} ${e.title}`);
+const calLine = (e: RowEvent, fmt: Intl.DateTimeFormat): string => (e.allDay ? `${e.title} (all day)` : `${hm(new Date(e.start), fmt)} ${e.title}`);
 
 /**
  * The tile's class, value and detail.
@@ -32,7 +32,8 @@ export function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function calendarRow(cal: RowCal | null, failed: boolean, miss: boolean, now: number): CalRow {
+export function calendarRow(cal: RowCal | null, failed: boolean, miss: boolean, now: number, h24?: string | null): CalRow {
+  const fmt = hourMinuteFormat(h24);
   if (!cal || cal.status !== 'ok') {
     if (miss && !failed) return { cls: 'quiet', val: 'Not read yet', sub: 'Open Calendar to read it' };
     return {
@@ -48,11 +49,11 @@ export function calendarRow(cal: RowCal | null, failed: boolean, miss: boolean, 
     return {
       cls: 'quiet',
       val: cal.events.some(e => e.day === 'today') ? 'Nothing more' : 'A free day',
-      sub: off + (tmr ? `Tomorrow: ${calLine(tmr)}` : 'Nothing tomorrow either'),
+      sub: off + (tmr ? `Tomorrow: ${calLine(tmr, fmt)}` : 'Nothing tomorrow either'),
     };
   }
-  const rest = next.slice(1).map(calLine).join(' · ');
-  return { cls: 'hm-ntitle', val: calLine(next[0]), sub: off + (rest || (next[0].location ?? 'Nothing else today')) };
+  const rest = next.slice(1).map(e => calLine(e, fmt)).join(' · ');
+  return { cls: 'hm-ntitle', val: calLine(next[0], fmt), sub: off + (rest || (next[0].location ?? 'Nothing else today')) };
 }
 
 // The connector's answer for one day, as the PC's cached-only read returns it (times as epoch ms).
