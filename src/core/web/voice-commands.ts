@@ -435,7 +435,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
 
   // time and date
   // "how many days until Christmas": calendar days, on this tablet's clock (voice-countdown.ts)
-  if (countdownWord(t)) return { say: christmasSay(new Date()), react: 'look' };
+  if (countdownWord(t)) return { say: christmasSay(new Date(), /sleeps/.test(t)), react: 'look' };
   if (/^(?:what(?:'s| is) the time(?: now| right now)?|what time is it(?: now| right now)?|(?:tell me )?the time|time)$/.test(t)) {
     return { say: `It's ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` };
   }

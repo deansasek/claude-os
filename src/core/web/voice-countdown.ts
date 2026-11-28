@@ -15,9 +15,9 @@ export function daysUntilChristmas(now: Date): number {
 }
 
 /** What the voice says: the count, "It's Christmas today!" on the day, and the day word for one day. */
-export function christmasSay(now: Date): string {
+export function christmasSay(now: Date, sleeps = false): string {
   const n = daysUntilChristmas(now);
   if (n === 0) return 'It’s Christmas today!';
-  if (n === 1) return 'Christmas is tomorrow.';
-  return `${n} days until Christmas.`;
+  if (n === 1) return sleeps ? 'One more sleep until Christmas.' : 'Christmas is tomorrow.';
+  return sleeps ? `${n} sleeps until Christmas.` : `${n} days until Christmas.`;
 }

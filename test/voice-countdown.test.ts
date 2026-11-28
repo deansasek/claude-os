@@ -38,6 +38,13 @@ test('the reply says the count, the day itself, and tomorrow', () => {
   assert.equal(christmasSay(new Date(2026, 11, 24, 9, 0)), 'Christmas is tomorrow.');
 });
 
+test('a sleeps question is answered in sleeps', () => {
+  assert.equal(christmasSay(new Date(2026, 10, 28, 9, 0), true), '27 sleeps until Christmas.');
+  assert.equal(christmasSay(new Date(2026, 11, 24, 9, 0), true), 'One more sleep until Christmas.');
+  assert.equal(christmasSay(new Date(2026, 11, 25, 9, 0), true), 'It’s Christmas today!');
+  assert.match(voice, /christmasSay\(new Date\(\), \/sleeps\/\.test\(t\)\)/);
+});
+
 test('the voice answers the phrase from the time-and-date block', () => {
-  assert.match(voice, /if \(countdownWord\(t\)\) return \{ say: christmasSay\(new Date\(\)\), react: 'look' \};/);
+  assert.match(voice, /if \(countdownWord\(t\)\) return \{ say: christmasSay\(new Date\(\), \/sleeps\/\.test\(t\)\), react: 'look' \};/);
 });
