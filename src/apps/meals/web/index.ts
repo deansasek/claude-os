@@ -56,13 +56,17 @@ function paint(c: AppContext): void {
 }
 
 /** Read the week's ClaudeOS events from the PC and show them. */
+let loadSeq = 0;   // each week read takes a number: an older week's late reply cannot fill the nights on screen
 async function load(c: AppContext): Promise<void> {
+  const seq = ++loadSeq;
   const from = isoDay(days[0].date), to = isoDay(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7));
   try {
     const r = await getJson<LocalRead>(`${API}/local?from=${from}&to=${to}`, READ_TIMEOUT_MS);
+    if (seq !== loadSeq) return;   // the week changed while this read was out
     if (r.status !== 'ok') { setStatus(c, r.error || 'Couldn’t read the week from your PC.'); dinners = []; }
     else { dinners = dinnersIn(r.events ?? []); if (status) setStatus(c, ''); }
   } catch {
+    if (seq !== loadSeq) return;
     setStatus(c, 'Couldn’t reach your PC. Try again in a moment.');
     dinners = [];
   }
