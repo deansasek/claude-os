@@ -5,7 +5,8 @@ import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { manifest } from '../manifest.ts';
-import { copyPlan, dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayAfter, mondayOf, savedRecipeNames, plannedWords, weekDays, type Day, type Dinner } from './week.ts';
+import { copyPlan, dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayAfter, mondayOf, savedRecipeNames, plannedWords, recipeFor, weekDays, type Day, type Dinner } from './week.ts';
+import { openApp } from '../../../core/web/system.ts';
 import { addDinnersToShopping } from './week-shopping.ts';
 
 const API = '/api/calendar';
@@ -47,8 +48,10 @@ function paint(c: AppContext): void {
         ${dinner ? `<button class="mp-btn" data-act="remove" data-i="${i}">Remove</button>` : ''}
         <button class="mp-btn" data-act="cancel" data-i="${i}">Cancel</button></div></div></div>`;
     }
-    return `<div class="mp-day"><div class="mp-dow">${esc(label)}</div>
-      <button class="mp-text${dinner ? '' : ' empty'}" data-act="edit" data-i="${i}">${esc(dinner?.text || 'Add a dinner')}</button></div>`;
+    const recipe = dinner ? recipeFor(dinner.text, savedRecipeNames(store.get(RECIPES_KEY))) : null;
+    return `<div class="mp-day"><div class="mp-dow">${esc(label)}</div><div class="mp-cell">
+      <button class="mp-text${dinner ? '' : ' empty'}" data-act="edit" data-i="${i}">${esc(dinner?.text || 'Add a dinner')}</button>
+      ${recipe ? `<button class="mp-link" data-act="recipe" data-name="${esc(recipe)}">Open the recipe</button>` : ''}</div></div>`;
   }).join('');
 }
 
@@ -170,6 +173,7 @@ const app: HubApp = {
       const i = Number(b.dataset.i);
       if (b.dataset.act === 'edit') { editing = i; paint(c); c.$('mpDays').querySelector<HTMLInputElement>(`input[data-i="${i}"]`)?.focus(); }
       if (b.dataset.act === 'cancel') { editing = null; paint(c); }
+      if (b.dataset.act === 'recipe') { openApp('recipes'); dispatchEvent(new CustomEvent('hub:open-recipe', { detail: b.dataset.name ?? '' })); }
       if (b.dataset.act === 'pick') {   // a saved recipe fills the box; Save then writes it as the dinner
         const input = c.$('mpDays').querySelector<HTMLInputElement>(`input[data-i="${i}"]`);
         if (input) { input.value = b.dataset.name ?? ''; input.focus(); }
