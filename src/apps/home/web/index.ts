@@ -881,6 +881,7 @@ function mount(context: AppContext): void {
     if (go === 'notes') { openControlCenter(); return; }
     if (go === 'claude') { const w = waitingSessions()[0]; if (w?.id) { openSession(w.id); return; } }
     if (go === 'claude' && nativeLine()) { openTabletChat(); return; }
+    if (go === 'lists') { openApp('lists'); dispatchEvent(new CustomEvent('hub:open-list', { detail: 'shopping' })); return; }   // the Shopping row opens the Shopping tab, not the last tab used
     openApp(go);
   });
   $('hmLine').addEventListener('click', () => { if (lineTarget) openSession(lineTarget); });
