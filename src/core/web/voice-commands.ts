@@ -399,7 +399,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     }
     if (!clock.nudgeTimer(tw.minutes)) return { say: 'There’s no timer running.' };
     const n = Math.abs(tw.minutes);
-    return { say: tw.minutes > 0 ? `Added ${n} minute${n === 1 ? '' : 's'}.` : `Took off ${n} minute${n === 1 ? '' : 's'}.`, react: 'hop' };
+    const amount = n === 60 ? 'an hour' : n === 30 ? 'half an hour' : `${n} minute${n === 1 ? '' : 's'}`;
+    return { say: tw.minutes > 0 ? `Added ${amount}.` : `Took off ${amount}.`, react: 'hop' };
   }
   if (/^(?:cancel|stop|delete|clear|end|reset|kill|turn off)(?: the| my)? timer$/.test(t)) {
     if (!clock) return null;

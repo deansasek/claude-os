@@ -41,6 +41,9 @@ export function timerWord(t: string): TimerWord | null {
   // "add five more minutes to the timer", "give me two extra minutes on the timer": "more" or "extra" may come after the number
   const add = t.match(/^(?:add|give me) (\w+)(?: more| extra)? (?:minutes?|mins?) (?:to|on) (?:the|my) timer$/);
   const take = t.match(/^(?:take|remove) (\w+)(?: more| extra)? (?:minutes?|mins?) (?:off|from) (?:the|my) timer$/);
+  // "add an hour to the timer", "take half an hour off the timer": 60 or 30 minutes
+  const span = t.match(/^(add|give me|take|remove) (an hour|one hour|1 hour|half an hour) (?:to|on|off|from) (?:the|my) timer$/);
+  if (span) return { op: 'nudge', minutes: (/^(?:add|give me)$/.test(span[1]) ? 1 : -1) * (/half/.test(span[2]) ? 30 : 60) };
   const m = add ?? take;
   if (!m) return null;
   const n = /^\d+$/.test(m[1]) ? +m[1] : (NUMBER_WORDS[m[1]] ?? 0);
