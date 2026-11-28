@@ -36,6 +36,11 @@ export function findEventWhen<E extends { title: string; start: number; end: num
   return hits.sort((a, b) => a.start - b.start)[0] ?? null;
 }
 
+/** The events that overlap the day [startMs, endMs): a multi-day event or one that began the day before is still on that day. */
+export function overlapsDay<E extends { start: number; end: number }>(events: E[], startMs: number, endMs: number): E[] {
+  return events.filter(e => e.start < endMs && e.end > startMs);
+}
+
 /** What the voice says: the events for that day (already worded, "Dentist at 9:00 AM"), up to three, or that nothing is on. */
 export function calendarDaySay(items: string[], name: string): string {
   if (!items.length) return `Nothing on your calendar ${name}.`;
