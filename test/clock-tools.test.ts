@@ -82,3 +82,8 @@ test('clock_status names the named timers, so Claude can give one by its label',
   assert.ok(relay.includes("const nameSay = names.length ? ` Named timers: ${names.map(n => { const l = clock.namedTimerLeft(n); return l ? `${n} (${l.paused ? 'paused, ' : ''}${sayDuration(Math.floor(l.ms / 1000) * 1000)} left)` : n; }).join(', ')}.` : '';"));
   assert.ok(relay.includes("${alarmSay}${swSay}${nameSay}` };"));
 });
+
+test('a named adjust reply says to the timer when adding and from it when taking off', () => {
+  const relay = readFileSync(new URL('../src/apps/claude/web/browser-relay.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.ok(relay.includes("${m > 0 ? 'Added' : 'Took off'} ${amount} ${m > 0 ? 'to' : 'from'} the ${label} timer."));
+});
