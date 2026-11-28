@@ -13,10 +13,15 @@ const text = (t: string, isError = false) => ({ content: [{ type: 'text' as cons
 export async function newsHeadlines({ count }: { count?: number }, read: typeof newsFeed = newsFeed) {
   let r;
   try { r = await read(); } catch { return text('The news couldn’t be read just now. Try again in a little while.', true); }
+  // every feed failed and nothing is saved: say the feeds did not answer, not that the topics are off
+  if (r.status === 'error' && !(r.items ?? []).length) return text('The news feeds did not answer. Check that the computer running ClaudeOS is connected to the internet.', true);
   const items = r.items ?? [];
   if (!items.length) return text('No headlines are in the news right now. The news topics may all be switched off in Settings.', true);
   const n = Math.min(count ?? 5, items.length);
-  return text(items.slice(0, n).map(i => `${i.source}: ${i.title}`).join('\n'));
+  // a feed that failed is named, so the reply says the stories may be incomplete (as the News screen does)
+  const failed = (r.sources ?? []).filter(s => s.status === 'error').map(s => `${s.name} did not load${s.stale ? ' (showing its stories from before)' : ''}`);
+  const note = failed.length ? `\n(${failed.join('; ')}.)` : '';
+  return text(items.slice(0, n).map(i => `${i.source}: ${i.title}`).join('\n') + note);
 }
 
 /** The news_topics reply: each News topic and whether it is on, so Claude can say which are switched off. read defaults to topicsView. */
