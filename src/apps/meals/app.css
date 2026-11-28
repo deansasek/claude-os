@@ -9,6 +9,7 @@
 }
 .mp-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
 .mp-btn:active { background: var(--card-2); }
+.mp-shop { display: flex; justify-content: flex-end; }
 .mp-status { font-family: var(--sans); font-size: 14px; color: var(--t3); min-height: 1.2em; }
 .mp-days { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .mp-day {
