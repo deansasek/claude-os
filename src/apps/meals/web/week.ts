@@ -46,5 +46,21 @@ export function savedRecipeNames(raw: string | null): string[] {
   return [...new Set(names)].slice(0, 12);
 }
 
+/** The ingredients for a week's dinners: each dinner matched to a saved recipe by name (ignoring case). Nights with a dinner
+ *  but no saved recipe are returned as unmatched, so the page can say so. Each ingredient is listed once. */
+export function weekIngredients(dinnerTexts: string[], recipes: { name: string; ingredients: string[] }[]): { items: string[]; unmatched: string[] } {
+  const byName = new Map(recipes.map(r => [r.name.trim().toLowerCase(), r.ingredients] as const));
+  const items = new Set<string>();
+  const unmatched: string[] = [];
+  for (const raw of dinnerTexts) {
+    const text = raw.trim();
+    if (!text) continue;
+    const ingredients = byName.get(text.toLowerCase());
+    if (ingredients) ingredients.forEach(i => items.add(i));
+    else unmatched.push(text);
+  }
+  return { items: [...items], unmatched };
+}
+
 /** The dinner for one day, if there is one. */
 export const dinnerOn = (dinners: Dinner[], day: Day): Dinner | null => dinners.find(d => d.start === day.start) ?? null;

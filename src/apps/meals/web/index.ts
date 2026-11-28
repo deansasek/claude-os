@@ -5,12 +5,16 @@ import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { manifest } from '../manifest.ts';
-import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayOf, savedRecipeNames, weekDays, type Day, type Dinner } from './week.ts';
+import { fromStored, shoppingItems } from '../../recipes/web/recipe.ts';
+import { isQueued, readLists, writeList } from '../../lists/web/readers.ts';
+import { addManyReply } from '../../lists/web/voice-match.ts';
+import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayOf, savedRecipeNames, weekDays, weekIngredients, type Day, type Dinner } from './week.ts';
 
 const API = '/api/calendar';
 const RECIPES_KEY = 'recipes.list';   // the Recipes app's saved list, on the tablet's own store
 const READ_TIMEOUT_MS = 10e3;
 const WRITE_TIMEOUT_MS = 10e3;
+const LIST_TIMEOUT_MS = 20e3;   // the Shopping list read gives up after this long, as Recipes' does
 
 let ctx: AppContext | null = null;
 let monday = mondayOf(new Date());
@@ -104,6 +108,37 @@ async function remove(c: AppContext, i: number): Promise<void> {
   }
 }
 
+/** Put the week's ingredients on Shopping: the matched dinners' ingredients, minus what is already on the list. */
+async function addWeekShopping(c: AppContext): Promise<void> {
+  if (busy) return;
+  busy = true;
+  try {
+    const recipes = (() => { try { return JSON.parse(store.get(RECIPES_KEY) ?? '[]') as unknown[]; } catch { return []; } })()
+      .filter((v): v is object => !!v && typeof v === 'object').map(fromStored).filter((r): r is NonNullable<typeof r> => r !== null);
+    const { items, unmatched } = weekIngredients(dinners.map(d => d.text),
+      recipes.map(r => ({ name: r.name, ingredients: r.ingredients.map(i => i.item) })));
+    let onList: string[];
+    try {
+      const shopping = (await readLists(LIST_TIMEOUT_MS)).find(l => l.id === 'shopping');
+      onList = (shopping?.items ?? []).filter(i => !i.done).map(i => i.text);
+    } catch {
+      setStatus(c, 'Couldn’t reach your PC, so nothing was added. Try again.');
+      return;
+    }
+    const todo = shoppingItems(items, onList);
+    const note = unmatched.length ? ` No saved recipe for ${unmatched.join(', ')}.` : '';
+    if (!todo.length) { setStatus(c, (items.length ? 'Everything for this week is already on Shopping.' : 'No saved recipes for this week’s dinners yet.') + note); return; }
+    let ok = 0, waiting = 0;
+    for (const text of todo) {
+      try { const r = await writeList('add', { list: 'shopping', text }); if (r?.ok) ok++; }
+      catch (e) { if (isQueued(e)) waiting++; }
+    }
+    setStatus(c, (!ok && !waiting ? 'I couldn’t add those to Shopping.' : addManyReply(todo, ok, waiting, 'Shopping')) + note);
+  } finally {
+    busy = false;
+  }
+}
+
 function shiftWeek(c: AppContext, weeks: number): void {
   monday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7 * weeks);
   days = weekDays(monday);
@@ -118,6 +153,7 @@ const app: HubApp = {
     ctx = c;
     c.$('mpPrev').addEventListener('click', () => shiftWeek(c, -1));
     c.$('mpNext').addEventListener('click', () => shiftWeek(c, 1));
+    c.$('mpShop').addEventListener('click', () => void addWeekShopping(c));
     c.$('mpDays').addEventListener('click', e => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
       if (!b) return;
