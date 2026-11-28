@@ -458,7 +458,7 @@ function queuedReply(e: unknown, said: string): CommandResult {
 /** The family's own tick-off lists (id and name), for voice. Shopping, To-do and Notes are not among them. */
 async function voiceCustomLists(): Promise<{ id: string; name: string }[]> {
   try {
-    const lists = await readLists();
+    const lists = await readLists(READ_TIMEOUT_MS);
     return lists.filter(l => !isBuiltIn(l.id)).map(l => ({ id: l.id, name: l.name }));
   } catch { return []; }
 }
@@ -479,7 +479,7 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
     }
     if (c.op === 'tick') {
       // find the one unticked item by its words (exact, or the only partial match); never a guess between several
-      const lists = await readLists();
+      const lists = await readLists(READ_TIMEOUT_MS);
       const l = lists.find(x => x.id === c.list);
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, true);
@@ -511,7 +511,7 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
     }
     if (c.op === 'remove') {
       // same rule as tick off: one item by its words, never a guess between several (open or ticked)
-      const lists = await readLists();
+      const lists = await readLists(READ_TIMEOUT_MS);
       const l = lists.find(x => x.id === c.list);
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, false);
@@ -524,14 +524,14 @@ async function listCommand(c: NonNullable<ReturnType<typeof matchList>>, customN
     }
     if (c.op === 'edit') {
       // same rule as remove: one item by its words, never a guess between several; POST /api/lists/edit checks the new text
-      const lists = await readLists();
+      const lists = await readLists(READ_TIMEOUT_MS);
       const l = lists.find(x => x.id === c.list);
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, false);
       if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
       return editSay(l.id, hit.id, hit.text, c.to, name);
     }
-    const lists = await readLists();
+    const lists = await readLists(READ_TIMEOUT_MS);
     const l = lists.find(x => x.id === c.list);
     const open =l ? l.items.filter(i => !i.done).map(i => i.text) : [];
     if (!open.length) return { say: `There’s nothing on ${name}.` };
@@ -560,7 +560,7 @@ async function editSay(list: string, id: string, was: string, to: string, name: 
 /** "change milk to oat milk" with no list said: the one item with exactly those words on any list.
  *  null when there is none (or the PC can't be reached), so the phrase is left to the other commands and Claude. */
 async function editAnywhere(text: string, to: string): Promise<CommandResult | null> {
-  const lists = await readLists().catch(() => null);
+  const lists = await readLists(READ_TIMEOUT_MS).catch(() => null);
   if (!lists) return null;
   const hits = findExact(lists, text);
   if (!hits.length) return null;
