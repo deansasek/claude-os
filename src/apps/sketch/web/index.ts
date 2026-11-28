@@ -12,7 +12,7 @@ let canvas: HTMLCanvasElement | null = null;
 let g: CanvasRenderingContext2D | null = null;
 let board: Board = EMPTY;
 let tool: Tool = 'ink';
-let drawing = false;
+let pointer: number | null = null;   // the finger (or pen) drawing the stroke; other pointers are ignored
 let saving = false;
 
 /** Size the drawing surface to its box, sharp on high-density screens. */
@@ -58,17 +58,18 @@ const app: HubApp = {
     canvas = c.$<HTMLCanvasElement>('skCanvas');
     g = canvas.getContext('2d');
     canvas.addEventListener('pointerdown', e => {
+      if (pointer !== null) return;   // a second finger or a resting palm does not start or join a stroke
+      pointer = e.pointerId;
       canvas?.setPointerCapture(e.pointerId);
-      drawing = true;
       board = begin(board, tool, at(e));
       redraw();
     });
     canvas.addEventListener('pointermove', e => {
-      if (!drawing) return;
+      if (pointer !== e.pointerId) return;
       board = extend(board, at(e));
       redraw();
     });
-    const stop = (): void => { drawing = false; };
+    const stop = (e: PointerEvent): void => { if (pointer === e.pointerId) pointer = null; };
     canvas.addEventListener('pointerup', stop);
     canvas.addEventListener('pointercancel', stop);
     c.$('skBar').addEventListener('click', e => {
