@@ -7,6 +7,7 @@
 //             Developer (wireless debugging, so developer options are never opened)
 // Only loaded inside the tablet app. Device things go through core/web/device.ts; the rest through the shared prefs in system.ts.
 import { esc, getJson, postJson, renderSparks, report, store } from '../../../core/web/dom.ts';
+import { dayTimeText } from '../../../core/web/time-format.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { androidApps, device, nativeHas, onResume, onTablet, voice } from '../../../core/web/device.ts';
 import type { AdbWifiState, AndroidApp, Battery, BluetoothInfo, ScreenState, Setup, StorageInfo, WifiNet, WifiState } from '../../../core/web/device.ts';
@@ -1162,7 +1163,7 @@ async function paintBackupNote(): Promise<void> {
   const n = ++backupSeq;
   const b = await loadSettings();
   if (n !== backupSeq) return;
-  $('stBkNote').textContent = backupNote(b);
+  $('stBkNote').textContent = backupNote(b, store.get('os.clock24'));
 }
 function initBackup(): void {
   let backupSaving = false;   // a second tap while a save runs does nothing: it would send a second save
@@ -1175,7 +1176,7 @@ function initBackup(): void {
       backupSeq++;   // a note read that started before this save is out of date
       $('stBkMsg').textContent = r.ok ? `Saved ${r.count} settings to your PC.` : (r.error ?? 'Couldn’t save.');
       // A good save answers with its own time and count, so the note needs no second read.
-      if (r.ok && r.saved) $('stBkNote').textContent = savedNote(r.saved, r.count ?? 0);
+      if (r.ok && r.saved) $('stBkNote').textContent = savedNote(r.saved, r.count ?? 0, store.get('os.clock24'));
       else void paintBackupNote();
     } finally {
       backupSaving = false;
@@ -1439,7 +1440,7 @@ let pcBuild: number | null = null;   // the PC's build as last read (the confirm
 function lastUpdateText(): string | null {
   try {
     const l = JSON.parse(store.get('os.lastUpdate') || 'null') as { at?: number; text?: string } | null;
-    return l?.text ? `${l.text} · ${new Date(l.at ?? 0).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : null;
+    return l?.text ? `${l.text} · ${dayTimeText(new Date(l.at ?? 0), store.get('os.clock24'))}` : null;
   } catch { return null; }
 }
 

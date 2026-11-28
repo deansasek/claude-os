@@ -5,3 +5,8 @@
 export function hourMinuteFormat(h24: string | null | undefined): Intl.DateTimeFormat {
   return new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit', ...(h24 == null ? {} : { hour12: h24 !== '1' }) });
 }
+
+/** A day and time for a note, as Settings → Date & time sets the hour: "28 Nov, 3:05 PM", or "28 Nov, 15:05" on 24-hour. */
+export function dayTimeText(d: Date, h24: string | null | undefined): string {
+  return `${d.toLocaleDateString([], { day: 'numeric', month: 'short' })}, ${hourMinuteFormat(h24).format(d)}`;
+}
