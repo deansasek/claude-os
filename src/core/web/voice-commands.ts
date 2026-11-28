@@ -45,6 +45,7 @@ import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
+import { mathSay } from './voice-math.ts';
 import { nowSay, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
@@ -464,6 +465,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     return { say: `Alarm set for ${clockText(h, mins)}${days.length ? daysText(days) : ` ${set.when}`}.`, react: 'hop' };
   }
 
+  // a quick sum: "what's 12 times 7" is worked out by the Calculator's own parser (voice-math.ts)
+  const sumSay = mathSay(t);
+  if (sumSay !== null) return { say: sumSay, react: 'look' };
   // time and date
   // "what's the news": the top headlines from the News feed (voice-news.ts); a feed that did not answer says so
   if (newsWord(t)) {
