@@ -3,8 +3,21 @@
 // play and the pause, and reads what is on from the app's now-playing line.
 
 import type { Station } from '../../apps/radio/api.ts';
+import { SLEEP_CHOICES } from '../../apps/radio/web/player.ts';
+import { parseDuration } from './voice-parse.ts';
 
 export type RadioWord = 'play' | 'stop' | 'whats-playing';
+
+/** "turn the radio off in 30 minutes", "radio sleep timer 15 minutes": the sleep length (15, 30 or 60 minutes), or null.
+ *  A length that is not one of the Radio app's sleep choices is left to Claude. */
+export function radioSleepWord(t: string): number | null {
+  const m = /^(?:turn (?:the )?radio off|turn off (?:the )?radio|stop (?:the )?radio|switch (?:the )?radio off|radio sleep timer|sleep timer (?:for |on )?(?:the )?radio)(?: in| for)? (.+)$/.exec(t);
+  if (!m) return null;
+  const ms = parseDuration(m[1]);
+  if (ms === null) return null;
+  const minutes = Math.round(ms / 60000);
+  return (SLEEP_CHOICES as readonly number[]).includes(minutes) ? minutes : null;
+}
 
 /** "play Radio 2", "put on Jazz FM": the station name said, or null when the phrase is not a station request. */
 export function stationWord(t: string): string | null {
