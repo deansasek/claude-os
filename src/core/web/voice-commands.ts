@@ -109,6 +109,8 @@ export interface RoutinesApi {
   /** Start a routine by id, or say why not: 'gone' (no such routine), 'empty' (no steps), 'offline' (the PC did
    *  not answer and no copy is recent). Returns at once: the steps run on their own. */
   run(id: string): Promise<'started' | 'gone' | 'empty' | 'offline'>;
+  /** The id of the routine that runs now, or null. A phrase for that one says it is running, rather than starting it again. */
+  running(): string | null;
 }
 let routines: RoutinesApi | null = null;
 export function provideRoutines(api: RoutinesApi): void { routines = api; }
@@ -411,6 +413,7 @@ async function routineCommand(t: string): Promise<CommandResult | null> {
     if (m) hit = list.find(x => key(x.name) === m[1]);
   }
   if (!hit) return null;
+  if (routines.running() === hit.id) return { say: `${hit.name} is already running.`, react: 'look' };
   const res = await routines.run(hit.id);
   if (res === 'started') return { say: '', react: 'hop' };   // the routine speaks each step itself
   // the same words as the Routines app's Run button (run.ts StartResult)

@@ -201,4 +201,5 @@ startScheduler();
 provideRoutines({
   list: () => loadRoutines(),
   run: id => startRoutine(id),
+  running: () => runState()?.id ?? null,
 });
