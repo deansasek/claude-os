@@ -139,6 +139,13 @@ export function labelledTimer(t: string): { ms: number; label: string } | null {
   return null;
 }
 
+/** The label as the family said it: its words found again in the speech as heard, with their capitals ("BBQ" stays "BBQ").
+ *  Falls back to the label when the words are not found as they are. */
+export function labelAsHeard(label: string, raw: string): string {
+  const i = raw.toLowerCase().indexOf(label.toLowerCase());
+  return i < 0 ? label : raw.slice(i, i + label.length);
+}
+
 /** The reply for a named timer: the label with a capital first letter, then the duration. The stored label keeps the case heard. */
 export function namedTimerReply(label: string, ms: number): string {
   return `${label.charAt(0).toUpperCase()}${label.slice(1)} timer set for ${sayDuration(ms)}.`;

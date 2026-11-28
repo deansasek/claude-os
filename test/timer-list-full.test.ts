@@ -14,7 +14,7 @@ test('the Clock reports a full list: startTimer returns false when the list is a
 
 test('voice, routines and the Claude relay each answer the full list instead of a timer set', () => {
   assert.match(read('src/core/web/voice-commands.ts'), /if \(!clock\.startTimer\(ms\)\) return \{ say: 'The timer list is full\. Stop a timer first\.' \};/);
-  assert.match(read('src/core/web/voice-commands.ts'), /if \(!clock\.startTimer\(dl\.ms, dl\.label\)\) return/);
+  assert.match(read('src/core/web/voice-commands.ts'), /if \(!clock\.startTimer\(dl\.ms, label\)\) return/);
   assert.match(read('src/apps/routines/web/run.ts'), /if \(!clock\.startTimer\(s\.minutes \* 60e3\)\) return 'The Clock’s timer list is full, so no timer\.';/);
   assert.match(read('src/apps/claude/web/browser-relay.ts'), /if \(!clock\.startTimer\(ms, label\)\) return \{ ok: false/);
 });

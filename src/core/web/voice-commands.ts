@@ -69,7 +69,7 @@ import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, nowPlaying, pauseMedia } from './media.ts';
 import { addManyReply, findExact, lowerFirst, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
-import { articleFor, durationAndLabel, labelledTimer, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
+import { articleFor, durationAndLabel, labelAsHeard, labelledTimer, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 import { dndWord } from './voice-dnd.ts';
 import { matchOpenApp } from './voice-open.ts';
@@ -504,8 +504,10 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const dl = (named ? durationAndLabel(named[1].replace(/^(a|an) (?=\d)/, '')) : null) ?? labelledTimer(t);
   if (dl) {
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
-    if (!clock.startTimer(dl.ms, dl.label)) return { say: 'The timer list is full. Stop a timer first.' };
-    return { say: namedTimerReply(dl.label, dl.ms), react: 'hop' };
+    // the label keeps the capitals heard: "a 10 minute BBQ timer" is saved as BBQ, not bbq
+    const label = labelAsHeard(dl.label, raw);
+    if (!clock.startTimer(dl.ms, label)) return { say: 'The timer list is full. Stop a timer first.' };
+    return { say: namedTimerReply(label, dl.ms), react: 'hop' };
   }
   // timer: pause, resume, add or take off minutes (core/web/voice-alarm.ts)
   const tw = timerWord(t);
