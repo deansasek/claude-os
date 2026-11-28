@@ -5,6 +5,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { weather } from './weather.ts';
 import { nowIndex } from '../web/now-index.ts';
+import { airLine, pollenLine } from '../web/air.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -43,7 +44,7 @@ export async function weatherForecast({ days, hours }: { days?: number; hours?: 
   for (let i = 0; i < n; i++) {
     const d = new Date(`${r.daily.time[i]}T12:00:00`);
     rows.push(`${dayShort.format(d)}: high ${Math.round(r.daily.temperature_2m_max[i])}${unit}, low ${Math.round(r.daily.temperature_2m_min[i])}${unit}, `
-      + `${skyWords(r.daily.weather_code[i])}, rain ${Math.round(r.daily.precipitation_probability_max[i])}%, wind up to ${Math.round(r.daily.wind_speed_10m_max[i])} ${r.wind_unit}`
+      + `${skyWords(r.daily.weather_code[i])}, rain ${Math.round(r.daily.precipitation_probability_max[i])}%${r.daily.precipitation_sum?.[i] != null ? ` (${Math.round(r.daily.precipitation_sum[i] * 10) / 10} ${r.precip_unit})` : ''}, wind up to ${Math.round(r.daily.wind_speed_10m_max[i])} ${r.wind_unit}`
       + `, sunrise ${hourMinute(r.daily.sunrise?.[i])}, sunset ${hourMinute(r.daily.sunset?.[i])}, UV ${Math.round(r.daily.uv_index_max?.[i] ?? 0)}`);
   }
   // humidity and wind now, when the forecast has them; a missing number is left out, not shown as 0
@@ -72,7 +73,9 @@ export async function weatherForecast({ days, hours }: { days?: number; hours?: 
     }
     if (lines.length) hourRows = `\nNext hours:\n${lines.join('\n')}`;
   }
-  return text(`${stale}Weather for ${r.place ?? 'the set place'}. ${now}\n${rows.join('\n')}${hourRows}`);
+  // the air quality and the pollen, when the air request answered (airLine and pollenLine are the Weather app's words)
+  const airSay = [airLine(r.air ?? null), pollenLine(r.air ?? null)].filter(Boolean).map(x => `${x}.`).join(' ');
+  return text(`${stale}Weather for ${r.place ?? 'the set place'}. ${now}${airSay ? ` ${airSay}` : ''}\n${rows.join('\n')}${hourRows}`);
 }
 
 export const weatherServer = createSdkMcpServer({
@@ -81,7 +84,7 @@ export const weatherServer = createSdkMcpServer({
   tools: [
     tool('weather_forecast',
       'Read the weather forecast for the place set in Settings > Apps > Weather on the ClaudeOS tablet: now, and the next days (highs, lows, '
-        + 'chance of rain, wind, sunrise and sunset, UV index). Read-only. days: how many days, 1 to 7 (the default is 7). '
+        + 'chance of rain and how much, wind, sunrise and sunset, UV index, air quality and pollen). Read-only. days: how many days, 1 to 7 (the default is 7). '
         + 'hours: optional, how many of the next hours to list, 1 to 24 (for "will it rain this afternoon").',
       { days: z.number().int().min(1).max(7).optional(), hours: z.number().int().min(1).max(24).optional() },
       async (args) => weatherForecast(args)),
