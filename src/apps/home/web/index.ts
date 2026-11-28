@@ -392,12 +392,16 @@ async function cachedConnectorCal(prev: RowCal | null, prevDay: string | null, t
 
 // The Shopping tile: how many items are still to get, and the first two of them.
 let lists: { items: { done: boolean; text: string }[] } | null = null, listsFailed = false;
+const LISTS_TIMEOUT_MS = 20e3;   // a list read the PC never answers gives up, so the tile does not wait forever
+let listsSeq = 0;                // each read takes a number; only the newest read sets the tile
 async function loadLists(): Promise<void> {
+  const seq = ++listsSeq;
   try {
-    const all = await readLists();
+    const all = await readLists(LISTS_TIMEOUT_MS);
+    if (seq !== listsSeq) return;   // a newer read started: its answer is the one that counts
     lists = all.find(l => l.id === 'shopping') ?? null;
     listsFailed = false;
-  } catch { listsFailed = true; }
+  } catch { if (seq !== listsSeq) return; listsFailed = true; }
   paintLists();
 }
 function paintLists(): void {
