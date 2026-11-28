@@ -220,8 +220,9 @@ function runTablet(op: 'timer' | 'alarm' | 'reminder' | 'notify', a: Record<stri
   const set = clock.addLabelled(h, m, label, days);
   if (!set) return { ok: false, data: 'The tablet’s Clock is full (20 alarms). Ask the user to delete one in the Clock first.' };
   return op === 'reminder'
-    ? { ok: true, data: `Reminder set for ${hhmm(h, m)} ${set.when}: “${label}”. The Clock will ring and show it then.` }
-    : { ok: true, data: `Alarm set for ${hhmm(h, m)} ${set.when}${label ? ` (${label})` : ''}.` };
+    // the repeat days when there are some, else when it rings (as the voice and list_alarms say it)
+    ? { ok: true, data: `Reminder set for ${hhmm(h, m)}${days.length ? daysText(days) : ` ${set.when}`}: “${label}”. The Clock will ring and show it then.` }
+    : { ok: true, data: `Alarm set for ${hhmm(h, m)}${days.length ? daysText(days) : ` ${set.when}`}${label ? ` (${label})` : ''}.` };
 }
 
 /** run_routine (routines/server/tools.ts): the Routines app's runner starts it by id (it reads the routine from the
