@@ -33,3 +33,10 @@ export function nextRunWords(next: NextRun | null, now: Date): { val: string; su
   const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days >= 7 ? `Next ${weekday}` : weekday;
   return { val: next.name, sub: `${when} ${clock(next.at)}` };
 }
+
+/** What the voice says: "Good morning runs tomorrow at 7:00 AM.", or "No routine has a time set." */
+export function nextRunSay(next: NextRun | null, now: Date): string {
+  if (!next) return 'No routine has a time set.';
+  const { sub } = nextRunWords(next, now);
+  return `${next.name} runs ${sub.replace(/^./, c => c.toLowerCase()).replace(/ (?=\d)/, ' at ')}.`;
+}

@@ -62,6 +62,7 @@ import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWeekSay, dinnerWeekWord, dinnerWord, type Night } from './voice-dinner.ts';
 import { calendarDay, calendarDaySay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
 import { convertSay } from './voice-convert.ts';
+import { nextRun, nextRunSay } from '../../apps/routines/web/next-run.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, nowPlaying, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
@@ -137,7 +138,7 @@ export const getClock = (): ClockApi | null => clock;
 
 /** The Routines app (apps/routines/web/run.ts): its routines (cached there) and its runner, which speaks each step
  *  itself. Provided when that app's module loads; null without it, and then no phrase is a routine. */
-export interface RoutineRef { id: string; name: string; phrases: string[] }
+export interface RoutineRef { id: string; name: string; phrases: string[]; at?: { h: number; m: number; days: number[] } }
 export interface RoutinesApi {
   list(): Promise<RoutineRef[]>;
   /** Start a routine by id, or say why not: 'gone' (no such routine), 'empty' (no steps), 'offline' (the PC did
@@ -733,6 +734,10 @@ async function routineCommand(t: string): Promise<CommandResult | null> {
   if (!routines) return null;
   let list: RoutineRef[];
   try { list = await routines.list(); } catch { return null; }
+  // "what's the next routine": the next one with a time set, and when (nextRun in apps/routines/web/next-run.ts). Nothing is run.
+  if (/^(?:what(?:'s| is) the next routine|when(?:'s| is) the next routine(?: run| start| go)?|what routine (?:runs|is running) next)$/.test(t)) {
+    return { say: nextRunSay(nextRun(list, new Date()), new Date()), app: 'routines' };
+  }
   // "what routines do I have": the names, read from the Routines app's own list (nothing is run)
   if (/^(?:what routines (?:do i have|have i got|are there)|which routines (?:do i have|have i got)|list my routines|what are my routines)$/.test(t)) {
     const names = list.map(r => r.name);
