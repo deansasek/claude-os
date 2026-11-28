@@ -16,6 +16,7 @@ import { nativeBusy, nativeOn, nativeSend, nativeView } from '../../claude/web/n
 import type { IngredientsResult, MealsResult, PantryResult } from '../api.ts';
 import { manifest } from '../manifest.ts';
 import { PANTRY_MAX } from './pantry.ts';
+import { scaleAmount, servesCount } from './scale.ts';
 import { isQueued, readLists, writeList } from '../../lists/web/readers.ts';
 import { addManyReply } from '../../lists/web/voice-match.ts';
 import type { FamilyList } from '../../lists/api.ts';
@@ -541,16 +542,25 @@ function discoverHtml(): string {
 }
 
 // ---------- the recipe page ----------
+let scaleKey = '', servings = 0;   // the servings wanted on the recipe page; reset when another recipe opens
 function detailHtml(r: Recipe): string {
   const saved = savedIndex(r) >= 0;
-  const ings = r.ingredients.map(g => `<li><span class="rc-amt">${esc(g.amount)}</span> ${esc(g.item)}</li>`).join('');
+  const base = servesCount(r.serves);
+  const key = `${r.name}|${r.serves}`;
+  if (scaleKey !== key) { scaleKey = key; servings = base ?? 0; }
+  const factor = base && servings ? servings / base : 1;
+  const stepper = base
+    ? `<div class="rc-scale"><button class="rc-btn" data-act="serve-minus" aria-label="Fewer servings">−</button>`
+      + `<span class="rc-scale-n">Serves ${servings}</span><button class="rc-btn" data-act="serve-plus" aria-label="More servings">+</button></div>`
+    : '';
+  const ings = r.ingredients.map(g => `<li><span class="rc-amt">${esc(scaleAmount(g.amount, factor))}</span> ${esc(g.item)}</li>`).join('');
   const steps = r.steps.map(s => `<li>${esc(s)}</li>`).join('');
   const own = saved && !r.mealId;   // a recipe from Claude or saved as text can be deleted; a TheMealDB one is un-saved
   return `<div class="rc-top"><button class="rc-btn" data-act="discover">Back</button></div>`
     + noticesHtml()
     + `<div class="rc-hero">${photoHtml(r, 'rc-hero-ph')}<div class="rc-hero-text">`
     + (r.tag ? `<span class="rc-kicker">${esc(r.tag)}</span>` : '')
-    + `<h2 class="rc-display">${esc(r.name)}</h2><p class="rc-sub">${esc(meta(r)) || 'Serves and time not given'}</p>`
+    + `<h2 class="rc-display">${esc(r.name)}</h2><p class="rc-sub">${esc(meta(r)) || 'Serves and time not given'}</p>${stepper}`
     + `<div class="rc-actions"><button class="rc-btn pri" data-act="cook">Start cooking</button>`
     + `<button class="rc-btn" data-act="shop">Add to shopping list</button>`
     + (own
@@ -692,6 +702,8 @@ function onClick(ev: Event): void {
     case 'open': { const r = pick(src, i); if (r) go({ t: 'detail', r }); break; }
     case 'heart': { const r = pick(src, i); if (r) toggleSave(r); break; }
     case 'save-this': if (screen.t === 'detail') toggleSave(screen.r); break;
+    case 'serve-minus': if (servings > 1) servings--; break;
+    case 'serve-plus': if (servings < 99) servings++; break;
     case 'detail': if (screen.t === 'cook') go({ t: 'detail', r: screen.r }); break;
     case 'cook': if (screen.t === 'detail') go({ t: 'cook', r: screen.r, step: 0 }); break;
     case 'step':

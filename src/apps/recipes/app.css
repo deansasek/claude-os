@@ -205,3 +205,6 @@
 #app-recipes .rc-sheet-ft { position: sticky; bottom: 0; padding: 12px 0 4px; background: var(--bg); }
 #app-recipes .rc-skel .rc-ph { animation: rc-shimmer 1.4s ease-in-out infinite; }
 @keyframes rc-shimmer { 50% { opacity: .45; } }
+#app-recipes .rc-scale { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+#app-recipes .rc-scale .rc-btn { min-width: 48px; min-height: 48px; font-size: 22px; padding: 0 12px; }
+#app-recipes .rc-scale-n { font-family: var(--sans); font-size: 16px; font-weight: 500; color: var(--t2); min-width: 96px; text-align: center; }
