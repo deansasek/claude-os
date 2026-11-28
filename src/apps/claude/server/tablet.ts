@@ -141,8 +141,8 @@ export const tabletServer = createSdkMcpServer({
       async input => run('reminder', input)),
     tool('notify',
       'Show a notification on the user’s ClaudeOS tablet now (a banner, kept in its notification list). '
-        + 'Use it for “tell me when the build is done”. title and body: up to 80 characters each.',
-      { title: z.string(), body: z.string() },
+        + 'Use it for “tell me when the build is done”. title: up to 80 characters; body: optional, up to 80 characters. A title alone is enough.',
+      { title: z.string(), body: z.string().optional() },
       async input => run('notify', input)),
     tool('tablet_status',
       'Read the ClaudeOS tablet’s battery (the charge, and whether it is charging), the Wi-Fi it is on, and whether Do Not Disturb is on. Read-only.',
