@@ -411,7 +411,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const dow = tomorrow.getDay();
-    const rings = clock.alarmsOn().filter(a => (a.days.length ? a.days.includes(dow) : a.when === 'tomorrow'));
+    // the earliest by time of day: alarmsOn() is sorted by the next ring, so a daily alarm that still rings today comes first
+    const rings = clock.alarmsOn().filter(a => (a.days.length ? a.days.includes(dow) : a.when === 'tomorrow'))
+      .sort((a, b) => a.h * 60 + a.m - (b.h * 60 + b.m));
     if (!rings.length) return { say: 'You don’t have an alarm tomorrow.', react: 'look', app: 'clock' };
     return { say: `Yes, your alarm is at ${clockText(rings[0].h, rings[0].m)} tomorrow.`, react: 'look', app: 'clock' };
   }
