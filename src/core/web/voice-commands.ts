@@ -448,7 +448,16 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
       const n = clock.switchOffAlarm(h, m);
       return { say: n ? `Okay, your ${clockText(h, m)} alarm is off.` : `You don’t have an alarm at ${clockText(h, m)}.` };
     }
-    if (word === 'one-alarm') return { say: 'Nothing is ringing. To switch them all off, say turn off all my alarms.' };
+    if (word === 'one-alarm') {
+      // with only one alarm on there is nothing to choose between: switch that one off. Two or more: the "all" rule stays
+      const on = clock.alarmsOn();
+      if (on.length === 1) {
+        const only = on[0];
+        const n = clock.switchOffAlarm(only.h, only.m);
+        return { say: n ? `Okay, your ${clockText(only.h, only.m)} alarm is off.` : 'Nothing is ringing. To switch them all off, say turn off all my alarms.' };
+      }
+      return { say: 'Nothing is ringing. To switch them all off, say turn off all my alarms.' };
+    }
   }
   // a named timer: "set a 10 minute pasta timer" starts 10 minutes, labelled pasta (shown when it rings)
   const named = t.match(/^(?:set |start )?(?:a |an )?(.+?) timer$/);
