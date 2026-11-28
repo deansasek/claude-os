@@ -45,7 +45,7 @@ import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
 import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
-import { sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
+import { nowSay, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
@@ -182,6 +182,17 @@ function sky(code: number): string {
   return 'stormy';
 }
 const deg = (n: number) => `${Math.round(n)} degrees`;
+
+/** "Is it raining": what is falling now, from the forecast's current weather code. */
+async function rainingNowCommand(asked: 'raining' | 'snowing'): Promise<CommandResult> {
+  let w: Wx;
+  try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
+  if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
+  if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
+  const code = w.current?.weather_code;
+  if (code == null) return { say: 'I can’t get the weather right now.' };
+  return { say: nowSay(code, asked), react: 'look' };
+}
 
 /** "What time is sunset": the day's sunrise or sunset from the forecast, said the way the Weather app's tip says it. */
 async function sunCommand(which: 'sunrise' | 'sunset', day: 0 | 1): Promise<CommandResult> {
@@ -470,6 +481,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (tempDay !== null) return weather(tempDay, null);
   const windy = windDay(t);
   if (windy !== null) return windCommand(windy);
+  const falling = rainingNow(t);
+  if (falling !== null) return rainingNowCommand(falling);
   const sun = sunDay(t);
   if (sun !== null) return sunCommand(sun.which, sun.day);
   if (/^(?:what(?:'s| is| will be) the weather(?: like)?(?: today| now| right now| outside)?|how(?:'s| is) the weather(?: today)?|weather(?: today)?|what(?:'s| is) it like outside|what(?:'s| is) the forecast(?: today)?)$/.test(t)) return weather(0, null);
