@@ -39,7 +39,8 @@ import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { sceneFailText } from '../../apps/home/web/scene-words.ts';
 import { device, onTablet } from './device.ts';
-import { openApp, prefs } from './system.ts';
+import { openApp, prefs, sleep } from './system.ts';
+import { sleepWord } from './voice-sleep.ts';
 import { alarmTimePhrase, alarmWord, timerWord } from './voice-alarm.ts';
 import { temperatureDay, weatherTrouble } from './voice-weather.ts';
 import { radioStopHeard, radioWord } from './voice-radio.ts';
@@ -353,6 +354,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     return weather(r[2] === 'tomorrow' ? 1 : 0, (r[1] as 'rain' | 'snow') || 'rain');
   }
 
+  // "go to sleep": the clock screen, after the spoken "Okay." has finished (the same as the Control Center's Rest now tile)
+  if (sleepWord(t)) { setTimeout(sleep, 1200); return { say: 'Okay.', react: 'look' }; }
   // screen
   if (/^(?:dim|jim|darken)(?: the)? screen$|^(?:make|turn)(?: the)? (?:screen|it) (?:dimmer|darker|down)$|^(?:turn|bring)(?: the)? brightness down$|^dimmer$|^(?:screen )?darker$|^lower(?: the)? brightness$/.test(t)) return brightness('down');
   if (/^(?:brighten|light up)(?: the)? screen$|^(?:make|turn)(?: the)? (?:screen|it) (?:brighter|up)$|^(?:turn|bring)(?: the)? brightness up$|^(?:screen )?brighter$|^raise(?: the)? brightness$/.test(t)) return brightness('up');
