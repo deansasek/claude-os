@@ -24,6 +24,8 @@ const camCode = (c?: string): CamCode => (CODES as readonly string[]).includes(c
 /** The words for a failure: the copy, then the short code in brackets, so the person and a support call agree. */
 export const camError = (code?: string): string => { const k = camCode(code); return `${COPY[k]} (${k})`; };
 
+const UPLOAD_TIMEOUT_MS = 20e3;   // a browser photo upload the PC never answers gives up, so the shutter works again
+
 let facing: Facing = 'back';
 let target: HTMLElement | null = null;   // where the preview sits: the frame, or Look's full-screen view
 let isOn = false;                        // the native preview is up
@@ -84,7 +86,7 @@ async function captureWeb(id: string): Promise<Shot> {
   const blob = await new Promise<Blob | null>(res => c.toBlob(res, 'image/jpeg', 0.9));
   if (!blob) return { ok: false, code: 'failed' };
   try {
-    const r = await fetch('/api/photos/upload', { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-Photo-Id': id }, body: blob });
+    const r = await fetch('/api/photos/upload', { method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-Photo-Id': id }, body: blob, signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS) });
     const j = await r.json() as { ok?: boolean; url?: string };
     return j.ok && j.url ? { ok: true, id, url: j.url } : { ok: false, code: 'failed' };
   } catch {
