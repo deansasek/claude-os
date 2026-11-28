@@ -93,6 +93,12 @@ test('a unit pair that cannot convert, a sum, and other phrases are not conversi
   assert.equal(convertSay('how many grams in an hour'), null);
 });
 
+test('a time with its unit joined to the number is worked out: 90min, 2hrs and 5mins', () => {
+  assert.equal(convertSay("what's 90min in hours"), '90 minutes is 1.5 hours.');
+  assert.equal(convertSay('convert 2hrs to minutes'), '2 hours is 120 minutes.');
+  assert.equal(convertSay('how many seconds in 5mins'), '300 seconds in 5 minutes.');
+});
+
 test('time converts to time: minutes, hours, days, weeks and years', () => {
   assert.equal(convertSay('how many minutes in 2 hours'), '120 minutes in 2 hours.');
   assert.equal(convertSay('convert 90 minutes to hours'), '90 minutes is 1.5 hours.');
