@@ -39,6 +39,12 @@ test('pause_timer and resume_timer are Claude tools, with the replies the voice 
   assert.ok(relay.includes("'There’s no paused timer.'"));
 });
 
+test('clock_status and cancel_alarms say a paused timer, and the plural of timers, and one alarm or reminder', () => {
+  assert.ok(relay.includes("${clock.timerPaused() ? ', and it is paused' : ''}."));
+  assert.ok(relay.includes("${on} timer${on === 1 ? '' : 's'} or alarm${on === 1 ? '' : 's'} on.`"));
+  assert.ok(relay.includes("${n} ${n === 1 ? 'alarm or reminder' : 'alarms or reminders'} that Claude set."));
+});
+
 test('adjust_timer adds or takes minutes off the timer in front, and says the time left', () => {
   assert.ok(tablet.includes("tool('adjust_timer',"));
   assert.ok(tablet.includes("Math.abs(m) > 60) return { ok: false"));
