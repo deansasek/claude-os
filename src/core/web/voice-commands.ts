@@ -53,7 +53,7 @@ import type { Units } from '../../apps/weather/api.ts';
 import { alreadyPlayingSay, matchStation, playingSay, radioStopHeard, radioWord, stationWord } from './voice-radio.ts';
 import type { Station } from '../../apps/radio/api.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
-import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
+import { dinnerSay, dinnerWeekSay, dinnerWeekWord, dinnerWord, type Night } from './voice-dinner.ts';
 import { calendarDay, calendarDaySay, nextEventWord, type CalDay } from './voice-calendar.ts';
 import { convertSay } from './voice-convert.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
@@ -355,6 +355,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (calDay !== null) return calendarDayCommand(calDay);
   const dinner = dinnerWord(t);   // "what's for dinner tonight": the Meals dinner the calendar holds for that night
   if (dinner) return dinnerCommand(dinner);
+  if (dinnerWeekWord(t)) return dinnerWeekCommand();   // the week's planned dinners (dinnerWeekSay in voice-dinner.ts)
 
   // lists: "add milk to the shopping list" (the words as said, not normalised: "two" stays "two")
   // the family's own lists are heard by name too; the lists are read only when the words mention a list
@@ -685,6 +686,24 @@ async function sceneCommand(raw: string): Promise<CommandResult | null> {
 
 // ---------- Calendar: "what's on today", "what's on my calendar" ----------
 /** The Meals dinner on a night, read from the calendar's "Dinner: …" events (the same events Home's Tonight row reads). */
+/** "What's for dinner this week": the planned dinners for the seven nights from tonight, read from the local calendar. */
+async function dinnerWeekCommand(): Promise<CommandResult> {
+  const d = new Date();
+  const days = Array.from({ length: 7 }, (_, i) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + i));
+  const from = isoDay(days[0]), to = isoDay(new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7));
+  let r: { status?: string; events?: { id: string; title: string; start: number; allDay: boolean }[] };
+  try { r = await getJson(`/api/calendar/local?from=${from}&to=${to}`, READ_TIMEOUT_MS); }
+  catch { return { say: 'I can’t reach the calendar right now.' }; }
+  if (r?.status !== 'ok') return { say: 'I can’t reach the calendar right now.' };
+  const dinners = dinnersIn(r.events ?? []);
+  const items = days.flatMap((day, i) => {
+    const hit = dinners.find(x => x.start === day.getTime());
+    if (!hit) return [];
+    return [{ name: i === 0 ? 'Tonight' : i === 1 ? 'Tomorrow' : weekdayName(day.getDay()), text: hit.text }];
+  });
+  return { say: dinnerWeekSay(items), react: 'look', app: 'meals' };
+}
+
 async function dinnerCommand(night: Night): Promise<CommandResult> {
   const d = new Date();
   const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + night.ahead);

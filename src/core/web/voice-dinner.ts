@@ -19,6 +19,19 @@ export function dinnerWord(t: string, today = new Date().getDay()): Night | null
   return { ahead, name: `on ${cap(w[1])}`, lead: `On ${cap(w[1])}` };
 }
 
+/** "What's for dinner this week": the whole week's plan, read from tonight. */
+export function dinnerWeekWord(t: string): boolean {
+  return /^(?:what(?:'s| is) for dinner this week|what are we having for dinner this week|what(?:'s| is) on the dinner menu this week)$/.test(t);
+}
+
+/** The week's dinners that are planned: each with its night's name ("Tonight", "Tomorrow", "Friday") and its dinner. */
+export function dinnerWeekSay(items: { name: string; text: string }[]): string {
+  if (!items.length) return 'Nothing is planned for dinner this week.';
+  const parts = items.map(i => `${i.name}: ${i.text}`);
+  const words = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join('; ')}; and ${parts[parts.length - 1]}`;
+  return `This week, ${words.charAt(0).toLowerCase()}${words.slice(1)}.`;
+}
+
 /** What the voice says: the dinner planned for that night, or that nothing is planned. */
 export function dinnerSay(text: string | null, night: Night): string {
   if (!text) return `Nothing planned for dinner ${night.name}.`;
