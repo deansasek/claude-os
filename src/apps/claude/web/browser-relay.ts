@@ -178,7 +178,8 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
   // the stopwatch's time and whether it runs, as the voice says it; nothing when it is at zero
   // the names of the named timers, so a label can be given to pause, resume, cancel or adjust
   const names = clock.timerNames();
-  const nameSay = names.length ? ` Named timers: ${names.join(', ')}.` : '';
+  // each named timer with its time left (namedTimerLeft), and "paused" when it is; the voice's words (sayDuration)
+  const nameSay = names.length ? ` Named timers: ${names.map(n => { const l = clock.namedTimerLeft(n); return l ? `${n} (${l.paused ? 'paused, ' : ''}${sayDuration(Math.floor(l.ms / 1000) * 1000)} left)` : n; }).join(', ')}.` : '';
   const sw = clock.stopwatchTime();
   const swSay = sw >= 1000 ? ` The stopwatch is ${clock.stopwatchRunning() ? 'running' : 'stopped'} at ${sayDuration(Math.floor(sw / 1000) * 1000)}.` : '';
   return { ok: true, data: `${timer} ${on ? `${on} timer${on === 1 ? '' : 's'} or alarm${on === 1 ? '' : 's'} on.` : 'No timers or alarms are on.'}${alarmSay}${swSay}${nameSay}` };
