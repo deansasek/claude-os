@@ -28,6 +28,7 @@ import { copyAge, hasCopy, localRoutines, pull } from './sync.ts';
 const CACHE_MS = 60e3;
 const LIST_TIMEOUT_MS = 10e3;   // a list the PC never answers gives up, so a run does not wait on it forever
 let cache: Routine[] | null = null, cacheAt = 0;
+let cacheGen = 0;   // a hub:routines event bumps it: a read that started before the event cannot refill the cache
 
 /** The routines: the tablet's copy (pulled from the PC when it is a minute old, or with `fresh`), else the PC's copy
  *  from the last minute. */
@@ -37,12 +38,13 @@ export async function loadRoutines(fresh = false): Promise<Routine[]> {
     return localRoutines() ?? [];
   }
   if (!fresh && cache && Date.now() - cacheAt < CACHE_MS) return cache;
+  const gen = cacheGen;
   const r = await getJson<RoutinesResult>('/api/routines/list', LIST_TIMEOUT_MS);
   if (!r || r.ok === false || !Array.isArray(r.routines)) throw new Error('no routines');   // the PC could not read its list: not an empty one
-  cache = r.routines; cacheAt = Date.now();
-  return cache;
+  if (gen === cacheGen) { cache = r.routines; cacheAt = Date.now(); }   // an event came during the read: its old list is not kept
+  return r.routines;
 }
-addEventListener('hub:routines', () => { cache = null; });
+addEventListener('hub:routines', () => { cache = null; cacheGen++; });
 
 // ---------- what is running, for the Home tiles and the Routines page ----------
 export interface RunState { id: string; name: string; step: number; of: number }
