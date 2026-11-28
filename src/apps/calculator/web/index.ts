@@ -35,7 +35,10 @@ function paintConvert(): void {
 }
 
 function paint(): void {
-  if (shown) shown.textContent = display(state);
+  if (shown) {
+    shown.textContent = display(state);
+    shown.scrollLeft = shown.scrollWidth;   // a sum wider than the readout keeps its newest digits in view
+  }
   paintConvert();
 }
 
