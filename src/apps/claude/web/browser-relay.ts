@@ -15,7 +15,7 @@ import { articleFor, daysText, sayDuration } from '../../../core/web/voice-parse
 import { call } from './sessions/pin.ts';
 import { cur, getControl } from '../../browser/web/state.ts';
 
-type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer' | 'list_alarms';
+type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer' | 'list_alarms' | 'volume';
 interface Job { id: string; op: Op; ref?: string; text?: string; args?: Record<string, unknown> }
 interface NextReply { ok: boolean; job?: Job | null; error?: string }
 type Answer = { ok: boolean; data: string };
@@ -56,6 +56,7 @@ function run(job: Job): Promise<Answer> | Answer {
   if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms' || job.op === 'pause_timer' || job.op === 'resume_timer' || job.op === 'adjust_timer' || job.op === 'list_alarms') return runClock(job.op, job.args || {});
   if (job.op === 'tablet_status') return runStatus();
   if (job.op === 'dnd') return runDnd(job.args || {});
+  if (job.op === 'volume') return runVolume(job.args || {});
   if (job.op === 'timer' || job.op === 'alarm' || job.op === 'reminder' || job.op === 'notify') return runTablet(job.op, job.args || {});
   return runBrowser(job);
 }
@@ -65,6 +66,21 @@ function runStatus(): Answer {
   try {
     return { ok: true, data: `${batterySay(device.battery())} ${wifiSay(device.wifi())}` };
   } catch { return { ok: false, data: 'I can’t read the tablet’s battery or Wi-Fi right now.' }; }
+}
+
+/** The media volume for Claude: the voice's steps and words (voice-commands.ts volume and volumeLevel). Read when there is no input. */
+function runVolume(a: Record<string, unknown>): Answer {
+  let cur: number;
+  try { cur = device.volume().media; } catch { return { ok: false, data: 'I can’t check the volume right now.' }; }
+  const action = str(a.action), hasLevel = typeof a.level === 'number';
+  if (!hasLevel && !action) return { ok: true, data: cur === 0 ? 'The tablet is muted.' : `The volume is at ${Math.round(cur * 100)} percent.` };
+  const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
+  const v = hasLevel ? clamp01(num(a.level) / 100) : action === 'up' ? clamp01(cur + .15) : action === 'down' ? clamp01(cur - .15) : action === 'mute' ? 0 : action === 'unmute' ? (cur > 0 ? cur : .5) : cur;
+  try { device.setVolume('media', v); } catch { return { ok: false, data: 'I can’t change the volume right now.' }; }
+  if (v === 0) return { ok: true, data: 'Muted.' };
+  if (action === 'up') return { ok: true, data: v >= 1 ? 'That’s as loud as it goes.' : 'Louder.' };
+  if (action === 'down') return { ok: true, data: 'Quieter.' };
+  return { ok: true, data: `Volume ${Math.round(v * 100)} percent.` };
 }
 
 /** Do Not Disturb for Claude: the same flag the Control Center tile and the voice set (prefs.dnd). Checked on the server; checked again here. */

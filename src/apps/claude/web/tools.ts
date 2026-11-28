@@ -57,6 +57,7 @@ const BUILT_IN: Record<string, ToolWords> = {
   'mcp__claudeos_tablet__pause_timer': { now: 'Pause a timer', past: 'Paused a timer', doing: 'Pausing a timer' },
   'mcp__claudeos_tablet__resume_timer': { now: 'Resume a timer', past: 'Resumed a timer', doing: 'Resuming a timer' },
   'mcp__claudeos_tablet__list_alarms': { now: 'Look at the alarms', past: 'Looked at the alarms', doing: 'Looking at the alarms' },
+  'mcp__claudeos_tablet__set_volume': { now: 'Change the volume', past: 'Changed the volume', doing: 'Changing the volume' },
   'mcp__claudeos_tablet__cancel_alarms': { now: 'Switch off Claude’s alarms', past: 'Switched off Claude’s alarms', doing: 'Switching off alarms' },
   // ClaudeOS's family lists (lists/server/tools.ts, the claudeos_lists MCP server); the card's detail is the item's text
   'mcp__claudeos_lists__lists_read': { now: 'Read the family lists', past: 'Read the family lists', doing: 'Reading the lists' },
