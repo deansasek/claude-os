@@ -63,6 +63,18 @@ export function check(op: TabletOp, input: Record<string, unknown>): Checked {
     return { ok: true, op, args: { minutes: m, label: cleanText(input.label) } };
   }   // a timer by its name, or the one in front
   if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status' || op === 'list_alarms') return { ok: true, op, args: {} };
+  // read the volume (no input), or set a level from 0 to 100, or step it up or down, mute or unmute: one of those, not both
+  if (op === 'volume') {
+    const hasLevel = typeof input.level === 'number', act = input.action;
+    if (hasLevel && typeof act === 'string') return { ok: false, error: 'Give a level or an action, not both.' };
+    if (hasLevel) {
+      const lv = input.level as number;
+      if (!Number.isInteger(lv) || lv < 0 || lv > 100) return { ok: false, error: 'The level is a whole number from 0 to 100.' };
+      return { ok: true, op, args: { level: lv } };
+    }
+    if (typeof act === 'string') return ['up', 'down', 'mute', 'unmute'].includes(act) ? { ok: true, op, args: { action: act } } : { ok: false, error: 'The action is up, down, mute or unmute.' };
+    return { ok: true, op, args: {} };
+  }
   if (op === 'dnd') return typeof input.on === 'boolean' ? { ok: true, op, args: { on: input.on } } : { ok: false, error: 'Say whether Do Not Disturb is on or off.' };
   if (op === 'notify') {
     const title = cleanText(input.title), body = cleanText(input.body);
@@ -153,6 +165,11 @@ export const tabletServer = createSdkMcpServer({
       'Cancel a timer on the user’s ClaudeOS tablet. label: optional, the timer’s name when several are set (as set_timer gave it); with none, the timer in front is cancelled. Use it when the user says to stop or cancel a timer.',
       { label: z.string().optional() },
       async ({ label }) => run('cancel_timer', label ? { label } : {})),
+    tool('set_volume',
+      'Read or set the media volume on the user’s ClaudeOS tablet. With no input it says the volume. level: a volume from 0 to 100. '
+        + 'action: up or down a step, mute or unmute, instead of a level. Use it when the user asks to turn the sound up, down or off, or to set it.',
+      { level: z.number().int().min(0).max(100).optional(), action: z.enum(['up', 'down', 'mute', 'unmute']).optional() },
+      async ({ level, action }) => run('volume', level !== undefined ? { level } : action ? { action } : {})),
     tool('set_dnd',
       'Turn Do Not Disturb on or off on the user’s ClaudeOS tablet. On: no banners show, but notifications still go to the list. Use it when the user asks to silence the tablet or to turn its sound and banners back on.',
       { on: z.boolean() },
