@@ -85,6 +85,17 @@ export function airSay(aqi: number | null): string {
   return `Air quality is ${Math.round(aqi)}: ${aqiLabel(aqi)}.`;
 }
 
+// Humidity questions by voice: "how humid is it", "what's the humidity outside", "is it humid".
+export function humidWord(t: string): boolean {
+  return /^(?:how humid is it(?: today| outside| right now)?|what(?:'s| is) the humidity(?: today| outside| right now| now)?|is it humid(?: today| outside| right now)?)$/.test(t);
+}
+
+/** The relative humidity now, from the forecast's current block. */
+export function humidSay(pct: number | null): string {
+  if (pct == null || !Number.isFinite(pct)) return 'I can’t get the humidity right now.';
+  return `Humidity is ${Math.round(pct)} percent.`;
+}
+
 // Frost and freezing questions for tonight: "will it freeze tonight", "will there be a frost". "Is it freezing" is left out: in speech it means "very cold".
 export function frostTonight(t: string): boolean {
   return /^(?:will it freeze(?: tonight)?|is it going to freeze(?: tonight)?|will there be (?:a )?frost(?: tonight)?|is there going to be (?:a )?frost(?: tonight)?|is it going to be below freezing(?: tonight)?|will it be below freezing(?: tonight)?|will it get below freezing(?: tonight)?)$/.test(t);
