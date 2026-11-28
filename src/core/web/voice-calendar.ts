@@ -45,6 +45,7 @@ export function overlapsDay<E extends { start: number; end: number }>(events: E[
 export function calendarDaySay(items: string[], name: string): string {
   if (!items.length) return `Nothing on your calendar ${name}.`;
   const shown = items.slice(0, 3);
+  const more = items.length - shown.length;
   const words = shown.length === 1 ? shown[0] : `${shown.slice(0, -1).join('; ')}; and ${shown[shown.length - 1]}`;
-  return `${name.replace(/^./, c => c.toUpperCase())}: ${words}.`;
+  return `${name.replace(/^./, c => c.toUpperCase())}: ${words}${more > 0 ? `, and ${more} more` : ''}.`;
 }
