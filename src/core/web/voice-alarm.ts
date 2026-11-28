@@ -30,6 +30,11 @@ export function alarmOnTimePhrase(t: string): string | null {
 export type TimerWord ={ op: 'pause' } | { op: 'resume' } | { op: 'nudge'; minutes: number } | { op: 'cancel-all' } | { op: 'cancel-named'; label: string };
 const NUMBER_WORDS: Record<string, number> = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, fifteen: 15, twenty: 20, thirty: 30 };
 
+/** "What time will the timer go off", "when does the timer finish": the clock time the timer ends, asked for. */
+export function timerEndWord(t: string): boolean {
+  return /^(?:what time (?:will|does) the timer (?:go off|finish|end|ring)|when (?:will|does) the timer (?:go off|finish|end|ring|be done)|when is the timer up)$/.test(t);
+}
+
 /** "How long is left on the pasta timer": the label of one timer, or null. A bare "the timer" or a time is not a label. */
 export function namedTimerLeftLabel(t: string): string | null {
   const m = t.match(/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)|how much longer(?: is it)?|time left) on (?:the |my )?(.+?) timer$/);
