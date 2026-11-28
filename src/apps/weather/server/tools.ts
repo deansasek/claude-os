@@ -45,7 +45,15 @@ export async function weatherForecast({ days }: { days?: number }, read: typeof 
       + `${skyWords(r.daily.weather_code[i])}, rain ${Math.round(r.daily.precipitation_probability_max[i])}%, wind up to ${Math.round(r.daily.wind_speed_10m_max[i])} ${r.wind_unit}`
       + `, sunrise ${hourMinute(r.daily.sunrise?.[i])}, sunset ${hourMinute(r.daily.sunset?.[i])}, UV ${Math.round(r.daily.uv_index_max?.[i] ?? 0)}`);
   }
-  const now = `Now ${Math.round(r.current.temperature_2m)}${unit}, ${skyWords(r.current.weather_code)}, feels like ${Math.round(r.current.apparent_temperature)}${unit}.`;
+  // humidity and wind now, when the forecast has them; a missing number is left out, not shown as 0
+  const hum = r.current.relative_humidity_2m;
+  const wind = r.current.wind_speed_10m;
+  const extra = [
+    typeof hum === 'number' ? `humidity ${Math.round(hum)}%` : '',
+    typeof wind === 'number' ? `wind ${Math.round(wind)} ${r.wind_unit}` : '',
+  ].filter(Boolean);
+  const now = `Now ${Math.round(r.current.temperature_2m)}${unit}, ${skyWords(r.current.weather_code)}, feels like ${Math.round(r.current.apparent_temperature)}${unit}`
+    + `${extra.map((e) => `, ${e}`).join('')}.`;
   return text(`Weather for ${r.place ?? 'the set place'}. ${now}\n${rows.join('\n')}`);
 }
 
