@@ -3,12 +3,23 @@
 // matches the Calculator app. Anything that is not a plain sum returns null and the phrase goes on.
 import { evaluate, format } from '../../apps/calculator/web/calc.ts';
 
-/** The reply for a sum asked for, or null when the phrase is not a sum this can work out. The phrase is already cleaned. */
-export function mathSay(t: string): string | null {
+/** The reply for a sum asked for, or null when the phrase is not a sum this can work out. Takes what was heard (any case,
+ *  symbols such as + × ÷ % and x between two numbers are read as words). */
+export function mathSay(raw: string): string | null {
+  const t = raw.toLowerCase().replace(/’/g, "'").replace(/[?!.]+$/, '').replace(/\s+/g, ' ').trim();
   const m = /^(?:what(?:'s| is)|how much is) (.+)$/.exec(t);
   if (!m) return null;
   const sum = m[1].trim();
+  // symbols heard from speech: between two numbers, + × x ÷ % and - become the words
   let s = sum
+    .replace(/(\d)\s*\+\s*(\d)/g, '$1 plus $2')
+    .replace(/(\d)\s*[×x*]\s*(\d)/g, '$1 times $2')
+    .replace(/(\d)\s*÷\s*(\d)/g, '$1 divided by $2')
+    .replace(/(\d)\s*\/\s*(\d)/g, '$1 divided by $2')
+    .replace(/(\d)\s*%/g, '$1 percent')
+    .replace(/(\d)\s*-\s*(\d)/g, '$1 minus $2')
+    .replace(/\s+/g, ' ');
+  s = s
     .replace(/^half of (\d+(?:\.\d+)?)$/, '$1 / 2')
     .replace(/^(?:a )?quarter of (\d+(?:\.\d+)?)$/, '$1 / 4')
     .replace(/(\d+(?:\.\d+)?) percent of (\d+(?:\.\d+)?)/, '$1 / 100 * $2')

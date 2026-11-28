@@ -466,7 +466,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   }
 
   // a quick sum: "what's 12 times 7" is worked out by the Calculator's own parser (voice-math.ts)
-  const sumSay = mathSay(t);
+  // what was heard first (so symbols such as + and × survive), then the cleaned words (so "twelve times seven" works)
+  const sumSay = mathSay(raw) ?? mathSay(t);
   if (sumSay !== null) return { say: sumSay, react: 'look' };
   // time and date
   // "what's the news": the top headlines from the News feed (voice-news.ts); a feed that did not answer says so
