@@ -19,6 +19,7 @@ import { voice } from '../../../core/web/device.ts';
 import { calendarCommand, getClock, provideRoutines, weatherToday } from '../../../core/web/voice-commands.ts';
 import { readLists } from '../../lists/web/readers.ts';
 import { voiceUi } from '../../../core/web/voice-ui.ts';
+import { sayDuration } from '../../../core/web/voice-parse.ts';
 import { prefs, setFocus, sleep as showScreenSaver } from '../../../core/web/system.ts';
 import type { HaResult } from '../../home-assistant/api.ts';
 import { AT_WINDOW_MIN, STEP_MAX_MS, dueDay, parseRanDays, type Routine, type RoutinesResult, type Step } from '../api.ts';
@@ -102,7 +103,7 @@ async function doStep(s: Step, deadline: number): Promise<string> {
       const clock = getClock();
       if (!clock) return 'The clock isn’t ready, so no timer.';
       if (!clock.startTimer(s.minutes * 60e3)) return 'The Clock’s timer list is full, so no timer.';   // a new timer in the Clock's list; the ones already running keep going
-      return `Timer set for ${s.minutes} minute${s.minutes === 1 ? '' : 's'}.`;
+      return `Timer set for ${sayDuration(s.minutes * 60e3)}.`;   // as the voice says it: 90 minutes is "1 hour and 30 minutes"
     }
     case 'pause': await sleep(Math.min(s.seconds * 1000, deadline - Date.now())); return '';
     case 'quiet': prefs.dnd = s.on; return '';   // the same switch as the Control Center tile
