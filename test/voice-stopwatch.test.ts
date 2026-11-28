@@ -10,6 +10,14 @@ test('start and stop the stopwatch are heard', () => {
   assert.equal(stopwatchWord('pause the stopwatch'), 'stop');
 });
 
+test('asking the time and resetting the stopwatch are heard', () => {
+  assert.equal(stopwatchWord('how long is the stopwatch'), 'time');
+  assert.equal(stopwatchWord('how long has my stopwatch been running'), 'time');
+  assert.equal(stopwatchWord('stopwatch time'), 'time');
+  assert.equal(stopwatchWord('reset the stopwatch'), 'reset');
+  assert.equal(stopwatchWord('clear my stopwatch'), 'reset');
+});
+
 test('other phrases are not stopwatch words', () => {
   assert.equal(stopwatchWord('open stopwatch'), null);
   assert.equal(stopwatchWord('start the timer'), null);
