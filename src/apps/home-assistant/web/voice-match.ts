@@ -70,6 +70,27 @@ export function parseIsOn(raw: string): { target: string; word: string } | null 
   return { target, word: m[2] };
 }
 
+/** "are any lights on", "which lights are on", "are the lights all off": the question's kind, or null. Read only. */
+export function parseLightsOn(raw: string): 'any-on' | 'all-off' | null {
+  const t = clean(raw).replace(POLITE, '').trim().replace(POLITE, '').trim();
+  if (/^(?:are|is) (?:any|there any) (?:of the |of my |my )?lights? (?:still )?on$|^(?:which|what) lights? (?:are|is) on$/.test(t)) return 'any-on';
+  if (/^(?:are|is) (?:the |all the )?lights? (?:all )?off$/.test(t)) return 'all-off';
+  return null;
+}
+
+/** The spoken answer about the lights: "The kitchen light and porch light are on.", "No lights are on.", "All the lights are off." */
+export function lightsOnReply(kind: 'any-on' | 'all-off', all: string[], on: string[]): string {
+  const join = (names: string[]): string => {
+    const first = names.slice(0, 3);
+    const words = first.length === 1 ? first[0] : `${first.slice(0, -1).join(', ')} and ${first[first.length - 1]}`;
+    return names.length > 3 ? `${first.join(', ')}, and ${names.length - 3} more` : words;
+  };
+  if (!all.length) return 'There are no lights.';
+  if (kind === 'all-off') return on.length ? `No, ${join(on)} ${on.length === 1 ? 'is' : 'are'} still on.` : 'All the lights are off.';
+  if (!on.length) return 'No lights are on.';
+  return `The ${join(on)} ${on.length === 1 ? 'is' : 'are'} on.`;
+}
+
 /** The spoken answer for a device's state: "The porch light is on.", "The front door is open.". */
 export function stateReply(d: VoiceDevice, state: string): string {
   const words = state.replace(/_/g, ' ');
