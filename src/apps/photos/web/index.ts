@@ -55,6 +55,13 @@ const dayLabel = (day: string): string => {
   return dt.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: dt.getFullYear() === now.getFullYear() ? undefined : 'numeric' });
 };
 const timeOf = (at: string): string => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+/** The day a photo was taken, for the full-size view: "Today" and "Yesterday" as in the grid, otherwise the real date. */
+const viewerDayLabel = (day: string): string => {
+  const label = dayLabel(day);
+  if (label !== 'Earlier this week') return label;
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: y === new Date().getFullYear() ? undefined : 'numeric' });
+};
 
 function paint(): void {
   const total = days.reduce((n, d) => n + d.photos.length, 0);
@@ -184,7 +191,7 @@ function open(p: PhotoItem, day: string, dir = 0): void {
     img.style.setProperty('--from', `calc(var(--rise) * ${dir * 3})`);
     img.classList.add('swap');
   }
-  $('phWhen').textContent = `${dayLabel(day)}, ${timeOf(p.at)}`;
+  $('phWhen').textContent = `${viewerDayLabel(day)}, ${timeOf(p.at)}`;
   $('phViewer').hidden = false;
   paintNav();
 }
