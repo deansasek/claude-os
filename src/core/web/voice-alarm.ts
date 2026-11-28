@@ -40,3 +40,8 @@ export function timerWord(t: string): TimerWord | null {
   if (n < 1 || n > 60) return null;
   return { op: 'nudge', minutes: add ? n : -n };
 }
+
+/** "what alarms do I have", "which alarms are on", "list my alarms": every alarm that is on, not only the next one. */
+export function alarmsListWord(t: string): boolean {
+  return /^(?:what alarms (?:do i have|are on|are set)(?: set| on)?|which alarms are on|list my alarms|what are my alarms)$/.test(t);
+}
