@@ -103,5 +103,5 @@ export function alarmTomorrowWord(t: string): boolean {
 
 /** "what alarms do I have", "which alarms are on", "list my alarms": every alarm that is on, not only the next one. */
 export function alarmsListWord(t: string): boolean {
-  return /^(?:what alarms (?:do i have|are on|are set)(?: set| on)?|which alarms are on|list my alarms|what are my alarms)$/.test(t);
+  return /^(?:what alarms (?:do i have|are on|are set)(?: set| on)?|which alarms (?:are on|do i have)|how many alarms (?:do i have|are on|are set)(?: set| on)?|what alarms have i got|list my alarms|what are my alarms)$/.test(t);
 }
