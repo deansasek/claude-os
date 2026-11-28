@@ -28,6 +28,8 @@ export function nextRunWords(next: NextRun | null, now: Date): { val: string; su
   if (!next) return { val: 'None set', sub: '' };
   const days = Math.round((new Date(next.at.getFullYear(), next.at.getMonth(), next.at.getDate()).getTime()
     - new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()) / 864e5);
-  const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : next.at.toLocaleDateString(undefined, { weekday: 'long' });
+  const weekday = next.at.toLocaleDateString(undefined, { weekday: 'long' });
+  // a week away is the same weekday as today: "Next Wednesday", not a bare "Wednesday" that reads as today
+  const when = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days >= 7 ? `Next ${weekday}` : weekday;
   return { val: next.name, sub: `${when} ${clock(next.at)}` };
 }

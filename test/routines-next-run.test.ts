@@ -29,6 +29,13 @@ test('the row says the routine and when it runs', () => {
   assert.equal(nextRunWords(null, now).val, 'None set');
 });
 
+test('a run a week away on today’s weekday says Next, not the bare weekday', () => {
+  // Wednesday 10:00; the routine is set for Wednesdays at 7:00 and that time has passed today
+  const next = nextRun([{ name: 'Morning', at: at(7, 0, [3]) }], now);
+  assert.equal(next?.at.getDate(), 2);   // Wednesday 2 December
+  assert.match(nextRunWords(next, now).sub, /^Next \S+ /);
+});
+
 test('Home reads the routine list and paints the row', () => {
   const src = readFileSync(new URL('../src/apps/home/web/index.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const html = readFileSync(new URL('../src/apps/home/view.html', import.meta.url), 'utf8');
