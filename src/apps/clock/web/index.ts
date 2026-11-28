@@ -1224,9 +1224,9 @@ const clockApi: ClockApi = {
   /** Snooze a ringing alarm. False when nothing rings or a timer does. */
   snoozeRinging(): boolean { if (!ringing || ringing.kind !== 'alarm') return false; snooze(); return true; },
   /** The next alarm to ring: its time and "today" / "tomorrow" / a weekday. */
-  nextAlarm(): { h: number; m: number; when: string } | null {
+  nextAlarm(): { h: number; m: number; when: string; at: number } | null {
     const n = nextAlarm();
-    return n ? { h: n.a.h, m: n.a.m, when: whenWord(n.at) } : null;
+    return n ? { h: n.a.h, m: n.a.m, when: whenWord(n.at), at: n.at } : null;
   },
   alarmsOn(): { h: number; m: number; days: number[]; when: string }[] {
     const d = now();
