@@ -9,7 +9,7 @@
 import { browser, device } from '../../../core/web/device.ts';
 import { batterySay } from '../../../core/web/voice-battery.ts';
 import { wifiSay } from '../../../core/web/voice-wifi.ts';
-import { notify, prefs } from '../../../core/web/system.ts';
+import { notify, prefs, quietNow } from '../../../core/web/system.ts';
 import { setThemeMode, themeMode, type ThemeMode } from '../../../core/web/theme.ts';
 import { getClock, getRoutines } from '../../../core/web/voice-commands.ts';
 import { articleFor, daysText, sayDuration } from '../../../core/web/voice-parse.ts';
@@ -67,7 +67,9 @@ function run(job: Job): Promise<Answer> | Answer {
 function runStatus(): Answer {
   try {
     // Do Not Disturb is the same flag the Control Center tile and the voice set (prefs.dnd), read here so Claude can tell
-    return { ok: true, data: `${batterySay(device.battery())} ${wifiSay(device.wifi())} Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.` };
+    // quiet hours mute chimes and speech too, so say them when Do Not Disturb is off and they are on now
+    const quietSay = !prefs.dnd && quietNow() ? 'Quiet hours are on now, so chimes and speech are muted. ' : '';
+    return { ok: true, data: `${batterySay(device.battery())} ${wifiSay(device.wifi())} ${quietSay}Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.` };
   } catch { return { ok: false, data: 'I can’t read the tablet’s battery or Wi-Fi right now.' }; }
 }
 
