@@ -19,7 +19,8 @@ export function evaluate(expr: string): number | null {
   const toks: { t: string; v?: number }[] = [];
   for (let i = 0; i < src.length;) {
     if (src[i] === ' ') { i++; continue; }
-    const m = /^(\d+\.?\d*|\.\d+)/.exec(src.slice(i));
+    // a result too big or too small for plain digits is written with an exponent ("1e+21", "1e-7"): read it as one number
+    const m = /^(\d+\.?\d*(?:e[+-]?\d+)?|\.\d+(?:e[+-]?\d+)?)/.exec(src.slice(i));
     if (m) { toks.push({ t: 'n', v: +m[1] }); i += m[1].length; continue; }
     if ('+-*/%'.includes(src[i])) { toks.push({ t: src[i] }); i++; continue; }
     return null;

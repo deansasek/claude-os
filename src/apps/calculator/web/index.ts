@@ -18,7 +18,7 @@ const label = (u: Unit): string => UNITS.find(x => x.id === u)?.label ?? u;
 const readoutValue = (): number | null => {
   // the keys type a minus as "−" (U+2212), and a number may end in a point ("5."): both are read as a number
   const text = display(state).replace(/−/g, '-').replace(/\.$/, '');
-  return /^-?\d+(\.\d+)?$/.test(text) ? Number(text) : null;
+  return /^-?\d+(\.\d+)?(e[+-]?\d+)?$/.test(text) ? Number(text) : null;
 };
 
 function paintConvert(): void {
