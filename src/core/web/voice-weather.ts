@@ -55,6 +55,34 @@ export function nowSay(code: number, asked: 'raining' | 'snowing' | 'foggy'): st
   return wet ? 'Yes, it’s raining.' : 'No, it’s not raining right now.';
 }
 
+// Frost and freezing questions for tonight: "will it freeze tonight", "will there be a frost". "Is it freezing" is left out: in speech it means "very cold".
+export function frostTonight(t: string): boolean {
+  return /^(?:will it freeze(?: tonight)?|is it going to freeze(?: tonight)?|will there be (?:a )?frost(?: tonight)?|is there going to be (?:a )?frost(?: tonight)?|is it going to be below freezing(?: tonight)?|will it be below freezing(?: tonight)?|will it get below freezing(?: tonight)?)$/.test(t);
+}
+
+/** The lowest hourly temperature from now until 08:00 tomorrow. Times are location-local ("2026-11-27T15:00").
+ *  Returns null when no hour falls in that window. */
+export function overnightLow(times: string[], temps: number[], nowIso: string): number | null {
+  const today = nowIso.slice(0, 10);
+  const tomorrow = new Date(Date.parse(`${today}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+  const start = `${nowIso.slice(0, 13)}:00`, end = `${tomorrow}T08:00`;
+  let low: number | null = null;
+  times.forEach((iso, i) => {
+    const v = temps[i];
+    if (iso < start || iso >= end || v == null) return;
+    if (low === null || v < low) low = v;
+  });
+  return low;
+}
+
+/** The answer for a frost question. The freezing point is 0 degrees Celsius or 32 Fahrenheit, by the user's units. */
+export function frostSay(low: number, units: 'celsius' | 'fahrenheit'): string {
+  const freezing = units === 'celsius' ? 0 : 32;
+  const v = Math.round(low);
+  if (low <= freezing) return `Yes, down to ${v} degrees tonight: below freezing.`;
+  return `No, the low tonight is ${v} degrees.`;
+}
+
 // Wind questions by voice: "is it windy", "is it going to be windy tomorrow". Returns the day (0 today, 1 tomorrow), or null.
 export function windDay(t: string): 0 | 1 | null {
   if (/^(?:is it|will it be|is it going to be) windy tomorrow$|^how windy (?:is it|will it be|is it going to be) tomorrow$/.test(t)) return 1;
