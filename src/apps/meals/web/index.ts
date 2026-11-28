@@ -5,7 +5,7 @@ import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { manifest } from '../manifest.ts';
-import { copyPlan, dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayAfter, mondayOf, savedRecipeNames, plannedWords, recipeFor, weekDays, type Day, type Dinner } from './week.ts';
+import { copyPlan, dinnerOn, dinnerTitle, dinnersIn, followedWeekMonday, isoDay, mondayAfter, mondayOf, savedRecipeNames, plannedWords, recipeFor, weekDays, type Day, type Dinner } from './week.ts';
 import { openApp } from '../../../core/web/system.ts';
 import { addDinnersToShopping } from './week-shopping.ts';
 
@@ -16,6 +16,7 @@ const WRITE_TIMEOUT_MS = 10e3;
 
 let ctx: AppContext | null = null;
 let monday = mondayOf(new Date());
+let lastMonday = monday;   // the week the clock was on when Meals last followed it (followedWeekMonday in week.ts)
 let days: Day[] = weekDays(monday);
 let dinners: Dinner[] = [];
 let editing: number | null = null;
@@ -202,7 +203,14 @@ const app: HubApp = {
     void load(c);
   },
   // shown again: read the week afresh, so a dinner added on another screen shows
-  onShow() { if (ctx) void load(ctx); },
+  onShow() {
+    if (!ctx) return;
+    // a new week since last time: follow it, unless the user moved to another week
+    const next = followedWeekMonday(monday, lastMonday, new Date());
+    if (next !== monday) { monday = next; days = weekDays(monday); editing = null; }
+    lastMonday = mondayOf(new Date());
+    void load(ctx);
+  },
   onClose() { editing = null; },
 };
 export default app;
