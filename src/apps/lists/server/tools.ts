@@ -5,6 +5,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { MAX_LIST_NAME, MAX_TEXT, findList, type FamilyList, type ListsResult } from '../api.ts';
 import { addItem, clearDone, editItem, findItem, newList, readLists, removeItem, renameList, tickItem } from './store.ts';
+import { suggestions } from './history.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -16,6 +17,17 @@ function show(l: FamilyList): string {
   const open = l.items.filter(i => !i.done).length;
   const head = l.kind === 'notes' ? `${l.name} (id ${l.id}): ${l.items.length} note${l.items.length === 1 ? '' : 's'}` : `${l.name} (id ${l.id}): ${open} to do, ${l.items.length - open} ticked`;
   return `${head}\n${rows.join('\n')}`;
+}
+
+/** The lists_suggest reply: the items the family often buys that are not on the list now (the tablet's "+ item" chips). read and suggest default to the lists and the history. */
+export function listsSuggestReply(list: string, read: () => ListsResult = readLists, suggest: (onList: string[]) => string[] = (items) => suggestions(items)) {
+  const r = read();
+  if (!r.ok) return text(r.error ?? 'Couldn’t read the lists.', true);
+  const l = findList(r.lists, list);
+  if (!l) return text(`There’s no list called “${list}”. The lists are: ${r.lists.map(x => x.name).join(', ')}.`, true);
+  const items = suggest(l.items.map(i => i.text));
+  if (!items.length) return text(`Nothing to suggest for ${l.name} yet.`);
+  return text(`Often bought, and not on ${l.name} now: ${items.join(', ')}.`);
 }
 
 export const listsServer = createSdkMcpServer({
@@ -98,6 +110,11 @@ export const listsServer = createSdkMcpServer({
         if (!r.ok) return text(r.error ?? 'That didn’t work.', true);
         return text(`Made the list “${name.trim()}”. It is empty.`);
       }),
+    tool('lists_suggest',
+      'Suggest the items the family often buys that are not on a family list now, e.g. for Shopping. list: its name or id. '
+        + 'Read-only: nothing is added. Use it when the user asks what they are forgetting to buy.',
+      { list: z.string().max(40) },
+      async ({ list }) => listsSuggestReply(list)),
     tool('lists_rename',
       `Rename a family list on the ClaudeOS tablet. list: its current name or id. name: the new name, up to ${MAX_LIST_NAME} characters. The items stay on it.`,
       { list: z.string().max(40), name: z.string().max(40) },

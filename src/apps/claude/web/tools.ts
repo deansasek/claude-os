@@ -61,6 +61,7 @@ const BUILT_IN: Record<string, ToolWords> = {
   'mcp__claudeos_tablet__set_volume': { now: 'Change the volume', past: 'Changed the volume', doing: 'Changing the volume' },
   'mcp__claudeos_tablet__cancel_alarms': { now: 'Switch off Claude’s alarms', past: 'Switched off Claude’s alarms', doing: 'Switching off alarms' },
   // ClaudeOS's family lists (lists/server/tools.ts, the claudeos_lists MCP server); the card's detail is the item's text
+  'mcp__claudeos_lists__lists_suggest': { now: 'Look at what you often buy', past: 'Looked at what you often buy', doing: 'Looking at what you often buy' },
   'mcp__claudeos_lists__lists_read': { now: 'Read the family lists', past: 'Read the family lists', doing: 'Reading the lists' },
   'mcp__claudeos_lists__lists_add':  { now: 'Add to a family list', past: 'Added to a family list', doing: 'Adding to a list' },
   'mcp__claudeos_lists__lists_tick': { now: 'Tick off a list item', past: 'Ticked off a list item', doing: 'Ticking off a list item' },
