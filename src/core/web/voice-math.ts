@@ -13,6 +13,8 @@ export function mathSay(raw: string): string | null {
   const sum = m[1].trim();
   // symbols heard from speech: between two numbers, + × x ÷ % and - become the words
   let s = sum
+    // "minus 5 plus 3", "3 times negative 2": a minus at the start or after an operator word is a sign, not a takeaway
+    .replace(/(^|\b(?:plus|times|divided by|over) )(?:minus|negative) (?=\d)/g, '$1-')
     // "7 squared" and "3 cubed" are the number multiplied by itself (the words become times, then the symbol)
     .replace(/(\d+(?:\.\d+)?) squared\b/g, '$1 times $1')
     .replace(/(\d+(?:\.\d+)?) cubed\b/g, '$1 times $1 times $1')
