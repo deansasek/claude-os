@@ -33,7 +33,9 @@ export function parseDuration(phrase: string): number | null {
     .replace(/ (3|three) quarters (of )?(an |a )?hour /g, ' 45 minutes ')
     .replace(/ (a )?quarter (of )?(an |a )?hour /g, ' 15 minutes ')
     .replace(/ (a|an) (hour|minute|second)/g, ' 1 $2')
-    .replace(/ and /g, ' ').replace(/\s+/g, ' ').trim();
+    .replace(/ and /g, ' ').replace(/\s+/g, ' ').trim()
+    // "an hour 30", "1 hour and 30": the same bare minute count, once "an" and "and" are gone
+    .replace(/^(\d+) hours? (\d{1,2})$/, '$1 hours $2 minutes');
   const m = s.match(/^(?:(\d+(?:\.\d+)?) ?(?:hours?|hrs?)\s*)?(?:(\d+(?:\.\d+)?) ?(?:minutes?|mins?)\s*)?(?:(\d+(?:\.\d+)?) ?(?:seconds?|secs?)\s*)?$/);
   if (!m || (!m[1] && !m[2] && !m[3])) return null;
   const ms = (+(m[1] || 0) * 3600 + +(m[2] || 0) * 60 + +(m[3] || 0)) * 1000;
