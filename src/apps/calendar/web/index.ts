@@ -135,6 +135,7 @@ async function load(force = false, auto = false): Promise<void> {
   if (loading) return;
   if (auto && viaConnector) return;
   loading = true;
+  const asked = rangeKey(rangeFor());   // the range this read is for: if the view moves while it is out, read again
   failed = false;
   render();
   try {
@@ -165,6 +166,8 @@ async function load(force = false, auto = false): Promise<void> {
   loading = false;
   render();
   appSettingsChanged();
+  // the view moved (next day, another week) while this read was out, and its call was dropped: read the range on screen
+  if (rangeKey(rangeFor()) !== asked) void load();
 }
 
 /** The calendars and their shown flags from the PC. A failed read keeps the chips as they were. */
