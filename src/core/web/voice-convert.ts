@@ -30,7 +30,7 @@ export function convertSay(raw: string): string | null {
     // "1/2 cup", "3/4 cup": a fraction amount becomes its decimal (a zero denominator is left as Infinity, and answer() refuses it)
     .replace(/(\d+)\/(\d+)\b/g, (_, a: string, b: string) => String(Number(a) / Number(b)))
     // "200g", "500ml": a unit joined to its number gets a space (the unit list is explicit, so "1c" or "2f" are left alone)
-    .replace(/(\d)(g|kg|oz|lbs?|ml|tbsps?|tsps?|km|cm|mm|mins?|hrs?|secs?|mi|ft|yd|m)\b/g, '$1 $2')
+    .replace(/(\d)(g|kg|oz|lbs?|ml|tbsps?|tsps?|km|cm|mm|mins?|hrs?|secs?|mi|ft|yd|m|l)\b/g, '$1 $2')
     // "180°C", "350 °F": the degree sign and its letter become the unit word
     .replace(/\s*°\s*c\b/g, ' celsius').replace(/\s*°\s*f\b/g, ' fahrenheit').replace(/\s+/g, ' ')
     .replace(/[?.!]+$/, '').trim();
@@ -118,10 +118,29 @@ function timeAnswer(amount: number, fromWord: string, toWord: string, shape: 'is
   return `${roundResult(v)} ${timeName(to, v)} in ${amount === 1 ? 'a' : roundResult(amount)} ${timeName(from, amount)}.`;
 }
 
+// litres, for voice only: a litre is 1000 millilitres, so a litre converts through millilitres to any kitchen unit.
+const LITRE_WORDS = ['l', 'litre', 'litres', 'liter', 'liters'];
+const litreName = (n: number): string => (Math.abs(n - 1) < 1e-9 ? 'litre' : 'litres');
+
+/** A litre to a kitchen unit, or the other way round, or null (litre to litre, or a litre to a weight, distance or time). */
+function litreAnswer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
+  const fromL = LITRE_WORDS.includes(fromWord.trim()), toL = LITRE_WORDS.includes(toWord.trim());
+  if (fromL === toL) return null;
+  const other = unitOf(fromL ? toWord : fromWord);
+  if (!other) return null;
+  const ml = fromL ? convert(amount * 1000, 'ml', other) : convert(amount, other, 'ml');
+  if (ml === null || !Number.isFinite(ml)) return null;
+  const v = fromL ? ml : ml / 1000;   // the wanted amount: in the kitchen unit, or in litres when a litre is wanted
+  const fromName = fromL ? litreName(amount) : name(other, amount);
+  const toName = toL ? litreName(v) : name(other, v);
+  if (shape === 'is') return `${roundResult(amount)} ${fromName} is ${roundResult(v)} ${toName}.`;
+  return `${roundResult(v)} ${toName} in ${amount === 1 ? 'a' : roundResult(amount)} ${fromName}.`;
+}
+
 function answer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
   if (!Number.isFinite(amount)) return null;
   const from = unitOf(fromWord), to = unitOf(toWord);
-  if (!from || !to) return weightAnswer(amount, fromWord, toWord, shape) ?? distanceAnswer(amount, fromWord, toWord, shape) ?? timeAnswer(amount, fromWord, toWord, shape);
+  if (!from || !to) return litreAnswer(amount, fromWord, toWord, shape) ?? weightAnswer(amount, fromWord, toWord, shape) ?? distanceAnswer(amount, fromWord, toWord, shape) ?? timeAnswer(amount, fromWord, toWord, shape);
   const v = convert(amount, from, to);
   if (v === null) return null;
   if (shape === 'is') return `${roundResult(amount)} ${name(from, amount)} is ${roundResult(v)} ${name(to, v)}.`;
