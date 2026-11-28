@@ -12,7 +12,7 @@ const cards = read('web/tools.ts');
 test('tablet_status is a read-only tool, passed to the tablet with no arguments', () => {
   assert.ok(tablet.includes("tool('tablet_status',"));
   assert.ok(tablet.includes("if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status' || op === 'list_alarms') return { ok: true, op, args: {} };"));
-  assert.ok(read('server/browser.ts').includes("| 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer' | 'list_alarms' | 'volume';"));
+  assert.ok(read('server/browser.ts').includes("| 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer' | 'list_alarms' | 'volume' | 'theme';"));
 });
 
 test('the tablet answers with the battery and Wi-Fi words the voice uses', () => {

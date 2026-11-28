@@ -64,6 +64,11 @@ export function check(op: TabletOp, input: Record<string, unknown>): Checked {
   }   // a timer by its name, or the one in front
   if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status' || op === 'list_alarms') return { ok: true, op, args: {} };
   // read the volume (no input), or set a level from 0 to 100, or step it up or down, mute or unmute: one of those, not both
+  // the screen's mode (light, dark, time or system); with none, the tool only reads it
+  if (op === 'theme') {
+    if (input.mode === undefined) return { ok: true, op, args: {} };
+    return typeof input.mode === 'string' && ['light', 'dark', 'time', 'system'].includes(input.mode) ? { ok: true, op, args: { mode: input.mode } } : { ok: false, error: 'The mode is light, dark, time or system.' };
+  }
   if (op === 'volume') {
     const hasLevel = typeof input.level === 'number', act = input.action;
     if (hasLevel && typeof act === 'string') return { ok: false, error: 'Give a level or an action, not both.' };
@@ -165,6 +170,11 @@ export const tabletServer = createSdkMcpServer({
       'Cancel a timer on the user’s ClaudeOS tablet. label: optional, the timer’s name when several are set (as set_timer gave it); with none, the timer in front is cancelled. Use it when the user says to stop or cancel a timer.',
       { label: z.string().optional() },
       async ({ label }) => run('cancel_timer', label ? { label } : {})),
+    tool('set_theme',
+      'Read or set the screen’s mode on the user’s ClaudeOS tablet: light, dark, time (automatic, by the time of day) or system (automatic, following the tablet). '
+        + 'With no mode it says the current mode. Use it when the user asks for dark mode, light mode, or automatic.',
+      { mode: z.enum(['light', 'dark', 'time', 'system']).optional() },
+      async ({ mode }) => run('theme', mode ? { mode } : {})),
     tool('set_volume',
       'Read or set the media volume on the user’s ClaudeOS tablet. With no input it says the volume. level: a volume from 0 to 100. '
         + 'action: up or down a step, mute or unmute, instead of a level. Use it when the user asks to turn the sound up, down or off, or to set it.',

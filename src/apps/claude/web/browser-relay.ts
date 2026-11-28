@@ -10,12 +10,13 @@ import { browser, device } from '../../../core/web/device.ts';
 import { batterySay } from '../../../core/web/voice-battery.ts';
 import { wifiSay } from '../../../core/web/voice-wifi.ts';
 import { notify, prefs } from '../../../core/web/system.ts';
+import { setThemeMode, themeMode, type ThemeMode } from '../../../core/web/theme.ts';
 import { getClock, getRoutines } from '../../../core/web/voice-commands.ts';
 import { articleFor, daysText, sayDuration } from '../../../core/web/voice-parse.ts';
 import { call } from './sessions/pin.ts';
 import { cur, getControl } from '../../browser/web/state.ts';
 
-type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer' | 'list_alarms' | 'volume';
+type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status' | 'dnd' | 'pause_timer' | 'resume_timer' | 'adjust_timer' | 'list_alarms' | 'volume' | 'theme';
 interface Job { id: string; op: Op; ref?: string; text?: string; args?: Record<string, unknown> }
 interface NextReply { ok: boolean; job?: Job | null; error?: string }
 type Answer = { ok: boolean; data: string };
@@ -57,6 +58,7 @@ function run(job: Job): Promise<Answer> | Answer {
   if (job.op === 'tablet_status') return runStatus();
   if (job.op === 'dnd') return runDnd(job.args || {});
   if (job.op === 'volume') return runVolume(job.args || {});
+  if (job.op === 'theme') return runTheme(job.args || {});
   if (job.op === 'timer' || job.op === 'alarm' || job.op === 'reminder' || job.op === 'notify') return runTablet(job.op, job.args || {});
   return runBrowser(job);
 }
@@ -67,6 +69,18 @@ function runStatus(): Answer {
     // Do Not Disturb is the same flag the Control Center tile and the voice set (prefs.dnd), read here so Claude can tell
     return { ok: true, data: `${batterySay(device.battery())} ${wifiSay(device.wifi())} Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.` };
   } catch { return { ok: false, data: 'I can’t read the tablet’s battery or Wi-Fi right now.' }; }
+}
+
+/** The screen's mode for Claude: the same modes Settings and the voice set (theme.ts). With none, it says the current mode. */
+const THEME_NAMES: Record<ThemeMode, string> = { light: 'light', dark: 'dark', time: 'automatic, by the time of day', system: 'automatic, following the tablet' };
+function runTheme(a: Record<string, unknown>): Answer {
+  const want = str(a.mode);
+  if (!want) return { ok: true, data: `The screen is in ${THEME_NAMES[themeMode()]} mode.` };
+  if (!(want in THEME_NAMES)) return { ok: false, data: 'The mode is light, dark, time or system.' };
+  const mode = want as ThemeMode;
+  if (themeMode() === mode) return { ok: true, data: `It’s already in ${THEME_NAMES[mode]} mode.` };
+  setThemeMode(mode);
+  return { ok: true, data: `Now in ${THEME_NAMES[mode]} mode.` };
 }
 
 /** The media volume for Claude: the voice's steps and words (voice-commands.ts volume and volumeLevel). Read when there is no input. */
