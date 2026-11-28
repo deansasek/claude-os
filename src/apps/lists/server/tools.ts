@@ -4,7 +4,7 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { MAX_TEXT, findList, type FamilyList, type ListsResult } from '../api.ts';
-import { addItem, clearDone, findItem, newList, readLists, removeItem, tickItem } from './store.ts';
+import { addItem, clearDone, editItem, findItem, newList, readLists, removeItem, tickItem } from './store.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -69,6 +69,23 @@ export const listsServer = createSdkMcpServer({
         const out = removeItem(l.id, hit.id);
         if (!out.ok) return text(out.error ?? 'That didn’t work.', true);
         return text(`Removed “${hit.text}” from ${l.name}.`);
+      }),
+    tool('lists_edit',
+      'Change the words of one item on a family list on the ClaudeOS tablet, e.g. “milk” to “oat milk”. The item keeps its place and whether it is ticked. '
+        + 'list: its name or id. Give the item’s id (from lists_read) or its current text. to: the new words.',
+      { list: z.string().max(40), id: z.string().max(40).optional(), text: z.string().max(400).optional(), to: z.string().max(400) },
+      async ({ list, id, text: t, to }) => {
+        if (!id && !t) return text('Say which item: its id or its text.', true);
+        const r = readLists();
+        if (!r.ok) return text(r.error ?? 'Couldn’t read the lists.', true);
+        const l = findList(r.lists, list);
+        if (!l) return text(`There’s no list called “${list}”. The lists are: ${names(r)}.`, true);
+        const hit = findItem(l, id ? { id } : { text: t });
+        if (hit === 'many') return text('More than one item matches. Give its id from lists_read.', true);
+        if (!hit) return text(`That item isn’t on ${l.name}.`, true);
+        const out = editItem(l.id, hit.id, to);
+        if (!out.ok) return text(out.error ?? 'That didn’t work.', true);
+        return text(`Changed “${hit.text}” to “${out.item?.text ?? to}” on ${l.name}.`);
       }),
     tool('lists_new',
       'Make a new family list on the ClaudeOS tablet, e.g. Garden jobs. name: its name, up to 40 characters. It starts empty.',
