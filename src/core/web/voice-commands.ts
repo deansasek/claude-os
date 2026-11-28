@@ -40,6 +40,7 @@ import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { sceneFailText } from '../../apps/home/web/scene-words.ts';
 import { device, nativeHas, newsFetch, onTablet, type Battery, type WifiState } from './device.ts';
 import { FEEDS } from '../../apps/news/web/feeds.ts';
+import { activeFeeds } from '../../apps/news/web/topics.ts';
 import { feedSource, tabletFeed, type KeyValue } from '../../apps/news/web/tablet.ts';
 import { store as newsStoreRaw } from './dom.ts';
 /** The store the News app keeps its saved stories in, as the tablet's feed reader expects it. */
@@ -656,7 +657,13 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     let r: NewsFeedResponse;
     // on the tablet, the feeds are read on the tablet as the News app reads them (tablet.ts); the PC route is the fallback
     if (feedSource(nativeHas('newsFetch')) === 'tablet') {
-      r = tabletFeed(newsFetch, newsStore, Date.now(), FEEDS);
+      // only the topics that are on: the topics the owner switched off in Settings are not read (as the News app reads them)
+      let feeds = FEEDS;
+      try {
+        const tp = await getJson<{ topics?: { id: string; on: boolean }[] }>('/api/news/topics', READ_TIMEOUT_MS);
+        if (Array.isArray(tp?.topics)) feeds = activeFeeds(FEEDS, Object.fromEntries(tp.topics.map(x => [x.id, x.on])));
+      } catch { /* the topics cannot be read: read every feed, as before */ }
+      r = tabletFeed(newsFetch, newsStore, Date.now(), feeds);
     } else {
       try { r = await getJson<NewsFeedResponse>('/api/news/feed', READ_TIMEOUT_MS); } catch { return { say: 'I can’t reach your PC right now.' }; }
     }

@@ -14,6 +14,6 @@ test('the feed source is the tablet when the tablet can fetch natively, and the 
 
 test('the voice reads the tablet feeds when the tablet has newsFetch, and keeps the PC route as the fallback', () => {
   assert.ok(voice.includes("if (feedSource(nativeHas('newsFetch')) === 'tablet') {"));
-  assert.ok(voice.includes('r = tabletFeed(newsFetch, newsStore, Date.now(), FEEDS);'));
+  assert.ok(voice.includes('r = tabletFeed(newsFetch, newsStore, Date.now(), feeds);'));
   assert.ok(voice.includes("await getJson<NewsFeedResponse>('/api/news/feed', READ_TIMEOUT_MS)"));
 });
