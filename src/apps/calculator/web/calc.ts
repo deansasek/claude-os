@@ -81,7 +81,10 @@ export function step(s: CalcState, key: string): CalcState {
   }
   if (/^\d$/.test(key)) {
     if (base.expr.endsWith('%')) return base;   // a number cannot follow a percent sign
-    return { expr: (base.done ? '' : base.expr) + key, done: false, error: false };
+    const cur = base.done ? '' : base.expr;
+    // a typed zero is replaced by the digit, so 0 then 7 shows 7, not 07 (as a real calculator does)
+    if (lastNumber(cur) === '0') return { expr: cur.slice(0, -1) + key, done: false, error: false };
+    return { expr: cur + key, done: false, error: false };
   }
   if (key === '.') {
     const cur = base.done ? '' : base.expr;

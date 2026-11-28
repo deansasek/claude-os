@@ -89,3 +89,11 @@ test('the converter reads an exponent result as a number', async () => {
   const src = readFileSync(new URL('../src/apps/calculator/web/index.ts', import.meta.url), 'utf8');
   assert.ok(src.includes(String.raw`/^-?\d+(\.\d+)?(e[+-]?\d+)?$/.test(text)`));
 });
+
+test('a typed zero is replaced by the next digit, so 0 then 7 shows 7, not 07', () => {
+  assert.equal(press(['0', '7']).expr, '7');
+  assert.equal(press(['0', '0']).expr, '0');
+  assert.equal(press(['5', '+', '0', '7']).expr, '5+7');
+  assert.equal(press(['0', '.', '5']).expr, '0.5');
+  assert.equal(press(['0', '7', '=']).expr, '7');
+});
