@@ -26,6 +26,13 @@ test('a number squared or cubed is worked out, and squared with no number is not
   assert.equal(mathSay("what's squared"), null);
 });
 
+test('a sum that starts with minus or negative is worked out, and a takeaway is still a takeaway', () => {
+  assert.equal(mathSay("what's minus 5 plus 3"), 'minus 5 plus 3 is -2.');
+  assert.equal(mathSay("what's negative 4 times 3"), 'negative 4 times 3 is -12.');
+  assert.equal(mathSay("what's 3 times minus 2"), '3 times minus 2 is -6.');
+  assert.equal(mathSay("what's 9 minus 4"), '9 minus 4 is 5.');
+});
+
 test('a division by zero, a number on its own, and a phrase with words in it are not sums', () => {
   assert.equal(mathSay("what's 5 divided by 0"), null);
   assert.equal(mathSay("what's 12"), null);
