@@ -57,7 +57,7 @@ import { airSay, airWord, degSay, feelsSay, feelsWord, forecastDay, frostSay, fr
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
-import { alreadyPlayingSay, matchStation, playingSay, radioSleepWord, radioStopHeard, radioWord, stationWord } from './voice-radio.ts';
+import { alreadyPlayingSay, isSameStation, matchStation, playingSay, radioSleepWord, radioStopHeard, radioWord, stationWord } from './voice-radio.ts';
 import type { Station } from '../../apps/radio/api.ts';
 import { canStepFavourites } from '../../apps/radio/web/player.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
@@ -749,7 +749,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     try { saved = [...JSON.parse(store.get('radio.favs') || '[]'), ...JSON.parse(store.get('radio.recent') || '[]')] as Station[]; } catch { /* none kept */ }
     const hit = matchStation(stationName, saved);
     if (hit) {
-      const already = alreadyPlayingSay(nowPlaying(), mediaState());
+      // only the same station is refused as already playing; another station switches to it
+      const np = nowPlaying();
+      const already = isSameStation(np?.title, hit) ? alreadyPlayingSay(np, mediaState()) : null;
       if (already) return { say: already, react: 'look', app: 'radio' };
       dispatchEvent(new CustomEvent('hub:radio-play', { detail: hit }));
       return { say: '' };
