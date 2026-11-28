@@ -28,3 +28,12 @@ test('a Home Assistant card names the device and the service, and the scene', ()
   assert.equal(askFor('mcp__claudeos_ha__ha_call_service', { domain: 'climate', service: 'set_temperature', entity_id: 'climate.hall', temperature: 21 }).detail, 'climate.set_temperature on climate.hall, 21°');
   assert.equal(askFor('mcp__claudeos_ha__ha_activate_scene', { scene: 'Movie night' }).detail, 'Movie night');
 });
+
+test('a write tool’s card says what will change: on or off, the level, the list, the new name, the minutes', () => {
+  assert.equal(askFor('mcp__claudeos_tablet__set_dnd', { on: true }).detail, 'on');
+  assert.equal(askFor('mcp__claudeos_tablet__set_volume', { level: 30 }).detail, 'to 30');
+  assert.equal(askFor('mcp__claudeos_tablet__adjust_timer', { minutes: 5, label: 'pasta' }).detail, '+5 minutes (pasta)');
+  assert.equal(askFor('mcp__claudeos_lists__lists_add', { list: 'shopping', text: 'milk' }).detail, 'milk to shopping');
+  assert.equal(askFor('mcp__claudeos_lists__lists_rename', { list: 'Garden', name: 'Plants' }).detail, 'Garden to Plants');
+  assert.equal(askFor('mcp__claudeos_lists__lists_clear_done', { list: 'shopping' }).detail, 'shopping, the ticked items, for good');
+});
