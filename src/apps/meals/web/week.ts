@@ -102,3 +102,11 @@ export function plannedWords(days: Day[], dinners: Dinner[]): string {
 
 /** The dinner for one day, if there is one. */
 export const dinnerOn = (dinners: Dinner[], day: Day): Dinner | null => dinners.find(d => d.start === day.start) ?? null;
+
+/** The week Meals shows when it is opened again (the same rule as the Calendar's follow-today). The view follows the clock
+ *  only while it still sits on the week the clock was on when it last followed (`lastToday`). A week the user moved to stays. */
+export function followedWeekMonday(shown: Date, lastToday: Date, now: Date): Date {
+  const current = mondayOf(now);
+  const onLast = mondayOf(shown).getTime() === mondayOf(lastToday).getTime();
+  return onLast && mondayOf(lastToday).getTime() !== current.getTime() ? current : shown;
+}
