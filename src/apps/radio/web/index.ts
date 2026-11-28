@@ -854,6 +854,8 @@ const app: HubApp = {
     addEventListener('hub:radio-last', () => { if (recent[0]) play(recent[0]); });
     // "play Radio 2" (voice-commands.ts): the saved station the voice matched plays
     addEventListener('hub:radio-play', (e) => { const s = (e as CustomEvent<Station>).detail; if (s) play(s); });
+    // "next station" and "previous station" (voice-commands.ts): one favourite on, as the skip buttons do
+    addEventListener('hub:radio-step', (e) => { const dir = (e as CustomEvent<1 | -1>).detail; if (dir === 1 || dir === -1) step(dir); });
     // "turn the radio off in 30 minutes" (voice-commands.ts): the sleep timer, as the Sleep button sets it
     addEventListener('hub:radio-sleep', (e) => {
       const min = (e as CustomEvent<number>).detail;
