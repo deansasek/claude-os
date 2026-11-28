@@ -41,6 +41,13 @@ test('a fraction amount is worked out: 1/2 cup, 3/4 cup and 1/4 cup', () => {
   assert.equal(convertSay("what's 1/0 cup in millilitres"), null);
 });
 
+test('millimetres and yards convert: 25 mm in inches, 3 feet in a yard, 10mm to inches', () => {
+  assert.equal(convertSay("what's 25 mm in inches"), '25 millimetres is 0.98 inches.');
+  assert.equal(convertSay('how many feet in a yard'), '3 feet in a yard.');
+  assert.equal(convertSay('convert 10mm to inches'), '10 millimetres is 0.39 inches.');
+  assert.equal(convertSay("what's 3 yds in metres"), null);
+});
+
 test('a height in feet and inches is worked out: 5 foot 10 and 5 feet 10 inches in centimetres', () => {
   assert.equal(convertSay("what's 5 foot 10 in centimetres"), '5.83 feet is 177.8 centimetres.');
   assert.equal(convertSay("what's 5 feet 10 inches in centimetres"), '5.83 feet is 177.8 centimetres.');

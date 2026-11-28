@@ -30,7 +30,7 @@ export function convertSay(raw: string): string | null {
     // "1/2 cup", "3/4 cup": a fraction amount becomes its decimal (a zero denominator is left as Infinity, and answer() refuses it)
     .replace(/(\d+)\/(\d+)\b/g, (_, a: string, b: string) => String(Number(a) / Number(b)))
     // "200g", "500ml": a unit joined to its number gets a space (the unit list is explicit, so "1c" or "2f" are left alone)
-    .replace(/(\d)(g|kg|oz|lbs?|ml|tbsps?|tsps?|km|cm|mi|ft|m)\b/g, '$1 $2')
+    .replace(/(\d)(g|kg|oz|lbs?|ml|tbsps?|tsps?|km|cm|mm|mi|ft|yd|m)\b/g, '$1 $2')
     // "180°C", "350 °F": the degree sign and its letter become the unit word
     .replace(/\s*°\s*c\b/g, ' celsius').replace(/\s*°\s*f\b/g, ' fahrenheit').replace(/\s+/g, ' ')
     .replace(/[?.!]+$/, '').trim();
@@ -69,17 +69,19 @@ function weightAnswer(amount: number, fromWord: string, toWord: string, shape: '
 }
 
 // distance, for voice only: metres per unit. Distance converts only to distance (a mile is not a pound).
-type DistUnit = 'm' | 'km' | 'mi' | 'ft' | 'in' | 'cm';
-const METRES: Record<DistUnit, number> = { m: 1, km: 1000, mi: 1609.344, ft: 0.3048, in: 0.0254, cm: 0.01 };
+type DistUnit = 'm' | 'km' | 'mi' | 'ft' | 'in' | 'cm' | 'mm' | 'yd';
+const METRES: Record<DistUnit, number> = { m: 1, km: 1000, mi: 1609.344, ft: 0.3048, in: 0.0254, cm: 0.01, mm: 0.001, yd: 0.9144 };
 const DIST_WORDS: Record<string, DistUnit> = {
   m: 'm', metre: 'm', metres: 'm', meter: 'm', meters: 'm',
   km: 'km', kilometre: 'km', kilometres: 'km', kilometer: 'km', kilometers: 'km',
   mi: 'mi', mile: 'mi', miles: 'mi', ft: 'ft', foot: 'ft', feet: 'ft',
   inch: 'in', inches: 'in', cm: 'cm', centimetre: 'cm', centimetres: 'cm', centimeter: 'cm', centimeters: 'cm',
+  mm: 'mm', millimetre: 'mm', millimetres: 'mm', millimeter: 'mm', millimeters: 'mm',
+  yd: 'yd', yard: 'yd', yards: 'yd',
 };
 const DIST_SAY: Record<DistUnit, [string, string]> = {
   m: ['metre', 'metres'], km: ['kilometre', 'kilometres'], mi: ['mile', 'miles'], ft: ['foot', 'feet'],
-  in: ['inch', 'inches'], cm: ['centimetre', 'centimetres'],
+  in: ['inch', 'inches'], cm: ['centimetre', 'centimetres'], mm: ['millimetre', 'millimetres'], yd: ['yard', 'yards'],
 };
 const distName = (u: DistUnit, n: number): string => DIST_SAY[u][Math.abs(n - 1) < 1e-9 ? 0 : 1];
 
