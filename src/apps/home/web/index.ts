@@ -28,7 +28,7 @@ import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.t
 import { shortAge } from '../../../core/web/format.ts';
 import { readLists } from '../../lists/web/readers.ts';
 import { dinnerRow } from './dinner-row.ts';
-import { dinnersIn, isoDay } from '../../meals/web/week.ts';
+import { dinnersIn, isoDay, mondayOf, weekDays } from '../../meals/web/week.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, readClockTimers } from '../../../core/web/clock-timer.ts';
 import { parseClockAlarms } from '../../../core/web/clock-alarms.ts';
 
@@ -409,17 +409,23 @@ async function loadLists(): Promise<void> {
 // Tonight's dinner: today's dinner from the ClaudeOS calendar (the Meals app writes them). A read the PC never answers gives up.
 const DINNER_TIMEOUT_MS = 10e3;
 let dinnerTonight: string | null = null, dinnerState: 'loading' | 'ok' | 'failed' = 'loading', dinnerSeq = 0;
+let dinnerFree = 0;   // nights left this week with no dinner
 let dinnerFailedBefore = false;
 async function loadDinner(): Promise<void> {
   const seq = ++dinnerSeq;
-  const today = new Date(), tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-  const from = isoDay(today), to = isoDay(tomorrow), start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const today = new Date(), week = weekDays(mondayOf(today));
+  const from = isoDay(week[0].date), to = isoDay(new Date(week[6].date.getFullYear(), week[6].date.getMonth(), week[6].date.getDate() + 1));
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
   try {
     const r = await getJson<{ status?: string; events?: { id: string; title: string; start: number; end: number; allDay: boolean }[] }>(
       `/api/calendar/local?from=${from}&to=${to}`, DINNER_TIMEOUT_MS);
     if (seq !== dinnerSeq) return;   // a newer read started: its answer is the one that counts
     if (r.status !== 'ok') throw new Error('calendar');
-    dinnerTonight = dinnersIn(r.events ?? []).find(d => d.start === start)?.text || null;
+    const dinners = dinnersIn(r.events ?? []);
+    dinnerTonight = dinners.find(d => d.start === todayStart)?.text || null;
+    // nights from today to Sunday with no dinner yet
+    const todayIndex = (today.getDay() + 6) % 7;
+    dinnerFree = week.slice(todayIndex).filter(d => !dinners.some(x => x.start === d.start)).length;
     dinnerState = 'ok';
     dinnerFailedBefore = false;
   } catch {
@@ -430,7 +436,7 @@ async function loadDinner(): Promise<void> {
   paintDinner();
 }
 function paintDinner(): void {
-  const row = dinnerRow(dinnerTonight, dinnerState, dinnerFailedBefore);
+  const row = dinnerRow(dinnerTonight, dinnerState, dinnerFailedBefore, dinnerState === 'ok' ? dinnerFree : null);
   $('hmDnVal').textContent = row.val;
   $('hmDnSub').textContent = row.sub;
 }
