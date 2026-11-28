@@ -359,7 +359,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if ((r = t.match(/^(?:(?:set|make|add|create)(?: me)?(?: an| the| my| a)? alarm (?:for |at )?|wake me(?: up)? (?:at )?|alarm (?:for |at )?)(.+)$/))) {
     const wakeUp = /^wake/.test(t);
     // split "<time> <days>" at the first word that starts a days phrase
-    const m = r[1].match(/^(.+?)(?: ((?:on|every|each|for) .+|tomorrow.*|daily|weekdays|weekends))?$/);
+    const m = r[1].match(/^(.+?)(?: ((?:on|every|each|for|at) .+|tomorrow.*|daily|weekdays|weekends))?$/);
     if (!m) return null;
     const time = parseTime(m[1]), days = parseDays(m[2] || '');
     if (!time || days == null) return null;   // not sure: let Claude sort it out

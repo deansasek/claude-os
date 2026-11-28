@@ -62,6 +62,12 @@ test('a day list becomes day numbers, and no days means once', () => {
   assert.deepEqual(parseDays('on mondays'), [1]);
   assert.deepEqual(parseDays('every monday and friday'), [1, 5]);
   assert.deepEqual(parseDays('every monday and monday'), [1]);
+  assert.deepEqual(parseDays('at weekends'), [0, 6]);
+  assert.deepEqual(parseDays('on the weekend'), [0, 6]);
+  assert.deepEqual(parseDays('on weekday mornings'), [1, 2, 3, 4, 5]);
+  assert.deepEqual(parseDays('every weekday morning'), [1, 2, 3, 4, 5]);
+  assert.deepEqual(parseDays('on monday and friday mornings'), [1, 5]);
+  assert.deepEqual(parseDays('every morning'), [0, 1, 2, 3, 4, 5, 6]);
   assert.deepEqual(parseDays('on mondays, fridays and mondays'), [1, 5]);
   assert.equal(parseDays('frobnicate'), null);
 });

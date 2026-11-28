@@ -68,11 +68,15 @@ export function parseTime(phrase: string): TimeOfDay | null {
 export const DAY_WORDS: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
 /** "", "tomorrow", "on weekdays", "every day", "on mondays", "every monday and friday" → days ([] = once); null if not understood. */
 export function parseDays(phrase: string): number[] | null {
-  const s = phrase.trim();
-  if (!s || /^(for )?(tomorrow|today|tonight)( morning)?$/.test(s)) return [];
+  const s0 = phrase.trim();
+  if (!s0 || /^(for )?(tomorrow|today|tonight)( morning)?$/.test(s0)) return [];
+  // "on weekday mornings", "on monday mornings": the time of day is not a day, so it is dropped first.
+  // "every morning" and "each night" stay as they are: there the word is the repeat.
+  const bare = s0.replace(/ (?:mornings?|nights?|evenings?)$/, '');
+  const s = bare !== s0 && !/^(?:every|each|on|for)?$/.test(bare) ? bare : s0;
   if (/^(every|each) (day|morning|night)$|^daily$/.test(s)) return [0, 1, 2, 3, 4, 5, 6];
   if (/^(on |every )?(weekdays|weekday|work ?days)$/.test(s)) return [1, 2, 3, 4, 5];
-  if (/^(on |every )?(weekends?)$/.test(s)) return [0, 6];
+  if (/^(?:(?:on|every|at|on the|at the) )?(?:weekends?|the weekend)$/.test(s)) return [0, 6];
   const r = s.match(/^(?:on |every )((?:[a-z]+days?(?:,? (?:and )?)?)+)$/);
   if (r) {
     const days = r[1].split(/,? (?:and )?|,/).map(w => w.replace(/s$/, '')).filter(Boolean);
