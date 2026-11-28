@@ -139,8 +139,9 @@ async function copyLastWeek(c: AppContext): Promise<void> {
         if (!r.error) added++;
       } catch { break; }
     }
-    setStatus(c, added ? `Copied ${added} dinner${added === 1 ? '' : 's'} from last week.` : 'Couldn’t copy the dinners. Try again.');
+    const result = added ? `Copied ${added} dinner${added === 1 ? '' : 's'} from last week.` : 'Couldn’t copy the dinners. Try again.';
     await load(c);
+    setStatus(c, result);   // after the reload, which would otherwise clear it
   } finally {
     busy = false;
   }
