@@ -1135,6 +1135,13 @@ const clockApi: ClockApi = {
     saveTimers(); saveDraft(); renderTimer();
     return n;
   },
+  /** The time left on the listed timer with this label (its name, any case): counting down, or held while paused. Null when there is none. */
+  namedTimerLeft(label: string): { ms: number; paused: boolean } | null {
+    const want = label.trim().toLowerCase();
+    const hit = timers.find(x => (x.name ?? '').trim().toLowerCase() === want);
+    if (!hit) return null;
+    return hit.end ? { ms: Math.max(0, hit.end - Date.now()), paused: false } : { ms: hit.left ?? hit.dur, paused: hit.left != null };
+  },
   /** Cancel the listed timer with this label (its name, any case). Returns whether there was one. */
   cancelNamedTimer(label: string): boolean {
     const want = label.trim().toLowerCase();
