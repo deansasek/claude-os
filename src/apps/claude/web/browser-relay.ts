@@ -106,11 +106,12 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
   }
   if (op === 'cancel_alarms') {
     const n = clock.cancelClaudeAlarms();
-    return { ok: true, data: n ? `Switched off ${n} alarm${n === 1 ? '' : 's'} and reminder${n === 1 ? '' : 's'} that Claude set. Your own alarms are unchanged.` : 'Claude has no alarms or reminders on.' };
+    return { ok: true, data: n ? `Switched off ${n} ${n === 1 ? 'alarm or reminder' : 'alarms or reminders'} that Claude set. Your own alarms are unchanged.` : 'Claude has no alarms or reminders on.' };
   }
   const left = clock.timerLeft();
   const mins = left == null ? 0 : Math.ceil(left / 60e3);
-  const timer = left == null ? 'No timer is running.' : `A timer has ${mins} minute${mins === 1 ? '' : 's'} left.`;
+  // a paused timer keeps its time left, so say it is paused, not counting down (timerPaused on the Clock)
+  const timer = left == null ? 'No timer is running.' : `A timer has ${mins} minute${mins === 1 ? '' : 's'} left${clock.timerPaused() ? ', and it is paused' : ''}.`;
   const on = clock.active();
   // the next alarm, with its time and whether it is today, tomorrow or a weekday (nextAlarm on the Clock)
   const next = clock.nextAlarm();
@@ -118,7 +119,7 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
   // the stopwatch's time and whether it runs, as the voice says it; nothing when it is at zero
   const sw = clock.stopwatchTime();
   const swSay = sw >= 1000 ? ` The stopwatch is ${clock.stopwatchRunning() ? 'running' : 'stopped'} at ${sayDuration(Math.floor(sw / 1000) * 1000)}.` : '';
-  return { ok: true, data: `${timer} ${on ? `${on} timer or alarm${on === 1 ? '' : 's'} on.` : 'No timers or alarms are on.'}${alarmSay}${swSay}` };
+  return { ok: true, data: `${timer} ${on ? `${on} timer${on === 1 ? '' : 's'} or alarm${on === 1 ? '' : 's'} on.` : 'No timers or alarms are on.'}${alarmSay}${swSay}` };
 }
 
 /** "17:05" for the answer, as Claude gave it (24-hour). */
