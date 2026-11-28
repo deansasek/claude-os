@@ -46,7 +46,7 @@ export function scaleAmount(amount: string, factor: number): string {
   const q = leadingQuantity(amount);
   if (!q) return amount;
   const [value, rest] = q;
-  if (/^\s*[-–]\s*\d/.test(rest)) return amount;   // a range: "2-3 cups" stays as written
+  if (/^\s*(?:[-–]|to|or)\s*\d/.test(rest)) return amount;   // a range: "2-3 cups", "2 to 3 cups", "1 or 2 cloves" stay as written
   const scaled = value * factor;
   if (!(scaled > 0)) return amount;
   return `${kitchenNumber(scaled)}${rest}`;
