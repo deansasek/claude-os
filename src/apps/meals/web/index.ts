@@ -119,6 +119,7 @@ async function copyLastWeek(c: AppContext): Promise<void> {
   if (busy) return;
   busy = true;
   setStatus(c, 'Copying last week…');
+  const week = days;   // the week this copy is for: Earlier or Later during the read must not copy it onto another week
   try {
     const lastDays = weekDays(mondayAfter(days[0].date, -1));
     const from = isoDay(lastDays[0].date), to = isoDay(new Date(days[0].date.getFullYear(), days[0].date.getMonth(), days[0].date.getDate()));
@@ -129,6 +130,7 @@ async function copyLastWeek(c: AppContext): Promise<void> {
       setStatus(c, 'Couldn’t reach your PC to read last week.');
       return;
     }
+    if (days !== week) { setStatus(c, ''); return; }   // the week changed while last week was read: copy nothing
     if (lastEvents.status !== 'ok') { setStatus(c, lastEvents.error || 'Couldn’t read last week from your PC.'); return; }
     const plan = copyPlan(days, lastDays, dinners, dinnersIn(lastEvents.events ?? []));
     if (!plan.length) { setStatus(c, 'Nothing to copy: last week has no dinners for the free nights.'); return; }
