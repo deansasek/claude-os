@@ -255,7 +255,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (r) return r;
   } else if (list) return listCommand(list, customs.find(c => c.id === list.list)?.name);
 
-  // stopwatch: start it, or stop it only while it runs (a stop when none runs is left to Claude)
+  // stopwatch: start it, stop it, read it or reset it; a stop when it is not running says so
   const sws = stopwatchWord(t);
   if (sws && clock) {
     if (sws === 'time') {
@@ -266,6 +266,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     // starts it with no spoken reply (the tablet's own tap says "and... go!"); when it already runs, say so
     if (sws === 'start') return clock.stopwatch(true) ? { say: '' } : { say: 'The stopwatch is already running.' };
     if (clock.stopwatchRunning()) { clock.stopwatch(false); return { say: 'Stopped.' }; }
+    // not running: paused at a time, or never started. Say so, as the start and timer replies do
+    const left = clock.stopwatchTime();
+    return { say: left < 1000 ? 'The stopwatch isn’t running.' : `The stopwatch is already stopped at ${sayDuration(Math.floor(left / 1000) * 1000)}.` };
   }
   // timers: the first of these shapes whose duration parses wins
   for (const re of [/^(?:set|start|make|put on|give me)(?: me)?(?: a| an| the)? timer (?:for |of )?(.+)$/, /^timer (?:for )?(.+)$/,
