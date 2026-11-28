@@ -25,7 +25,7 @@ import { manifest } from '../manifest.ts';
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 15e3;
 const READ_TIMEOUT_MS = 10_000;   // a read the PC never answers gives up, so the next refresh can run
-const POST_TIMEOUT_MS = 15_000;   // a tile toggle or scene the PC never answers gives up, so the tile is not busy for good
+const POST_TIMEOUT_MS = 15_000;   // a post the PC never answers gives up (a tile, scene, layout, test, save or switch), so nothing stays busy for good
 let layoutGen = 0;                // bumped by each layout edit (saveLayout, setOnHome)
 const DEVICES_STALE_MS = 30e3;
 const HOLD_MS = 520;          // a long-press opens a tile's settings
@@ -289,7 +289,7 @@ async function saveLayout(l: HaLayout): Promise<void> {
   if (dash) dash.layout = l;
   render();
   try {
-    const r = await postJson<HaLayoutResult>(`${API}/layout`, { layout: l });
+    const r = await postJson<HaLayoutResult>(`${API}/layout`, { layout: l }, POST_TIMEOUT_MS);
     if (r.ok && r.layout && typeof r.layout === 'object') { if (dash) dash.layout = r.layout; }
     else if (dash && prev) dash.layout = prev;
     note = r.ok ? '' : r.error ?? 'That wasn’t saved.';
@@ -311,7 +311,7 @@ async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
   }
   render();
   try {
-    const r = await postJson<HaLayoutResult>(`${API}/dashboard`, { entity_id: id, on, ...(room !== OTHER ? { room } : {}) });
+    const r = await postJson<HaLayoutResult>(`${API}/dashboard`, { entity_id: id, on, ...(room !== OTHER ? { room } : {}) }, POST_TIMEOUT_MS);
     if (r.ok && r.layout && typeof r.layout === 'object') { if (dash) dash.layout = r.layout; }
     else if (dash && prev) dash.layout = prev;
     if (!r.ok && d) d.dashboard = before;   // the PC did not save it: the device value goes back
@@ -322,7 +322,7 @@ async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
 
 async function saveConfig(body: { address?: string; token?: string }): Promise<void> {
   try {
-    const r = await postJson<HaStatus & { ok: boolean; message?: string }>(`${API}/config`, body);
+    const r = await postJson<HaStatus & { ok: boolean; message?: string }>(`${API}/config`, body, POST_TIMEOUT_MS);
     status = r;
     testMsg = r.ok ? '' : r.message ?? 'That wasn’t saved.';
   } catch { testMsg = 'Can’t reach the PC right now.'; }
@@ -334,7 +334,7 @@ async function saveConfig(body: { address?: string; token?: string }): Promise<v
 async function runTest(): Promise<void> {
   testMsg = 'Testing…';
   appSettingsChanged();
-  try { testMsg = (await postJson<HaTestResult>(`${API}/test`, {})).message; }
+  try { testMsg = (await postJson<HaTestResult>(`${API}/test`, {}, POST_TIMEOUT_MS)).message; }
   catch { testMsg = 'Can’t reach the PC right now.'; }
   await loadStatus();
   appSettingsChanged();
@@ -363,7 +363,7 @@ async function setHomeScene(id: string, on: boolean): Promise<void> {
   if (s) s.home = on;   // the switch moves at once; the PC's answer settles it
   appSettingsChanged();
   try {
-    const r = await postJson<HaHomeScenesResult>(`${API}/home-scenes`, { entity_id: id, on });
+    const r = await postJson<HaHomeScenesResult>(`${API}/home-scenes`, { entity_id: id, on }, POST_TIMEOUT_MS);
     sceneMsg = r.ok ? '' : r.error ?? 'That wasn’t saved.';
     if (dash) dash.layout.homeScenes = r.home;
   } catch { sceneMsg = 'Can’t reach the PC right now, so that wasn’t saved.'; }
@@ -378,7 +378,7 @@ async function setAllowed(id: string, on: boolean): Promise<void> {
   if (d) d.allowed = on;   // the switch moves at once; the PC's answer settles it
   appSettingsChanged();
   let r: HaResult | undefined;
-  try { r = await postJson<HaResult>(`${API}/allow`, { entity_id: id, allowed: on }); } catch { r = undefined; }
+  try { r = await postJson<HaResult>(`${API}/allow`, { entity_id: id, allowed: on }, POST_TIMEOUT_MS); } catch { r = undefined; }
   if (r?.ok === true) { await loadDevices(); return; }
   if (d) d.allowed = before;   // the PC did not save it: the switch goes back
   await loadDevices();
