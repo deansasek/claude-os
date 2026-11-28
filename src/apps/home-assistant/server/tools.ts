@@ -32,12 +32,18 @@ export const haServer = createSdkMcpServer({
       {},
       async () => {
         const r = await entities();
+        if (r.status === 'not_set_up') return text(r.error ?? 'Home Assistant isn’t set up yet.', true);
         if (r.status !== 'ok') return text(`Couldn’t read Home Assistant: ${r.error ?? 'unknown error'}`, true);
         const rows = r.entities.map(entityRow);
         const head = r.demo ? 'DEMO MODE: these are made-up devices; nothing real is switched.\n' : '';
         const sc = await scenes();
-        const tail = sc.status === 'ok' && sc.scenes.length
-          ? `\nScenes (set one with ha_activate_scene): ${sc.scenes.map(s => `${s.name} (${s.entity_id})`).join(', ')}` : '';
+        // only a scene on the dashboard or the Home screen can be set (the rule activateScene applies); the rest are listed as ones to add to Home
+        const settable = sc.status === 'ok' ? sc.scenes.filter(x => x.dashboard || x.home) : [];
+        const other = sc.status === 'ok' ? sc.scenes.filter(x => !(x.dashboard || x.home)) : [];
+        const tail = (settable.length ? `
+Scenes you can set (ha_activate_scene): ${settable.map(x => `${x.name} (${x.entity_id})`).join(', ')}` : '')
+          + (other.length ? `
+Scenes not on Home (the user can add them there): ${other.map(x => `${x.name} (${x.entity_id})`).join(', ')}` : '');
         return text((rows.length ? head + JSON.stringify(rows, null, 1) : `${head}No devices are allowed yet (Settings > Apps > Home Assistant).`) + tail);
       }),
     tool('ha_call_service',
