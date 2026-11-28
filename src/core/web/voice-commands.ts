@@ -522,11 +522,12 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
       return clock.timerLeft() != null && !clock.timerPaused() ? { say: 'The timer is already running.', react: 'look' } : { say: 'There’s no paused timer.' };
     }
     if (tw.op === 'cancel-named') {
-      const shown = tw.label.charAt(0).toUpperCase() + tw.label.slice(1);
+      const heard = labelAsHeard(tw.label, raw);   // the capitals as said: "the BBQ timer" is not "bbq"
+      const shown = heard.charAt(0).toUpperCase() + heard.slice(1);
       // a timer that has finished is no longer listed: "stop the pasta timer" silences its ring when that is the one ringing
       const ringName = clock.ringingName();
       if (ringName && ringName.trim().toLowerCase() === tw.label.trim().toLowerCase() && clock.stopRinging()) return { say: `${shown} timer stopped.`, react: 'look' };
-      return clock.cancelNamedTimer(tw.label) ? { say: `${shown} timer cancelled.`, react: 'look' } : { say: `You don’t have ${articleFor(tw.label)} ${tw.label} timer.`, react: 'look' };
+      return clock.cancelNamedTimer(tw.label) ? { say: `${shown} timer cancelled.`, react: 'look' } : { say: `You don’t have ${articleFor(tw.label)} ${heard} timer.`, react: 'look' };
     }
     if (tw.op === 'cancel-all') {
       const n = clock.cancelAllTimers();
@@ -550,9 +551,10 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   const namedLeft = namedTimerLeftLabel(t);
   if (namedLeft !== null) {
     if (!clock) return null;
+    const heardLeft = labelAsHeard(namedLeft, raw);   // the capitals as said
     const hit = clock.namedTimerLeft(namedLeft);
-    if (!hit) return { say: `You don’t have ${articleFor(namedLeft)} ${namedLeft} timer.`, react: 'look' };
-    return { say: `${sayDuration(Math.ceil(hit.ms / 1000) * 1000)} left on the ${namedLeft} timer${hit.paused ? ', and it is paused' : ''}.`.replace(/^./, c => c.toUpperCase()), react: 'look' };
+    if (!hit) return { say: `You don’t have ${articleFor(namedLeft)} ${heardLeft} timer.`, react: 'look' };
+    return { say: `${sayDuration(Math.ceil(hit.ms / 1000) * 1000)} left on the ${heardLeft} timer${hit.paused ? ', and it is paused' : ''}.`.replace(/^./, c => c.toUpperCase()), react: 'look' };
   }
   // "what time will the timer go off": the clock time it ends (timerEndWord in voice-alarm.ts); a paused timer has no end yet
   if (timerEndWord(t)) {
