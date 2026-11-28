@@ -371,6 +371,10 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     // "remove milk from the list" with no list said: the same rule as the rename above
     const r = await removeAnywhere(list.text);
     if (r) return r;
+  } else if (list?.op === 'tick-any') {
+    // "tick off milk on the list" with no list said: the one open item with those words (tickAnywhere); null lets the phrase go on
+    const r = await tickAnywhere(list.text);
+    if (r) return r;
   } else if (list?.op === 'has-any') {
     // "is milk on the list" with no list said: read only; null lets the phrase go on
     const r = await hasAnywhere(list.text);
@@ -797,7 +801,7 @@ async function voiceCustomLists(): Promise<{ id: string; name: string }[]> {
   } catch { return []; }
 }
 
-async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>, { op: 'remove-any' } | { op: 'has-any' }>, customName?: string): Promise<CommandResult> {
+async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>, { op: 'remove-any' } | { op: 'has-any' } | { op: 'tick-any' }>, customName?: string): Promise<CommandResult> {
   const name = c.list === 'shopping' ? 'the shopping list' : c.list === 'todo' ? 'the to-do list' : spokenList(customName ?? 'list');
   try {
     if (c.op === 'add') {
@@ -919,6 +923,23 @@ async function editAnywhere(text: string, to: string): Promise<CommandResult | n
 }
 
 /** "remove milk from the list" with no list said: only an item with exactly those words; else null and the phrase goes on. */
+/** "Tick off milk" with no list said: the open item with exactly those words, on any list. Two lists: say which. */
+async function tickAnywhere(text: string): Promise<CommandResult | null> {
+  const lists = await readLists(READ_TIMEOUT_MS).catch(() => null);
+  if (!lists) return null;
+  const hits = findExact(lists, text).filter(h => !h.item.done);
+  if (!hits.length) return null;
+  if (hits.length > 1) return { say: `${text} is on more than one list. Say which list.` };
+  const { list, item } = hits[0];
+  const name = spokenName(list);
+  const said = text.replace(/^./, ch => ch.toLowerCase());
+  let r: ListsResult;
+  try { r = await writeList('tick', { list: list.id, id: item.id, done: true }); }
+  catch (e) { return queuedReply(e, `Ticked off ${said} on ${name}.`); }
+  if (!r?.ok) return { say: r?.error ?? `I couldn’t tick that off ${name}.` };
+  return { say: `Ticked off ${said} on ${name}.`, react: 'hop' };
+}
+
 async function removeAnywhere(text: string): Promise<CommandResult | null> {
   const lists = await readLists(READ_TIMEOUT_MS).catch(() => null);
   if (!lists) return null;
