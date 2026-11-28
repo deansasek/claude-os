@@ -30,9 +30,10 @@ export function sunSay(which: 'sunrise' | 'sunset', todayIso: string, tomorrowIs
 // Sun questions by voice: "what time is sunset", "when does it get dark tomorrow". Returns the time asked about and the day.
 export function sunDay(t: string): { which: 'sunrise' | 'sunset'; day: 0 | 1 } | null {
   const day: 0 | 1 = / tomorrow$/.test(t) ? 1 : 0;
-  const base = t.replace(/ tomorrow$/, '');
-  if (/^(?:what time is (?:the )?sunset|when (?:is|does) (?:the )?sunset|when does the sun set|when does it get dark)$/.test(base)) return { which: 'sunset', day };
-  if (/^(?:what time is (?:the )?sunrise|when (?:is|does) (?:the )?sunrise|when does the sun rise)$/.test(base)) return { which: 'sunrise', day };
+  // "today" and "tomorrow" both come off the end; only "tomorrow" moves the answer to the next day
+  const base = t.replace(/ (?:tomorrow|today)$/, '');
+  if (/^(?:what time is (?:the )?sunset|what time does the sun set|when (?:is|does) (?:the )?sunset|when does the sun set|when does it get dark|what time does it get dark)$/.test(base)) return { which: 'sunset', day };
+  if (/^(?:what time is (?:the )?sunrise|what time does the sun rise|when (?:is|does) (?:the )?sunrise|when does the sun rise|when does it get light|what time does it get light)$/.test(base)) return { which: 'sunrise', day };
   return null;
 }
 

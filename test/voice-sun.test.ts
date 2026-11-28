@@ -37,3 +37,12 @@ test('the voice uses the helper for today and keeps the tomorrow wording', () =>
   assert.match(voice, /return \{ say: `\$\{which === 'sunset' \? 'Sunset' : 'Sunrise'\} is at \$\{localHour\(iso, true\)\} \$\{when\}\.`, react: 'look' \};/);
   assert.match(voice, /if \(sun !== null\) return sunCommand\(sun\.which, sun\.day\);/);
 });
+
+test('today and the other wordings for the sun times are heard, and a non-sun question is not', () => {
+  assert.deepEqual(sunDay('what time is sunset today'), { which: 'sunset', day: 0 });
+  assert.deepEqual(sunDay('when is sunrise today'), { which: 'sunrise', day: 0 });
+  assert.deepEqual(sunDay('what time does the sun set'), { which: 'sunset', day: 0 });
+  assert.deepEqual(sunDay('what time does the sun rise tomorrow'), { which: 'sunrise', day: 1 });
+  assert.deepEqual(sunDay('when does it get light'), { which: 'sunrise', day: 0 });
+  assert.equal(sunDay('what time is it today'), null);
+});
