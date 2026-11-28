@@ -173,6 +173,7 @@ async function load(): Promise<void> {
   const have = new Set(days.flatMap(d => d.photos.map(p => p.id)));
   for (const id of [...picked]) if (!have.has(id)) picked.delete(id);
   paint();
+  if (shown) paintNav();   // the viewer stays open through a reload: its "N of M" and arrows follow the new list
 }
 
 /** Every photo in the order the grid shows them (newest first, top to bottom). */
