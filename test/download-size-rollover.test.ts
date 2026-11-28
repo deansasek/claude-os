@@ -13,3 +13,9 @@ test('the Downloads panel copy of the size rule has the same cut-off', () => {
   const state = readFileSync(new URL('../src/apps/browser/web/state.ts', import.meta.url), 'utf8');
   assert.match(state, /if \(bytes < 1023\.5 \* 1024\) return `\$\{Math\.round\(bytes \/ 1024\)\} KB`;/);
 });
+
+test('a download of 1 GB or more reads in GB, not as thousands of MB', () => {
+  assert.equal(runningMeta(Math.round(1.2 * 1073741824), 0).text, '1.2 GB so far');
+  assert.equal(runningMeta(2 * 1073741824, 0).text, '2.0 GB so far');
+  assert.equal(runningMeta(1023 * 1048576, 0).text, '1023.0 MB so far');
+});

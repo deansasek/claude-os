@@ -190,7 +190,8 @@ export function size(bytes: number): string {
   if (!bytes || bytes < 1) return '';
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1023.5 * 1024) return `${Math.round(bytes / 1024)} KB`;   // from 1023.5 KB up, Math.round would say 1024 KB: the MB line says 1.0 MB
-  return `${(bytes / 1048576).toFixed(1)} MB`;
+  if (bytes < 1023.95 * 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;   // from 1023.95 MB up, the GB line: 2048 MB is 2.0 GB
+  return `${(bytes / 1073741824).toFixed(1)} GB`;
 }
 
 export function saveTabs(): void { save(K.tabs, { tabs: S.tabs, active: S.active }); }
