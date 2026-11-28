@@ -49,7 +49,7 @@ import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
-import { durationAndLabel, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
+import { durationAndLabel, labelledTimer, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 import { matchOpenApp } from './voice-open.ts';
 
@@ -284,7 +284,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   }
   // a named timer: "set a 10 minute pasta timer" starts 10 minutes, labelled pasta (shown when it rings)
   const named = t.match(/^(?:set |start )?(?:a |an )?(.+?) timer$/);
-  const dl = named ? durationAndLabel(named[1].replace(/^(a|an) (?=\d)/, '')) : null;
+  // the label can also come first: "set a pasta timer for 10 minutes", "set a 10 minute timer for the pasta" (voice-parse.ts)
+  const dl = (named ? durationAndLabel(named[1].replace(/^(a|an) (?=\d)/, '')) : null) ?? labelledTimer(t);
   if (dl) {
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
     if (!clock.startTimer(dl.ms, dl.label)) return { say: 'The timer list is full. Stop a timer first.' };
