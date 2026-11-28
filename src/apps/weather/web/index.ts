@@ -330,7 +330,7 @@ function select(s: Selection): void {
   renderWx();
 }
 
-// a forecast read the PC never answers gives up; each read takes a number, and only the newest read sets the forecast
+// a forecast, city search or save the PC never answers gives up; each read takes a number, and only the newest read sets the forecast
 const WX_TIMEOUT_MS = 20e3;
 let wxSeq = 0;
 
@@ -368,7 +368,7 @@ async function loadWx(): Promise<void> {
 class NotSaved extends Error {}
 
 async function sendLocation(body: LocationUpdate): Promise<void> {
-  const d = await postJson<Weather>('/api/weather/location', body);
+  const d = await postJson<Weather>('/api/weather/location', body, WX_TIMEOUT_MS);
   // the PC answered, so it is up; an error below comes from the forecast service, not the PC
   pcDown = false;
   // the PC did not save it: throw, so the caller reverts the unit and says so
@@ -399,7 +399,7 @@ function paintPlaces(hint = '', retry: (() => void) | null = null): void {
 async function searchPlaces(q: string): Promise<void> {
   const seq = ++searchSeq;
   try {
-    const res = await getJson<PlacesResponse>(`/api/weather/places?q=${encodeURIComponent(q)}`);
+    const res = await getJson<PlacesResponse>(`/api/weather/places?q=${encodeURIComponent(q)}`, WX_TIMEOUT_MS);
     if (seq !== searchSeq) return;   // a newer search already started
     places = res.results || [];
     paintPlaces(res.status === 'ok'
