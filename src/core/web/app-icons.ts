@@ -121,6 +121,11 @@ const DRAW = {
     box(p, 5, 7, 22, 18, 2.6) + line(p, [9, 11.5], [23, 11.5])
     + line(p, [9, 16], [15, 16]) + line(p, [9, 20], [15, 20]) + line(p, [9, 23.5], [15, 23.5])
     + line(p, [18, 16], [23, 16]) + line(p, [18, 20], [23, 20]),
+  // Calculator: a key pad (a frame with a readout bar and six keys)
+  calculator: (p: Pen) =>
+    box(p, 7, 5, 18, 22, 2.4) + line(p, [10, 9.5], [22, 9.5])
+    + box(p, 10, 13, 3, 3, 1) + box(p, 14.5, 13, 3, 3, 1) + box(p, 19, 13, 3, 3, 1)
+    + box(p, 10, 19, 3, 3, 1) + box(p, 14.5, 19, 3, 3, 1) + box(p, 19, 19, 3, 3, 1),
   photos: (p: Pen) =>
     box(p, 5, 7, 22, 18, 3) + poly(p, [[5.5, 21], [11, 15.5], [16, 20], [19, 17], [26.5, 24.5]], 1) + ring(p, 20.5, 12.5, 1.8),
   routines: (p: Pen) =>

@@ -29,6 +29,7 @@ import calendar from './apps/calendar/web/index.ts';
 import news from './apps/news/web/index.ts';
 import routines from './apps/routines/web/index.ts';
 import settings from './apps/settings/web/index.ts';
+import calculator from './apps/calculator/web/index.ts';
 import { device, onTablet } from './core/web/device.ts';
 import { appSettingsChanged } from './core/web/app-settings.ts';
 import { initCliSignin } from './core/web/cli-signin.ts';
@@ -61,8 +62,8 @@ function takeScreenshot(): void {
 }
 
 void startHub(onTablet
-  ? [home, launcher, claude, weather, clock, browserApp, camera, photos, homeAssistant, lists, radio, recipes, calendar, news, routines, settings]
-  : [home, launcher, claude, weather, clock, photos, homeAssistant, lists, radio, recipes, calendar, news, routines]).then(() => {
+  ? [home, launcher, claude, weather, clock, calculator, browserApp, camera, photos, homeAssistant, lists, radio, recipes, calendar, news, routines, settings]
+  : [home, launcher, claude, weather, clock, calculator, photos, homeAssistant, lists, radio, recipes, calendar, news, routines]).then(() => {
     maybeWelcome();
     initPowerSheet({ reboot: device.reboot, screenOff: device.screenOff, screenshot: takeScreenshot, onBack });   // a long press of the power button
     initCliSignin({   // the tablet's Claude CLI sign-in (Settings → Apps → Claude → Sign in)

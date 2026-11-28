@@ -1,0 +1,27 @@
+/* The Calculator app: a serif readout over a plain key pad. Colours come from the tokens in public/core.css. */
+.calc {
+  display: flex; flex-direction: column; gap: 16px;
+  height: 100%; padding: 24px var(--app-l, 24px); box-sizing: border-box;
+}
+.calc-shown {
+  min-height: 1.4em; text-align: right; overflow: hidden; white-space: nowrap;
+  font-family: var(--serif); font-size: clamp(40px, 9vw, 72px); font-weight: 500; letter-spacing: -0.02em;
+  color: var(--text);
+}
+.calc-pad {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; gap: 12px;
+}
+.calc-key {
+  font-family: var(--sans); font-size: 26px; font-weight: 500;
+  border: 1px solid var(--line); border-radius: 16px;
+  background: var(--card); color: var(--text);
+  cursor: pointer;
+}
+.calc-key:active { background: var(--card-2); }
+.calc-key.fn { color: var(--t2); }
+.calc-key.op { background: var(--card-2); }
+.calc-key.zero { grid-column: span 2; }
+.calc-key.eq { background: var(--text); color: var(--bg); border-color: var(--text); }
+.calc-key.eq:active { opacity: .85; }
+@media (prefers-reduced-motion: reduce) { .calc-key { transition: none; } }
