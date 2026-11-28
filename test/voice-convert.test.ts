@@ -21,6 +21,18 @@ test('"convert N unit to unit" is converted too', () => {
   assert.equal(convertSay('convert 1 cup to millilitres'), '1 cup is 236.59 millilitres.');
 });
 
+test('weight converts to weight: grams, kilos, ounces and pounds', () => {
+  assert.equal(convertSay("what's 8 ounces in grams"), '8 ounces is 226.8 grams.');
+  assert.equal(convertSay('how many grams in a pound'), '453.59 grams in a pound.');
+  assert.equal(convertSay("what's 2 kilos in pounds"), '2 kilograms is 4.41 pounds.');
+});
+
+test('weight does not convert to a volume, and fluid ounces are still a volume', () => {
+  assert.equal(convertSay('how many cups in grams'), null);
+  assert.equal(convertSay('how many ounces in a cup'), null);
+  assert.equal(convertSay("what's 2 fl oz in ml"), '2 fluid ounces is 59.15 millilitres.');
+});
+
 test('a temperature said with a degree sign is worked out', () => {
   assert.equal(convertSay("what's 180°c in °f"), '180 degrees Celsius is 356 degrees Fahrenheit.');
   assert.equal(convertSay("what's 350 °F in °C"), '350 degrees Fahrenheit is 176.67 degrees Celsius.');
