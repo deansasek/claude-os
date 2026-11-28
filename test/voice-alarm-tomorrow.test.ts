@@ -19,6 +19,10 @@ test('the tomorrow alarm phrases are heard, and other alarm questions are not', 
 test('the handler checks the weekday of tomorrow and the one-off alarms set for tomorrow', () => {
   assert.match(voice, /if \(alarmTomorrowWord\(t\)\) \{/);
   assert.match(voice, /tomorrow\.setDate\(tomorrow\.getDate\(\) \+ 1\);/);
-  assert.match(voice, /const rings = clock\.alarmsOn\(\)\.filter\(a => \(a\.days\.length \? a\.days\.includes\(dow\) : a\.when === 'tomorrow'\)\);/);
+  assert.match(voice, /const rings = clock\.alarmsOn\(\)\.filter\(a => \(a\.days\.length \? a\.days\.includes\(dow\) : a\.when === 'tomorrow'\)\)/);
   assert.match(voice, /return \{ say: `Yes, your alarm is at \$\{clockText\(rings\[0\]\.h, rings\[0\]\.m\)\} tomorrow\.`/);
+});
+
+test('the reply gives the earliest alarm tomorrow by time of day, not by the next ring', () => {
+  assert.match(voice, /\.sort\(\(a, b\) => a\.h \* 60 \+ a\.m - \(b\.h \* 60 \+ b\.m\)\);/);
 });
