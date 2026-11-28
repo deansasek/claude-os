@@ -28,6 +28,7 @@ import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.t
 import { shortAge } from '../../../core/web/format.ts';
 import { readLists } from '../../lists/web/readers.ts';
 import { dinnerRow } from './dinner-row.ts';
+import { nextRun, nextRunWords } from '../../routines/web/next-run.ts';
 import { dinnersIn, isoDay, mondayOf, weekDays } from '../../meals/web/week.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, readClockTimers } from '../../../core/web/clock-timer.ts';
 import { parseClockAlarms } from '../../../core/web/clock-alarms.ts';
@@ -440,6 +441,22 @@ function paintDinner(): void {
   $('hmDnVal').textContent = row.val;
   $('hmDnSub').textContent = row.sub;
 }
+// Next routine: the routine that runs by itself next (a time set on it). The list is read from the Routines app's cache.
+let nextRoutineSeq = 0;
+async function loadNextRoutine(): Promise<void> {
+  const seq = ++nextRoutineSeq;
+  try {
+    const list = await loadRoutines();
+    if (seq !== nextRoutineSeq) return;   // a newer read started: its answer is the one that counts
+    const row = nextRunWords(nextRun(list, new Date()), new Date());
+    $('hmRtVal').textContent = row.val;
+    $('hmRtSub').textContent = row.sub;
+  } catch {
+    if (seq !== nextRoutineSeq) return;
+    $('hmRtVal').textContent = 'Can’t reach the routines';
+    $('hmRtSub').textContent = '';
+  }
+}
 function paintLists(): void {
   // a row beside its label: "3 to get · Milk, eggs…", or one plain phrase
   const val = $('hmLsVal'), sub = $('hmLsSub');
@@ -793,6 +810,7 @@ function refresh(): void {
   void loadCalendar();
   void loadLists();
   void loadDinner();
+  void loadNextRoutine();
   paintNotes();
   paintGreeting(now());
   paintActs();   // fit the row again: fonts and the page's width are settled once Home is on screen
@@ -802,7 +820,7 @@ function refresh(): void {
 // the live parts, every 30 seconds while Home is on screen only
 let pollT: number | undefined;
 function poll(): void {
-  if (ctx.isVisible() && !document.hidden) { void loadUsage(); void loadWeather(); void loadCalendar(); void loadLists(); void loadDinner(); }
+  if (ctx.isVisible() && !document.hidden) { void loadUsage(); void loadWeather(); void loadCalendar(); void loadLists(); void loadDinner(); void loadNextRoutine(); }
 }
 function onShow(): void {
   refresh();
