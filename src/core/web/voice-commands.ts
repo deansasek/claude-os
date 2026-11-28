@@ -472,7 +472,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (/^(?:what(?:'s| is) the time(?: now| right now)?|what time is it(?: now| right now)?|(?:tell me )?the time|time)$/.test(t)) {
     return { say: `It's ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.` };
   }
-  if (/^(?:what(?:'s| is) (?:the date|today'?s date|the date today)|what day is (?:it|today)(?: today)?|what(?:'s| is) today)$/.test(t)) {
+  if (/^(?:what(?:'s| is) (?:the date(?: now| right now)?|today'?s date|the date today)|what date is it(?: today)?|what(?:'s| is) the day(?: today)?|what day is (?:it|today)(?: today)?|what(?:'s| is) today)$/.test(t)) {
     return { say: `It's ${new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}.` };
   }
 
