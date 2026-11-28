@@ -717,8 +717,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // sound
   if (batteryWord(t)) return batteryCommand();
   if (/^(?:what(?:'s| is) the volume(?: right now| now)?|how loud is it(?: right now| now)?|what volume is it(?: on)?)$/.test(t)) return volumeLevel();
-  if (/^(?:turn |turn it |turn the volume |volume |sound )?up$|^louder$|^(?:turn|make)(?: it| the volume| the sound)? louder$|^(?:raise|increase)(?: the)? volume$/.test(t) && /up|loud|raise|increase/.test(t)) return volume('up');
-  if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
+  if (/^(?:turn |turn it |turn the volume |volume |sound )?up$|^turn up(?: the)? (?:volume|sound)$|^louder$|^(?:turn|make)(?: it| the volume| the sound)? louder$|^(?:raise|increase)(?: the)? volume$/.test(t) && /up|loud|raise|increase/.test(t)) return volume('up');
+  if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^turn down(?: the)? (?:volume|sound)$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
   if (/^(?:mute|silence)(?: the)?(?: sound| volume| tablet)?$/.test(t)) return volume('mute');
   if (/^unmute(?: the)?(?: sound| volume| tablet)?$/.test(t)) return volume('unmute');
   // "full volume", "turn the volume all the way up": the same as volume 100 percent (volume() clamps and says it)
