@@ -26,3 +26,9 @@ test('the Clock cancels the listed timer with that name, and the voice says so',
   assert.match(voice, /cancelNamedTimer\(label: string\): boolean;/);
   assert.match(voice, /return clock\.cancelNamedTimer\(tw\.label\) \?/);
 });
+
+test('"stop the pasta timer" silences the ring when that timer is the one ringing', () => {
+  assert.match(clock, /ringingName: \(\): string \| null => \(ringing\?\.kind === 'timer' \? ringing\.name \?\? null : null\),/);
+  assert.match(voice, /const ringName = clock\.ringingName\(\);/);
+  assert.match(voice, /if \(ringName && ringName\.trim\(\)\.toLowerCase\(\) === tw\.label\.trim\(\)\.toLowerCase\(\) && clock\.stopRinging\(\)\) return \{ say: `\$\{shown\} timer stopped\.`/);
+});
