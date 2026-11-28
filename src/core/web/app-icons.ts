@@ -121,6 +121,10 @@ const DRAW = {
     box(p, 5, 7, 22, 18, 2.6) + line(p, [9, 11.5], [23, 11.5])
     + line(p, [9, 16], [15, 16]) + line(p, [9, 20], [15, 20]) + line(p, [9, 23.5], [15, 23.5])
     + line(p, [18, 16], [23, 16]) + line(p, [18, 20], [23, 20]),
+  // Dice: a square die with five pips
+  dice: (p: Pen) =>
+    box(p, 6, 6, 20, 20, 2.4) + box(p, 10, 10, 2.6, 2.6, 1) + box(p, 19.4, 10, 2.6, 2.6, 1)
+    + box(p, 14.7, 14.7, 2.6, 2.6, 1) + box(p, 10, 19.4, 2.6, 2.6, 1) + box(p, 19.4, 19.4, 2.6, 2.6, 1),
   // Sketch: a drawing frame with a pen squiggle on it
   sketch: (p: Pen) =>
     box(p, 6, 6, 20, 20, 2.4) + line(p, [10, 21], [14, 14]) + line(p, [14, 14], [18, 20]) + line(p, [18, 20], [22, 14]),
