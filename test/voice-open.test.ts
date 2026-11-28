@@ -6,6 +6,10 @@ import { matchOpenApp } from '../src/core/web/voice-open.ts';
 const id = (t: string) => matchOpenApp(t)?.id ?? null;
 
 test('each app opens by its name', () => {
+  assert.equal(id('open meals'), 'meals');
+  assert.equal(id('show the calculator'), 'calculator');
+  assert.equal(id('open sketch'), 'sketch');
+  assert.equal(id("what's for dinner tonight"), null);   // a dinner question is the Meals command, not an open
   assert.equal(id('open photos'), 'photos');
   assert.equal(id('show the calendar'), 'calendar');
   assert.equal(id('go to weather'), 'weather');
