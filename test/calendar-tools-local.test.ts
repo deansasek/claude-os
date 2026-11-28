@@ -25,3 +25,16 @@ test('a range includes the ClaudeOS events when no ICS calendar is set', async (
   assert.match(r.content[0].text, /Cinema/);
   assert.doesNotMatch(r.content[0].text, /No calendar is set up yet/);
 });
+
+test('an empty range still says when the answer may be out of date', async () => {
+  const r = await calendarRangeReply({ days: 2 }, async () => ({ status: 'ok', events: [], stale: true }) as never, () => [] as never, now);
+  assert.match(r.content[0].text, /^Nothing on the calendar from /);
+  assert.match(r.content[0].text, /may be a little out of date/);
+});
+
+test('an unreadable ClaudeOS calendar with no ICS address is not called "no calendar set up"', async () => {
+  const r = await calendarRangeReply({ days: 2 }, async () => ({ status: 'not_set', events: [] }) as never, () => null, now);
+  assert.equal(r.isError, true);
+  assert.match(r.content[0].text, /couldn’t be read just now/);
+  assert.doesNotMatch(r.content[0].text, /No calendar is set up yet/);
+});
