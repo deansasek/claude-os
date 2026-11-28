@@ -473,7 +473,9 @@ function startNativeChat(text: string): void {
   newNativeChat(first);
 }
 function newNativeChat(first: string): void {
-  nativeSend(first, true); picking = false; photos = []; openSession(NATIVE_ID); report('new-native-chat');
+  nativeSend(first, true); picking = false;
+  if (photos.length) { photos = []; notify(PHOTO_REFUSED, false); }   // queued photos cannot go to a tablet chat: say so
+  openSession(NATIVE_ID); report('new-native-chat');
 }
 function keepNativeChat(): void {
   $('ncConfirm').hidden = true;
