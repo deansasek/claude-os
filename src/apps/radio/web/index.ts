@@ -8,7 +8,7 @@
 import { esc, getJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import { device, onVolume } from '../../../core/web/device.ts';
-import { quietVolumeHud } from '../../../core/web/system.ts';
+import { onBack, quietVolumeHud } from '../../../core/web/system.ts';
 import { setMediaActions, setNowPlaying } from '../../../core/web/media.ts';
 import { Keyboard } from '../../../core/web/keyboard.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
@@ -861,6 +861,13 @@ const app: HubApp = {
     $('rdNext').addEventListener('click', () => step(1));
     $('rdSleep').addEventListener('click', cycleSleep);
     $('rdBack').addEventListener('click', back);
+    // hardware Back: close Now playing first, then go up one list level, then leave the app
+    onBack(() => {
+      if (!ctx.isVisible()) return false;
+      if (nowOpen) { closeNow(); return true; }
+      if (view.kind !== 'home') { back(); return true; }
+      return false;
+    }, 10);
     $('rdNowFav').addEventListener('click', () => { if (current) toggleFav(current.id); });
 
     $('rdArtBtn').addEventListener('click', openNow);
