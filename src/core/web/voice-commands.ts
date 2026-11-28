@@ -42,7 +42,7 @@ import { device, onTablet } from './device.ts';
 import { autoBrightness, openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
-import { alarmOnTimePhrase, alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
+import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { sunDay, sunSay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
@@ -405,6 +405,16 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     return { say: left == null ? 'There’s no timer running.' : `${sayDuration(Math.ceil(left / 1000) * 1000)} left${paused ? ', and the timer is paused' : ''}.`.replace(/^./, c => c.toUpperCase()) };
   }
 
+  if (alarmTomorrowWord(t)) {
+    // an alarm rings tomorrow when its days include tomorrow's weekday, or it is a one-off set for tomorrow
+    if (!clock) return null;
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dow = tomorrow.getDay();
+    const rings = clock.alarmsOn().filter(a => (a.days.length ? a.days.includes(dow) : a.when === 'tomorrow'));
+    if (!rings.length) return { say: 'You don’t have an alarm tomorrow.', react: 'look', app: 'clock' };
+    return { say: `Yes, your alarm is at ${clockText(rings[0].h, rings[0].m)} tomorrow.`, react: 'look', app: 'clock' };
+  }
   if (alarmsListWord(t)) {
     if (!clock) return null;
     const all = clock.alarmsOn();
