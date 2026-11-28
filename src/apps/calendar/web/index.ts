@@ -19,6 +19,7 @@ import { monthWeeks, shiftEnd, stepClock } from './pickers.ts';
 import { swipeStep } from './swipe.ts';
 import { flagsOf, tagCalendar, visibleEvents, type CalendarInfo } from './calendars.ts';
 import { afterWriteNote, backTarget, editable, formCanShow, ownEvent } from './edit.ts';
+import { followedAnchor } from './follow-today.ts';
 import { shownStart } from './shown-start.ts';
 
 const API = `/api/${manifest.id}`;
@@ -43,6 +44,7 @@ const WRITE_TIMEOUT_MS = 10_000;   // an add, edit or delete the PC never answer
 let statusSeq = 0;          // each status read takes a number; a saved address makes a read still out stale
 let view: View = 'day';
 let anchor = startOfDay(new Date());
+let lastToday = anchor;   // the day the clock said when the view last opened: the view moves on with it (follow-today.ts)
 let events: Ev[] = [];
 let eventsRange = '';      // the range key (see rangeKey) the events were read for; '' for the connector's events
 let calendars: CalendarInfo[] = [];   // the calendars and their shown flags, from the PC (the chips)
@@ -758,7 +760,13 @@ const app: HubApp = {
     void loadStatus();
     render();
   },
-  onShow() { msg = ''; void loadStatus(); void load(); start(); },
+  onShow() {
+    msg = '';
+    const now = new Date();
+    anchor = followedAnchor(anchor, lastToday, now);   // after midnight the view shows the new day, unless the user moved it
+    lastToday = startOfDay(now);
+    void loadStatus(); void load(); start();
+  },
   onHide() { stop(); },
 };
 export default app;
