@@ -1,0 +1,33 @@
+/* The Scoreboard app: a player count, a card per player with a big score and plus and minus, then the two actions.
+   Colours come from the tokens in public/core.css. Clay marks the leader only. */
+.sb {
+  display: flex; flex-direction: column; gap: 16px;
+  height: 100%; padding: 20px var(--app-l, 24px); box-sizing: border-box;
+}
+.sb-count { display: flex; gap: 8px; }
+.sb-count button, .sb-btn {
+  min-height: 48px; padding: 0 16px;
+  font-family: var(--sans); font-size: 17px; font-weight: 500;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); cursor: pointer;
+}
+.sb-count button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.sb-players {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-content: start;
+}
+.sb-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px; border: 1px solid var(--line); border-radius: 18px; background: var(--card);
+}
+.sb-card.lead { border-color: var(--clay); }
+.sb-name { font-family: var(--sans); font-size: 16px; color: var(--t2); }
+.sb-score { font-family: var(--serif); font-size: 64px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); }
+.sb-steps { display: flex; gap: 10px; }
+.sb-steps button {
+  width: 56px; height: 56px; border-radius: 14px;
+  font-family: var(--sans); font-size: 28px; border: 1px solid var(--line); background: var(--card-2); color: var(--text); cursor: pointer;
+}
+.sb-steps button:active { background: var(--line); }
+.sb-btns { display: flex; gap: 12px; }
+.sb-btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.sb-btn:active { background: var(--card-2); }
