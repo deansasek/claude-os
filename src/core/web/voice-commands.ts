@@ -1061,8 +1061,10 @@ async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>,
       if (ambiguous) return { say: `More than one item matches ${c.text} on ${name}. Say which one.` };
       const word = lowerFirst(c.text);
       if (!hit) return { say: `No, ${word} isn’t on ${name}.`, react: 'look' };
+      // the item starts the sentence here (or follows "Yes,"): its first letter stays a capital, as the item is stored
+      const subject = hit.text.charAt(0).toUpperCase() + hit.text.slice(1);
       const shown = lowerFirst(hit.text);
-      return { say: hit.done ? `${shown} is on ${name}, but it’s ticked off.` : `Yes, ${shown} is on ${name}.`, react: 'look', app: 'lists' };
+      return { say: hit.done ? `${subject} is on ${name}, but it’s ticked off.` : `Yes, ${shown} is on ${name}.`, react: 'look', app: 'lists' };
     }
     if (c.op === 'edit') {
       // same rule as remove: one item by its words, never a guess between several; POST /api/lists/edit checks the new text
@@ -1161,8 +1163,10 @@ async function hasAnywhere(text: string): Promise<CommandResult | null> {
   const { l, hit } = found[0];
   const name = spokenName(l);
   const word = lowerFirst(hit.text);
+  // the item starts the sentence when it is ticked off: keep its capital, as the item is stored
+  const subject = hit.text.charAt(0).toUpperCase() + hit.text.slice(1);
   return hit.done
-    ? { say: `${word} is on ${name}, but it’s ticked off.`, react: 'look', app: 'lists' }
+    ? { say: `${subject} is on ${name}, but it’s ticked off.`, react: 'look', app: 'lists' }
     : { say: `Yes, ${word} is on ${name}.`, react: 'look', app: 'lists' };
 }
 
