@@ -199,23 +199,33 @@ function paintDetail(): void {
   $('stPlugRemove').hidden = !it.custom;
 }
 
+let testing: string | null = null;   // the plugin whose Check is running: a second tap sends no second check
 async function testOne(): Promise<void> {
   const it = view?.items.find(x => x.key === openKey);
   if (!it) return;
-  $('stPlugStatus').textContent = 'Checking…';
+  const key = it.key;
+  if (testing === key) return;
+  testing = key;
+  // a late answer shows only while the same plugin is still open
+  const say = (text: string): void => { if (openKey === key) $('stPlugStatus').textContent = text; };
   try {
-    const r = await postJson<{ ok: boolean; error?: string | null }>('/api/settings/plugins/test', { name: it.name }, PLUGINS_TIMEOUT_MS);
-    if (!r.ok) {
-      $('stPlugStatus').textContent = r.error === 'no_such_server' ? 'ClaudeOS can’t check this one from here.'
-        : `Couldn’t check it${r.error ? `: ${r.error}` : '.'}`;
+    say('Checking…');
+    try {
+      const r = await postJson<{ ok: boolean; error?: string | null }>('/api/settings/plugins/test', { name: it.name }, PLUGINS_TIMEOUT_MS);
+      if (!r.ok) {
+        say(r.error === 'no_such_server' ? 'ClaudeOS can’t check this one from here.'
+          : `Couldn’t check it${r.error ? `: ${r.error}` : '.'}`);
+        return;
+      }
+      report('settings:plugins:test');
+    } catch {
+      say('Check the connection to your PC, then try again.');
       return;
     }
-    report('settings:plugins:test');
-  } catch {
-    $('stPlugStatus').textContent = 'Check the connection to your PC, then try again.';
-    return;
+    await loadPlugins(false);
+  } finally {
+    if (testing === key) testing = null;
   }
-  await loadPlugins(false);
 }
 
 function closeDetail(): void {
