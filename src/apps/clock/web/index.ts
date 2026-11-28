@@ -549,7 +549,8 @@ function nextFire(a: Alarm, d: Date = now()): number | null {
   if (!a.on) return null;
   for (let k = 0; k < 8; k++) {
     const t = new Date(d); t.setDate(d.getDate() + k); t.setHours(a.h, a.m, 0, 0);
-    if (t.getTime() > d.getTime() && dayOk(a, t)) return t.getTime();
+    // an occurrence already marked done (a one-off set "for tomorrow" is marked for today) is not the next ring
+    if (t.getTime() > d.getTime() && dayOk(a, t) && occKey(a, t) !== a.fired) return t.getTime();
   }
   return null;
 }
@@ -1168,7 +1169,7 @@ const clockApi: ClockApi = {
   timerLeft(): number | null { const t = actionTimer(); return t.end ? Math.max(0, t.end - Date.now()) : t.left; },
   timerPaused(): boolean { const t = actionTimer(); return !t.end && t.left != null; },
   /** Add (or switch on) an alarm; days as Date.getDay() values, [] = once. Returns when it next rings. */
-  addAlarm(h: number, m: number, days: number[]): { when: string; at: number } | null {
+  addAlarm(h: number, m: number, days: number[], tomorrow = false): { when: string; at: number } | null {
     unlockAudio();
     // only the user's own unlabelled alarm at this time is reused; a reminder Claude set, or a labelled one, stays as it is
     let a = alarms.find(x => x.h === h && x.m === m && !x.claude && !labelOf(x));
@@ -1178,6 +1179,8 @@ const clockApi: ClockApi = {
       alarms.push(a);
     }
     a.days = [...days]; a.on = true; a.snooze = null; arm(a);
+    // "for tomorrow": today's occurrence is marked done, so it does not ring today (nextFire skips it too)
+    if (tomorrow && !days.length) { const today = new Date(now()); today.setHours(h, m, 0, 0); a.fired = occKey(a, today); }
     saveAlarms(); renderAlarms(); renderNextPill();
     act('hop', true); say(`see you at ${alarmParts(h, m).hm}!`);
     const at = nextFire(a);
