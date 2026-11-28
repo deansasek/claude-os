@@ -13,6 +13,7 @@
 .sk-tool.on { background: var(--text); color: var(--bg); border-color: var(--text); }
 .sk-act:active, .sk-tool:active { background: var(--card-2); }
 .sk-sep { width: 1px; height: 32px; background: var(--line); margin: 0 4px; }
+.sk-status { font-family: var(--sans); font-size: 14px; color: var(--t3); }
 .sk-canvas {
   flex: 1; min-height: 0; width: 100%;
   border: 1px solid var(--line); border-radius: 16px;
