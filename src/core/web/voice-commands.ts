@@ -50,7 +50,7 @@ import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
-import { alarmInMs, alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilSay, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
+import { alarmDayWord, alarmInMs, alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilSay, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
 import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
@@ -543,6 +543,19 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
       .sort((a, b) => a.h * 60 + a.m - (b.h * 60 + b.m));
     if (!rings.length) return { say: 'You don’t have an alarm tomorrow.', react: 'look', app: 'clock' };
     return { say: `Yes, your alarm is at ${clockText(rings[0].h, rings[0].m)} tomorrow.`, react: 'look', app: 'clock' };
+  }
+  // "do I have an alarm on Saturday": the alarms that ring that weekday (a one-off counts only for today or tomorrow, or a named day)
+  const alarmDay = alarmDayWord(t);
+  if (alarmDay !== null) {
+    if (!clock) return null;
+    const todayDow = new Date().getDay(), tomorrowDow = (todayDow + 1) % 7;
+    const name = weekdayName(alarmDay);
+    const rings = clock.alarmsOn().filter(a => (a.days.length
+      ? a.days.includes(alarmDay)
+      : (alarmDay === todayDow && a.when === 'today') || (alarmDay === tomorrowDow && a.when === 'tomorrow') || a.when === name || a.when === `next ${name}`))
+      .sort((a, b) => a.h * 60 + a.m - (b.h * 60 + b.m));
+    if (!rings.length) return { say: `You don’t have an alarm on ${name}.`, react: 'look', app: 'clock' };
+    return { say: `Yes, your alarm is at ${clockText(rings[0].h, rings[0].m)} on ${name}.`, react: 'look', app: 'clock' };
   }
   if (alarmsListWord(t)) {
     if (!clock) return null;
