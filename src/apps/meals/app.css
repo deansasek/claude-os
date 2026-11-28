@@ -19,6 +19,14 @@
 .mp-text { font-family: var(--serif); font-size: 22px; color: var(--text); text-align: left; background: none; border: 0; cursor: pointer; padding: 0; min-height: 48px; }
 .mp-text.empty { color: var(--t4); }
 .mp-edit { display: flex; flex-wrap: wrap; gap: 8px; }
+.mp-edit-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.mp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.mp-chip {
+  min-height: 40px; padding: 0 14px;
+  font-family: var(--sans); font-size: 15px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--card-2); color: var(--text); cursor: pointer;
+}
+.mp-chip:active { background: var(--line); }
 .mp-input {
   flex: 1; min-width: 160px; min-height: 48px; padding: 0 12px;
   font-family: var(--serif); font-size: 20px; color: var(--text);

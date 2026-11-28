@@ -33,5 +33,18 @@ export function dinnersIn(events: { id: string; title: string; start: number; al
     ? [{ id: e.id, text: e.title.slice(DINNER.length), start: e.start }] : []));
 }
 
+/** The names of the saved recipes (the Recipes app's list, as stored), for picking a dinner: unique, trimmed, the first 12. */
+export function savedRecipeNames(raw: string | null): string[] {
+  let list: unknown;
+  try { list = JSON.parse(raw ?? '[]'); } catch { return []; }
+  if (!Array.isArray(list)) return [];
+  const names = list.flatMap(v => {
+    const n = v && typeof v === 'object' && typeof (v as { name?: unknown }).name === 'string'
+      ? (v as { name: string }).name.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, MAX_TEXT) : '';
+    return n ? [n] : [];
+  });
+  return [...new Set(names)].slice(0, 12);
+}
+
 /** The dinner for one day, if there is one. */
 export const dinnerOn = (dinners: Dinner[], day: Day): Dinner | null => dinners.find(d => d.start === day.start) ?? null;
