@@ -344,13 +344,20 @@ async function saveConfig(body: { address?: string; token?: string }): Promise<v
   void refresh();
 }
 
+let testing = false;   // a second tap while the connection test runs does nothing: it would send a second test
 async function runTest(): Promise<void> {
-  testMsg = 'Testing…';
-  appSettingsChanged();
-  try { testMsg = (await postJson<HaTestResult>(`${API}/test`, {}, POST_TIMEOUT_MS)).message; }
-  catch { testMsg = 'Can’t reach the PC right now.'; }
-  await loadStatus();
-  appSettingsChanged();
+  if (testing) return;
+  testing = true;
+  try {
+    testMsg = 'Testing…';
+    appSettingsChanged();
+    try { testMsg = (await postJson<HaTestResult>(`${API}/test`, {}, POST_TIMEOUT_MS)).message; }
+    catch { testMsg = 'Can’t reach the PC right now.'; }
+    await loadStatus();
+    appSettingsChanged();
+  } finally {
+    testing = false;
+  }
 }
 
 // each scene read takes a number; only the newest read sets the list (a late older read must not undo a switch)
