@@ -11,7 +11,7 @@ const cap = (s: string): string => s.replace(/^./, c => c.toUpperCase());
 /** The night a dinner question asks about, or null when the phrase is not a dinner question. A weekday means its next
  *  day, today included (the same rule as the calendar). today: the day of the week now (Date.getDay). */
 export function dinnerWord(t: string, today = new Date().getDay()): Night | null {
-  const m = /^(?:what(?:'s| is) for dinner|what are we having for dinner)(?: (tonight|tomorrow))?$/.exec(t);
+  const m = /^(?:what(?:'s| is) for dinner|what are we having for dinner)(?: (tonight|today|tomorrow))?$/.exec(t);   // today is tonight's night
   if (m) return m[1] === 'tomorrow' ? { ahead: 1, name: 'tomorrow', lead: 'Tomorrow' } : { ahead: 0, name: 'tonight', lead: 'Tonight' };
   const w = /^(?:what(?:'s| is) for dinner|what are we having for dinner) (?:on )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/.exec(t);
   if (!w) return null;
