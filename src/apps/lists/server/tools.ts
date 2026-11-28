@@ -3,7 +3,7 @@
 // They use the same store, and so the same checks and limits, as the tablet's own taps (server/store.ts).
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
-import { MAX_TEXT, findList, type FamilyList, type ListsResult } from '../api.ts';
+import { MAX_LIST_NAME, MAX_TEXT, findList, type FamilyList, type ListsResult } from '../api.ts';
 import { addItem, clearDone, editItem, findItem, newList, readLists, removeItem, renameList, tickItem } from './store.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
@@ -41,7 +41,10 @@ export const listsServer = createSdkMcpServer({
         const r = addItem(list, t);
         if (!r.ok) return text(`${r.error ?? 'That didn’t work.'}${/no list/.test(r.error ?? '') ? ` The lists are: ${names(r)}.` : ''}`, true);
         const l = findList(r.lists, list);
-        return text(`Done. “${r.item?.text}” is on ${l?.name ?? list}${l ? ` (${l.items.filter(i => !i.done).length} to do)` : ''}.`);
+        // a notes list has no ticks: it says how many notes, not "to do" (show() words it the same way)
+        const open = l ? l.items.filter(i => !i.done).length : 0;
+        const count = l?.kind === 'notes' ? ` (${l.items.length} note${l.items.length === 1 ? '' : 's'})` : l ? ` (${open} to do)` : '';
+        return text(`Done. “${r.item?.text}” is on ${l?.name ?? list}${count}.`);
       }),
     tool('lists_tick',
       'Tick an item off a family list on the ClaudeOS tablet (or put it back with done: false). list: its name or id. '
@@ -88,7 +91,7 @@ export const listsServer = createSdkMcpServer({
         return text(`Changed “${hit.text}” to “${out.item?.text ?? to}” on ${l.name}.`);
       }),
     tool('lists_new',
-      'Make a new family list on the ClaudeOS tablet, e.g. Garden jobs. name: its name, up to 40 characters. It starts empty.',
+      `Make a new family list on the ClaudeOS tablet, e.g. Garden jobs. name: its name, up to ${MAX_LIST_NAME} characters. It starts empty.`,
       { name: z.string().max(40) },
       async ({ name }) => {
         const r = newList(name);
@@ -96,7 +99,7 @@ export const listsServer = createSdkMcpServer({
         return text(`Made the list “${name.trim()}”. It is empty.`);
       }),
     tool('lists_rename',
-      'Rename a family list on the ClaudeOS tablet. list: its current name or id. name: the new name, up to 24 characters. The items stay on it.',
+      `Rename a family list on the ClaudeOS tablet. list: its current name or id. name: the new name, up to ${MAX_LIST_NAME} characters. The items stay on it.`,
       { list: z.string().max(40), name: z.string().max(40) },
       async ({ list, name }) => {
         const r = readLists();
