@@ -16,7 +16,7 @@ test('cancel_timer takes an optional label, and the relay cancels that timer by 
   assert.ok(tablet.includes("tool('cancel_timer',"));
   assert.ok(tablet.includes("{ label: z.string().optional() },\n      async ({ label }) => run('cancel_timer', label ? { label } : {})),"));
   assert.ok(tablet.includes("if (op === 'cancel_timer' || op === 'pause_timer' || op === 'resume_timer') return { ok: true, op, args: { label: cleanText(input.label) } };"));
-  assert.ok(relay.includes('clock.cancelNamedTimer(label) ? `${label} timer cancelled.`'));
+  assert.ok(relay.includes('clock.cancelNamedTimer(label) ? `${cap(label)} timer cancelled.`'));
   assert.ok(relay.includes('return runClock(job.op, job.args || {});'));
 });
 
@@ -26,7 +26,7 @@ test('clock_status says when the next alarm rings', () => {
 });
 
 test('clock_status says the stopwatch’s time and whether it runs, as the voice does', () => {
-  assert.ok(relay.includes("import { sayDuration } from '../../../core/web/voice-parse.ts';"));
+  assert.ok(relay.includes("import { articleFor, sayDuration } from '../../../core/web/voice-parse.ts';"));
   assert.ok(relay.includes("const swSay = sw >= 1000 ? ` The stopwatch is ${clock.stopwatchRunning() ? 'running' : 'stopped'} at ${sayDuration(Math.floor(sw / 1000) * 1000)}.` : '';"));
   assert.ok(relay.includes('${alarmSay}${swSay}` };'));
 });
@@ -50,4 +50,10 @@ test('adjust_timer adds or takes minutes off the timer in front, and says the ti
   assert.ok(tablet.includes("Math.abs(m) > 60) return { ok: false"));
   assert.ok(relay.includes("if (!m || !clock.nudgeTimer(m)) return { ok: true, data: 'There’s no timer running.' };"));
   assert.ok(relay.includes("return { ok: true, data: `${m > 0 ? 'Added' : 'Took off'} ${amount}.${now}` };"));
+});
+
+test('a named timer reply capitalises the name, says already paused or running, and says when there is no such timer', () => {
+  assert.ok(relay.includes("import { articleFor, sayDuration } from '../../../core/web/voice-parse.ts';"));
+  assert.ok(relay.includes("const left = clock.namedTimerLeft(label);"));
+  assert.ok(relay.includes("if (pausing && left.paused) return { ok: true, data: `The ${label} timer is already paused.` };"));
 });
