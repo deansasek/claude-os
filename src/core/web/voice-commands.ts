@@ -96,7 +96,8 @@ export interface ClockApi {
   timerLeft(): number | null;
   /** True when the timer the voice means is paused (its time stays where it was). */
   timerPaused(): boolean;
-  addAlarm(h: number, m: number, days: number[]): { when: string; at: number } | null;
+  /** A one-off set "for tomorrow" (tomorrow true) does not ring today, even when today's time is still ahead. */
+  addAlarm(h: number, m: number, days: number[], tomorrow?: boolean): { when: string; at: number } | null;
   /** A new one-off alarm with a label (Claude's set_alarm and set_reminder); never changes an alarm already there.
    *  null when the Clock's list is full. */
   /** days: repeat on these (Date.getDay values); none means once. */
@@ -541,7 +542,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (!time || days == null) return null;   // not sure: let Claude sort it out
     if (!clock) return { say: 'The clock isn’t ready yet. Try again in a moment.' };
     const { h, m: mins } = resolveHour(time, wakeUp || days.length > 0 || morningDays(m[2] || ''));
-    const set = clock.addAlarm(h, mins, days);
+    const set = clock.addAlarm(h, mins, days, /\btomorrow\b/.test(m[2] || ''));
     if (!set) return { say: 'You have too many alarms. Delete one in the Clock first.', app: 'clock' };
     return { say: `Alarm set for ${clockText(h, mins)}${days.length ? daysText(days) : ` ${set.when}`}.`, react: 'hop' };
   }

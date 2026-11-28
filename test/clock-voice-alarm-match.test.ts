@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 const src = readFileSync(new URL('../src/apps/clock/web/index.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-const start = src.indexOf('  addAlarm(h: number, m: number, days: number[])');
+const start = src.indexOf('  addAlarm(h: number, m: number, days: number[], tomorrow = false)');
 const body = src.slice(start, src.indexOf('\n  },', start));
 
 test('addAlarm reuses only the user’s own unlabelled alarm at that time', () => {
