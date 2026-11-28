@@ -159,7 +159,7 @@ export const tabletServer = createSdkMcpServer({
       { label: z.string().optional() },
       async ({ label }) => run('pause_timer', label ? { label } : {})),
     tool('adjust_timer',
-      'Add minutes to a timer on the user’s ClaudeOS tablet, or take minutes off it. label: optional, the timer’s name when several are set; with none, the timer in front. minutes: whole minutes from -60 to 60; '
+      'Add minutes to a timer on the user’s ClaudeOS tablet, or take minutes off it. label: optional, the timer’s name when several are set; with none, the timer in front. minutes: whole minutes from -60 to 60, not zero; '
         + 'a minus takes minutes off. Use it when the user says to add to or cut back a timer.',
       { minutes: z.number().int().min(-60).max(60), label: z.string().optional() },
       async ({ minutes, label }) => run('adjust_timer', label ? { minutes, label } : { minutes })),
