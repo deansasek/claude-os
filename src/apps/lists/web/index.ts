@@ -100,10 +100,13 @@ async function flush(): Promise<void> {
 
 // What the family often buys and is not on Shopping now (history.ts): tap to add it.
 let suggest: string[] = [];
+let suggestSeq = 0;   // each load takes a number; only the newest load paints the chips
 async function loadSuggest(): Promise<void> {
+  const seq = ++suggestSeq;
   if (current !== 'shopping') { suggest = []; paintSuggest(); return; }
   let got: string[] | null = null;
   try { got = (await getJson<{ items: string[] }>(`${API}/suggest?list=shopping`, SYNC_TIMEOUT_MS)).items ?? []; } catch { got = null; }
+  if (seq !== suggestSeq || current !== 'shopping') return;   // a newer load started, or the family left Shopping: drop this answer
   const open = (lists.find(l => l.id === 'shopping')?.items ?? []).map(i => i.text);
   suggest = keptSuggest(suggest, got, open);
   paintSuggest();
