@@ -21,8 +21,8 @@ test('queued items keep the when-the-PC-is-back wording', () => {
 // The recipe screen is DOM code with no unit seam, so this reads the source of addToShopping().
 test('addToShopping counts only saved writes and says so when none saved', () => {
   const src = fs.readFileSync(new URL('../src/apps/recipes/web/index.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
-  const start = src.indexOf('async function addToShopping');
-  assert.ok(start > 0, 'addToShopping() exists');
+  const start = src.indexOf('async function addIngredientsToShopping');
+  assert.ok(start > 0, 'addIngredientsToShopping() exists');
   const body = src.slice(start, src.indexOf('\n}\n', start));
   assert.match(body, /if \(r\?\.ok\) ok\+\+;/, 'a refused write is not counted');
   assert.match(body, /addManyReply\(items, ok, waiting, 'Shopping'\)/, 'the reply gets every item, so a partial run shows how many');

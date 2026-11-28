@@ -600,7 +600,13 @@ function cookHtml(r: Recipe, step: number): string {
 }
 
 /** Put this recipe's ingredients on the Shopping list (the items already there are left out). */
+let addingToShopping = false;   // a second tap while the ingredients are being added does nothing: each item would go on twice
 async function addToShopping(r: Recipe): Promise<void> {
+  if (addingToShopping) return;
+  addingToShopping = true;
+  try { await addIngredientsToShopping(r); } finally { addingToShopping = false; }
+}
+async function addIngredientsToShopping(r: Recipe): Promise<void> {
   let shopping: FamilyList | undefined;
   try { shopping = (await readLists(LISTS_TIMEOUT_MS)).find(l => l.id === 'shopping'); }
   catch { msg = 'Couldn’t reach your PC, so nothing was added. Try again.'; render(); return; }
