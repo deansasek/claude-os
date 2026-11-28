@@ -1,0 +1,20 @@
+/* The Sketch app: a toolbar over one drawing surface. Colours come from the tokens in public/core.css. */
+.sk {
+  display: flex; flex-direction: column; gap: 12px;
+  height: 100%; padding: 16px var(--app-l, 24px); box-sizing: border-box;
+}
+.sk-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sk-tool, .sk-act {
+  min-height: 48px; padding: 0 16px;
+  font-family: var(--sans); font-size: 16px; font-weight: 500;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--card); color: var(--text); cursor: pointer;
+}
+.sk-tool.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.sk-act:active, .sk-tool:active { background: var(--card-2); }
+.sk-sep { width: 1px; height: 32px; background: var(--line); margin: 0 4px; }
+.sk-canvas {
+  flex: 1; min-height: 0; width: 100%;
+  border: 1px solid var(--line); border-radius: 16px;
+  background: var(--card); touch-action: none;
+}
