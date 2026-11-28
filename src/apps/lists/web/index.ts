@@ -143,7 +143,7 @@ async function send(path: OpPath, body: Record<string, unknown>): Promise<ListsR
     return r;
   }
   try {
-    const r = await postJson<ListsResult>(`${API}/${path}`, body);
+    const r = await postJson<ListsResult>(`${API}/${path}`, body, SYNC_TIMEOUT_MS);
     take(r);
     note = r.ok ? '' : r.error ?? 'That didn’t work.';
     render();
