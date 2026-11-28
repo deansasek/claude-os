@@ -221,10 +221,15 @@ function render(d: Usage): void {
 // a usage read the PC never answers gives up before the 10 s poll would run again, so the approval check keeps running
 const USAGE_TIMEOUT_MS = 8e3;
 
+let usageSeq = 0;   // each usage read takes a number; only the newest read may repaint or flip the pill
 async function load(): Promise<void> {
+  const seq = ++usageSeq;
   try {
-    render(await getJson<Usage>('/api/claude/usage', USAGE_TIMEOUT_MS));
+    const u = await getJson<Usage>('/api/claude/usage', USAGE_TIMEOUT_MS);
+    if (seq !== usageSeq) return;   // a newer read started: its answer is the one that counts
+    render(u);
   } catch {
+    if (seq !== usageSeq) return;
     pcDown = true;
     $('pill').className = 'live bad'; $('pillText').textContent = 'Offline'; $('pill').hidden = false;
     if (!data) {   // nothing to show yet: say why, instead of dashes and "Looking for sessions…" forever
