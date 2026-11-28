@@ -6,7 +6,8 @@ import { evaluate, format } from '../../apps/calculator/web/calc.ts';
 /** The reply for a sum asked for, or null when the phrase is not a sum this can work out. Takes what was heard (any case,
  *  symbols such as + × ÷ % and x between two numbers are read as words). */
 export function mathSay(raw: string): string | null {
-  const t = raw.toLowerCase().replace(/’/g, "'").replace(/[?!.]+$/, '').replace(/\s+/g, ' ').trim();
+  // speech writes a thousands comma ("1,500"): it is taken out first, so the number reads as one number
+  const t = raw.toLowerCase().replace(/’/g, "'").replace(/(\d),(?=\d{3}\b)/g, '$1').replace(/[?!.]+$/, '').replace(/\s+/g, ' ').trim();
   const m = /^(?:what(?:'s| is)|how much is) (.+)$/.exec(t);
   if (!m) return null;
   const sum = m[1].trim();
