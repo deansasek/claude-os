@@ -310,13 +310,13 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (!clock) return null;
     return { say: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.', react: 'look' };
   }
-  if (/^(?:how (?:much time|long) (?:is |'s )?(?:left|remaining|to go)(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
+  if (/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
     if (!clock) return null;
     const left = clock.timerLeft();
     return { say: left == null ? 'There’s no timer running.' : `${sayDuration(Math.ceil(left / 1000) * 1000)} left.`.replace(/^./, c => c.toUpperCase()) };
   }
 
-  if (/^(?:when(?:'s| is) my (?:next )?alarm|what time is my alarm|is my alarm (?:on|set)|do i have an alarm(?: set)?)$/.test(t)) {
+  if (/^(?:when(?:'s| is) my (?:next )?alarm|what time(?:'s| is) my alarm|is my alarm (?:on|set)|do i have an alarm(?: set)?)$/.test(t)) {
     if (!clock) return null;
     const n = clock.nextAlarm();
     return { say: n ? `Your next alarm is ${clockText(n.h, n.m)} ${n.when}.` : 'You don’t have any alarms on.' };
