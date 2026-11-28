@@ -61,6 +61,10 @@ export interface ClockApi {
   /** label: shown when it rings (Claude's set_timer); the Clock's own controls set none. */
   startTimer(ms: number, label?: string): boolean;   // false when the timer list is full
   cancelTimer(): boolean;
+  /** The name of the timer the voice means (its label, or null when it has none or none is picked). */
+  actionTimerName(): string | null;
+  /** How many timers are listed (set, running or paused). */
+  timerCount(): number;
   /** Cancel every timer in the list. Returns how many there were. */
   cancelAllTimers(): number;
   /** Cancel the timer with this label (its name, any case). False when there is none. */
@@ -381,7 +385,12 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   }
   if (/^(?:cancel|stop|delete|clear|end|reset|kill|turn off)(?: the| my)? timer$/.test(t)) {
     if (!clock) return null;
-    return { say: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.', react: 'look' };
+    // name the timer that goes, and say how many others stay set (the timer the voice means is the one picked)
+    const name = clock.actionTimerName(), others = clock.timerCount() - 1;
+    if (!clock.cancelTimer()) return { say: 'There’s no timer running.', react: 'look' };
+    const left = others > 0 ? ` ${others} more ${others === 1 ? 'is' : 'are'} still set.` : '';
+    const shown = name ? `${name.charAt(0).toUpperCase()}${name.slice(1)} timer cancelled.` : 'Timer cancelled.';
+    return { say: `${shown}${left}`, react: 'look' };
   }
   if (/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
     if (!clock) return null;

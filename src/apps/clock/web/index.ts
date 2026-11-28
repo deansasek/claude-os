@@ -1124,6 +1124,8 @@ const clockApi: ClockApi = {
   active(): number { return timers.length + alarms.filter(a => a.on || a.snooze).length; },
   /** True if there was a timer to cancel: the timer a voice or drawer action picks (see actionTimer). */
   cancelTimer(): boolean { focusAction(); const had = isListed(timer); timerReset(); return had; },
+  actionTimerName: (): string | null => actionTimer().name || null,
+  timerCount: (): number => timers.length,
   /** Cancel every timer in the list. Returns how many there were; the draft in front keeps its length. */
   cancelAllTimers(): number {
     const n = timers.length;
