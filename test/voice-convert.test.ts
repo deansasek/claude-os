@@ -34,6 +34,13 @@ test('a unit joined to its number is worked out: 200g, 8oz, 500ml and 2lb', () =
   assert.equal(convertSay('how many grams in 2lb'), '907.18 grams in 2 pounds.');
 });
 
+test('a fraction amount is worked out: 1/2 cup, 3/4 cup and 1/4 cup', () => {
+  assert.equal(convertSay("what's 1/2 cup in tablespoons"), '0.5 cups is 8 tablespoons.');
+  assert.equal(convertSay('convert 3/4 cup to millilitres'), '0.75 cups is 177.44 millilitres.');
+  assert.equal(convertSay('how many teaspoons in 1/4 cup'), '12 teaspoons in 0.25 cups.');
+  assert.equal(convertSay("what's 1/0 cup in millilitres"), null);
+});
+
 test('weight does not convert to a volume, and fluid ounces are still a volume', () => {
   assert.equal(convertSay('how many cups in grams'), null);
   assert.equal(convertSay('how many ounces in a cup'), null);
