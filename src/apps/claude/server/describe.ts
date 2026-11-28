@@ -25,6 +25,7 @@ function plainDetail(tool: string, i: Record<string, any>): string | null {
   if (n === 'ha_activate_scene' && typeof i.scene === 'string') return i.scene;
   // the night and the dish, so the approval shows what goes on the plan: "Thursday: lasagne"
   if (n === 'meals_plan' && typeof i.day === 'string' && typeof i.dinner === 'string') return `${i.day}: ${i.dinner}`;
+  if (n === 'calendar_add' && typeof i.title === 'string' && typeof i.date === 'string') return `${i.title}, ${i.date}${typeof i.start === 'string' ? ` at ${i.start}` : ' (all day)'}`;
   return '';
 }
 
@@ -48,6 +49,9 @@ export function askFor(tool: string, input: Record<string, any>): { summary: str
   const i = input || {};
   const w = wordsFor(tool);
   const arg = keyArg(i);
+  // a ClaudeOS tool with its own detail (the date and time of an event, not its title) shows that
+  const plain = plainDetail(tool, i);
+  if (plain && tool.endsWith('__calendar_add')) return { summary: w.now, detail: plain };
   if ((tool === 'Agent' || tool === 'Task') && typeof i.description === 'string') return describeTool(tool, i);
   if (w.arg && arg) {
     const shown = w.arg === 'file' ? short(fileName(arg), 60) : short(arg, 50);
