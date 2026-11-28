@@ -38,8 +38,9 @@ export function timerWord(t: string): TimerWord | null {
   // "cancel the pasta timer": one timer by its label. A bare "the timer" or a time ("10 minute timer") is not a label.
   const named = t.match(/^(?:cancel|stop|delete|clear|end|kill|turn off) (?:the |my )?(.+?) timer$/);
   if (named && !/^(?:the|my|all|a|an|one|this|that)$/.test(named[1]) && !/\d/.test(named[1])) return { op: 'cancel-named', label: named[1] };
-  const add = t.match(/^(?:add|give me) (\w+) (?:minutes?|mins?) (?:to|on) (?:the|my) timer$/);
-  const take = t.match(/^(?:take|remove) (\w+) (?:minutes?|mins?) (?:off|from) (?:the|my) timer$/);
+  // "add five more minutes to the timer", "give me two extra minutes on the timer": "more" or "extra" may come after the number
+  const add = t.match(/^(?:add|give me) (\w+)(?: more| extra)? (?:minutes?|mins?) (?:to|on) (?:the|my) timer$/);
+  const take = t.match(/^(?:take|remove) (\w+)(?: more| extra)? (?:minutes?|mins?) (?:off|from) (?:the|my) timer$/);
   const m = add ?? take;
   if (!m) return null;
   const n = /^\d+$/.test(m[1]) ? +m[1] : (NUMBER_WORDS[m[1]] ?? 0);
