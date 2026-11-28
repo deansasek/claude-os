@@ -54,6 +54,7 @@ import { alreadyPlayingSay, playingSay, radioStopHeard, radioWord } from './voic
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
 import { calendarDay, calendarDaySay, type CalDay } from './voice-calendar.ts';
+import { convertSay } from './voice-convert.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, nowPlaying, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
@@ -506,6 +507,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
 
   // a quick sum: "what's 12 times 7" is worked out by the Calculator's own parser (voice-math.ts)
   // what was heard first (so symbols such as + and × survive), then the cleaned words (so "twelve times seven" works)
+  // a kitchen or temperature conversion: "what's 180 celsius in fahrenheit" (voice-convert.ts). First, so "in" is not read as a sum.
+  const convSay = convertSay(raw) ?? convertSay(t);
+  if (convSay !== null) return { say: convSay, react: 'look' };
   const sumSay = mathSay(raw) ?? mathSay(t);
   if (sumSay !== null) return { say: sumSay, react: 'look' };
   // time and date

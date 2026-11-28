@@ -1,0 +1,48 @@
+// Kitchen and temperature conversions by voice: "what's 180 celsius in fahrenheit", "how many tablespoons in a cup",
+// "convert 2 cups to millilitres". Pure (no DOM, no fetch). The maths is the Calculator's own converter (convert.ts).
+import { convert, roundResult, type Unit } from '../../apps/calculator/web/convert.ts';
+
+// the words people say for each unit, and how each reads back: [singular, plural]
+const WORDS: Record<string, Unit> = {
+  cup: 'cup', cups: 'cup',
+  tablespoon: 'tbsp', tablespoons: 'tbsp', tbsp: 'tbsp', tbsps: 'tbsp',
+  teaspoon: 'tsp', teaspoons: 'tsp', tsp: 'tsp', tsps: 'tsp',
+  ml: 'ml', millilitre: 'ml', millilitres: 'ml', milliliter: 'ml', milliliters: 'ml',
+  'fluid ounce': 'floz', 'fluid ounces': 'floz', 'fl oz': 'floz',
+  fahrenheit: 'F', 'degree fahrenheit': 'F', 'degrees fahrenheit': 'F',
+  celsius: 'C', centigrade: 'C', 'degree celsius': 'C', 'degrees celsius': 'C', 'degrees centigrade': 'C',
+};
+const SAY: Record<Unit, [string, string]> = {
+  cup: ['cup', 'cups'], tbsp: ['tablespoon', 'tablespoons'], tsp: ['teaspoon', 'teaspoons'], ml: ['millilitre', 'millilitres'],
+  floz: ['fluid ounce', 'fluid ounces'], F: ['degree Fahrenheit', 'degrees Fahrenheit'], C: ['degree Celsius', 'degrees Celsius'],
+};
+
+const unitOf = (w: string): Unit | undefined => WORDS[w.trim()];
+const name = (u: Unit, n: number): string => SAY[u][Math.abs(n - 1) < 1e-9 ? 0 : 1];
+const num = (s: string): number => (s === 'a' || s === 'an' || s === 'one' ? 1 : Number(s));
+
+/** The spoken conversion, or null when the phrase is not a conversion or the two units cannot convert. */
+export function convertSay(raw: string): string | null {
+  const s = raw.toLowerCase().replace(/’/g, "'").replace(/[?.!]+$/, '').trim();
+  // "what's 180 celsius in fahrenheit", "how much is 2 cups in millilitres"
+  let m = /^(?:what(?:'s| is)|how much is) (\d+(?:\.\d+)?) (.+?) in (.+)$/.exec(s);
+  if (m) return answer(Number(m[1]), m[2], m[3], 'is');
+  // "convert 2 cups to millilitres"
+  m = /^convert (\d+(?:\.\d+)?) (.+?) (?:to|into) (.+)$/.exec(s);
+  if (m) return answer(Number(m[1]), m[2], m[3], 'is');
+  // "how many tablespoons in a cup", "how many cups in 250 millilitres"
+  m = /^how many (.+?) in (?:(a|an|one|\d+(?:\.\d+)?) )?(.+)$/.exec(s);
+  if (m) return answer(m[2] ? num(m[2]) : 1, m[3], m[1], 'in');
+  return null;
+}
+
+/** The value of `amount` of `fromWord`, in `toWord`. For "how many", the amount is the given unit and the wanted unit is `toWord`. */
+function answer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
+  const from = unitOf(fromWord), to = unitOf(toWord);
+  if (!from || !to || !Number.isFinite(amount)) return null;
+  const v = convert(amount, from, to);
+  if (v === null) return null;
+  if (shape === 'is') return `${roundResult(amount)} ${name(from, amount)} is ${roundResult(v)} ${name(to, v)}.`;
+  // "how many": the wanted unit first, then the given one
+  return `${roundResult(v)} ${name(to, v)} in ${amount === 1 ? 'a' : roundResult(amount)} ${name(from, amount)}.`;
+}
