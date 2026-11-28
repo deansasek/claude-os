@@ -776,7 +776,6 @@ async function sceneCommand(raw: string): Promise<CommandResult | null> {
 }
 
 // ---------- Calendar: "what's on today", "what's on my calendar" ----------
-/** The Meals dinner on a night, read from the calendar's "Dinner: …" events (the same events Home's Tonight row reads). */
 /** "What's for dinner this week": the planned dinners for the seven nights from tonight, read from the local calendar. */
 async function dinnerWeekCommand(): Promise<CommandResult> {
   const d = new Date();
@@ -795,6 +794,7 @@ async function dinnerWeekCommand(): Promise<CommandResult> {
   return { say: dinnerWeekSay(items), react: 'look', app: 'meals' };
 }
 
+/** The Meals dinner on a night, read from the calendar's "Dinner: …" events (the same events Home's Tonight row reads). */
 async function dinnerCommand(night: Night): Promise<CommandResult> {
   const d = new Date();
   const day = new Date(d.getFullYear(), d.getMonth(), d.getDate() + night.ahead);
