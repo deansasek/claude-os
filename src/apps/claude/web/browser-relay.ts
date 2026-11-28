@@ -6,13 +6,15 @@
 // time restarts) when a job comes in, when the Claude page is shown, and whenever the Claude app's usage check (every
 // 3 to 10 seconds, on screen or off) sees a reply running or waiting for approval: every tool call happens inside such
 // a turn, and its approval card comes first, so the relay is listening by the time a call needs it.
-import { browser } from '../../../core/web/device.ts';
+import { browser, device } from '../../../core/web/device.ts';
+import { batterySay } from '../../../core/web/voice-battery.ts';
+import { wifiSay } from '../../../core/web/voice-wifi.ts';
 import { notify, prefs } from '../../../core/web/system.ts';
 import { getClock, getRoutines } from '../../../core/web/voice-commands.ts';
 import { call } from './sessions/pin.ts';
 import { cur, getControl } from '../../browser/web/state.ts';
 
-type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms';
+type Op = 'read' | 'click' | 'type' | 'screenshot' | 'open' | 'back' | 'timer' | 'alarm' | 'reminder' | 'notify' | 'routine' | 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'tablet_status';
 interface Job { id: string; op: Op; ref?: string; text?: string; args?: Record<string, unknown> }
 interface NextReply { ok: boolean; job?: Job | null; error?: string }
 type Answer = { ok: boolean; data: string };
@@ -51,8 +53,16 @@ async function loop(): Promise<void> {
 function run(job: Job): Promise<Answer> | Answer {
   if (job.op === 'routine') return runRoutine(job.args || {});
   if (job.op === 'clock_status' || job.op === 'cancel_timer' || job.op === 'cancel_alarms') return runClock(job.op, job.args || {});
+  if (job.op === 'tablet_status') return runStatus();
   if (job.op === 'timer' || job.op === 'alarm' || job.op === 'reminder' || job.op === 'notify') return runTablet(job.op, job.args || {});
   return runBrowser(job);
+}
+
+/** The tablet's battery and Wi-Fi for Claude: the same words the voice gives (batterySay, wifiSay). Read only. */
+function runStatus(): Answer {
+  try {
+    return { ok: true, data: `${batterySay(device.battery())} ${wifiSay(device.wifi())}` };
+  } catch { return { ok: false, data: 'I can’t read the tablet’s battery or Wi-Fi right now.' }; }
 }
 
 /** The Clock's status and cancels for Claude: the Clock's own state, read or changed here on the tablet. */
