@@ -36,5 +36,6 @@ export function dinnerWeekSay(items: { name: string; text: string }[]): string {
 /** What the voice says: the dinner planned for that night, or that nothing is planned. */
 export function dinnerSay(text: string | null, night: Night): string {
   if (!text) return `Nothing planned for dinner ${night.name}.`;
-  return `${night.lead} it’s ${text.replace(/^./, c => c.toLowerCase())}.`;
+  // the first letter is lower case only when the next letter is: "Tacos" is "tacos", but "BBQ ribs" and "KFC" keep their capitals
+  return `${night.lead} it’s ${text.replace(/^([A-Z])(?=[a-z])/, c => c.toLowerCase())}.`;
 }
