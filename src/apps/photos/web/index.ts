@@ -140,6 +140,8 @@ function selectAll(): void {
 
 // a list read the PC never answers gives up; each read takes a number, and only the newest read sets the grid
 const LIST_TIMEOUT_MS = 20e3;
+// a delete the PC never answers gives up, so the sheet's Delete and Keep work again (the PC may take longer than a list)
+const DELETE_TIMEOUT_MS = 30e3;
 let listSeq = 0;
 async function load(): Promise<void> {
   const seq = ++listSeq;
@@ -350,7 +352,7 @@ async function removePending(): Promise<void> {
   let refused = false;
   for (const batch of deleteBatches(ids)) {
     let r: PhotoDeleteResult | null = null;
-    try { r = await postJson<PhotoDeleteResult>('/api/photos/delete', batch.length === 1 ? { id: batch[0] } : { ids: batch }); }
+    try { r = await postJson<PhotoDeleteResult>('/api/photos/delete', batch.length === 1 ? { id: batch[0] } : { ids: batch }, DELETE_TIMEOUT_MS); }
     catch { r = null; }
     if (!r || (!r.ok && !r.deleted && !r.missing)) { refused = true; break; }
     for (const id of [...(r.deleted || []), ...(r.missing || [])]) gone.add(id);
