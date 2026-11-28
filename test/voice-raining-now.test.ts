@@ -27,3 +27,11 @@ test('the voice reads the current weather from the forecast', () => {
   assert.match(voice, /const falling = rainingNow\(t\);/);
   assert.match(voice, /const code = w\.current\?\.weather_code;/);
 });
+
+test('is it foggy is heard, and fog codes say yes while cloud says no', () => {
+  assert.equal(rainingNow('is it foggy'), 'foggy');
+  assert.equal(rainingNow('is it foggy outside'), 'foggy');
+  assert.equal(nowSay(45, 'foggy'), 'Yes, it’s foggy.');
+  assert.equal(nowSay(48, 'foggy'), 'Yes, it’s foggy.');
+  assert.equal(nowSay(3, 'foggy'), 'No, it’s not foggy right now.');
+});

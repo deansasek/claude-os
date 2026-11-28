@@ -38,14 +38,16 @@ export function sunDay(t: string): { which: 'sunrise' | 'sunset'; day: 0 | 1 } |
 }
 
 // "Is it raining" or "is it snowing" right now (not the chance later on). Returns what is asked about, or null.
-export function rainingNow(t: string): 'raining' | 'snowing' | null {
+export function rainingNow(t: string): 'raining' | 'snowing' | 'foggy' | null {
   if (/^is it raining(?: outside| right now| now)?$/.test(t)) return 'raining';
   if (/^is it snowing(?: outside| right now| now)?$/.test(t)) return 'snowing';
+  if (/^is it foggy(?: outside| right now| now)?$/.test(t)) return 'foggy';
   return null;
 }
 
 /** The yes or no for what is falling now, from the forecast's current weather code (WMO: 51-67 and 80-82 rain, 95-99 storms, 71-77 and 85-86 snow). */
-export function nowSay(code: number, asked: 'raining' | 'snowing'): string {
+export function nowSay(code: number, asked: 'raining' | 'snowing' | 'foggy'): string {
+  if (asked === 'foggy') return code === 45 || code === 48 ? 'Yes, it’s foggy.' : 'No, it’s not foggy right now.';
   if (asked === 'snowing') {
     return (code >= 71 && code <= 77) || (code >= 85 && code <= 86) ? 'Yes, it’s snowing.' : 'No, it’s not snowing right now.';
   }

@@ -187,7 +187,7 @@ function sky(code: number): string {
 const deg = (n: number) => `${Math.round(n)} degrees`;
 
 /** "Is it raining": what is falling now, from the forecast's current weather code. */
-async function rainingNowCommand(asked: 'raining' | 'snowing'): Promise<CommandResult> {
+async function rainingNowCommand(asked: 'raining' | 'snowing' | 'foggy'): Promise<CommandResult> {
   let w: Wx;
   try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
   if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
