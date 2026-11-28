@@ -367,8 +367,12 @@ async function loadWx(): Promise<void> {
 /** The PC answered but did not save the place or unit (the PC is up; this is not a network failure). */
 class NotSaved extends Error {}
 
+let saveSeq = 0;   // each place or unit save takes a number: an older save's reply cannot change or undo a newer one
 async function sendLocation(body: LocationUpdate): Promise<void> {
-  const d = await postJson<Weather>('/api/weather/location', body, WX_TIMEOUT_MS);
+  const seq = ++saveSeq;
+  const d = await postJson<Weather>('/api/weather/location', body, WX_TIMEOUT_MS)
+    .catch(err => { if (seq !== saveSeq) return null; throw err; });   // an older save that failed must not revert a newer pick
+  if (!d || seq !== saveSeq) return;   // a newer save started: its reply is the one that counts
   // the PC answered, so it is up; an error below comes from the forecast service, not the PC
   pcDown = false;
   // the PC did not save it: throw, so the caller reverts the unit and says so
