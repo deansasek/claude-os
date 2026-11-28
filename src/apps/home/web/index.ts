@@ -882,6 +882,7 @@ function mount(context: AppContext): void {
     if (go === 'claude') { const w = waitingSessions()[0]; if (w?.id) { openSession(w.id); return; } }
     if (go === 'claude' && nativeLine()) { openTabletChat(); return; }
     if (go === 'lists') { openApp('lists'); dispatchEvent(new CustomEvent('hub:open-list', { detail: 'shopping' })); return; }   // the Shopping row opens the Shopping tab, not the last tab used
+    if (go === 'clock' && timerNow()) { openApp('clock'); dispatchEvent(new CustomEvent('hub:clock-tab', { detail: 'timer' })); return; }   // a running or paused timer: the tile opens its Timer tab
     openApp(go);
   });
   $('hmLine').addEventListener('click', () => { if (lineTarget) openSession(lineTarget); });
