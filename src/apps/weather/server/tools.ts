@@ -54,7 +54,13 @@ export async function weatherForecast({ days }: { days?: number }, read: typeof 
   ].filter(Boolean);
   const now = `Now ${Math.round(r.current.temperature_2m)}${unit}, ${skyWords(r.current.weather_code)}, feels like ${Math.round(r.current.apparent_temperature)}${unit}`
     + `${extra.map((e) => `, ${e}`).join('')}.`;
-  return text(`Weather for ${r.place ?? 'the set place'}. ${now}\n${rows.join('\n')}`);
+  // a forecast kept from before the connection failed says when it was read, so Claude does not call it current
+  const ageMin = r.updated ? (Date.now() - Date.parse(r.updated)) / 60000 : 0;
+  const stale = ageMin >= 60
+    ? `This forecast is from ${new Date(r.updated!).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}, `
+      + `${Math.floor(ageMin / 60)} ${Math.floor(ageMin / 60) === 1 ? 'hour' : 'hours'} ago; the weather service could not be reached. `
+    : '';
+  return text(`${stale}Weather for ${r.place ?? 'the set place'}. ${now}\n${rows.join('\n')}`);
 }
 
 export const weatherServer = createSdkMcpServer({

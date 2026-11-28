@@ -35,3 +35,13 @@ test('the Now line gives the humidity and the wind, and leaves out a missing one
   const bare = await weatherForecast({ days: 1 }, async () => ({ ...base, current: { temperature_2m: 9.6, weather_code: 3, apparent_temperature: 7.2 } }) as any);
   assert.match(bare.content[0].text, /Now 10°C, cloudy, feels like 7°C\.\n/);
 });
+
+test('an old forecast says when it was read, and a fresh one does not', async () => {
+  const day = { time: ['2026-11-28'], temperature_2m_max: [10], temperature_2m_min: [4], weather_code: [3], precipitation_probability_max: [20], wind_speed_10m_max: [12], sunrise: ['2026-11-28T07:10'], sunset: ['2026-11-28T16:20'], uv_index_max: [1] };
+  const current = { temperature_2m: 8, weather_code: 3, apparent_temperature: 6 };
+  const old = new Date(Date.now() - 3 * 3600e3).toISOString();
+  const stale = await weatherForecast({ days: 1 }, async () => ({ status: 'ok', place: 'Testville', units: 'celsius', wind_unit: 'km/h', daily: day, current, updated: old }) as any);
+  assert.match(stale.content[0].text, /^This forecast is from .+, 3 hours ago; the weather service could not be reached\. Weather for Testville\./);
+  const fresh = await weatherForecast({ days: 1 }, async () => ({ status: 'ok', place: 'Testville', units: 'celsius', wind_unit: 'km/h', daily: day, current, updated: new Date().toISOString() }) as any);
+  assert.ok(fresh.content[0].text.startsWith('Weather for Testville.'));
+});
