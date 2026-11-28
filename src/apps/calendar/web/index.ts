@@ -216,9 +216,12 @@ async function loadConnector(): Promise<void> {
   msg = '';
 }
 
+let saveSeq = 0;   // each address save takes a number: an older save's late reply cannot overwrite a newer one
 async function saveAddress(address: string): Promise<void> {
   let r: CalConfigResult | null = null;
+  const seq = ++saveSeq;
   try { r = await postJson<CalConfigResult>(`${API}/config`, { address }, WRITE_TIMEOUT_MS); } catch { /* below */ }
+  if (seq !== saveSeq) return;   // a newer save started: its answer is the one that counts
   if (r) { statusSeq++; status = { configured: r.configured, address: r.address }; statusFailed = false; msg = r.ok ? '' : r.message ?? 'That didn’t work.'; addressMsg = r.ok ? '' : r.message ?? 'That didn’t work.'; }
   else { msg = 'Couldn’t reach the PC. Try again in a moment.'; addressMsg = 'Couldn’t reach the PC. Try again in a moment.'; }
   appSettingsChanged();
