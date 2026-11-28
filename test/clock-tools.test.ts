@@ -63,3 +63,8 @@ test('adjust_timer takes an optional timer name, and the relay changes that time
   assert.ok(tablet.includes("return { ok: true, op, args: { minutes: m, label: cleanText(input.label) } };"));
   assert.ok(relay.includes("if (!m || !clock.nudgeNamedTimer(label, m)) return { ok: true, data: `The ${label} timer can’t be changed.` };"));
 });
+
+test('cancel_timer names the timer in front and says how many more are still set', () => {
+  assert.ok(relay.includes("const name = clock.actionTimerName(), others = clock.timerCount() - 1;"));
+  assert.ok(relay.includes("return { ok: true, data: `${shown}${others > 0 ? ` ${others} more ${others === 1 ? 'is' : 'are'} still set.` : ''}` };"));
+});

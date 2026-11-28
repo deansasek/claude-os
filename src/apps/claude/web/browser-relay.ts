@@ -83,7 +83,11 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
     const label = str(args.label);
     // the named timer's words as the voice says them: the capital first, "You don’t have a pasta timer." when there is none
     if (label) return { ok: true, data: clock.cancelNamedTimer(label) ? `${cap(label)} timer cancelled.` : `You don’t have ${articleFor(label)} ${label} timer.` };
-    return { ok: true, data: clock.cancelTimer() ? 'Timer cancelled.' : 'There’s no timer running.' };
+    // the timer in front, named as the voice names it, and how many others stay set (actionTimerName, timerCount)
+    const name = clock.actionTimerName(), others = clock.timerCount() - 1;
+    if (!clock.cancelTimer()) return { ok: true, data: 'There’s no timer running.' };
+    const shown = name ? `${name.charAt(0).toUpperCase()}${name.slice(1)} timer cancelled.` : 'Timer cancelled.';
+    return { ok: true, data: `${shown}${others > 0 ? ` ${others} more ${others === 1 ? 'is' : 'are'} still set.` : ''}` };
   }
   if (op === 'adjust_timer') {
     // the same change the voice makes (nudgeTimer on the Clock: the timer in front, capped at an hour)
