@@ -17,6 +17,12 @@ import type { PlayState } from './media-state.ts';
 /** A "stop the radio" counts while it plays or is still tuning in (buffering): pausing stops it either way. */
 export function radioStopHeard(s: PlayState): boolean { return s === 'playing' || s === 'buffering'; }
 
+/** "Play the radio" while a station already plays (or is still tuning in): say so, rather than restart its stream. Null when nothing plays. */
+export function alreadyPlayingSay(info: { title: string } | null, state: PlayState): string | null {
+  if (state !== 'playing' && state !== 'buffering') return null;
+  return `${info?.title ? info.title : 'The radio'} is already playing.`;
+}
+
 /** What is playing, said aloud: the station and its subtitle, with "Paused" when it is paused. Nothing when no station plays. */
 export function playingSay(info: { title: string; subtitle?: string } | null, state: PlayState): string {
   if (!info || !info.title || state === 'stopped') return 'Nothing is playing.';

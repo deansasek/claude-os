@@ -49,7 +49,7 @@ import { nowSay, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, win
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
 import type { Units } from '../../apps/weather/api.ts';
-import { playingSay, radioStopHeard, radioWord } from './voice-radio.ts';
+import { alreadyPlayingSay, playingSay, radioStopHeard, radioWord } from './voice-radio.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
@@ -508,6 +508,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     let last: unknown[] = [];
     try { last = JSON.parse(store.get('radio.recent') || '[]') as unknown[]; } catch { /* none kept */ }
     if (!last.length) return { say: 'No radio station has played yet.' };
+    // a station already playing is not restarted (that would drop the stream): say so
+    const already = alreadyPlayingSay(nowPlaying(), mediaState());
+    if (already) return { say: already, react: 'look', app: 'radio' };
     dispatchEvent(new CustomEvent('hub:radio-last'));
     return { say: '' };
   }
