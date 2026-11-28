@@ -35,7 +35,8 @@ export function kitchenNumber(v: number): string {
     const text = String(Math.round(v * 10) / 10);
     return text;
   }
-  if (near[1] === '') return whole > 0 ? String(whole) : '0';
+  // a positive amount never reads as 0: a very small one is the smallest kitchen fraction, 1/8
+  if (near[1] === '') return whole > 0 ? String(whole) : (v > 0 ? '1/8' : '0');
   return whole > 0 ? `${whole} ${near[1]}` : near[1];
 }
 
