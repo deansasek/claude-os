@@ -29,7 +29,7 @@ import { shortAge } from '../../../core/web/format.ts';
 import { readLists } from '../../lists/web/readers.ts';
 import { dinnerRow } from './dinner-row.ts';
 import { nextRun, nextRunWords } from '../../routines/web/next-run.ts';
-import { dinnersIn, isoDay, mondayOf, weekDays } from '../../meals/web/week.ts';
+import { dinnersIn, isoDay, missingIngredients, mondayOf, weekDays } from '../../meals/web/week.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, readClockTimers } from '../../../core/web/clock-timer.ts';
 import { parseClockAlarms } from '../../../core/web/clock-alarms.ts';
 
@@ -411,6 +411,7 @@ async function loadLists(): Promise<void> {
 const DINNER_TIMEOUT_MS = 10e3;
 let dinnerTonight: string | null = null, dinnerState: 'loading' | 'ok' | 'failed' = 'loading', dinnerSeq = 0;
 let dinnerFree = 0;   // nights left this week with no dinner
+let weekDinnerTexts: string[] = [];   // this week's dinners, for the Shopping row's count
 let dinnerFailedBefore = false;
 async function loadDinner(): Promise<void> {
   const seq = ++dinnerSeq;
@@ -423,6 +424,7 @@ async function loadDinner(): Promise<void> {
     if (seq !== dinnerSeq) return;   // a newer read started: its answer is the one that counts
     if (r.status !== 'ok') throw new Error('calendar');
     const dinners = dinnersIn(r.events ?? []);
+    weekDinnerTexts = dinners.map(d => d.text);
     dinnerTonight = dinners.find(d => d.start === todayStart)?.text || null;
     // nights from today to Sunday with no dinner yet
     const todayIndex = (today.getDay() + 6) % 7;
@@ -440,6 +442,7 @@ function paintDinner(): void {
   const row = dinnerRow(dinnerTonight, dinnerState, dinnerFailedBefore, dinnerState === 'ok' ? dinnerFree : null);
   $('hmDnVal').textContent = row.val;
   $('hmDnSub').textContent = row.sub;
+  paintLists();   // the Shopping row counts this week's dinner ingredients, so it follows the dinners
 }
 // Next routine: the routine that runs by itself next (a time set on it). The list is read from the Routines app's cache.
 let nextRoutineSeq = 0;
@@ -457,10 +460,30 @@ async function loadNextRoutine(): Promise<void> {
     $('hmRtSub').textContent = '';
   }
 }
+// The saved recipes' ingredient names (the Recipes list on the tablet's store), for counting what this week's dinners need.
+function savedIngredients(): { name: string; ingredients: string[] }[] {
+  try {
+    const list = JSON.parse(store.get('recipes.list') ?? '[]') as unknown[];
+    return list.flatMap(v => {
+      const r = v as { name?: unknown; ingredients?: unknown };
+      if (!r || typeof r.name !== 'string' || !Array.isArray(r.ingredients)) return [];
+      const ingredients = r.ingredients.flatMap(i => {
+        const item = (i as { item?: unknown } | null)?.item;
+        return typeof item === 'string' && item.trim() ? [item] : [];
+      });
+      return [{ name: r.name, ingredients }];
+    });
+  } catch {
+    return [];
+  }
+}
 function paintLists(): void {
-  // a row beside its label: "3 to get · Milk, eggs…", or one plain phrase
+  // a row beside its label: "3 to get · Milk, eggs…", or one plain phrase; this week's dinners that are not on the list come last
   const val = $('hmLsVal'), sub = $('hmLsSub');
-  const row = listsRow(lists, listsFailed);
+  const fromDinners = dinnerState === 'ok' && lists
+    ? missingIngredients(weekDinnerTexts, savedIngredients(), lists.items.filter(i => !i.done).map(i => i.text))
+    : null;
+  const row = listsRow(lists, listsFailed, fromDinners);
   val.textContent = row.val;
   sub.textContent = row.sub;
 }
