@@ -336,13 +336,14 @@ async function setOnHome(id: string, on: boolean, room = OTHER): Promise<void> {
   await refresh(note !== '');
 }
 
+let configGen = 0;   // each config save takes a number: an older save's late reply cannot overwrite a newer one
 async function saveConfig(body: { address?: string; token?: string }): Promise<void> {
+  const gen = ++configGen;
   try {
     const r = await postJson<HaStatus & { ok: boolean; message?: string }>(`${API}/config`, body, POST_TIMEOUT_MS);
     statusGen++;   // a status read that was already waiting is older than this save
-    status = r;
-    testMsg = r.ok ? '' : r.message ?? 'That wasn’t saved.';
-  } catch { testMsg = 'Can’t reach the PC right now.'; }
+    if (gen === configGen) { status = r; testMsg = r.ok ? '' : r.message ?? 'That wasn’t saved.'; }
+  } catch { if (gen === configGen) testMsg = 'Can’t reach the PC right now.'; }
   appSettingsChanged();
   void loadDevices(true);
   void refresh();
