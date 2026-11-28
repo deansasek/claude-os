@@ -32,6 +32,8 @@ function loadUsageHarness(getJson: (url: string) => Promise<unknown>) {
   const paint = stripTypeScriptTypes(sourceOf('function paintUsage(): void {'));
   const code = `let usage = null;
     let usageFailed = false;
+    let usageSeq = 0;
+    const USAGE_TIMEOUT_MS = 20e3;
     let section = 'usage';
     const box = { innerHTML: '' };
     const note = { textContent: '' };
