@@ -41,7 +41,7 @@ import { sceneFailText } from '../../apps/home/web/scene-words.ts';
 import { device, onTablet } from './device.ts';
 import { openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
-import { alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
+import { alarmOnTimePhrase, alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
 import { sunDay, temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
 import { isWindy } from '../../apps/weather/web/art.ts';
@@ -91,6 +91,8 @@ export interface ClockApi {
   alarmsOff(): number;
   /** Switch off the alarm at one time (it stays in the list). Returns how many were on. */
   switchOffAlarm(h: number, m: number): number;
+  /** Switch on the alarms at one time that are off (they keep their days). Returns how many are at that time. */
+  switchOnAlarm(h: number, m: number): number;
   /** The ring now: 'alarm' or 'timer', null when nothing rings. */
   ringing(): 'alarm' | 'timer' | null;
   /** Silence and dismiss the ring. False when nothing rings. */
@@ -326,6 +328,14 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (word === 'stop-ring') { clock.stopRinging(); return { say: 'Stopped.', react: 'look' }; }
     if (word === 'snooze') return clock.snoozeRinging() ? { say: 'Okay. Nine more minutes.', react: 'hop' } : { say: 'Snooze is for alarms. Say stop for the timer.' };
     if (word === 'all-off') { const n = clock.alarmsOff(); return { say: n ? `Okay, ${n === 1 ? 'your alarm is' : `all ${n} alarms are`} off.` : 'You don’t have any alarms on.', react: 'look' }; }
+    // "turn on my 7 am alarm": that one alarm switches on again with its days kept
+    const onPhrase = word === null ? alarmOnTimePhrase(t) : null;
+    const onTod = onPhrase ? parseTime(onPhrase) : null;
+    if (onTod) {
+      const { h, m } = resolveHour(onTod, false);
+      const n = clock.switchOnAlarm(h, m);
+      return { say: n ? `Okay, your ${clockText(h, m)} alarm is on.` : `You don’t have an alarm at ${clockText(h, m)}.`, react: 'hop' };
+    }
     // "turn off my 7 am alarm": that one alarm (it stays in the list); the time is read the same way as when setting one
     const phrase = word === null ? alarmTimePhrase(t) : null;
     const tod = phrase ? parseTime(phrase) : null;

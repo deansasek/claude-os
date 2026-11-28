@@ -1186,6 +1186,17 @@ const clockApi: ClockApi = {
     if (n) { saveAlarms(); renderAlarms(); renderNextPill(); }
     return n;
   },
+  /** Switch on the alarms at one time that are off. They keep their days. Returns how many are at that time. */
+  switchOnAlarm(h: number, m: number): number {
+    let n = 0;
+    for (const a of alarms) {
+      if (a.h !== h || a.m !== m) continue;
+      n++;
+      if (!a.on) { a.on = true; a.snooze = null; arm(a); }
+    }
+    if (n) { saveAlarms(); renderAlarms(); renderNextPill(); }
+    return n;
+  },
   /** Switch every alarm off (they stay in the list). Returns how many were on. */
   alarmsOff(): number {
     let n = 0;
