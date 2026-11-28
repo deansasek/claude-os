@@ -19,3 +19,8 @@ test('cancel_timer takes an optional label, and the relay cancels that timer by 
   assert.ok(relay.includes('clock.cancelNamedTimer(label) ? `${label} timer cancelled.`'));
   assert.ok(relay.includes('return runClock(job.op, job.args || {});'));
 });
+
+test('clock_status says when the next alarm rings', () => {
+  assert.ok(relay.includes('const alarmSay = next ? ` Next alarm: ${hhmm(next.h, next.m)} ${next.when}.` : \'\';'));
+  assert.ok(tablet.includes('when the next alarm rings, and how many timers and alarms are on.'));
+});
