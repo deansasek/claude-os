@@ -26,7 +26,8 @@ test('the reply lists up to three events for that day, or says nothing is on', (
   assert.equal(calendarDaySay([], 'on Saturday'), 'Nothing on your calendar on Saturday.');
   assert.equal(calendarDaySay(['Dentist at 9:00 AM'], 'on Saturday'), 'On Saturday: Dentist at 9:00 AM.');
   assert.equal(calendarDaySay(['Dentist at 9:00 AM', 'Parents, all day'], 'on Saturday'), 'On Saturday: Dentist at 9:00 AM; and Parents, all day.');
-  assert.equal(calendarDaySay(['a', 'b', 'c', 'd'], 'on Friday'), 'On Friday: a; b; and c.');
+  assert.equal(calendarDaySay(['a', 'b', 'c', 'd'], 'on Friday'), 'On Friday: a; b; and c, and 1 more.');
+  assert.equal(calendarDaySay(['a', 'b', 'c', 'd', 'e'], 'on Friday'), 'On Friday: a; b; and c, and 2 more.');
 });
 
 test('the weekday question reads the local calendar for that one day', () => {
