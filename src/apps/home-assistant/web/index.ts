@@ -373,6 +373,7 @@ async function loadScenes(): Promise<void> {
 }
 
 /** Put a scene on the Home screen's quick actions, or take it off. The Home screen picks it up when it next shows. */
+let homeScenesGen = 0;   // each Home-screen scene toggle takes a number: a late older reply cannot overwrite a newer list
 async function setHomeScene(id: string, on: boolean): Promise<void> {
   const s = sceneList?.scenes.find(x => x.entity_id === id);
   if (on && sceneList && sceneList.home.length >= MAX_HOME_SCENES && !s?.home) {
@@ -383,9 +384,10 @@ async function setHomeScene(id: string, on: boolean): Promise<void> {
   if (s) s.home = on;   // the switch moves at once; the PC's answer settles it
   appSettingsChanged();
   try {
+    const gen = ++homeScenesGen;
     const r = await postJson<HaHomeScenesResult>(`${API}/home-scenes`, { entity_id: id, on }, POST_TIMEOUT_MS);
     sceneMsg = r.ok ? '' : r.error ?? 'That wasn’t saved.';
-    if (dash) dash.layout.homeScenes = r.home;
+    if (dash && gen === homeScenesGen) dash.layout.homeScenes = r.home;
   } catch { sceneMsg = 'Can’t reach the PC right now, so that wasn’t saved.'; }
   await loadScenes();
   appSettingsChanged();
