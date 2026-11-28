@@ -76,6 +76,7 @@ const BUILT_IN: Record<string, ToolWords> = {
   // ClaudeOS's weather (weather/server/tools.ts, the claudeos_weather MCP server), read-only
   'mcp__claudeos_weather__weather_forecast': { now: 'Look at the weather', past: 'Looked at the weather', doing: 'Looking at the weather' },
   // ClaudeOS's routines (routines/server/tools.ts, the claudeos_routines MCP server)
+  'mcp__claudeos_routines__routines_list': { now: 'List the routines', past: 'Listed the routines', doing: 'Listing the routines' },
   'mcp__claudeos_routines__run_routine': { now: 'Run a routine on the tablet', past: 'Ran a routine on the tablet', doing: 'Running a routine' },
   AskUserQuestion: { now: 'Ask you a question', past: 'Asked you a question', doing: 'Asking you something' },
   TaskCreate:    { now: 'Add a task', past: 'Added a task', doing: 'Adding a task', arg: 'text' },
