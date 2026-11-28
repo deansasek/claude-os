@@ -62,7 +62,7 @@ export function check(op: TabletOp, input: Record<string, unknown>): Checked {
     if (typeof m !== 'number' || !Number.isInteger(m) || m === 0 || Math.abs(m) > 60) return { ok: false, error: 'The change is whole minutes, from -60 to 60, and not zero.' };
     return { ok: true, op, args: { minutes: m, label: cleanText(input.label) } };
   }   // a timer by its name, or the one in front
-  if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status') return { ok: true, op, args: {} };
+  if (op === 'clock_status' || op === 'cancel_alarms' || op === 'tablet_status' || op === 'list_alarms') return { ok: true, op, args: {} };
   if (op === 'dnd') return typeof input.on === 'boolean' ? { ok: true, op, args: { on: input.on } } : { ok: false, error: 'Say whether Do Not Disturb is on or off.' };
   if (op === 'notify') {
     const title = cleanText(input.title), body = cleanText(input.body);
@@ -157,6 +157,10 @@ export const tabletServer = createSdkMcpServer({
       'Turn Do Not Disturb on or off on the user’s ClaudeOS tablet. On: no banners show, but notifications still go to the list. Use it when the user asks to silence the tablet or to turn its sound and banners back on.',
       { on: z.boolean() },
       async ({ on }) => run('dnd', { on })),
+    tool('list_alarms',
+      'List the alarms that are on in the Clock on the ClaudeOS tablet, soonest first, with their times and days. Read-only. It gives the times, not the names.',
+      {},
+      async () => run('list_alarms', {})),
     tool('cancel_alarms',
       'Switch off the alarms and reminders you set on the user’s ClaudeOS tablet (set_alarm, set_reminder). It keeps the user’s own alarms '
         + 'and does not delete anything; they can be turned on again in the Clock.',

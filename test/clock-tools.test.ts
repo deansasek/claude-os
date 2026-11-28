@@ -26,7 +26,7 @@ test('clock_status says when the next alarm rings', () => {
 });
 
 test('clock_status says the stopwatch’s time and whether it runs, as the voice does', () => {
-  assert.ok(relay.includes("import { articleFor, sayDuration } from '../../../core/web/voice-parse.ts';"));
+  assert.ok(relay.includes("import { articleFor, daysText, sayDuration } from '../../../core/web/voice-parse.ts';"));
   assert.ok(relay.includes("const swSay = sw >= 1000 ? ` The stopwatch is ${clock.stopwatchRunning() ? 'running' : 'stopped'} at ${sayDuration(Math.floor(sw / 1000) * 1000)}.` : '';"));
   assert.ok(relay.includes('${alarmSay}${swSay}` };'));
 });
@@ -53,7 +53,7 @@ test('adjust_timer adds or takes minutes off the timer in front, and says the ti
 });
 
 test('a named timer reply capitalises the name, says already paused or running, and says when there is no such timer', () => {
-  assert.ok(relay.includes("import { articleFor, sayDuration } from '../../../core/web/voice-parse.ts';"));
+  assert.ok(relay.includes("import { articleFor, daysText, sayDuration } from '../../../core/web/voice-parse.ts';"));
   assert.ok(relay.includes("const left = clock.namedTimerLeft(label);"));
   assert.ok(relay.includes("if (pausing && left.paused) return { ok: true, data: `The ${label} timer is already paused.` };"));
 });
@@ -67,4 +67,11 @@ test('adjust_timer takes an optional timer name, and the relay changes that time
 test('cancel_timer names the timer in front and says how many more are still set', () => {
   assert.ok(relay.includes("const name = clock.actionTimerName(), others = clock.timerCount() - 1;"));
   assert.ok(relay.includes("return { ok: true, data: `${shown}${others > 0 ? ` ${others} more ${others === 1 ? 'is' : 'are'} still set.` : ''}` };"));
+});
+
+test('list_alarms is a Claude tool: the alarms that are on, soonest first, with 24-hour times', () => {
+  assert.ok(tablet.includes("tool('list_alarms',"));
+  assert.ok(relay.includes("if (op === 'list_alarms') {"));
+  assert.ok(relay.includes("const all = clock.alarmsOn();"));
+  assert.ok(relay.includes("if (!all.length) return { ok: true, data: 'No alarms are on.' };"));
 });
