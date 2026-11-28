@@ -53,6 +53,7 @@ import type { Units } from '../../apps/weather/api.ts';
 import { alreadyPlayingSay, playingSay, radioStopHeard, radioWord } from './voice-radio.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
+import { calendarDay, calendarDaySay, type CalDay } from './voice-calendar.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, nowPlaying, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
@@ -326,6 +327,9 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // calendar: "what's on today", "what's on my calendar" (before the lists, so "what's on ..." is ours)
   if (/^(?:what(?:'s|s| is) on (?:for )?(?:today|(?:my|the) calendar(?: today| for today)?|today'?s calendar)|what do i have (?:on )?today|do i have anything (?:on )?today|have i got (?:anything )?on today|what have i got on today|what(?:'s|s| is) on my schedule today)$/.test(t)) return calendarCommand();
   if (/^(?:what(?:'s|s| is) on (?:for )?tomorrow|what(?:'s|s| is) on (?:my|the) calendar (?:for )?tomorrow|what do i have (?:on )?tomorrow|have i got (?:anything )?on tomorrow|what have i got on tomorrow)$/.test(t)) return calendarCommand('tomorrow');
+  // "what's on Saturday": the local calendar for that weekday (voice-calendar.ts)
+  const calDay = calendarDay(t);
+  if (calDay !== null) return calendarDayCommand(calDay);
   const dinner = dinnerWord(t);   // "what's for dinner tonight": the Meals dinner the calendar holds for that night
   if (dinner) return dinnerCommand(dinner);
 
@@ -640,6 +644,22 @@ async function dinnerCommand(night: Night): Promise<CommandResult> {
   if (r?.status !== 'ok') return { say: 'I can’t reach the calendar right now.' };
   const hit = dinnersIn(r.events ?? []).find(x => x.start === day.getTime());
   return { say: dinnerSay(hit?.text ?? null, night), react: 'look', app: 'meals' };
+}
+
+/** "What's on Saturday": the events on that weekday from the local calendar (GET /api/calendar/local), read aloud. */
+async function calendarDayCommand(cal: CalDay): Promise<CommandResult> {
+  const d = new Date();
+  const start = new Date(d.getFullYear(), d.getMonth(), d.getDate() + cal.ahead);
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
+  let r: { status?: string; events?: { title: string; start: number; end: number; allDay: boolean }[] };
+  try { r = await getJson(`/api/calendar/local?from=${isoDay(start)}&to=${isoDay(end)}`, READ_TIMEOUT_MS); }
+  catch { return { say: 'I can’t reach the calendar right now.' }; }
+  if (r?.status !== 'ok') return { say: 'I can’t read the calendar right now.' };
+  const items = (r.events ?? [])
+    .filter(e => e.start >= start.getTime() && e.start < end.getTime())
+    .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start - b.start)
+    .map(e => (e.allDay ? `${e.title}, all day` : `${e.title} at ${new Date(e.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`));
+  return { say: calendarDaySay(items, cal.name), react: 'look', app: 'calendar' };
 }
 
 /** The next three events still to come today, read aloud (the Calendar app's own route, GET /api/calendar/events). */
