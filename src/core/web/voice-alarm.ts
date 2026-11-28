@@ -1,6 +1,6 @@
 // Voice words for the Clock's alarms: "stop" and "snooze" act on the ring that is sounding. Only "turn off all my
 // alarms" switches every alarm off. Pure text matching, so Node tests can load it (core/web/voice-commands.ts uses it).
-import { parseDuration, sayDuration } from './voice-parse.ts';
+import { DAY_WORDS, parseDuration, sayDuration } from './voice-parse.ts';
 
 export type AlarmWord = 'stop-ring' | 'snooze' | 'all-off' | 'one-alarm' | null;
 
@@ -42,6 +42,12 @@ export function alarmInMs(t: string): number | null {
   const m = /^(?:wake me(?: up)? in|set (?:an |the )?alarm in|set (?:an |the )?alarm for|alarm in) (.+?)(?: from now)?$/.exec(t);
   if (!m || !/\b(?:minutes?|mins?|hours?|hrs?)\b/.test(m[1])) return null;
   return parseDuration(m[1]);
+}
+
+/** "do I have an alarm on Saturday": the weekday asked about (0 Sunday to 6 Saturday), or null. */
+export function alarmDayWord(t: string): number | null {
+  const m = /^(?:do i have an alarm|is there an alarm|have i got an alarm|is my alarm) (?:set )?(?:on|for) (sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/.exec(t);
+  return m ? DAY_WORDS[m[1]] : null;
 }
 
 /** "How long until my alarm": the time left, in minutes and hours for a ring within a day, and the day for one further off
