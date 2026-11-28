@@ -101,6 +101,17 @@ export function uvSay(uv: number | null | undefined): string {
   return `UV index ${Math.round(uv)} today.`;
 }
 
+// "What does it feel like outside": the apparent temperature, the same value the Weather screen shows as "Feels like".
+export function feelsWord(t: string): boolean {
+  return /^(?:what does it feel like(?: outside| today| right now| now)?|how does it feel(?: outside| today| right now| now)?|what(?:'s| is) the feels? like(?: outside| today| right now| now)?|how (?:cold|hot|warm) does it feel(?: outside| today| right now| now)?)$/.test(t);
+}
+
+/** The apparent temperature now, said with the user's degree words: "It feels like 3 degrees." */
+export function feelsSay(apparent: number | null | undefined): string {
+  if (apparent == null || !Number.isFinite(apparent)) return 'I can’t get how it feels right now.';
+  return `It feels like ${degSay(apparent)}.`;
+}
+
 /** The relative humidity now, from the forecast's current block. */
 export function humidSay(pct: number | null): string {
   if (pct == null || !Number.isFinite(pct)) return 'I can’t get the humidity right now.';
