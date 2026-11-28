@@ -44,7 +44,7 @@ import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
-import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
+import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
 import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
@@ -75,6 +75,8 @@ export interface ClockApi {
   cancelAllTimers(): number;
   /** Cancel the timer with this label (its name, any case). False when there is none. */
   cancelNamedTimer(label: string): boolean;
+  /** The time left on the timer with this label, and whether it is paused. Null when no timer has that label. */
+  namedTimerLeft(label: string): { ms: number; paused: boolean } | null;
   /** Start the stopwatch (true) or stop it (false). False when it is already that way. */
   stopwatch(start: boolean): boolean;
   stopwatchRunning(): boolean;
@@ -456,6 +458,14 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const left = others > 0 ? ` ${others} more ${others === 1 ? 'is' : 'are'} still set.` : '';
     const shown = name ? `${name.charAt(0).toUpperCase()}${name.slice(1)} timer cancelled.` : 'Timer cancelled.';
     return { say: `${shown}${left}`, react: 'look' };
+  }
+  // "how long is left on the pasta timer": one timer by its label (namedTimerLeftLabel in voice-alarm.ts)
+  const namedLeft = namedTimerLeftLabel(t);
+  if (namedLeft !== null) {
+    if (!clock) return null;
+    const hit = clock.namedTimerLeft(namedLeft);
+    if (!hit) return { say: `You don’t have a ${namedLeft} timer.`, react: 'look' };
+    return { say: `${sayDuration(Math.ceil(hit.ms / 1000) * 1000)} left on the ${namedLeft} timer${hit.paused ? ', and it is paused' : ''}.`.replace(/^./, c => c.toUpperCase()), react: 'look' };
   }
   if (/^(?:how (?:much time|long)(?:'s| is)? (?:left|remaining|to go)(?: on (?:the|my) timer)?|how much longer(?: is it)?(?: on (?:the|my) timer)?|how many (?:minutes|seconds)(?: are)? left(?: on (?:the|my) timer)?|(?:how'?s|how is) (?:the|my) timer(?: doing)?|time left(?: on (?:the|my) timer)?)$/.test(t)) {
     if (!clock) return null;
