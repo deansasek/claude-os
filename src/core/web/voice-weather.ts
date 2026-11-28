@@ -69,7 +69,7 @@ export function forecastDay(t: string, todayDow: number): { day: number; rainOnl
   const target = DAY_WORDS[m[2]];
   if (target === undefined) return null;
   const prefix = m[1];
-  if (!/^(?:what(?:'s| is) the weather(?: like)?|how(?:'s| is) the weather|weather|will it (?:rain|snow|be (?:sunny|cold|hot|windy|wet))|is it going to (?:rain|snow|be (?:sunny|cold|hot|windy|wet))|is it (?:sunny|cold|hot|windy|wet)|do i need an umbrella|do i need a (?:jacket|coat))$/.test(prefix)) return null;
+  if (!/^(?:what(?:'s| is) the weather(?: like)?|how(?:'s| is) the weather|weather|will it (?:rain|snow|be (?:sunny|cold|hot|windy|wet))|is it going to (?:rain|snow|be (?:sunny|cold|hot|windy|wet))|is it (?:sunny|cold|hot|windy|wet)|what(?:'s| is) the temperature|how (?:cold|hot|warm) (?:will it be|is it going to be)|do i need an umbrella|do i need a (?:jacket|coat))$/.test(prefix)) return null;
   const rainOnly = /\brain\b|umbrella/.test(prefix) ? 'rain' : /\bsnow\b/.test(prefix) ? 'snow' : null;
   return { day: (target - todayDow + 7) % 7, rainOnly };
 }
