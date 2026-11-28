@@ -63,7 +63,8 @@ export function weekIngredients(dinnerTexts: string[], recipes: { name: string; 
     if (!text) continue;
     const ingredients = byName.get(text.toLowerCase());
     if (ingredients) ingredients.forEach(i => items.add(i));
-    else unmatched.push(text);
+    // a dinner with no saved recipe is named once, however many nights it is planned for
+    else if (!unmatched.some(u => u.toLowerCase() === text.toLowerCase())) unmatched.push(text);
   }
   return { items: [...items], unmatched };
 }

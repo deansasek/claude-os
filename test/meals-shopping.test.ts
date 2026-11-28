@@ -32,3 +32,9 @@ test('the button is wired to the shared shopping logic, which uses the Shopping 
   assert.match(shared, /shoppingItems\(items, onList\)/);
   assert.match(shared, /writeList\('add', \{ list: 'shopping', text \}\)/);
 });
+
+test('a dinner with no saved recipe on two nights is named once, whatever the capitals', () => {
+  const week = weekIngredients(['Pizza', 'Tacos', 'pizza'], [{ name: 'Tacos', ingredients: ['tortillas'] }]);
+  assert.deepEqual(week.unmatched, ['Pizza']);
+  assert.deepEqual(week.items, ['tortillas']);
+});
