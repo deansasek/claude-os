@@ -137,6 +137,8 @@ export function paintPlugins(): void {
     || `<div class="st-empty">${q || tab !== 'all' ? 'Nothing matches that.' : 'Nothing here yet. Connectors, servers, skills and plugins show up here once Claude Code has them on this PC.'}</div>`;
 }
 
+// a switch, remove or add the PC never answers gives up, so the switch flips back and the form says so
+const CHANGE_TIMEOUT_MS = 20e3;
 const PLUGINS_TIMEOUT_MS = 60_000;   // the PC's own check gives up after about 35 s (server/plugins.ts, PROBE_MS)
 /** Fetch the list. `fresh` asks the PC to check the connectors and servers again first (slower). */
 export async function loadPlugins(fresh = false): Promise<void> {
@@ -164,7 +166,7 @@ async function toggle(key: string): Promise<void> {
   };
   let refusal: string;
   try {
-    const r = await postJson<{ ok: true } | { ok: false; error: string }>('/api/settings/plugins/toggle', { key, on });
+    const r = await postJson<{ ok: true } | { ok: false; error: string }>('/api/settings/plugins/toggle', { key, on }, CHANGE_TIMEOUT_MS);
     if (r.ok) { report(`settings:plugins:${it.kind}:${on ? 'on' : 'off'}`); return; }
     refusal = toggleRefusal(r.error);
   } catch {
@@ -202,7 +204,7 @@ async function testOne(): Promise<void> {
   if (!it) return;
   $('stPlugStatus').textContent = 'Checking…';
   try {
-    const r = await postJson<{ ok: boolean; error?: string | null }>('/api/settings/plugins/test', { name: it.name });
+    const r = await postJson<{ ok: boolean; error?: string | null }>('/api/settings/plugins/test', { name: it.name }, PLUGINS_TIMEOUT_MS);
     if (!r.ok) {
       $('stPlugStatus').textContent = r.error === 'no_such_server' ? 'ClaudeOS can’t check this one from here.'
         : `Couldn’t check it${r.error ? `: ${r.error}` : '.'}`;
@@ -235,8 +237,8 @@ async function removeItem(it: PluginItem, isFolder: boolean): Promise<void> {
   let r: { ok: boolean };
   try {
     r = isFolder
-      ? await postJson<{ ok: boolean }>('/api/settings/plugins/folder/remove', { path: it.key.slice('plugin:path:'.length) })
-      : await postJson<{ ok: boolean }>('/api/settings/plugins/mcp/remove', { name: it.name });
+      ? await postJson<{ ok: boolean }>('/api/settings/plugins/folder/remove', { path: it.key.slice('plugin:path:'.length) }, CHANGE_TIMEOUT_MS)
+      : await postJson<{ ok: boolean }>('/api/settings/plugins/mcp/remove', { name: it.name }, CHANGE_TIMEOUT_MS);
   } catch {
     deps.confirm('Couldn’t remove it', 'Check the connection to your PC, then try again.', 'OK', () => {});
     return;
@@ -308,10 +310,10 @@ async function saveAdd(): Promise<void> {
   let r: { ok: boolean; error?: string };
   try {
     r = addMode === 'folder'
-      ? await postJson<{ ok: boolean; error?: string }>('/api/settings/plugins/folder', { path: t.folder })
+      ? await postJson<{ ok: boolean; error?: string }>('/api/settings/plugins/folder', { path: t.folder }, CHANGE_TIMEOUT_MS)
       : await postJson<{ ok: boolean; error?: string }>('/api/settings/plugins/mcp', {
         name: t.name, type: draft.type, command: t.command, args: t.args, url: t.url, env: t.env, headers: t.headers,
-      });
+      }, CHANGE_TIMEOUT_MS);
   } catch { showFormError('network'); return; }
   if (!r.ok) { showFormError(r.error ?? ''); return; }
   $('stPlugAdd').hidden = true;
