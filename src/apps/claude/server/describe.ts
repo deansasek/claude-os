@@ -26,6 +26,16 @@ function plainDetail(tool: string, i: Record<string, any>): string | null {
   // the night and the dish, so the approval shows what goes on the plan: "Thursday: lasagne"
   if (n === 'meals_plan' && typeof i.day === 'string' && typeof i.dinner === 'string') return `${i.day}: ${i.dinner}`;
   if (n === 'calendar_add' && typeof i.title === 'string' && typeof i.date === 'string') return `${i.title}, ${i.date}${typeof i.start === 'string' ? ` at ${i.start}` : ' (all day)'}`;
+  // the write tools: what will change, so the card says it (on or off, the level, the list, the new name, the minutes)
+  if (n === 'set_dnd' && typeof i.on === 'boolean') return i.on ? 'on' : 'off';
+  if (n === 'set_volume' && (typeof i.level === 'number' || typeof i.action === 'string')) return typeof i.level === 'number' ? `to ${i.level}` : `${i.action}`;
+  if (n === 'set_theme' && typeof i.mode === 'string') return i.mode;
+  if (n === 'adjust_timer' && typeof i.minutes === 'number') return `${i.minutes > 0 ? '+' : ''}${i.minutes} minutes${typeof i.label === 'string' && i.label ? ` (${i.label})` : ''}`;
+  if ((n === 'pause_timer' || n === 'resume_timer' || n === 'cancel_timer') && typeof i.label === 'string' && i.label) return i.label;
+  if (n === 'lists_clear_done' && typeof i.list === 'string') return `${i.list}, the ticked items, for good`;
+  if (n === 'lists_add' && typeof i.text === 'string' && typeof i.list === 'string') return `${i.text} to ${i.list}`;
+  if (n === 'lists_rename' && typeof i.list === 'string' && typeof i.name === 'string') return `${i.list} to ${i.name}`;
+  if (n === 'set_reminder' && typeof i.time === 'string' && typeof i.text === 'string') return `${i.time}: ${i.text}`;
   return '';
 }
 
@@ -49,9 +59,9 @@ export function askFor(tool: string, input: Record<string, any>): { summary: str
   const i = input || {};
   const w = wordsFor(tool);
   const arg = keyArg(i);
-  // a ClaudeOS tool with its own detail (the date and time of an event, not its title) shows that
+  // a ClaudeOS tool with its own detail (a date and time, what a write changes) shows that, not the first argument
   const plain = plainDetail(tool, i);
-  if (plain && tool.endsWith('__calendar_add')) return { summary: w.now, detail: plain };
+  if (plain) return { summary: w.now, detail: plain };
   if ((tool === 'Agent' || tool === 'Task') && typeof i.description === 'string') return describeTool(tool, i);
   if (w.arg && arg) {
     const shown = w.arg === 'file' ? short(fileName(arg), 60) : short(arg, 50);
