@@ -59,7 +59,20 @@ const dev = fs.readFileSync(devFile, 'utf8');
 const start = dev.indexOf('const HubDevice = {');
 const end = dev.indexOf('\n  };', start);
 const mockedBridge = new Set<string>();
-for (const m of dev.slice(start, end).matchAll(/^ {4}(\w+)\s*[:(]/gm)) mockedBridge.add(m[1]);
+// The members of one object literal: a member starts a line at four spaces, and a second member can share the line
+// (a zero-argument arrow after a comma). Only top-level members count, so nested keys are not read as methods.
+const memberKeys = (body: string): string[] => {
+  const keys: string[] = [];
+  for (const line of body.split('\n')) {
+    const first = /^ {4}(\w+)\s*[:(]/.exec(line);
+    if (!first) continue;
+    keys.push(first[1]);
+    for (const m of line.matchAll(/, (\w+): \(\) => /g)) keys.push(m[1]);
+  }
+  return keys;
+};
+// A spread ("...launcherCalls") is not followed: the camera and app-launch methods are listed on purpose (see above).
+for (const k of memberKeys(dev.slice(start, end))) mockedBridge.add(k);
 
 const gapRoutes = [...routes].filter(r => !mockedRoutes.has(r)).sort();
 const gapBridge = [...bridge].filter(b => !mockedBridge.has(b)).sort();
