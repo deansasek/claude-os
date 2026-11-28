@@ -85,6 +85,13 @@ export function copyPlan(days: Day[], lastDays: Day[], thisDinners: Dinner[], la
   });
 }
 
+/** The saved recipe a dinner is named after (the same name, ignoring case and spaces at the ends), or null. */
+export function recipeFor(dinnerText: string, names: string[]): string | null {
+  const key = dinnerText.trim().toLowerCase();
+  if (!key) return null;
+  return names.find(n => n.trim().toLowerCase() === key) ?? null;
+}
+
 /** The words for how many of the week's nights have a dinner: "5 of 7 dinners planned", "All 7 dinners planned". */
 export function plannedWords(days: Day[], dinners: Dinner[]): string {
   const n = days.filter(d => dinnerOn(dinners, d)).length;
