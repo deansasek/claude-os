@@ -39,7 +39,7 @@ test('a PC that stopped answering overrides the old limits pill with Offline, af
 test('a good usage read clears pcDown, and a failed read sets it', () => {
   assert.match(index, /let pcDown = false;/);
   assert.match(index, /function render\(d: Usage\): void \{[\s\S]*?data = d;\s*pcDown = false;/);
-  assert.match(index, /catch \{\s*pcDown = true;/);
+  assert.match(index, /catch \{\s*if \(seq !== usageSeq\) return;\s*pcDown = true;/);
 });
 
 test('the hidden attribute wins over the .live display rule', () => {
