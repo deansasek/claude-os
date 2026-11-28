@@ -73,3 +73,13 @@ test('the tool is wired into each session, and its card has plain words and deta
   assert.ok(cards.includes("'mcp__claudeos_meals__meals_plan': { now: 'Plan a dinner', past: 'Planned a dinner', doing: 'Planning a dinner' },"));
   assert.ok(describe.includes("if (n === 'meals_plan' && typeof i.day === 'string' && typeof i.dinner === 'string') return `${i.day}: ${i.dinner}`;"));
 });
+
+test('a date next week is planned without week, and a date past next week is refused', () => {
+  const calls: any[] = [];
+  const ok = mealsPlanReply({ day: '2026-12-01', dinner: 'curry' }, now, () => [] as never, ((input: any) => { calls.push(input); return { status: 'ok', event: input }; }) as never, (() => ({ status: 'ok' })) as never);
+  assert.match(ok.content[0].text, /^Planned Tuesday/);
+  assert.equal(calls[0].start, new Date(2026, 11, 1).getTime());
+  const late = mealsPlanReply({ day: '2026-12-20', dinner: 'curry' }, now, () => [] as never, (() => ({ status: 'ok' })) as never, (() => ({ status: 'ok' })) as never);
+  assert.equal(late.isError, true);
+  assert.match(late.content[0].text, /this week and next only/);
+});

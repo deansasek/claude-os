@@ -36,11 +36,14 @@ export function mealsPlanReply(
 ) {
   if (!dinner.trim()) return text('Say what the dinner is.', true);
   const monday = mondayOf(now);
-  const days = weekDays(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7 * (week ?? 0)));
   const want = day.trim().toLowerCase();
+  // a date picks its own week (this week or next); a weekday name is looked for in the week set by week
+  const iso = /^\d{4}-\d{2}-\d{2}$/.test(want);
+  const weeks = iso ? [0, 1] : [week ?? 0];
+  const days = weeks.flatMap(w => weekDays(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7 * w)));
   const target = days.find(d => d.iso === want || dayName.format(d.date).toLowerCase() === want);
-  if (!target) return text(`There’s no day “${day}” in that week. Use a weekday name, or a date such as 2026-12-03.`, true);
-  const events = read(days[0].start, days[6].end);
+  if (!target) return text(iso ? `Meals plans this week and next only, so ${day} is outside them.` : `There’s no day “${day}” in that week. Use a weekday name, or a date such as 2026-12-03.`, true);
+  const events = read(days[0].start, days[days.length - 1].end);
   if (!events) return text('The dinner plan couldn’t be read just now, so nothing was changed.', true);
   const existing = dinnersIn(events).find(x => x.start >= target.start && x.start < target.end);
   const title = dinnerTitle(dinner);
@@ -62,7 +65,7 @@ export const mealsServer = createSdkMcpServer({
       async ({ week }) => mealsWeekReply(week ?? 0)),
     tool('meals_plan',
       'Plan the dinner for one night on the ClaudeOS Meals app. It replaces the dinner already set for that night. '
-        + 'day: a weekday name ("Thursday") or a date ("2026-12-03"). dinner: the dish, e.g. "lasagne". '
+        + 'day: a weekday name ("Thursday") in the week set by week, or a date ("2026-12-03") this week or next. dinner: the dish, e.g. "lasagne". '
         + 'week: 0 for this week (the default) or 1 for next week.',
       {
         day: z.string().min(1).max(40),
