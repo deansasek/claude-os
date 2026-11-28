@@ -38,3 +38,16 @@ test('an unreadable ClaudeOS calendar with no ICS address is not called "no cale
   assert.match(r.content[0].text, /couldn’t be read just now/);
   assert.doesNotMatch(r.content[0].text, /No calendar is set up yet/);
 });
+
+test('a failed ICS read still shows the ClaudeOS events for today, and says the ICS calendar is not included', async () => {
+  const r = await calendarTodayReply('today', async () => ({ status: 'error', events: [], today: '2026-11-28', error: 'down' }) as never, () => [ev('Dentist', 10)] as never, now);
+  assert.notEqual(r.isError, true);
+  assert.match(r.content[0].text, /Dentist/);
+  assert.match(r.content[0].text, /ICS calendar couldn’t be read just now/);
+});
+
+test('a failed ICS read with no ClaudeOS events is still an error', async () => {
+  const r = await calendarTodayReply('today', async () => ({ status: 'error', events: [], today: '2026-11-28', error: 'down' }) as never, () => [] as never, now);
+  assert.equal(r.isError, true);
+  assert.match(r.content[0].text, /Couldn’t read the calendar: down/);
+});
