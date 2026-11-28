@@ -115,3 +115,13 @@ test('the merge of two feeds sorts by date across sources', () => {
   const titles = sortNewest([...bbc, ...npr]).map(item => `${item.sourceId}:${item.title}`);
   assert.deepEqual(titles, ['npr:NPR story', 'bbc:Rail – strike ’called off’', 'bbc:Harbour reopens after storm']);
 });
+
+test('a summary sent as escaped HTML shows as plain text, with no tags left', () => {
+  const xml = `<rss><channel><item>
+      <title>Ships</title>
+      <link>https://www.example.com/news/ships</link>
+      <description>&lt;p&gt;Ships return&lt;/p&gt; to port.</description>
+    </item></channel></rss>`;
+  const items = parseFeed(xml, SOURCE);
+  assert.equal(items[0].description, 'Ships return to port.');
+});

@@ -18,7 +18,8 @@ export function decodeEntities(text: string): string {
 // Inner text of a block as plain text: CDATA unwrapped, tags removed, entities decoded, spaces collapsed.
 function plainText(raw: string): string {
   const unwrapped = raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1');
-  return decodeEntities(unwrapped.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+  // some feeds send the summary as escaped HTML ("&lt;p&gt;Ships return&lt;/p&gt;"): the tags show only after decoding, so strip them again
+  return decodeEntities(unwrapped.replace(/<[^>]*>/g, ' ')).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 // The plain text of the first <tag> in a block. A self-closing tag (<link href="…"/>) does not count.
