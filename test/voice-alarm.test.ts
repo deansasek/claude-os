@@ -54,6 +54,10 @@ test('timer words: pause, resume, and minutes added or taken off', () => {
   assert.deepEqual(timerWord('add 2 minutes to my timer'), { op: 'nudge', minutes: 2 });
   assert.deepEqual(timerWord('take two minutes off the timer'), { op: 'nudge', minutes: -2 });
   assert.deepEqual(timerWord('add a minute to the timer'), { op: 'nudge', minutes: 1 });
+  assert.deepEqual(timerWord('cancel all my timers'), { op: 'cancel-all' });
+  assert.deepEqual(timerWord('stop the timers'), { op: 'cancel-all' });
+  assert.deepEqual(timerWord('clear all timers'), { op: 'cancel-all' });
+  assert.equal(timerWord('cancel the timer'), null);   // the singular still takes the one-timer path
   assert.deepEqual(timerWord('take a minute off my timer'), { op: 'nudge', minutes: -1 });
   assert.equal(timerWord('add banana minutes to the timer'), null);
   assert.equal(timerWord('add 500 minutes to the timer'), null);

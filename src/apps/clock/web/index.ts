@@ -1124,6 +1124,15 @@ const clockApi: ClockApi = {
   active(): number { return timers.length + alarms.filter(a => a.on || a.snooze).length; },
   /** True if there was a timer to cancel: the timer a voice or drawer action picks (see actionTimer). */
   cancelTimer(): boolean { focusAction(); const had = isListed(timer); timerReset(); return had; },
+  /** Cancel every timer in the list. Returns how many there were; the draft in front keeps its length. */
+  cancelAllTimers(): number {
+    const n = timers.length;
+    if (!n) return 0;
+    if (isListed(timer)) timer = draftOf(timer.dur);
+    timers = [];
+    saveTimers(); saveDraft(); renderTimer();
+    return n;
+  },
   pauseTimer(): boolean { focusAction(); if (!timer.end) return false; timerPause(); return true; },
   /** Resume the paused timer in the list, even when another timer is running. */
   resumeTimer(): boolean { const paused = timers.find(t => !t.end && t.left != null); if (!paused) return false; timer = paused; timerStart(); return true; },
