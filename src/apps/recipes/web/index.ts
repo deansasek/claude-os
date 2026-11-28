@@ -778,7 +778,7 @@ function onClick(ev: Event): void {
       }
       break;
     case 'timer':
-      if (screen.t === 'cook') addTimer(`Step ${screen.step + 1}`, Number(b.dataset.min) * 60e3);
+      if (screen.t === 'cook') addTimer(`${screen.r.name} step ${screen.step + 1}`, Number(b.dataset.min) * 60e3);
       break;
     case 'stop-timer':
       timers = timers.filter(t => t.id !== b.dataset.id);
