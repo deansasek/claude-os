@@ -17,7 +17,7 @@ test('tablet_status is a read-only tool, passed to the tablet with no arguments'
 
 test('the tablet answers with the battery and Wi-Fi words the voice uses', () => {
   assert.ok(relay.includes("if (job.op === 'tablet_status') return runStatus();"));
-  assert.ok(relay.includes("`${batterySay(device.battery())} ${wifiSay(device.wifi())} Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.`"));
+  assert.ok(relay.includes("`${batterySay(device.battery())} ${wifiSay(device.wifi())} ${quietSay}Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.`"));
   assert.ok(relay.includes("import { batterySay } from '../../../core/web/voice-battery.ts';"));
 });
 
@@ -30,4 +30,10 @@ test('tablet_status also says whether Do Not Disturb is on, read from prefs.dnd'
   const tablet = read('server/tablet.ts');
   assert.ok(relay.includes("Do Not Disturb is ${prefs.dnd ? 'on' : 'off'}.` };"));
   assert.ok(tablet.includes("the Wi-Fi it is on, and whether Do Not Disturb is on. Read-only."));
+});
+
+test('tablet_status says quiet hours are on now, with Do Not Disturb off, as they mute chimes and speech', () => {
+  const relay = read('web/browser-relay.ts');
+  assert.ok(relay.includes("const quietSay = !prefs.dnd && quietNow() ? 'Quiet hours are on now, so chimes and speech are muted. ' : '';"));
+  assert.ok(relay.includes("import { notify, prefs, quietNow } from '../../../core/web/system.ts';"));
 });
