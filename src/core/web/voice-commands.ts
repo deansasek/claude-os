@@ -38,13 +38,14 @@ import type { CalEvent, CalEvents } from '../../apps/calendar/api.ts';
 import { isBuiltIn, type ListsResult } from '../../apps/lists/api.ts';
 import { matchList } from '../../apps/lists/web/voice-match.ts';
 import { sceneFailText } from '../../apps/home/web/scene-words.ts';
-import { device, nativeHas, newsFetch, onTablet, type Battery } from './device.ts';
+import { device, nativeHas, newsFetch, onTablet, type Battery, type WifiState } from './device.ts';
 import { FEEDS } from '../../apps/news/web/feeds.ts';
 import { feedSource, tabletFeed, type KeyValue } from '../../apps/news/web/tablet.ts';
 import { store as newsStoreRaw } from './dom.ts';
 /** The store the News app keeps its saved stories in, as the tablet's feed reader expects it. */
 const newsStore: KeyValue = { getItem: k => newsStoreRaw.get(k), setItem: (k, v) => newsStoreRaw.set(k, v) };
 import { batterySay, batteryWord } from './voice-battery.ts';
+import { wifiSay, wifiWord } from './voice-wifi.ts';
 import { autoBrightness, openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
@@ -344,6 +345,14 @@ function batteryCommand(): CommandResult {
   let b: Battery;
   try { b = device.battery(); } catch { return { say: 'I can’t read the battery right now.' }; }
   return { say: batterySay(b), react: 'look' };
+}
+
+/** "What wifi am I on": the network the tablet is on, read from the device (wifiSay in voice-wifi.ts). It changes nothing. */
+function wifiCommand(): CommandResult {
+  if (!onTablet) return { say: 'I can only check the Wi-Fi on the tablet.' };
+  let w: WifiState;
+  try { w = device.wifi(); } catch { return { say: 'I can’t read the Wi-Fi right now.' }; }
+  return { say: wifiSay(w), react: 'look' };
 }
 
 /** "What's the volume": the media level now, read from the same value the Radio app reads. It changes nothing. */
@@ -757,6 +766,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (radio === 'whats-playing') return { say: playingSay(nowPlaying(), mediaState()), react: 'look', app: 'radio' };
   // sound
   if (batteryWord(t)) return batteryCommand();
+  if (wifiWord(t)) return wifiCommand();
   if (/^(?:what(?:'s| is) the volume(?: right now| now)?|how loud is it(?: right now| now)?|what volume is it(?: on)?)$/.test(t)) return volumeLevel();
   if (/^(?:turn |turn it |turn the volume |volume |sound )?up$|^turn up(?: the)? (?:volume|sound)$|^louder$|^(?:turn|make)(?: it| the volume| the sound)? louder$|^(?:raise|increase)(?: the)? volume$/.test(t) && /up|loud|raise|increase/.test(t)) return volume('up');
   if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^turn down(?: the)? (?:volume|sound)$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
