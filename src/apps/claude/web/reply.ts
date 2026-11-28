@@ -634,7 +634,9 @@ export const refreshView = refresh;
  */
 export function askWithPhoto(photoId: string, text = ''): void {
   draft = text;
-  if (tabletTarget()) {   // words only here: the photo is not attached, and the user is told
+  // words only on a tablet chat: a closed Claude opens the tablet's new chat, so it counts too
+  const onPcSession = mode === 'session' && !!openId && !!view?.canReply;
+  if (tabletTarget() || (!onPcSession && nativeOn())) {   // the photo is not attached, and the user is told
     notify(PHOTO_REFUSED, false);
     report('photo-tablet-refused');
     if (mode === 'session' && openId && view?.canReply) { render(); return; }
