@@ -13,6 +13,9 @@ export function mathSay(raw: string): string | null {
   const sum = m[1].trim();
   // symbols heard from speech: between two numbers, + × x ÷ % and - become the words
   let s = sum
+    // "7 squared" and "3 cubed" are the number multiplied by itself (the words become times, then the symbol)
+    .replace(/(\d+(?:\.\d+)?) squared\b/g, '$1 times $1')
+    .replace(/(\d+(?:\.\d+)?) cubed\b/g, '$1 times $1 times $1')
     .replace(/(\d)\s*\+\s*(\d)/g, '$1 plus $2')
     .replace(/(\d)\s*[×x*]\s*(\d)/g, '$1 times $2')
     .replace(/(\d)\s*÷\s*(\d)/g, '$1 divided by $2')
