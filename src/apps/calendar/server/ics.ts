@@ -67,6 +67,15 @@ const WINDOWS_ZONES: Record<string, string> = {
   'Pacific Standard Time': 'America/Los_Angeles', 'Alaskan Standard Time': 'America/Anchorage', 'Hawaiian Standard Time': 'Pacific/Honolulu',
   'Atlantic Standard Time': 'America/Halifax', 'E. Australia Standard Time': 'Australia/Brisbane', 'AUS Eastern Standard Time': 'Australia/Sydney',
   'China Standard Time': 'Asia/Shanghai', 'Tokyo Standard Time': 'Asia/Tokyo', 'India Standard Time': 'Asia/Kolkata', 'UTC': 'UTC',
+  // more Outlook names (the CLDR Windows-to-IANA table): Outlook writes these in TZID for the offices of many countries
+  'Central Europe Standard Time': 'Europe/Budapest', 'FLE Standard Time': 'Europe/Kiev', 'Russian Standard Time': 'Europe/Moscow',
+  'Turkey Standard Time': 'Europe/Istanbul', 'Israel Standard Time': 'Asia/Jerusalem', 'US Mountain Standard Time': 'America/Phoenix',
+  'Canada Central Standard Time': 'America/Regina', 'Newfoundland Standard Time': 'America/St_Johns', 'Central Standard Time (Mexico)': 'America/Mexico_City',
+  'New Zealand Standard Time': 'Pacific/Auckland', 'Cen. Australia Standard Time': 'Australia/Adelaide', 'W. Australia Standard Time': 'Australia/Perth',
+  'AUS Central Standard Time': 'Australia/Darwin', 'Tasmania Standard Time': 'Australia/Hobart', 'Singapore Standard Time': 'Asia/Singapore',
+  'Korea Standard Time': 'Asia/Seoul', 'Taipei Standard Time': 'Asia/Taipei', 'SE Asia Standard Time': 'Asia/Bangkok',
+  'Arabian Standard Time': 'Asia/Dubai', 'South Africa Standard Time': 'Africa/Johannesburg', 'Egypt Standard Time': 'Africa/Cairo',
+  'E. South America Standard Time': 'America/Sao_Paulo', 'Greenwich Standard Time': 'Atlantic/Reykjavik',
 };
 
 /** The IANA zone for a TZID (IANA or Windows name), or null if the runtime doesn't know it. */
