@@ -14,7 +14,7 @@ function show(l: FamilyList): string {
   if (!l.items.length) return `${l.name} (id ${l.id}): empty.`;
   const rows = l.items.map(i => (l.kind === 'notes' ? `- ${i.text}` : `- [${i.done ? 'x' : ' '}] ${i.text}`) + ` (id ${i.id})`);
   const open = l.items.filter(i => !i.done).length;
-  const head = l.kind === 'notes' ? `${l.name} (id ${l.id}, notes): ${l.items.length}` : `${l.name} (id ${l.id}): ${open} to do, ${l.items.length - open} ticked`;
+  const head = l.kind === 'notes' ? `${l.name} (id ${l.id}): ${l.items.length} note${l.items.length === 1 ? '' : 's'}` : `${l.name} (id ${l.id}): ${open} to do, ${l.items.length - open} ticked`;
   return `${head}\n${rows.join('\n')}`;
 }
 
