@@ -54,7 +54,7 @@ export function onOffReply(m: VoiceMatch, results: (HaResult | null)[]): OnOffRe
   if (m.all && failed.length < m.targets.length) return { say: `Couldn’t reach ${failed.length} of the lights.` };
   if (failed.every(x => x.r == null)) return { say: 'I can’t reach the PC right now.' };
   const verb = m.on ? 'turn on' : 'turn off';
-  const subject = m.all ? 'the lights' : `the ${sayName(m.targets[0]).replace(/^./, c => c.toLowerCase())}`;
+  const subject = m.all ? 'the lights' : `the ${lowerFirst(sayName(m.targets[0]))}`;
   const reason = failed.find(x => x.r)?.r?.error;
   return { say: `Couldn’t ${verb} ${subject}. ${plain(reason)}` };
 }
@@ -92,9 +92,14 @@ export function lightsOnReply(kind: 'any-on' | 'all-off', all: string[], on: str
 }
 
 /** The spoken answer for a device's state: "The porch light is on.", "The front door is open.". */
+/** The first letter in lower case, only when the next letter is too: "Kitchen light" is "kitchen light", but "TV" and "LED strip" keep their capitals. */
+function lowerFirst(s: string): string {
+  return s.replace(/^([A-Z])(?=[a-z])/, c => c.toLowerCase());
+}
+
 export function stateReply(d: VoiceDevice, state: string): string {
   const words = state.replace(/_/g, ' ');
-  const name = sayName(d).replace(/^./, c => c.toLowerCase());
+  const name = lowerFirst(sayName(d));
   return `The ${name} is ${words}.`.replace(/^./, c => c.toUpperCase());
 }
 
