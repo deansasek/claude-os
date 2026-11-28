@@ -1040,7 +1040,12 @@ async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>,
       const l = lists.find(x => x.id === c.list);
       if (!l) return { say: `I can’t reach ${name} right now.` };
       const { hit, ambiguous } = pickItem(l.items, c.text, true);
-      if (!hit) return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
+      if (!hit) {
+        // already ticked off: say so, rather than that it can't be found
+        const done = ambiguous ? undefined : pickItem(l.items, c.text, false).hit;
+        if (done?.done) return { say: `${done.text.charAt(0).toUpperCase() + done.text.slice(1)} is already ticked off on ${name}.`, react: 'look', app: 'lists' };
+        return { say: ambiguous ? `More than one item matches ${c.text} on ${name}. Say which one.` : `I can’t find ${c.text} on ${name}.` };
+      }
       let r: ListsResult;
       try { r = await writeList('tick', { list: c.list, id: hit.id, done: true }); }
       catch (e) { return queuedReply(e, `Ticked off ${lowerFirst(hit.text)} on ${name}.`); }
