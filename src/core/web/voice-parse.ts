@@ -14,6 +14,8 @@ export function articleFor(word: string | number): 'a' | 'an' {
 
 export function parseDuration(phrase: string): number | null {
   let s = ` ${phrase} `
+    // "1 hour 30", "2 hours 15": a bare minute count after the hours is minutes
+    .replace(/ (\d+) hours? (\d{1,2}) $/, ' $1 hours $2 minutes ')
     // "a couple of minutes" is 2 minutes; only before a time unit
     .replace(/ (a )?couple (of )?(?=(hour|minute|second)s? )/g, ' 2 ')
     .replace(/ (a|an|1) (hour|minute|second)s? and a half /g, ' 1.5 $2s ')
