@@ -20,7 +20,7 @@ import { isDismiss } from '../../../core/web/voice-parse.ts';
 import { repeatWord } from '../../../core/web/voice-repeat.ts';
 import { runCommand } from '../../../core/web/voice-commands.ts';
 import type { HubTurn, Project, SessionView } from '../api.ts';
-import { flag, react, sayLine } from './critter.ts';
+import { flag, react, sayLine as critterSay } from './critter.ts';
 import { apiCall, chosenFolder, currentSession, openSession, refreshView, unlocked, viewNow, voiceAnswer, voiceNew, voiceReply } from './reply.ts';
 import { setMicHandler, type MicTarget } from './sessions/mic.ts';
 
@@ -43,6 +43,8 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9' ]+/g, ' ').replac
 /** The last thing the tablet spoke, so "say that again" can say it once more (repeatWord in core/web/voice-repeat.ts). */
 let lastSaid = '';
 const say = (text: string, id = `say-${Date.now()}`) => { lastSaid = text; speakingId = id; voiceUi.say(text, id); };
+// the critter's own spoken lines (Claude's answers, "ok!") are kept too, so "say that again" repeats them
+const sayLine = (text: string) => { lastSaid = text; critterSay(text); };
 let retried = false;   // one "didn't catch that, try again" per request
 
 // ---------- turning Claude's Markdown into something worth hearing ----------
