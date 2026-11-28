@@ -60,7 +60,7 @@ import { alreadyPlayingSay, matchStation, playingSay, radioStopHeard, radioWord,
 import type { Station } from '../../apps/radio/api.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWeekSay, dinnerWeekWord, dinnerWord, type Night } from './voice-dinner.ts';
-import { calendarDay, calendarDaySay, eventWhenWord, findEventWhen, nextEventWord, type CalDay } from './voice-calendar.ts';
+import { calendarDay, calendarDaySay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
 import { convertSay } from './voice-convert.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, nowPlaying, pauseMedia } from './media.ts';
@@ -825,8 +825,8 @@ async function calendarDayCommand(cal: CalDay): Promise<CommandResult> {
   try { r = await getJson(`/api/calendar/local?from=${isoDay(start)}&to=${isoDay(end)}`, READ_TIMEOUT_MS); }
   catch { return { say: 'I can’t reach the calendar right now.' }; }
   if (r?.status !== 'ok') return { say: 'I can’t read the calendar right now.' };
-  const items = (r.events ?? [])
-    .filter(e => e.start >= start.getTime() && e.start < end.getTime())
+  // every event that overlaps the day: a multi-day event, or one that began the day before, is still on it
+  const items = overlapsDay(r.events ?? [], start.getTime(), end.getTime())
     .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start - b.start)
     .map(e => (e.allDay ? `${e.title}, all day` : `${e.title} at ${new Date(e.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`));
   return { say: calendarDaySay(items, cal.name), react: 'look', app: 'calendar' };
