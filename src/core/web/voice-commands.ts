@@ -30,6 +30,7 @@
 // The Clock app provides timers and alarms (provideClock), the Routines app its routines (provideRoutines);
 // the rest uses core only.
 import { getJson, postJson, store } from './dom.ts';
+import { hourMinuteFormat } from './time-format.ts';
 import type { HaDashboard, HaEntity, HaResult, HaScenes } from '../../apps/home-assistant/api.ts';
 // a quick command the PC never answers gives up, so the voice still says it cannot reach the PC
 const READ_TIMEOUT_MS = 20e3;
@@ -186,7 +187,8 @@ function normalise(s: string): string {
 
 
 /** A spoken clock time, as the alarms say it: "9:05 AM", no leading zero (timeText). */
-const timeText = (d: Date): string => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/^0/, '');
+// as Settings → Date & time sets the hour: 24-hour says "9:05" (the leading zero is dropped), the 12-hour clock "9:05 AM"
+const timeText = (d: Date): string => hourMinuteFormat(store.get('os.clock24')).format(d).replace(/^0/, '');
 const clockText = (h: number, m: number) => timeText(new Date(2000, 0, 1, h, m));
 
 // ---------- weather ----------
