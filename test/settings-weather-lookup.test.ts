@@ -25,7 +25,7 @@ function loadFindWeatherCity(
     .replace('(q: string): Promise<void>', '(q)')
     .replace('let r: PlacesResponse;', 'let r;')
     .replace(/<PlacesResponse>/g, '');
-  return new Function('getJson', 'confirmSheet', 'openChooser', 'encodeURIComponent', `const WX_TIMEOUT_MS = 20e3;\n${body}\nreturn findWeatherCity;`)(
+  return new Function('getJson', 'confirmSheet', 'openChooser', 'encodeURIComponent', `const WX_TIMEOUT_MS = 20e3;\nlet wxFindSeq = 0;\n${body}\nreturn findWeatherCity;`)(
     getJson, confirmSheet, openChooser, encodeURIComponent,
   ) as (q: string) => Promise<void>;
 }

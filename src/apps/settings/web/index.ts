@@ -1303,12 +1303,15 @@ function editWeatherCity(): void {
   Keyboard.open({ placeholder: 'A city, like Lisbon', done: 'Save', autoCap: true, max: 60, onDone: t => { void findWeatherCity(t.trim()); } });
 }
 
+let wxFindSeq = 0;   // each city search takes a number: an older search that answers late cannot open a stale chooser
 async function findWeatherCity(q: string): Promise<void> {
   if (q.length < 2) return;
+  const seq = ++wxFindSeq;
   let r: PlacesResponse;
   try {
     r = await getJson<PlacesResponse>(`/api/weather/places?q=${encodeURIComponent(q)}`, WX_TIMEOUT_MS);
-  } catch { confirmSheet('Couldn’t look that up', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
+    if (seq !== wxFindSeq) return;   // a newer search started: its answer is the one that counts
+  } catch { if (seq !== wxFindSeq) return; confirmSheet('Couldn’t look that up', 'Check the connection to your PC, then try again.', 'OK', () => {}); return; }
   if (r.status !== 'ok') { confirmSheet('Couldn’t look that up', 'The city search service didn’t answer. Try again in a moment.', 'OK', () => {}); return; }
   const res = r.results;
   if (!res.length) { confirmSheet('No place found', `Nothing matches “${q}”. Try the city’s country too.`, 'OK', () => {}); return; }
