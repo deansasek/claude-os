@@ -42,8 +42,6 @@
     "launchApp",
     "launchableApps",
     "newsFetch",
-    "setAllowedApps",
-    "setTopBand",
-    "setTopRail"
+    "setAllowedApps"
   ]
 }
