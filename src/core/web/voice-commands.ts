@@ -476,6 +476,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
   if (/^(?:mute|silence)(?: the)?(?: sound| volume| tablet)?$/.test(t)) return volume('mute');
   if (/^unmute(?: the)?(?: sound| volume| tablet)?$/.test(t)) return volume('unmute');
+  // "full volume", "turn the volume all the way up": the same as volume 100 percent (volume() clamps and says it)
+  if (/^(?:full|max|maximum) volume$|^(?:turn )?(?:the )?volume all the way up$/.test(t)) return volume(1);
   if ((r = t.match(/^(?:set )?(?:the )?volume (?:to )?(\d{1,3})(?: percent| %)?$/))) return +r[1] <= 100 ? volume(+r[1] / 100) : null;
 
   // apps
