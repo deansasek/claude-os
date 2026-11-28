@@ -32,6 +32,6 @@ test('a refresh takes the layout generation before it reads, and only applies th
 });
 
 test('each layout edit bumps the generation', () => {
-  assert.match(slice('async function saveLayout('), /layoutGen\+\+;/);
-  assert.match(slice('async function setOnHome('), /layoutGen\+\+;/);
+  assert.match(slice('async function saveLayout('), /const gen = \+\+layoutGen;/);
+  assert.match(slice('async function setOnHome('), /const gen = \+\+layoutGen;/);
 });
