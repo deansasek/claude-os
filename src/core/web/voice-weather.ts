@@ -9,6 +9,13 @@ export function temperatureDay(t: string): 0 | 1 | null {
   return null;
 }
 
+// Wind questions by voice: "is it windy", "is it going to be windy tomorrow". Returns the day (0 today, 1 tomorrow), or null.
+export function windDay(t: string): 0 | 1 | null {
+  if (/^(?:is it|will it be|is it going to be) windy tomorrow$|^how windy (?:is it|will it be|is it going to be) tomorrow$/.test(t)) return 1;
+  if (/^(?:is it windy|how windy is it|is it windy outside|is it windy today|how windy is it outside|is it going to be windy today)$/.test(t)) return 0;
+  return null;
+}
+
 // What to say when the forecast did not come back. null (the PC cannot be reached) and the two failed
 // statuses get their own words; every other answer returns null and the caller keeps its own reply.
 export function weatherTrouble(w: { status: string; city?: string } | null): CommandResult | null {

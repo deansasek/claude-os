@@ -42,7 +42,9 @@ import { device, onTablet } from './device.ts';
 import { openApp, prefs, sleep } from './system.ts';
 import { sleepWord } from './voice-sleep.ts';
 import { alarmTimePhrase, alarmsListWord, alarmWord, timerWord } from './voice-alarm.ts';
-import { temperatureDay, weatherTrouble } from './voice-weather.ts';
+import { temperatureDay, weatherTrouble, windDay } from './voice-weather.ts';
+import { isWindy } from '../../apps/weather/web/art.ts';
+import type { Units } from '../../apps/weather/api.ts';
 import { playingSay, radioStopHeard, radioWord } from './voice-radio.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWord, type Night } from './voice-dinner.ts';
@@ -153,9 +155,9 @@ const clockText = (h: number, m: number) => new Date(2000, 0, 1, h, m).toLocaleT
 
 // ---------- weather ----------
 interface Wx {
-  status: string; units?: string; place?: string | null; city?: string;
-  current?: { temperature_2m: number; weather_code: number };
-  daily?: { weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[] };
+  status: string; units?: string; place?: string | null; city?: string; wind_unit?: string;
+  current?: { temperature_2m: number; weather_code: number; wind_speed_10m?: number };
+  daily?: { weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[]; precipitation_probability_max: number[]; wind_speed_10m_max?: number[] };
 }
 function sky(code: number): string {
   if (code === 0) return 'clear';
@@ -170,6 +172,22 @@ function sky(code: number): string {
   return 'stormy';
 }
 const deg = (n: number) => `${Math.round(n)} degrees`;
+
+/** "Is it windy": the wind now (today) or the day's strongest gust (tomorrow), against the Weather app's own threshold. */
+async function windCommand(day: 0 | 1): Promise<CommandResult> {
+  let w: Wx;
+  try { w = await getJson<Wx>('/api/weather/forecast', READ_TIMEOUT_MS); } catch { return weatherTrouble(null)!; }
+  if (w.status === 'no_location') return { say: 'Weather needs a place first. Set it in the Weather app.', app: 'weather' };
+  if (w.status !== 'ok' || !w.daily) return weatherTrouble(w) ?? { say: 'I can’t get the weather right now.' };
+  const units: Units = w.units === 'celsius' ? 'celsius' : 'fahrenheit';
+  const speed = day ? w.daily.wind_speed_10m_max?.[1] : w.current?.wind_speed_10m;
+  if (speed == null) return { say: 'I can’t get the wind right now.' };
+  const unit = w.wind_unit ?? (units === 'celsius' ? 'km/h' : 'mph');
+  const when = day ? 'tomorrow' : 'today';
+  const s = Math.round(speed);
+  if (isWindy(speed, units)) return { say: `Yes, it’s windy ${when}: ${s} ${unit}.`, react: 'look' };
+  return { say: `Not really. Wind ${day ? 'up to' : 'is'} ${s} ${unit} ${when}.`, react: 'look' };
+}
 
 /** Today's weather, as "what's the weather" answers it (a routine's weather step speaks the same words). */
 export const weatherToday = (): Promise<CommandResult> => weather(0, null);
@@ -389,6 +407,8 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // weather
   const tempDay = temperatureDay(t);
   if (tempDay !== null) return weather(tempDay, null);
+  const windy = windDay(t);
+  if (windy !== null) return windCommand(windy);
   if (/^(?:what(?:'s| is| will be) the weather(?: like)?(?: today| now| right now| outside)?|how(?:'s| is) the weather(?: today)?|weather(?: today)?|what(?:'s| is) it like outside|what(?:'s| is) the forecast(?: today)?)$/.test(t)) return weather(0, null);
   if (/^(?:what(?:'s| is| will be) the weather(?: like)? tomorrow|what(?:'s| is) the forecast (?:for )?tomorrow|weather tomorrow|how(?:'s| is| will) the weather (?:be )?tomorrow)$/.test(t)) return weather(1, null);
   if ((r = t.match(/^(?:will it|is it going to|is it gonna|should i expect|do i need an umbrella|is there going to be)(?: (rain|snow))?(?: (today|tomorrow|later|tonight))?$/))) {
