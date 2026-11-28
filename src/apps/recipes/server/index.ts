@@ -50,7 +50,7 @@ async function random(): Promise<MealsResult> {
   return { status: 'ok', recipes };
 }
 
-async function search(q: string): Promise<MealsResult> {
+export async function search(q: string): Promise<MealsResult> {
   const name = q.trim().slice(0, 60);
   if (!name) return random();
   try {
