@@ -1094,6 +1094,8 @@ const clockApi: ClockApi = {
     return true;
   },
   stopwatchRunning: (): boolean => sw.running,
+  stopwatchTime: (): number => swTime(),
+  stopwatchReset(): void { swReset(); },
   // false when the list is full: the caller says so, rather than promising a timer that never runs
   startTimer(ms: number, label?: string): boolean {
     if (timers.length >= MAX_TIMERS) return false;

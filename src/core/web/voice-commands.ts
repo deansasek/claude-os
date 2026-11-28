@@ -6,7 +6,8 @@
 //
 //   Timers   "set a timer for 10 minutes", "five minute timer", "a minute and a half timer",
 //            "cancel the timer", "how long is left"
-//   Stopwatch "start the stopwatch" (starts or resumes it), "stop the stopwatch" (pauses it while it runs)
+//   Stopwatch "start the stopwatch" (starts or resumes it), "stop the stopwatch" (pauses it while it runs),
+//   "how long is the stopwatch" (says its time), "reset the stopwatch" (clears it)
 //   Alarms   "wake me up at 7", "set an alarm for 6:30 on weekdays", "alarm for half past six",
 //            "turn off my alarms", "when is my alarm"
 //   Weather  "what's the weather", "what's the weather tomorrow", "will it rain (today/tomorrow)"
@@ -57,6 +58,10 @@ export interface ClockApi {
   /** Start the stopwatch (true) or stop it (false). False when it is already that way. */
   stopwatch(start: boolean): boolean;
   stopwatchRunning(): boolean;
+  /** The stopwatch's time in ms, paused or running. */
+  stopwatchTime(): number;
+  /** Clear the stopwatch: stop it and drop its time and laps. */
+  stopwatchReset(): void;
   /** Pause a running timer. False when none runs. */
   pauseTimer(): boolean;
   /** Resume a paused timer. False when none is paused. */
@@ -236,6 +241,11 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   // stopwatch: start it, or stop it only while it runs (a stop when none runs is left to Claude)
   const sws = stopwatchWord(t);
   if (sws && clock) {
+    if (sws === 'time') {
+      const ms = clock.stopwatchTime();
+      return { say: ms < 1000 ? 'The stopwatch is at zero.' : `The stopwatch says ${sayDuration(Math.floor(ms / 1000) * 1000)}.` };
+    }
+    if (sws === 'reset') { clock.stopwatchReset(); return { say: 'Stopwatch reset.' }; }
     if (sws === 'start') { clock.stopwatch(true); return { say: '' }; }
     if (clock.stopwatchRunning()) { clock.stopwatch(false); return { say: 'Stopped.' }; }
   }
