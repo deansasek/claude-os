@@ -121,6 +121,9 @@ const DRAW = {
     box(p, 5, 7, 22, 18, 2.6) + line(p, [9, 11.5], [23, 11.5])
     + line(p, [9, 16], [15, 16]) + line(p, [9, 20], [15, 20]) + line(p, [9, 23.5], [15, 23.5])
     + line(p, [18, 16], [23, 16]) + line(p, [18, 20], [23, 20]),
+  // Meals: a plate with a fork and a knife either side
+  meals: (p: Pen) =>
+    ring(p, 16, 16, 7) + line(p, [6, 7], [6, 25]) + line(p, [26, 7], [26, 25]),
   // Dice: a square die with five pips
   dice: (p: Pen) =>
     box(p, 6, 6, 20, 20, 2.4) + box(p, 10, 10, 2.6, 2.6, 1) + box(p, 19.4, 10, 2.6, 2.6, 1)
