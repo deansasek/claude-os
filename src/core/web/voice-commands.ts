@@ -14,7 +14,7 @@
 //   Radio    "play the radio" (the last station), "stop the radio" (pauses what is playing)
 //   Time     "what time is it", "what's the date", "what day is it"
 //   Screen   "dim the screen", "brighter", "brightness 50 percent", "dark mode", "light mode"
-//   Sound    "volume up/down", "louder", "quieter", "mute", "volume 30 percent"
+//   Sound    "volume up/down", "louder", "quieter", "mute", "volume 30 percent", "what's the volume" (read-only)
 //   Apps     "open photos", "show the calendar", "go to home assistant", "open the settings app", "go home"
 //            (exactly one app name; see voice-open.ts)
 //   Home     "turn off the kitchen light", "lights on", "switch on the fan" (dashboard devices only; see
@@ -305,6 +305,15 @@ function brightness(to: number | 'up' | 'down'): CommandResult {
   return { say: to === 'up' ? (v >= 1 ? 'That’s as bright as it goes.' : 'Brighter.') : to === 'down' ? (v <= .05 ? 'That’s as dim as it goes.' : 'Dimmer.') : `Brightness ${pct(v)}.` };
 }
 
+/** "What's the volume": the media level now, read from the same value the Radio app reads. It changes nothing. */
+function volumeLevel(): CommandResult {
+  if (!onTablet) return { say: 'I can only check the volume on the tablet.' };
+  let cur: number;
+  try { cur = device.volume().media; } catch { return { say: 'I can’t check the volume right now.' }; }
+  const p = Math.round(cur * 100);
+  return { say: p === 0 ? 'The tablet is muted.' : `The volume is at ${p} percent.`, react: 'look' };
+}
+
 function volume(to: number | 'up' | 'down' | 'mute' | 'unmute'): CommandResult {
   if (!onTablet) return { say: 'I can only change the volume on the tablet.' };
   let cur = 0;
@@ -590,6 +599,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (radio === 'stop' && radioStopHeard(mediaState())) { pauseMedia(); return { say: 'Stopped.' }; }
   if (radio === 'whats-playing') return { say: playingSay(nowPlaying(), mediaState()), react: 'look', app: 'radio' };
   // sound
+  if (/^(?:what(?:'s| is) the volume(?: right now| now)?|how loud is it(?: right now| now)?|what volume is it(?: on)?)$/.test(t)) return volumeLevel();
   if (/^(?:turn |turn it |turn the volume |volume |sound )?up$|^louder$|^(?:turn|make)(?: it| the volume| the sound)? louder$|^(?:raise|increase)(?: the)? volume$/.test(t) && /up|loud|raise|increase/.test(t)) return volume('up');
   if (/^(?:turn |turn it |turn the volume |volume |sound )?down$|^quieter$|^(?:turn|make)(?: it| the volume| the sound)? quieter$|^(?:lower|decrease|reduce)(?: the)? volume$/.test(t) && /down|quiet|lower|decrease|reduce/.test(t)) return volume('down');
   if (/^(?:mute|silence)(?: the)?(?: sound| volume| tablet)?$/.test(t)) return volume('mute');
