@@ -44,7 +44,7 @@ import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
-import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerWord } from './voice-alarm.ts';
+import { alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
 import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
@@ -118,7 +118,7 @@ export interface ClockApi {
   snoozeRinging(): boolean;
   /** Switch off only the alarms and reminders Claude set (they stay in the list). Returns how many were on. */
   cancelClaudeAlarms(): number;
-  nextAlarm(): { h: number; m: number; when: string } | null;
+  nextAlarm(): { h: number; m: number; when: string; at: number } | null;
   /** Every alarm that is on (or snoozed), soonest first; days as Date.getDay values, [] = once. */
   alarmsOn(): { h: number; m: number; days: number[]; when: string }[];
 }
@@ -517,6 +517,15 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     const more = all.length - parts.length;
     const joined = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join('; ')}; and ${parts[parts.length - 1]}`;
     return { say: `You have ${all.length} alarm${all.length === 1 ? '' : 's'} on: ${joined}${more ? `, and ${more} more` : ''}.`, react: 'look', app: 'clock' };
+  }
+  // "how long until my alarm": the time left to the next alarm, to the minute (alarmUntilWord in voice-alarm.ts)
+  if (alarmUntilWord(t)) {
+    if (!clock) return null;
+    const n = clock.nextAlarm();
+    if (!n) return { say: 'You don’t have any alarms on.' };
+    const mins = Math.round((n.at - Date.now()) / 60000);
+    if (mins < 1) return { say: 'Your alarm goes off in under a minute.', react: 'look' };
+    return { say: `Your alarm goes off in ${sayDuration(mins * 60000)}.`, react: 'look' };
   }
   if (/^(?:when(?:'s| is) my (?:next )?alarm|what time(?:'s| is) my alarm|is my alarm (?:on|set)|do i have an alarm(?: set)?)$/.test(t)) {
     if (!clock) return null;
