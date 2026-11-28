@@ -295,7 +295,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (routine) return routine;
 
   // calendar: "what's on today", "what's on my calendar" (before the lists, so "what's on ..." is ours)
-  if (/^(?:what(?:'s|s| is) on (?:for )?(?:today|(?:my|the) calendar(?: today| for today)?|today'?s calendar)|what do i have on today)$/.test(t)) return calendarCommand();
+  if (/^(?:what(?:'s|s| is) on (?:for )?(?:today|(?:my|the) calendar(?: today| for today)?|today'?s calendar)|what do i have (?:on )?today|do i have anything (?:on )?today|what(?:'s|s| is) on my schedule today)$/.test(t)) return calendarCommand();
   if (/^(?:what(?:'s|s| is) on (?:for )?tomorrow|what(?:'s|s| is) on (?:my|the) calendar (?:for )?tomorrow|what do i have (?:on )?tomorrow)$/.test(t)) return calendarCommand('tomorrow');
   const dinner = dinnerWord(t);   // "what's for dinner tonight": the Meals dinner the calendar holds for that night
   if (dinner) return dinnerCommand(dinner);
