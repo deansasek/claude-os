@@ -21,7 +21,7 @@ export async function routinesListReply(read: () => Promise<RoutinesResult> = re
   if (!r.routines.length) return text('There are no routines yet.');
   return text(r.routines.map(rt => {
     const when = rt.at
-      ? ` (runs at ${pad(rt.at.h)}:${pad(rt.at.m)}${rt.at.days.length === 7 ? ' every day' : ` on ${rt.at.days.map(d => DAY_NAMES[d]).join(', ')}`})`
+      ? ` (runs at ${pad(rt.at.h)}:${pad(rt.at.m)}${!rt.at.days.length || rt.at.days.length === 7 ? ' every day' : ` on ${rt.at.days.map(d => DAY_NAMES[d]).join(', ')}`})`
       : '';
     const steps = rt.steps.length ? rt.steps.map(s => stepLabel(s)).join('; ') : 'no steps';
     return `${rt.name}${when}: ${steps}`;
