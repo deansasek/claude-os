@@ -11,23 +11,29 @@ import { activateScene, callService, entities, isDemo, scenes, servicesFor } fro
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
+/** One device row for ha_list_entities. The unit and the device class (temperature, door, motion) let Claude say °C or °F, or a door. */
+export function entityRow(e: { entity_id: string; name: string; domain: string; state: string; current?: number | null; target?: number | null; media?: unknown; unit?: string; deviceClass?: string }) {
+  return {
+    entity_id: e.entity_id, name: e.name, domain: e.domain, state: e.state,
+    ...(e.current != null ? { current_temperature: e.current } : {}), ...(e.target != null ? { target_temperature: e.target } : {}),
+    ...(e.unit ? { unit: e.unit } : {}), ...(e.deviceClass ? { device_class: e.deviceClass } : {}),
+    ...(e.media ? { media: e.media } : {}),
+    services: isControlDomain(e.domain) ? servicesFor(e.domain) : [],
+  };
+}
+
 export const haServer = createSdkMcpServer({
   name: 'claudeos_ha',
   version: '1.0.0',
   tools: [
     tool('ha_list_entities',
       'List the smart home devices the user lets ClaudeOS control (Home Assistant), with their state. Read-only. '
-        + 'Only allowlisted lights, switches, media players, fans and thermostats are listed. Says when it is the demo house.',
+        + 'Only allowlisted lights, switches, media players, fans, thermostats and sensors are listed; sensor rows give their unit and device class. Says when it is the demo house.',
       {},
       async () => {
         const r = await entities();
         if (r.status !== 'ok') return text(`Couldn’t read Home Assistant: ${r.error ?? 'unknown error'}`, true);
-        const rows = r.entities.map(e => ({
-          entity_id: e.entity_id, name: e.name, domain: e.domain, state: e.state,
-          ...(e.current != null ? { current_temperature: e.current } : {}), ...(e.target != null ? { target_temperature: e.target } : {}),
-          ...(e.media ? { media: e.media } : {}),
-          services: isControlDomain(e.domain) ? servicesFor(e.domain) : [],
-        }));
+        const rows = r.entities.map(entityRow);
         const head = r.demo ? 'DEMO MODE: these are made-up devices; nothing real is switched.\n' : '';
         const sc = await scenes();
         const tail = sc.status === 'ok' && sc.scenes.length
