@@ -29,6 +29,15 @@ export function eventWhenWord(t: string): string | null {
   return want;
 }
 
+/** "today" or "tomorrow" when the start falls on that local day, else null (the caller then says the weekday and date). */
+export function dayWordFor(startMs: number, now: Date): 'today' | 'tomorrow' | null {
+  const ymd = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const s = ymd(new Date(startMs));
+  if (s === ymd(now)) return 'today';
+  if (s === ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))) return 'tomorrow';
+  return null;
+}
+
 /** The next event (not yet over) whose title holds these words, the earliest first. Null when none does. */
 export function findEventWhen<E extends { title: string; start: number; end: number }>(events: E[], want: string, nowMs: number): E | null {
   const w = want.toLowerCase();

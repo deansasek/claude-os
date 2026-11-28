@@ -60,7 +60,7 @@ import { alreadyPlayingSay, matchStation, playingSay, radioSleepWord, radioStopH
 import type { Station } from '../../apps/radio/api.ts';
 import { stopwatchWord } from './voice-stopwatch.ts';
 import { dinnerSay, dinnerWeekSay, dinnerWeekWord, dinnerWord, type Night } from './voice-dinner.ts';
-import { calendarDay, calendarDaySay, listSay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
+import { calendarDay, calendarDaySay, dayWordFor, listSay, eventWhenWord, findEventWhen, nextEventWord, overlapsDay, type CalDay } from './voice-calendar.ts';
 import { convertSay } from './voice-convert.ts';
 import { nextRun, nextRunSay } from '../../apps/routines/web/next-run.ts';
 import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
@@ -865,8 +865,10 @@ async function eventWhenCommand(want: string): Promise<CommandResult | null> {
   if (r?.status !== 'ok') return { say: 'I can’t read the calendar right now.' };
   const hit = findEventWhen(r.events ?? [], want, Date.now());
   if (!hit) return null;   // no such event: the phrase goes on
-  const day = new Date(hit.start).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
-  const when = hit.allDay ? `on ${day}` : `on ${day} at ${timeText(new Date(hit.start))}`;
+  // today or tomorrow is said as the word; any later day as its weekday and date
+  const word = dayWordFor(hit.start, new Date(Date.now()));
+  const day = word ?? `on ${new Date(hit.start).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}`;
+  const when = hit.allDay ? day : `${day} at ${timeText(new Date(hit.start))}`;
   return { say: `${hit.title} is ${when}.`, react: 'look', app: 'calendar' };
 }
 
