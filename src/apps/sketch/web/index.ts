@@ -30,6 +30,9 @@ function redraw(): void {
   drawBoard(g, board, canvas.clientWidth, canvas.clientHeight);
 }
 
+// the theme can change while Sketch is on screen (the time mode, "dark mode", the logo): repaint the board in its colours
+new MutationObserver(() => redraw()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
 function at(e: PointerEvent): Pt {
   const r = (canvas as HTMLCanvasElement).getBoundingClientRect();
   return { x: e.clientX - r.left, y: e.clientY - r.top };
