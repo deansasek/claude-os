@@ -62,6 +62,7 @@ const BUILT_IN: Record<string, ToolWords> = {
   'mcp__claudeos_lists__lists_clear_done': { now: 'Clear ticked list items', past: 'Cleared ticked list items', doing: 'Clearing ticked list items' },
   // ClaudeOS's calendar (calendar/server/tools.ts, the claudeos_calendar MCP server), read-only
   'mcp__claudeos_calendar__calendar_today': { now: 'Look at your calendar', past: 'Looked at your calendar', doing: 'Looking at your calendar' },
+  'mcp__claudeos_calendar__calendar_range': { now: 'Look at your calendar', past: 'Looked at your calendar', doing: 'Looking at your calendar' },
   // ClaudeOS's weather (weather/server/tools.ts, the claudeos_weather MCP server), read-only
   'mcp__claudeos_weather__weather_forecast': { now: 'Look at the weather', past: 'Looked at the weather', doing: 'Looking at the weather' },
   // ClaudeOS's routines (routines/server/tools.ts, the claudeos_routines MCP server)
