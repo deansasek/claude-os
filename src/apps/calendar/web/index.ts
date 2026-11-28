@@ -39,6 +39,7 @@ let status: CalStatus | null = null;
 let statusFailed = false;   // the last status read threw: the PC could not be reached, so the address is unknown
 // a read the PC never answers gives up, so the chips and the starts-soon check do not wait for good
 const READ_TIMEOUT_MS = 10_000;
+const WRITE_TIMEOUT_MS = 10_000;   // an add, edit or delete the PC never answers gives up, so Save and Delete work again
 let statusSeq = 0;          // each status read takes a number; a saved address makes a read still out stale
 let view: View = 'day';
 let anchor = startOfDay(new Date());
@@ -493,8 +494,8 @@ async function addEvent(): Promise<void> {
   let answer: { status?: string; event?: unknown; error?: string } | null = null;
   try {
     answer = id
-      ? await postJson<{ status?: string; event?: unknown; error?: string }>(`${API}/local-update`, { id, ...body })
-      : await postJson<{ status?: string; event?: unknown; error?: string }>(`${API}/local-add`, body);
+      ? await postJson<{ status?: string; event?: unknown; error?: string }>(`${API}/local-update`, { id, ...body }, WRITE_TIMEOUT_MS)
+      : await postJson<{ status?: string; event?: unknown; error?: string }>(`${API}/local-add`, body, WRITE_TIMEOUT_MS);
   } catch { answer = null; }
   addSending = false;
   if (answer?.status === 'ok') {
@@ -566,7 +567,7 @@ async function deleteDetail(): Promise<void> {
   if (!deleteArmed) { deleteArmed = true; detailErr = ''; paintDetail(); return; }
   addSending = true;
   let answer: { status?: string; error?: string } | null = null;
-  try { answer = await postJson<{ status?: string; error?: string }>(`${API}/local-delete`, { id: e.id }); } catch { answer = null; }
+  try { answer = await postJson<{ status?: string; error?: string }>(`${API}/local-delete`, { id: e.id }, WRITE_TIMEOUT_MS); } catch { answer = null; }
   addSending = false;
   if (answer?.status === 'ok') {
     closeDetail();
