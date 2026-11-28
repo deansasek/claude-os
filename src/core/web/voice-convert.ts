@@ -41,9 +41,31 @@ export function convertSay(raw: string): string | null {
 }
 
 /** The value of `amount` of `fromWord`, in `toWord`. For "how many", the amount is the given unit and the wanted unit is `toWord`. */
+// weight, for voice only: grams per unit. Weight converts only to weight (a cup is not grams without a density).
+type WeightUnit = 'g' | 'kg' | 'oz' | 'lb';
+const GRAMS: Record<WeightUnit, number> = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+const WEIGHT_WORDS: Record<string, WeightUnit> = {
+  g: 'g', gram: 'g', grams: 'g', kg: 'kg', kilo: 'kg', kilos: 'kg', kilogram: 'kg', kilograms: 'kg',
+  oz: 'oz', ounce: 'oz', ounces: 'oz', lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
+};
+const WEIGHT_SAY: Record<WeightUnit, [string, string]> = {
+  g: ['gram', 'grams'], kg: ['kilogram', 'kilograms'], oz: ['ounce', 'ounces'], lb: ['pound', 'pounds'],
+};
+const weightName = (u: WeightUnit, n: number): string => WEIGHT_SAY[u][Math.abs(n - 1) < 1e-9 ? 0 : 1];
+
+/** Weight to weight, or null (including a weight to a volume or a temperature). */
+function weightAnswer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
+  const from = WEIGHT_WORDS[fromWord.trim()], to = WEIGHT_WORDS[toWord.trim()];
+  if (!from || !to) return null;
+  const v = amount * GRAMS[from] / GRAMS[to];
+  if (shape === 'is') return `${roundResult(amount)} ${weightName(from, amount)} is ${roundResult(v)} ${weightName(to, v)}.`;
+  return `${roundResult(v)} ${weightName(to, v)} in ${amount === 1 ? 'a' : roundResult(amount)} ${weightName(from, amount)}.`;
+}
+
 function answer(amount: number, fromWord: string, toWord: string, shape: 'is' | 'in'): string | null {
+  if (!Number.isFinite(amount)) return null;
   const from = unitOf(fromWord), to = unitOf(toWord);
-  if (!from || !to || !Number.isFinite(amount)) return null;
+  if (!from || !to) return weightAnswer(amount, fromWord, toWord, shape);
   const v = convert(amount, from, to);
   if (v === null) return null;
   if (shape === 'is') return `${roundResult(amount)} ${name(from, amount)} is ${roundResult(v)} ${name(to, v)}.`;
