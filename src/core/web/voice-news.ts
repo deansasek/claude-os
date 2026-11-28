@@ -8,7 +8,14 @@ export function newsWord(t: string): boolean {
 
 /** The first three titles, said in a line: "Top headlines: A; B; and C." Trailing punctuation is not doubled. */
 export function newsSay(titles: string[]): string {
-  const top = titles.slice(0, 3).map(s => s.trim().replace(/[.!?]+$/, '')).filter(Boolean);
+  // a story carried by two feeds is said once: the same title, any case and spacing, after the first
+  const seen = new Set<string>();
+  const top = titles.map(s => s.trim().replace(/[.!?]+$/, '')).filter(s => {
+    const key = s.toLowerCase().replace(/\s+/g, ' ');
+    if (!s || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 3);
   const words = top.length === 1 ? top[0] : `${top.slice(0, -1).join('; ')}; and ${top[top.length - 1]}`;
   return `Top headlines: ${words}.`;
 }
