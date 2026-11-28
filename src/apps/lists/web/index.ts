@@ -356,10 +356,10 @@ function renameNow(): void {
   const l = listNow();
   if (!l || isBuiltIn(l.id)) return;
   Keyboard.open({
-    placeholder: `Rename ${l.name}`, done: 'Rename', autoCap: true, max: MAX_LIST_NAME,
+    value: l.name, placeholder: `Rename ${l.name}`, done: 'Rename', autoCap: true, max: MAX_LIST_NAME,
     onDone: text => {
       const name = cleanText(text);
-      if (!name) return;
+      if (!name || name === l.name) return;   // nothing changed: just close
       void send('rename-list', { list: l.id, name }).then(r => { if (r && !r.ok) { note = r.error ?? 'That name can’t be used.'; render(); } });
     },
   });
