@@ -5,7 +5,7 @@
 
 /** A list id: "shopping", "todo", or a list the family made (its id, as the Lists app keeps it). */
 export type VoiceList = string;
-export type ListCommand = RemoveAnyway | TickAnyway | { op: 'add';list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string }
+export type ListCommand = RemoveAnyway | TickAnyway | { op: 'add';list: VoiceList; text: string } | { op: 'read'; list: VoiceList } | { op: 'tick'; list: VoiceList; text: string } | { op: 'untick'; list: VoiceList }
   | { op: 'remove'; list: VoiceList; text: string } | { op: 'clear'; list: VoiceList } | { op: 'has'; list: VoiceList; text: string }
   | { op: 'has-any'; text: string }   // "is milk on the list": no list named; every list is looked at
   | { op: 'addMany'; list: VoiceList; texts: string[] }
@@ -122,6 +122,9 @@ export function matchList(raw: string, custom: { id: string; name: string }[] = 
   // "clear the ticked items off the shopping list": the same as the Clear ticked button
   m = t.match(new RegExp(`^(?:clear|empty) (?:the |all |my )?(?:ticked|checked|done|crossed off)(?: off)? items? (?:off|from) ${LIST}$`));
   if (m) return { op: 'clear', list: which(m[1], custom) };
+  // "untick everything on the packing list": the same as the Untick all button
+  m = t.match(new RegExp(`^(?:untick|uncheck|un-tick) (?:all|every|everything)(?: (?:the )?(?:items?|things))?(?: on| off| in| from)? ${LIST}$`));
+  if (m) return { op: 'untick', list: which(m[1], custom) };
   m = t.match(new RegExp(`^(?:what(?:'s| is) on|read(?: me)?|what do we have on|what do i have on|what(?:'s| is) in) ${LIST}$`));
   if (m) return { op: 'read', list: which(m[1], custom) };
   return null;

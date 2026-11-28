@@ -1001,6 +1001,15 @@ async function listCommand(c: Exclude<NonNullable<ReturnType<typeof matchList>>,
       if (r.removed === 0) return { say: `There’s nothing ticked on ${name}.` };
       return { say: `Cleared the ticked items on ${name}.`, react: 'hop' };
     }
+    if (c.op === 'untick') {
+      // the same as the Untick all button: every item goes back to open
+      let r: ListsResult;
+      try { r = await writeList('untick-all', { list: c.list }); }
+      catch (e) { return queuedReply(e, `Unticked everything on ${name}.`); }
+      if (!r?.ok) return { say: r?.error ?? `I couldn’t untick ${name}.` };
+      if (r.unticked === 0) return { say: `Nothing is ticked on ${name}.` };
+      return { say: `Unticked everything on ${name}.`, react: 'hop' };
+    }
     if (c.op === 'remove') {
       // same rule as tick off: one item by its words, never a guess between several (open or ticked)
       const lists = await readLists(READ_TIMEOUT_MS);
