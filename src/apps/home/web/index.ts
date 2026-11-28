@@ -27,6 +27,8 @@ import { busyOf, liveSessions, needsYou, pillText, type NeedTurn } from './needs
 import { NATIVE_ID, nativeGlance, nativeLimits } from '../../claude/web/native.ts';
 import { shortAge } from '../../../core/web/format.ts';
 import { readLists } from '../../lists/web/readers.ts';
+import { dinnerRow } from './dinner-row.ts';
+import { dinnersIn, isoDay } from '../../meals/web/week.ts';
 import { CLOCK_TIMERS_KEY, CLOCK_TIMER_KEY, readClockTimers } from '../../../core/web/clock-timer.ts';
 import { parseClockAlarms } from '../../../core/web/clock-alarms.ts';
 
@@ -404,6 +406,34 @@ async function loadLists(): Promise<void> {
   } catch { if (seq !== listsSeq) return; listsFailed = true; }
   paintLists();
 }
+// Tonight's dinner: today's dinner from the ClaudeOS calendar (the Meals app writes them). A read the PC never answers gives up.
+const DINNER_TIMEOUT_MS = 10e3;
+let dinnerTonight: string | null = null, dinnerState: 'loading' | 'ok' | 'failed' = 'loading', dinnerSeq = 0;
+let dinnerFailedBefore = false;
+async function loadDinner(): Promise<void> {
+  const seq = ++dinnerSeq;
+  const today = new Date(), tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const from = isoDay(today), to = isoDay(tomorrow), start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  try {
+    const r = await getJson<{ status?: string; events?: { id: string; title: string; start: number; end: number; allDay: boolean }[] }>(
+      `/api/calendar/local?from=${from}&to=${to}`, DINNER_TIMEOUT_MS);
+    if (seq !== dinnerSeq) return;   // a newer read started: its answer is the one that counts
+    if (r.status !== 'ok') throw new Error('calendar');
+    dinnerTonight = dinnersIn(r.events ?? []).find(d => d.start === start)?.text || null;
+    dinnerState = 'ok';
+    dinnerFailedBefore = false;
+  } catch {
+    if (seq !== dinnerSeq) return;
+    dinnerState = 'failed';
+    dinnerFailedBefore = dinnerFailedBefore || dinnerTonight !== null;
+  }
+  paintDinner();
+}
+function paintDinner(): void {
+  const row = dinnerRow(dinnerTonight, dinnerState, dinnerFailedBefore);
+  $('hmDnVal').textContent = row.val;
+  $('hmDnSub').textContent = row.sub;
+}
 function paintLists(): void {
   // a row beside its label: "3 to get · Milk, eggs…", or one plain phrase
   const val = $('hmLsVal'), sub = $('hmLsSub');
@@ -756,6 +786,7 @@ function refresh(): void {
   void loadRoutineActs();
   void loadCalendar();
   void loadLists();
+  void loadDinner();
   paintNotes();
   paintGreeting(now());
   paintActs();   // fit the row again: fonts and the page's width are settled once Home is on screen
@@ -765,7 +796,7 @@ function refresh(): void {
 // the live parts, every 30 seconds while Home is on screen only
 let pollT: number | undefined;
 function poll(): void {
-  if (ctx.isVisible() && !document.hidden) { void loadUsage(); void loadWeather(); void loadCalendar(); void loadLists(); }
+  if (ctx.isVisible() && !document.hidden) { void loadUsage(); void loadWeather(); void loadCalendar(); void loadLists(); void loadDinner(); }
 }
 function onShow(): void {
   refresh();
