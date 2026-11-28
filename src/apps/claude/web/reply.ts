@@ -417,7 +417,10 @@ function pickSetting(change: Partial<SessionSettings>): void {
 }
 
 /** The new-session screen (also "Chat on this tablet" on the offline Claude screen, index.ts). */
+// each New session open takes a number; a folder read from an earlier open that answers late does not replace this one
+let foldersSeq = 0;
 export async function openNew(): Promise<void> {
+  const seq = ++foldersSeq;
   openId = null; view = null; picking = true; starting = false;
   showScreen('new');
   $('sv').classList.remove('readonly');
@@ -431,7 +434,11 @@ export async function openNew(): Promise<void> {
   $('nsFolders').innerHTML = '<div class="ns-row empty">Loading folders…</div>';
   paintNewComposer();
   report('new-session-open');
-  try { projects = await getJson<Project[]>('/api/claude/projects'); foldersFailed = false; } catch { projects = []; foldersFailed = true; }
+  try {
+    const p = await getJson<Project[]>('/api/claude/projects', READ_TIMEOUT_MS);
+    if (seq !== foldersSeq) return;   // a newer open came first: its folder list is the one to keep
+    projects = p; foldersFailed = false;
+  } catch { if (seq !== foldersSeq) return; projects = []; foldersFailed = true; }
   if (!picking || mode !== 'new') return;
   // Settings → Sessions: the default folder if one is set, else the most recent folder (like the desktop app)
   const dflt = newFolderPref();
