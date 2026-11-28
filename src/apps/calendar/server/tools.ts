@@ -6,7 +6,7 @@ import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import type { CalEvent, CalEvents } from '../api.ts';
 import { events, eventsBetween } from './calendar.ts';
-import { localEventsIfReadable } from './local.ts';
+import { addLocalEvent, localEventsIfReadable } from './local.ts';
 import { mergeRange, withLocalDays, type RangeAnswer } from './range-merge.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
@@ -79,6 +79,36 @@ export async function calendarRangeReply(
   return text(`${r.events.length} event${r.events.length === 1 ? '' : 's'} from ${dayFmt.format(start)}:\n${lines.join('\n')}${notes.length ? `\n(${notes.join(' ')})` : ''}`);
 }
 
+/** The start and end of a new ClaudeOS event: a whole day with no start or allDay, else the times on that date. Null with a reason when they don't add up. */
+export function eventWindow(date: string, start?: string, end?: string, allDay?: boolean): { start: number; end: number; allDay: boolean } | { error: string } {
+  const [y, mo, dd] = date.split('-').map(Number);
+  const day = new Date(y, mo - 1, dd);
+  if (day.getFullYear() !== y || day.getMonth() !== mo - 1 || day.getDate() !== dd) return { error: 'That isn’t a real date. Give it as YYYY-MM-DD.' };
+  const at = (hhmm: string): number | null => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return h > 23 || m > 59 ? null : new Date(y, mo - 1, dd, h, m).getTime();
+  };
+  if (allDay || !start) return { start: day.getTime(), end: new Date(y, mo - 1, dd + 1).getTime(), allDay: true };
+  const s = at(start);
+  if (s === null) return { error: 'The start time is HH:MM, 24-hour.' };
+  const e = end ? at(end) : s + 3600e3;
+  if (e === null) return { error: 'The end time is HH:MM, 24-hour.' };
+  if (e <= s) return { error: 'The end is not after the start.' };
+  return { start: s, end: e, allDay: false };
+}
+
+/** The calendar_add reply: the event goes on the ClaudeOS calendar through addLocalEvent, which checks it (checkNewEvent). */
+export function calendarAddReply(
+  args: { title: string; date: string; start?: string; end?: string; allDay?: boolean; location?: string },
+  add: typeof addLocalEvent = addLocalEvent,
+) {
+  const w = eventWindow(args.date, args.start, args.end, args.allDay);
+  if ('error' in w) return text(w.error, true);
+  const r = add({ title: args.title, start: w.start, end: w.end, allDay: w.allDay, ...(args.location ? { location: args.location } : {}) });
+  if (r.status === 'error') return text(r.error, true);
+  return text(`Added “${args.title}” on ${dayFmt.format(new Date(w.start))}${w.allDay ? ', all day' : `, ${hm.format(new Date(w.start))} to ${hm.format(new Date(w.end))}`}.`);
+}
+
 export const calendarServer = createSdkMcpServer({
   name: 'claudeos_calendar',
   version: '1.0.0',
@@ -93,5 +123,18 @@ export const calendarServer = createSdkMcpServer({
         + 'from: the first day as YYYY-MM-DD (the default is today). days: how many days, 1 to 14 (the default is 7).',
       { from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), days: z.number().int().min(1).max(14).optional() },
       (args) => calendarRangeReply(args)),
+    tool('calendar_add',
+      'Add an event to the ClaudeOS calendar on the tablet: the events the family adds in the Calendar app (not the ICS calendar). '
+        + 'title; date as YYYY-MM-DD; start and end as HH:MM (24-hour), or allDay for a whole day; location is optional. '
+        + 'Use it when the user asks to put something on the calendar.',
+      {
+        title: z.string().min(1).max(80),
+        date: z.string().regex(/^d{4}-d{2}-d{2}$/),
+        start: z.string().regex(/^d{2}:d{2}$/).optional(),
+        end: z.string().regex(/^d{2}:d{2}$/).optional(),
+        allDay: z.boolean().optional(),
+        location: z.string().max(80).optional(),
+      },
+      async (args) => calendarAddReply(args)),
   ],
 });
