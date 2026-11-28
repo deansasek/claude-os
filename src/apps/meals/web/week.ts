@@ -68,5 +68,15 @@ export function weekIngredients(dinnerTexts: string[], recipes: { name: string; 
   return { items: [...items], unmatched };
 }
 
+/** Copy last week's dinners into this week's free nights, weekday for weekday. A night that already has a dinner is kept.
+ *  Returns the dinners to add: this week's day index, and the event to write. */
+export function copyPlan(days: Day[], lastDays: Day[], thisDinners: Dinner[], lastDinners: Dinner[]): { i: number; title: string; start: number; end: number }[] {
+  return days.flatMap((d, i) => {
+    const last = dinnerOn(lastDinners, lastDays[i]);
+    if (!last || dinnerOn(thisDinners, d)) return [];
+    return [{ i, title: dinnerTitle(last.text), start: d.start, end: d.end }];
+  });
+}
+
 /** The dinner for one day, if there is one. */
 export const dinnerOn = (dinners: Dinner[], day: Day): Dinner | null => dinners.find(d => d.start === day.start) ?? null;
