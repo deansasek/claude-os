@@ -67,7 +67,7 @@ import { dinnersIn, isoDay } from '../../apps/meals/web/week.ts';
 import { mediaState, nowPlaying, pauseMedia } from './media.ts';
 import { addManyReply, findExact, pickItem } from '../../apps/lists/web/voice-match.ts';
 import { isQueued, readLists, writeList } from '../../apps/lists/web/readers.ts';
-import { durationAndLabel, labelledTimer, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
+import { articleFor, durationAndLabel, labelledTimer, parseDuration, parseTime, parseDays, DAY_WORDS, daysText, morningDays, namedTimerReply, resolveHour, sayDuration, type TimeOfDay } from './voice-parse.ts';
 import { setThemeMode } from './theme.ts';
 import { dndWord } from './voice-dnd.ts';
 import { matchOpenApp } from './voice-open.ts';
@@ -293,12 +293,12 @@ async function weather(day: number, rainOnly: 'rain' | 'snow' | null): Promise<C
   if (rainOnly) {
     const snowy = code >= 71 && code <= 86;
     const wet = rainOnly === 'snow' ? snowy : !snowy;
-    if (chance >= 60 && wet) return { say: `Yes, ${rainOnly} looks likely ${when}: a ${chance} percent chance.`, react: 'look' };
-    if (chance >= 30) return { say: `Maybe. There's a ${chance} percent chance of ${snowy ? 'snow' : 'rain'} ${when}.`, react: 'look' };
-    return { say: `Probably not. Only a ${chance} percent chance of ${snowy ? 'snow' : 'rain'} ${when}.`, react: 'hop' };
+    if (chance >= 60 && wet) return { say: `Yes, ${rainOnly} looks likely ${when}: ${articleFor(chance)} ${chance} percent chance.`, react: 'look' };
+    if (chance >= 30) return { say: `Maybe. There's ${articleFor(chance)} ${chance} percent chance of ${snowy ? 'snow' : 'rain'} ${when}.`, react: 'look' };
+    return { say: `Probably not. Only ${articleFor(chance)} ${chance} percent chance of ${snowy ? 'snow' : 'rain'} ${when}.`, react: 'hop' };
   }
   const hi = d.temperature_2m_max[day], lo = d.temperature_2m_min[day];
-  const rain = chance >= 30 ? ` with a ${chance} percent chance of ${code >= 71 && code <= 86 ? 'snow' : 'rain'}` : '';
+  const rain = chance >= 30 ? ` with ${articleFor(chance)} ${chance} percent chance of ${code >= 71 && code <= 86 ? 'snow' : 'rain'}` : '';
   if (!day && w.current) {
     return { say: `It's ${deg(w.current.temperature_2m)} and ${sky(w.current.weather_code)}${w.place ? ` in ${w.place.split(',')[0]}` : ''}. Today, a high of ${deg(hi)} and a low of ${deg(lo)}${rain}.`, react: 'look' };
   }
@@ -489,7 +489,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
       // a timer that has finished is no longer listed: "stop the pasta timer" silences its ring when that is the one ringing
       const ringName = clock.ringingName();
       if (ringName && ringName.trim().toLowerCase() === tw.label.trim().toLowerCase() && clock.stopRinging()) return { say: `${shown} timer stopped.`, react: 'look' };
-      return clock.cancelNamedTimer(tw.label) ? { say: `${shown} timer cancelled.`, react: 'look' } : { say: `You don’t have a ${tw.label} timer.`, react: 'look' };
+      return clock.cancelNamedTimer(tw.label) ? { say: `${shown} timer cancelled.`, react: 'look' } : { say: `You don’t have ${articleFor(tw.label)} ${tw.label} timer.`, react: 'look' };
     }
     if (tw.op === 'cancel-all') {
       const n = clock.cancelAllTimers();
@@ -514,7 +514,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
   if (namedLeft !== null) {
     if (!clock) return null;
     const hit = clock.namedTimerLeft(namedLeft);
-    if (!hit) return { say: `You don’t have a ${namedLeft} timer.`, react: 'look' };
+    if (!hit) return { say: `You don’t have ${articleFor(namedLeft)} ${namedLeft} timer.`, react: 'look' };
     return { say: `${sayDuration(Math.ceil(hit.ms / 1000) * 1000)} left on the ${namedLeft} timer${hit.paused ? ', and it is paused' : ''}.`.replace(/^./, c => c.toUpperCase()), react: 'look' };
   }
   // "what time will the timer go off": the clock time it ends (timerEndWord in voice-alarm.ts); a paused timer has no end yet
