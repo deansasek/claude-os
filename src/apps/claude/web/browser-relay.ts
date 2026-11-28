@@ -130,7 +130,9 @@ function runClock(op: 'clock_status' | 'cancel_timer' | 'cancel_alarms' | 'pause
       if (!m || !clock.nudgeNamedTimer(label, m)) return { ok: true, data: `The ${label} timer can’t be changed.` };
       const after = clock.namedTimerLeft(label);
       const mins = after ? Math.ceil(after.ms / 60e3) : 0;
-      return { ok: true, data: `${m > 0 ? 'Added' : 'Took off'} ${Math.abs(m) === 60 ? 'an hour' : `${Math.abs(m)} minute${Math.abs(m) === 1 ? '' : 's'}`} to the ${label} timer. It has ${mins} minute${mins === 1 ? '' : 's'} left.` };
+      // "to" the timer when adding, "from" it when taking off; the same amount words as the timer in front (below)
+      const n = Math.abs(m), amount = n === 60 ? 'an hour' : n === 30 ? 'half an hour' : `${n} minute${n === 1 ? '' : 's'}`;
+      return { ok: true, data: `${m > 0 ? 'Added' : 'Took off'} ${amount} ${m > 0 ? 'to' : 'from'} the ${label} timer. It has ${mins} minute${mins === 1 ? '' : 's'} left.` };
     }
     if (!m || !clock.nudgeTimer(m)) return { ok: true, data: 'There’s no timer running.' };
     const n = Math.abs(m), amount = n === 60 ? 'an hour' : n === 30 ? 'half an hour' : `${n} minute${n === 1 ? '' : 's'}`;
