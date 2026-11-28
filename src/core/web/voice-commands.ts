@@ -50,7 +50,7 @@ import { sleepWord } from './voice-sleep.ts';
 import { christmasSay, countdownWord } from './voice-countdown.ts';
 import { newsSay, newsWord } from './voice-news.ts';
 import type { NewsFeedResponse } from '../../apps/news/api.ts';
-import { alarmInMs, alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
+import { alarmInMs, alarmOnTimePhrase, alarmTimePhrase, alarmTomorrowWord, alarmUntilSay, alarmUntilWord, alarmsListWord, alarmWord, namedTimerLeftLabel, timerEndWord, timerWord } from './voice-alarm.ts';
 import { mathSay } from './voice-math.ts';
 import { airSay, airWord, forecastDay, frostSay, frostTonight, humidSay, humidWord, lowTonightSay, lowTonightWord, nowSay, overnightLow, rainingNow, sunDay, sunSay, temperatureDay, weatherTrouble, weekdayName, windDay } from './voice-weather.ts';
 import { localHour } from './format.ts';
@@ -558,9 +558,7 @@ export async function runCommand(raw: string): Promise<CommandResult | null> {
     if (!clock) return null;
     const n = clock.nextAlarm();
     if (!n) return { say: 'You don’t have any alarms on.' };
-    const mins = Math.round((n.at - Date.now()) / 60000);
-    if (mins < 1) return { say: 'Your alarm goes off in under a minute.', react: 'look' };
-    return { say: `Your alarm goes off in ${sayDuration(mins * 60000)}.`, react: 'look' };
+    return { say: alarmUntilSay(n.at, Date.now(), clockText(n.h, n.m), n.when), react: 'look' };
   }
   if (/^(?:when(?:'s| is) my (?:next )?alarm|what time(?:'s| is) my alarm|is my alarm (?:on|set)|do i have an alarm(?: set)?)$/.test(t)) {
     if (!clock) return null;

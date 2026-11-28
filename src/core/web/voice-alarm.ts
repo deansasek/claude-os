@@ -1,6 +1,6 @@
 // Voice words for the Clock's alarms: "stop" and "snooze" act on the ring that is sounding. Only "turn off all my
 // alarms" switches every alarm off. Pure text matching, so Node tests can load it (core/web/voice-commands.ts uses it).
-import { parseDuration } from './voice-parse.ts';
+import { parseDuration, sayDuration } from './voice-parse.ts';
 
 export type AlarmWord = 'stop-ring' | 'snooze' | 'all-off' | 'one-alarm' | null;
 
@@ -42,6 +42,18 @@ export function alarmInMs(t: string): number | null {
   const m = /^(?:wake me(?: up)? in|set (?:an |the )?alarm in|set (?:an |the )?alarm for|alarm in) (.+?)(?: from now)?$/.exec(t);
   if (!m || !/\b(?:minutes?|mins?|hours?|hrs?)\b/.test(m[1])) return null;
   return parseDuration(m[1]);
+}
+
+/** "How long until my alarm": the time left, in minutes and hours for a ring within a day, and the day for one further off
+ *  ("Your next alarm is 7:00 AM next Saturday, in 5 days."). at and now are ms; hm is the clock time; when is the day word. */
+export function alarmUntilSay(at: number, now: number, hm: string, when: string): string {
+  const mins = Math.round((at - now) / 60000);
+  if (mins < 1) return 'Your alarm goes off in under a minute.';
+  if (mins >= 24 * 60) {
+    const days = Math.floor(mins / (24 * 60));
+    return `Your next alarm is ${hm} ${when}, in ${days} day${days === 1 ? '' : 's'}.`;
+  }
+  return `Your alarm goes off in ${sayDuration(mins * 60000)}.`;
 }
 
 /** "How long is left on the pasta timer": the label of one timer, or null. A bare "the timer" or a time is not a label. */
