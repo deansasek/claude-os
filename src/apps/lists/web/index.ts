@@ -24,6 +24,7 @@ import { manifest } from '../manifest.ts';
 import { COPY_KEY, applyOp, type Op, type OpPath } from './local.ts';
 import { appendOp, readQueue, remapQueue, removeOp } from './queue.ts';
 import { keptSuggest } from './suggest.ts';
+import { addDinnersToShopping, weekDinners } from '../../meals/web/week-shopping.ts';
 
 const API = `/api/${manifest.id}`;
 const REFRESH_MS = 20e3;
@@ -172,6 +173,25 @@ function rowHtml(l: FamilyList, i: ListItem): string {
     + `<button class="ls-x hit" data-act="remove" aria-label="Remove ${esc(i.text)}">${X}</button></div></li>`;
 }
 
+// This week's dinners: their ingredients go on the Shopping list, the ones already there are left out (week-shopping.ts)
+let weekBusy = false;
+async function addWeek(): Promise<void> {
+  if (weekBusy) return;
+  weekBusy = true;
+  note = 'Adding this week’s dinners…';
+  render();
+  try {
+    let dinners;
+    try { dinners = await weekDinners(); }
+    catch { note = 'Couldn’t reach your PC to read the week.'; return; }
+    note = await addDinnersToShopping(dinners);
+    await refresh(true);
+  } finally {
+    weekBusy = false;
+    render();
+  }
+}
+
 function render(): void {
   if (!ctx) return;
   const l = listNow();
@@ -191,6 +211,7 @@ function render(): void {
     $('lsEmpty').hidden = true;
     $('lsClear').hidden = true;
     $('lsUntick').hidden = true;
+    $('lsWeek').hidden = true;
     $('lsDelete').hidden = true;
     return;
   }
@@ -203,6 +224,7 @@ function render(): void {
   $('lsRename').hidden = isBuiltIn(l.id);
   $('lsClear').hidden = notes || !done.length;
   $('lsUntick').hidden = notes || !done.length;
+  $('lsWeek').hidden = l.id !== 'shopping';   // this week's dinners go on the Shopping list only
   $('lsClear').textContent = `Clear ticked (${done.length})`;
   $('lsAddText').textContent = l.items.length >= MAX_ITEMS ? `${l.name} is full` : notes ? 'Write a note' : `Add to ${l.name}`;
 
@@ -455,6 +477,7 @@ const app: HubApp = {
     $('lsNew').addEventListener('click', newList);
     $('lsClear').addEventListener('click', clearTicked);
     $('lsUntick').addEventListener('click', untickAll);
+    $('lsWeek').addEventListener('click', () => void addWeek());
     $('lsDelete').addEventListener('click', askDelete);
     $('lsRename').addEventListener('click', renameNow);
     $('lsUndoBtn').addEventListener('click', () => { void runUndo(); });

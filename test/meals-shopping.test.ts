@@ -22,11 +22,13 @@ test('a dinner with no saved recipe is reported, and an empty dinner is ignored'
   assert.equal(week.items.length, 3);
 });
 
-test('the button is wired to the week’s dinners, the Shopping list, and the same write as Recipes', () => {
+test('the button is wired to the shared shopping logic, which uses the Shopping list and the same write as Recipes', () => {
   const src = readFileSync(new URL('../src/apps/meals/web/index.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const html = readFileSync(new URL('../src/apps/meals/view.html', import.meta.url), 'utf8');
+  const shared = readFileSync(new URL('../src/apps/meals/web/week-shopping.ts', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   assert.match(html, /id="mpShop"/);
   assert.match(src, /c\.\$\('mpShop'\)\.addEventListener\('click', \(\) => void addWeekShopping\(c\)\);/);
-  assert.match(src, /shoppingItems\(items, onList\)/);
-  assert.match(src, /writeList\('add', \{ list: 'shopping', text \}\)/);
+  assert.match(src, /setStatus\(c, await addDinnersToShopping\(dinners\)\);/);
+  assert.match(shared, /shoppingItems\(items, onList\)/);
+  assert.match(shared, /writeList\('add', \{ list: 'shopping', text \}\)/);
 });
