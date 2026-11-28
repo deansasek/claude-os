@@ -60,6 +60,7 @@ const BUILT_IN: Record<string, ToolWords> = {
   'mcp__claudeos_lists__lists_remove': { now: 'Remove a list item', past: 'Removed a list item', doing: 'Removing a list item' },
   'mcp__claudeos_lists__lists_edit': { now: 'Change a list item', past: 'Changed a list item', doing: 'Changing a list item' },
   'mcp__claudeos_lists__lists_new': { now: 'Make a new list', past: 'Made a new list', doing: 'Making a new list' },
+  'mcp__claudeos_lists__lists_rename': { now: 'Rename a list', past: 'Renamed a list', doing: 'Renaming a list' },
   'mcp__claudeos_lists__lists_clear_done': { now: 'Clear ticked list items', past: 'Cleared ticked list items', doing: 'Clearing ticked list items' },
   // ClaudeOS's calendar (calendar/server/tools.ts, the claudeos_calendar MCP server), read-only
   'mcp__claudeos_calendar__calendar_today': { now: 'Look at your calendar', past: 'Looked at your calendar', doing: 'Looking at your calendar' },

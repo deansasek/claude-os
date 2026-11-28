@@ -4,7 +4,7 @@
 import { createSdkMcpServer, tool } from '@anthropic-ai/claude-agent-sdk';
 import { z } from 'zod';
 import { MAX_TEXT, findList, type FamilyList, type ListsResult } from '../api.ts';
-import { addItem, clearDone, editItem, findItem, newList, readLists, removeItem, tickItem } from './store.ts';
+import { addItem, clearDone, editItem, findItem, newList, readLists, removeItem, renameList, tickItem } from './store.ts';
 
 const text = (t: string, isError = false) => ({ content: [{ type: 'text' as const, text: t }], ...(isError ? { isError: true } : {}) });
 
@@ -94,6 +94,18 @@ export const listsServer = createSdkMcpServer({
         const r = newList(name);
         if (!r.ok) return text(r.error ?? 'That didn’t work.', true);
         return text(`Made the list “${name.trim()}”. It is empty.`);
+      }),
+    tool('lists_rename',
+      'Rename a family list on the ClaudeOS tablet. list: its current name or id. name: the new name, up to 24 characters. The items stay on it.',
+      { list: z.string().max(40), name: z.string().max(40) },
+      async ({ list, name }) => {
+        const r = readLists();
+        if (!r.ok) return text(r.error ?? 'Couldn’t read the lists.', true);
+        const l = findList(r.lists, list);
+        if (!l) return text(`There’s no list called “${list}”. The lists are: ${names(r)}.`, true);
+        const out = renameList(l.id, name);
+        if (!out.ok) return text(out.error ?? 'That didn’t work.', true);
+        return text(`Renamed “${l.name}” to “${name.trim()}”.`);
       }),
     tool('lists_clear_done',
       'Clear the ticked-off items from a family list on the ClaudeOS tablet, for good. list: its name or id. The unticked items stay. '
