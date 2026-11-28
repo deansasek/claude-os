@@ -76,3 +76,16 @@ test('only a minus can start an expression, and an operator replaces the one jus
   assert.equal(display(press(['−', '5'])), '−5');
   assert.equal(display(press(['5', '+', '×'])), '5×');
 });
+
+test('a result written with an exponent, such as 1e+21 or 1e-7, can be used in the next sum', () => {
+  assert.equal(format(1e21), '1e+21');
+  assert.equal(evaluate('1e+21+5'), 1e21);
+  assert.equal(evaluate('1e-7*2'), 2e-7);
+  assert.equal(evaluate('2e+3-1'), 1999);
+});
+
+test('the converter reads an exponent result as a number', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../src/apps/calculator/web/index.ts', import.meta.url), 'utf8');
+  assert.ok(src.includes(String.raw`/^-?\d+(\.\d+)?(e[+-]?\d+)?$/.test(text)`));
+});

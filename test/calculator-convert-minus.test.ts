@@ -8,5 +8,5 @@ const src = readFileSync(new URL('../src/apps/calculator/web/index.ts', import.m
 
 test('the readout reads the keys’ minus sign and drops a trailing point before it checks the number', () => {
   assert.match(src, /const text = display\(state\)\.replace\(\/−\/g, '-'\)\.replace\(\/\\\.\$\/, ''\);/);
-  assert.match(src, /return \/\^-\?\\d\+\(\\\.\\d\+\)\?\$\/\.test\(text\) \? Number\(text\) : null;/);
+  assert.match(src, /return \/\^-\?\\d\+\(\\\.\\d\+\)\?\(e\[\+-\]\?\\d\+\)\?\$\/\.test\(text\) \? Number\(text\) : null;/);
 });
