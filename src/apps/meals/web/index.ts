@@ -101,6 +101,7 @@ async function remove(c: AppContext, i: number): Promise<void> {
   const existing = dinnerOn(dinners, days[i]);
   if (!existing || busy) return;
   busy = true;
+  setStatus(c, 'Removing…');
   try {
     const r = await postJson<{ error?: string }>(`${API}/local-delete`, { id: existing.id }, WRITE_TIMEOUT_MS);
     if (r.error) { setStatus(c, r.error); return; }
@@ -117,6 +118,7 @@ async function remove(c: AppContext, i: number): Promise<void> {
 async function copyLastWeek(c: AppContext): Promise<void> {
   if (busy) return;
   busy = true;
+  setStatus(c, 'Copying last week…');
   try {
     const lastDays = weekDays(mondayAfter(days[0].date, -1));
     const from = isoDay(lastDays[0].date), to = isoDay(new Date(days[0].date.getFullYear(), days[0].date.getMonth(), days[0].date.getDate()));
@@ -148,6 +150,7 @@ async function copyLastWeek(c: AppContext): Promise<void> {
 async function addWeekShopping(c: AppContext): Promise<void> {
   if (busy) return;
   busy = true;
+  setStatus(c, 'Adding to Shopping…');
   try {
     setStatus(c, await addDinnersToShopping(dinners));
   } finally {
