@@ -126,6 +126,7 @@ async function save(): Promise<void> {
 }
 
 async function remove(id: string): Promise<void> {
+  if (busy) return;   // a save or delete is still in flight: a second Delete would race it and overwrite routines with stale data
   const mine = apply({ path: 'delete', body: { id } });
   if (mine) { routines = mine.routines; edit(routines[0] ?? null); render(); return; }
   busy = true; render();
@@ -195,7 +196,9 @@ function render(): void {
   const saveBtn = $('rtSave') as HTMLButtonElement;
   saveBtn.disabled = busy || !dirty();
   saveBtn.textContent = busy ? 'Saving…' : draft.id ? 'Save' : 'Add routine';
-  ($('rtDelete') as HTMLButtonElement).hidden = !draft.id;
+  const del = $('rtDelete') as HTMLButtonElement;
+  del.hidden = !draft.id;
+  del.disabled = busy;   // greyed while a save or delete is in flight
 }
 
 // ---------- editing ----------
