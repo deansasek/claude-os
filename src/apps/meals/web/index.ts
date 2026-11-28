@@ -1,13 +1,14 @@
 // The Meals app: this week's dinners, one row a night. Tap a night to type a dinner; Save writes it to the ClaudeOS
 // calendar as an all-day event, so it shows on Calendar and Home too. Remove deletes it. The week is read from the PC's
 // local calendar (GET /api/calendar/local) and changed with the calendar's own write routes.
-import { esc, getJson, postJson } from '../../../core/web/dom.ts';
+import { esc, getJson, postJson, store } from '../../../core/web/dom.ts';
 import { appIcon } from '../../../core/web/app-icons.ts';
 import type { AppContext, HubApp } from '../../../core/web/shell.ts';
 import { manifest } from '../manifest.ts';
-import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayOf, weekDays, type Day, type Dinner } from './week.ts';
+import { dinnerOn, dinnerTitle, dinnersIn, isoDay, mondayOf, savedRecipeNames, weekDays, type Day, type Dinner } from './week.ts';
 
 const API = '/api/calendar';
+const RECIPES_KEY = 'recipes.list';   // the Recipes app's saved list, on the tablet's own store
 const READ_TIMEOUT_MS = 10e3;
 const WRITE_TIMEOUT_MS = 10e3;
 
@@ -34,11 +35,15 @@ function paint(c: AppContext): void {
     const dinner = dinnerOn(dinners, d);
     const label = d.date.toLocaleDateString(undefined, { weekday: 'long' });
     if (editing === i) {
-      return `<div class="mp-day"><div class="mp-dow">${esc(label)}</div><div class="mp-edit">
+      const chips = savedRecipeNames(store.get(RECIPES_KEY))
+        .map(n => `<button class="mp-chip" data-act="pick" data-i="${i}" data-name="${esc(n)}">${esc(n)}</button>`).join('');
+      return `<div class="mp-day"><div class="mp-dow">${esc(label)}</div><div class="mp-edit-wrap">
+        ${chips ? `<div class="mp-chips">${chips}</div>` : ''}
+        <div class="mp-edit">
         <input class="mp-input" data-i="${i}" maxlength="60" placeholder="What’s for dinner?" value="${esc(dinner?.text ?? '')}">
         <button class="mp-btn primary" data-act="save" data-i="${i}">Save</button>
         ${dinner ? `<button class="mp-btn" data-act="remove" data-i="${i}">Remove</button>` : ''}
-        <button class="mp-btn" data-act="cancel" data-i="${i}">Cancel</button></div></div>`;
+        <button class="mp-btn" data-act="cancel" data-i="${i}">Cancel</button></div></div></div>`;
     }
     return `<div class="mp-day"><div class="mp-dow">${esc(label)}</div>
       <button class="mp-text${dinner ? '' : ' empty'}" data-act="edit" data-i="${i}">${esc(dinner?.text || 'Add a dinner')}</button></div>`;
@@ -119,6 +124,10 @@ const app: HubApp = {
       const i = Number(b.dataset.i);
       if (b.dataset.act === 'edit') { editing = i; paint(c); c.$('mpDays').querySelector<HTMLInputElement>(`input[data-i="${i}"]`)?.focus(); }
       if (b.dataset.act === 'cancel') { editing = null; paint(c); }
+      if (b.dataset.act === 'pick') {   // a saved recipe fills the box; Save then writes it as the dinner
+        const input = c.$('mpDays').querySelector<HTMLInputElement>(`input[data-i="${i}"]`);
+        if (input) { input.value = b.dataset.name ?? ''; input.focus(); }
+      }
       if (b.dataset.act === 'save') void save(c, i);
       if (b.dataset.act === 'remove') void remove(c, i);
     });
